@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prism — Soroban-First Block Explorer</title>
+  <meta name="description" content="Prism extends the Obsrvr Intelligence Console with full Soroban-first capabilities for the Stellar network.">
+  <style>
+    :root {
+      --bg: #0a0b0f;
+      --surface: #12131a;
+      --border: #1e2030;
+      --text: #e2e4ed;
+      --text-muted: #8b8fa3;
+      --accent: #7c6cf0;
+      --accent-glow: rgba(124, 108, 240, 0.15);
+      --highlight: #a78bfa;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 48px 0 32px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .brand-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, var(--accent), var(--highlight));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: var(--text-muted);
+      max-width: 600px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .badge strong {
+      color: var(--text);
+    }
+
+    /* Architecture image */
+    .architecture {
+      margin: 48px 0;
+    }
+
+    .architecture img {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .architecture figcaption {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    /* Sections */
+    section {
+      padding: 48px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    section:last-of-type {
+      border-bottom: none;
+    }
+
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      max-width: 680px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Feature grid */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .feature {
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.2s;
+    }
+
+    .feature:hover {
+      border-color: var(--accent);
+    }
+
+    .feature h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .feature p {
+      font-size: 14px;
+      margin-bottom: 0;
+    }
+
+    /* Roadmap */
+    .tranches {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .tranche {
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .tranche-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .tranche h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .tranche-phase {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: var(--accent-glow);
+      color: var(--highlight);
+      font-weight: 500;
+    }
+
+    .tranche ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tranche li {
+      font-size: 14px;
+      color: var(--text-muted);
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .tranche li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+    }
+
+    /* Open source links */
+    .repos {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .repo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .repo:hover {
+      border-color: var(--accent);
+    }
+
+    .repo-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .repo-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .repo svg {
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    footer a {
+      color: var(--highlight);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      h1 { font-size: 32px; }
+      .subtitle { font-size: 17px; }
+      .features { grid-template-columns: 1fr; }
+      header { padding: 32px 0 24px; }
+      section { padding: 36px 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+            <line x1="12" y1="22" x2="12" y2="15.5"/>
+            <polyline points="22 8.5 12 15.5 2 8.5"/>
+          </svg>
+        </div>
+        <span class="brand-label">by OBSRVR</span>
+      </div>
+      <h1><span>Prism</span></h1>
+      <p class="subtitle">Soroban-First Block Explorer for Stellar — human-readable smart contracts, unified event streams, and complete ledger history from genesis.</p>
+      <div class="badges">
+        <span class="badge"><strong>SCF #42</strong> Build Track</span>
+        <span class="badge">Open Source</span>
+        <span class="badge">Stellar / Soroban</span>
+      </div>
+    </header>
+
+    <figure class="architecture">
+      <img src="obsrvr_prism.jpeg" alt="Prism architecture diagram showing data flow from Stellar network through ingestion pipeline to explorer frontend">
+      <figcaption>Architecture overview — Stellar ledger ingestion through Obsrvr Lake to explorer frontend</figcaption>
+    </figure>
+
+    <section>
+      <h2>What is Prism?</h2>
+      <p>Prism extends the <strong style="color: var(--text)">Obsrvr Intelligence Console (Terminal)</strong> — an existing open-source block explorer — with full Soroban-first capabilities. Terminal already provides a contract-centric explorer with tiered hot/cold storage and real-time WebSocket streaming.</p>
+      <p>Prism adds the missing Soroban display layer: human-readable transactions via SEP-41 and SEP-50, CAP-67 event support with swap detection, and complete ledger history from Stellar genesis (all 61M+ ledgers).</p>
+    </section>
+
+    <section>
+      <h2>Key Capabilities</h2>
+      <div class="features">
+        <div class="feature">
+          <h3>Human-Readable Soroban</h3>
+          <p>SEP-41 and SEP-50 transform opaque XDR into plain language — "Swapped 100 USDC for 1,250 XLM via Soroswap."</p>
+        </div>
+        <div class="feature">
+          <h3>CAP-67 Event Stream</h3>
+          <p>Unified event stream combining classic effects and Soroban events. Filterable by contract, function call, event type, and token.</p>
+        </div>
+        <div class="feature">
+          <h3>Full History from Genesis</h3>
+          <p>All 61M+ Stellar ledgers ingested via the Obsrvr Lake pipeline. Bronze layer (raw XDR) + Silver layer (transformed) backed by Stellar Galexie archives.</p>
+        </div>
+        <div class="feature">
+          <h3>Classic + Soroban Parity</h3>
+          <p>Unified interface for classic operations, SAC tokens, SEP-39, and Soroban smart contracts — complete ecosystem coverage.</p>
+        </div>
+        <div class="feature">
+          <h3>Swap Detection</h3>
+          <p>Heuristic-based detection for major DEXes — Soroswap, Aquarius, Phoenix. Displays human-readable swap summaries with token pairs and amounts.</p>
+        </div>
+        <div class="feature">
+          <h3>Open Source</h3>
+          <p>Pipeline, processors, API, and frontend — all published under a permissive license with contributing guidelines and CI/CD.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Roadmap</h2>
+      <div class="tranches">
+        <div class="tranche">
+          <div class="tranche-header">
+            <h3>Tranche 1 — MVP</h3>
+            <span class="tranche-phase">Phase 1</span>
+          </div>
+          <ul>
+            <li>Mainnet ingestion pipeline with &lt;30s latency</li>
+            <li>Historical backfill &ge;50% of all ledgers</li>
+            <li>Explorer frontend on testnet with Soroban-first display</li>
+            <li>Core REST API endpoints (ledgers, transactions, accounts, operations, events)</li>
+          </ul>
+        </div>
+        <div class="tranche">
+          <div class="tranche-header">
+            <h3>Tranche 2 — Testnet</h3>
+            <span class="tranche-phase">Phase 2</span>
+          </div>
+          <ul>
+            <li>CAP-67 unified event stream with filtering</li>
+            <li>SEP-41 + SEP-50 human-readable transaction display</li>
+            <li>Swap detection &amp; function call filtering for major DEXes</li>
+            <li>Historical backfill &ge;90% and mainnet infrastructure scaling</li>
+          </ul>
+        </div>
+        <div class="tranche">
+          <div class="tranche-header">
+            <h3>Tranche 3 — Mainnet</h3>
+            <span class="tranche-phase">Phase 3</span>
+          </div>
+          <ul>
+            <li>Full history complete &amp; verified (all 61M+ ledgers)</li>
+            <li>Production mainnet deployment with CDN and monitoring</li>
+            <li>Load testing (&lt;400ms at 100+ concurrent requests)</li>
+            <li>Documentation, example integrations, and open source release</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Existing Open Source</h2>
+      <div class="repos">
+        <a href="https://github.com/withObsrvr/nebu" class="repo" target="_blank" rel="noopener">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          <div>
+            <div class="repo-name">nebu</div>
+            <div class="repo-desc">Stellar ledger processor — 10 built-in processors for contract events, token transfers, USDC filtering, and more.</div>
+          </div>
+        </a>
+        <a href="https://github.com/withObsrvr/ttp-processor-demo" class="repo" target="_blank" rel="noopener">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          <div>
+            <div class="repo-name">ttp-processor-demo</div>
+            <div class="repo-desc">gRPC microservices for streaming Stellar events to PostgreSQL via SDF's TTP architecture.</div>
+          </div>
+        </a>
+        <a href="https://github.com/withObsrvr/terminal" class="repo" target="_blank" rel="noopener">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          <div>
+            <div class="repo-name">terminal</div>
+            <div class="repo-desc">Contract-centric block explorer with tiered storage, natural language console, and real-time WebSocket streaming.</div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2>Team</h2>
+      <p><strong style="color: var(--text)">Tillman Mosley III</strong> — Currently maintains Radar (formerly stellarbeat) and two other Stellar ecosystem projects. Experience in data infrastructure and data ingestion.</p>
+      <p><a href="https://www.linkedin.com/in/tillmanmosleyiii/" style="color: var(--highlight); text-decoration: none;" target="_blank" rel="noopener">LinkedIn &rarr;</a></p>
+    </section>
+
+    <footer>
+      <p>Prism is an <a href="https://github.com/withObsrvr">OBSRVR</a> project &middot; Submitted to <a href="https://communityfund.stellar.org">Stellar Community Fund</a> #42</p>
+    </footer>
+  </div>
+</body>
+</html>
