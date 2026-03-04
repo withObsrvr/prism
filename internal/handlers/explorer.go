@@ -16,7 +16,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 
 	data := pages.HomeData{
 		Network:       h.Network,
-		LatestLedger:  "5,104,938",
+		LatestLedger:  "61,504,113",
 		LedgerAge:     "3.8s ago",
 		TxCount24H:    "1,284,392",
 		TxChange:      "↑ 12.3%",
@@ -34,14 +34,14 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 			{Hash: "e28f914d564d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d4d56", ShortHash: "e28f91...4d56", Type: "payment", TypeLabel: "Payment", Summary: "12,450.00 yXLM → Yield distributor", From: "GAUTH...B4KQ", To: "GCYLD...M7R2", Ops: "2 ops", Fee: "0.002 XLM", Age: "23s ago"},
 		},
 		Ledgers: []pages.HomeLedger{
-			{Sequence: "5,104,938", Age: "3.8s", TxCount: "42 txs", OpCount: "14 ops", IsLatest: true},
-			{Sequence: "5,104,937", Age: "8.9s", TxCount: "38 txs", OpCount: "12 ops"},
-			{Sequence: "5,104,936", Age: "14.2s", TxCount: "51 txs", OpCount: "18 ops"},
-			{Sequence: "5,104,935", Age: "19.6s", TxCount: "29 txs", OpCount: "9 ops"},
-			{Sequence: "5,104,934", Age: "24.8s", TxCount: "44 txs", OpCount: "15 ops"},
-			{Sequence: "5,104,933", Age: "30.1s", TxCount: "36 txs", OpCount: "11 ops"},
-			{Sequence: "5,104,932", Age: "35.4s", TxCount: "47 txs", OpCount: "16 ops"},
-			{Sequence: "5,104,931", Age: "40.7s", TxCount: "33 txs", OpCount: "10 ops"},
+			{Sequence: "61,504,113", Age: "3.8s", TxCount: "42 txs", OpCount: "14 ops", IsLatest: true},
+			{Sequence: "61,504,112", Age: "8.9s", TxCount: "38 txs", OpCount: "12 ops"},
+			{Sequence: "61,504,111", Age: "14.2s", TxCount: "51 txs", OpCount: "18 ops"},
+			{Sequence: "61,504,110", Age: "19.6s", TxCount: "29 txs", OpCount: "9 ops"},
+			{Sequence: "61,504,109", Age: "24.8s", TxCount: "44 txs", OpCount: "15 ops"},
+			{Sequence: "61,504,108", Age: "30.1s", TxCount: "36 txs", OpCount: "11 ops"},
+			{Sequence: "61,504,107", Age: "35.4s", TxCount: "47 txs", OpCount: "16 ops"},
+			{Sequence: "61,504,106", Age: "40.7s", TxCount: "33 txs", OpCount: "10 ops"},
 		},
 		Contracts: []pages.HomeContract{
 			{Rank: 1, Name: "Soroswap Router", Tag: "DEX", TagColor: "violet", Address: "CDLZ9...WK42", Invocations: "284,102", Change: "+18%", IsPositive: true},
@@ -74,11 +74,11 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := pages.SearchData{
-		Query:         query,
-		DetectedType:  "account",
-		DetectedLabel: "Looks like a Stellar account address",
-		DetectedDesc:  "Starts with G + alphanumeric characters. Redirecting to account view.",
-		DetectedHref:  "/account/" + query,
+		Query:          query,
+		DetectedType:   "account",
+		DetectedLabel:  "Looks like a Stellar account address",
+		DetectedDesc:   "Starts with G + alphanumeric characters. Redirecting to account view.",
+		DetectedHref:   "/account/" + query,
 		RecentSearches: []string{"Soroswap Router", "GABC...7X92", "8f2a...1b3c", "USDC", "Ledger 5,104,938"},
 	}
 
