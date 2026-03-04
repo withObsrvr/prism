@@ -1,0 +1,25 @@
+# Build
+bin/
+tmp/
+
+# Generated templ output
+*_templ.go
+
+# Tailwind
+web/static/css/app.css
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.go/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config overrides
+prism.local.yaml
+.env

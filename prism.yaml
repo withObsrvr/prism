@@ -1,0 +1,21 @@
+# Prism configuration
+# Override any value with PRISM_ environment variables.
+# Example: PRISM_PORT=8080 overrides port.
+
+# Server
+host: "0.0.0.0"
+port: 3000
+
+# Stellar network: "mainnet" or "testnet"
+network: mainnet
+
+# Logging: debug, info, warn, error
+log_level: info
+
+# Obsrvr Lake connection (future)
+# database:
+#   hot:  "postgres://prism:secret@localhost:5432/obsrvr?sslmode=disable"
+#   cold: "ducklake://catalog@localhost:5432/obsrvr_cold"
+
+# Cache (future)
+# redis: "redis://localhost:6379/0"

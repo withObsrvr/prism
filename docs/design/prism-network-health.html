@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Network Health</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.anim,.animate-fade-up{animation:fade-up .3s ease-out forwards;opacity:0}
+.d1{animation-delay:.04s}.d2{animation-delay:.08s}.d3{animation-delay:.12s}.d4{animation-delay:.16s}.d5{animation-delay:.2s}.d6{animation-delay:.24s}.d7{animation-delay:.28s}.d8{animation-delay:.32s}
+.slide-panel{animation:slide-in .28s cubic-bezier(.16,1,.3,1) forwards}
+.backdrop-fade{animation:fade-in .2s ease forwards}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.result-row{transition:all .08s}.result-row:hover,.result-row.active{background:rgba(139,92,246,.04)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>Explorer</a>
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>Assets</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Contracts</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search…
+      <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+    </button>
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+<main class="mx-auto max-w-[1320px] px-8 py-6">
+<!-- ═══════════════════════════════════ -->
+    <!-- NETWORK STATUS BANNER               -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim mb-8">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 ring-1 ring-emerald-200">
+              <span class="relative flex h-2 w-2">
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              </span>
+              <span class="text-[11px] font-semibold text-emerald-700">Operational</span>
+            </div>
+            <span class="text-[11px] text-gray-400">All systems nominal</span>
+          </div>
+          <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Network Health</h1>
+          <p class="mt-0.5 text-sm text-gray-500">Stellar Mainnet &middot; Protocol v22 &middot; Soroban enabled</p>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Time range selector -->
+          <div class="flex gap-1 rounded-lg bg-[#FAFAFA] p-1 ring-1 ring-gray-200">
+            <button class="rounded-md px-2.5 py-1 text-[11px] font-medium text-gray-500 transition-colors hover:bg-white hover:text-gray-900">1h</button>
+            <button class="rounded-md bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-900 shadow-sm">24h</button>
+            <button class="rounded-md px-2.5 py-1 text-[11px] font-medium text-gray-500 transition-colors hover:bg-white hover:text-gray-900">7d</button>
+            <button class="rounded-md px-2.5 py-1 text-[11px] font-medium text-gray-500 transition-colors hover:bg-white hover:text-gray-900">30d</button>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px] text-gray-400">
+            <span class="relative flex h-2 w-2">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            </span>
+            Auto-refresh: 5s
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- PRIMARY METRICS ROW                 -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d1 mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
+
+      <!-- Current Ledger -->
+      <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+        <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Latest Ledger</span>
+        <span class="text-xl font-semibold tracking-tight text-gray-900 font-mono tabular">5,104,938</span>
+        <span class="mt-0.5 text-[10px] text-gray-400">2s ago</span>
+      </div>
+
+      <!-- Close Time -->
+      <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+        <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Avg Close Time</span>
+        <div class="flex items-baseline">
+          <span class="text-xl font-semibold tracking-tight text-gray-900 tabular">5.2</span>
+          <span class="ml-0.5 text-sm font-medium text-gray-400">sec</span>
+        </div>
+        <span class="mt-0.5 text-[10px] text-emerald-600 font-medium">Within target</span>
+      </div>
+
+      <!-- TPS -->
+      <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+        <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Current TPS</span>
+        <div class="flex items-baseline">
+          <span class="text-xl font-semibold tracking-tight text-gray-900 tabular">42</span>
+          <span class="ml-1 text-sm font-medium text-gray-400">tx/s</span>
+        </div>
+        <span class="mt-0.5 text-[10px] text-gray-400">Peak: 128 tx/s (14:32 UTC)</span>
+      </div>
+
+      <!-- 24h Transactions -->
+      <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+        <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">24h Transactions</span>
+        <span class="text-xl font-semibold tracking-tight text-gray-900 tabular">1.84M</span>
+        <span class="mt-0.5 text-[10px] text-emerald-600 font-medium">+8.2% vs yesterday</span>
+      </div>
+
+      <!-- 24h Operations -->
+      <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+        <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">24h Operations</span>
+        <span class="text-xl font-semibold tracking-tight text-gray-900 tabular">4.2M</span>
+        <span class="mt-0.5 text-[10px] text-gray-400">~2.3 ops/tx avg</span>
+      </div>
+
+      <!-- Failed Rate -->
+      <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+        <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Failure Rate</span>
+        <div class="flex items-baseline">
+          <span class="text-xl font-semibold tracking-tight text-gray-900 tabular">0.4</span>
+          <span class="ml-0.5 text-sm font-medium text-gray-400">%</span>
+        </div>
+        <span class="mt-0.5 text-[10px] text-emerald-600 font-medium">Normal</span>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- THROUGHPUT CHART + CONSENSUS PANEL  -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d2 mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+      <!-- Throughput chart (2/3 width) -->
+      <div class="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Transaction Throughput</h3>
+            <p class="text-[10px] text-gray-400 mt-0.5">Transactions per ledger, last 24 hours</p>
+          </div>
+          <div class="flex gap-3 text-[10px] font-medium text-gray-500">
+            <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-900"></span> Total</span>
+            <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-violet-500"></span> Soroban</span>
+            <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-300"></span> Classic</span>
+          </div>
+        </div>
+
+        <!-- SVG area chart -->
+        <div class="relative" style="height: 180px;">
+          <svg class="w-full h-full" viewBox="0 0 720 180" preserveAspectRatio="none" fill="none">
+            <!-- Y-axis guide lines -->
+            <line x1="0" y1="36" x2="720" y2="36" stroke="#F3F4F6" stroke-width="1" />
+            <line x1="0" y1="72" x2="720" y2="72" stroke="#F3F4F6" stroke-width="1" />
+            <line x1="0" y1="108" x2="720" y2="108" stroke="#F3F4F6" stroke-width="1" />
+            <line x1="0" y1="144" x2="720" y2="144" stroke="#F3F4F6" stroke-width="1" />
+
+            <!-- Total transactions area -->
+            <path d="M0 140 L30 132 L60 128 L90 120 L120 115 L150 100 L180 90 L210 95 L240 80 L270 72 L300 68 L330 60 L360 55 L390 48 L420 52 L450 45 L480 50 L510 42 L540 38 L570 44 L600 40 L630 35 L660 30 L690 28 L720 32 L720 180 L0 180 Z" fill="url(#total-grad)" />
+            <path d="M0 140 L30 132 L60 128 L90 120 L120 115 L150 100 L180 90 L210 95 L240 80 L270 72 L300 68 L330 60 L360 55 L390 48 L420 52 L450 45 L480 50 L510 42 L540 38 L570 44 L600 40 L630 35 L660 30 L690 28 L720 32" stroke="#111827" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+            <!-- Soroban invocations area -->
+            <path d="M0 168 L30 165 L60 162 L90 158 L120 155 L150 145 L180 138 L210 142 L240 130 L270 125 L300 120 L330 112 L360 108 L390 102 L420 106 L450 100 L480 104 L510 96 L540 92 L570 98 L600 94 L630 88 L660 84 L690 82 L720 86 L720 180 L0 180 Z" fill="url(#soroban-grad)" />
+            <path d="M0 168 L30 165 L60 162 L90 158 L120 155 L150 145 L180 138 L210 142 L240 130 L270 125 L300 120 L330 112 L360 108 L390 102 L420 106 L450 100 L480 104 L510 96 L540 92 L570 98 L600 94 L630 88 L660 84 L690 82 L720 86" stroke="#8B5CF6" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+            <defs>
+              <linearGradient id="total-grad" x1="0" y1="0" x2="0" y2="180">
+                <stop offset="0%" stop-color="#111827" stop-opacity="0.08" />
+                <stop offset="100%" stop-color="#111827" stop-opacity="0" />
+              </linearGradient>
+              <linearGradient id="soroban-grad" x1="0" y1="0" x2="0" y2="180">
+                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.1" />
+                <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+          </svg>
+
+          <!-- Y-axis labels -->
+          <div class="absolute left-0 top-0 flex flex-col justify-between h-full text-[9px] font-mono text-gray-400 pointer-events-none" style="padding: 0 0 36px 0;">
+            <span>200</span>
+            <span>150</span>
+            <span>100</span>
+            <span>50</span>
+          </div>
+
+          <!-- X-axis labels -->
+          <div class="absolute bottom-0 left-0 right-0 flex justify-between text-[9px] font-mono text-gray-400 pointer-events-none" style="padding-top: 4px;">
+            <span>00:00</span>
+            <span>04:00</span>
+            <span>08:00</span>
+            <span>12:00</span>
+            <span>16:00</span>
+            <span>20:00</span>
+            <span>Now</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Validator Consensus Panel (1/3 width) -->
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 px-5 py-4">
+          <h3 class="text-sm font-semibold text-gray-900">Consensus</h3>
+          <p class="text-[10px] text-gray-400 mt-0.5">Stellar Consensus Protocol (SCP)</p>
+        </div>
+        <div class="p-5">
+          <!-- Quorum health ring -->
+          <div class="flex items-center justify-center mb-5">
+            <div class="relative">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <!-- Background ring -->
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#F3F4F6" stroke-width="6" />
+                <!-- Agreement ring (97% = ~293 of 301 circumference) -->
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#059669" stroke-width="6"
+                  stroke-dasharray="301" stroke-dashoffset="9"
+                  stroke-linecap="round"
+                  transform="rotate(-90 60 60)"
+                  style="animation: ring-draw 1s ease-out forwards;" />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-2xl font-semibold text-gray-900 tabular">97%</span>
+                <span class="text-[9px] font-medium text-gray-400">Agreement</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Validator stats -->
+          <div class="space-y-0">
+            <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <span class="text-xs text-gray-500">Active Validators</span>
+              <span class="text-sm font-semibold text-gray-900 tabular">37</span>
+            </div>
+            <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <span class="text-xs text-gray-500">Quorum Sets</span>
+              <span class="text-sm font-semibold text-gray-900 tabular">5</span>
+            </div>
+            <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <span class="text-xs text-gray-500">Avg Latency</span>
+              <span class="text-sm font-semibold text-gray-900 tabular">820 ms</span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-xs text-gray-500">Halted</span>
+              <div class="flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                <span class="text-sm font-semibold text-emerald-700">No</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- FEE MARKET + SOROBAN + PROTOCOL     -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d3 mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+      <!-- Fee Market -->
+      <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold text-gray-900 mb-1">Fee Market</h3>
+        <p class="text-[10px] text-gray-400 mb-4">Current fee dynamics</p>
+
+        <div class="space-y-0">
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Base Fee</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-sm font-semibold text-gray-900 tabular">100</span>
+              <span class="text-[10px] text-gray-400">stroops</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Median Fee</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-sm font-semibold text-gray-900 tabular">200</span>
+              <span class="text-[10px] text-gray-400">stroops</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">p99 Fee</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-sm font-semibold text-gray-900 tabular">10,000</span>
+              <span class="text-[10px] text-gray-400">stroops</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Surge Pricing</span>
+            <div class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+              <span class="text-sm font-medium text-gray-600">Inactive</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between py-2.5">
+            <span class="text-xs text-gray-500">24h Total Fees</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-sm font-semibold text-gray-900 tabular">84,200</span>
+              <span class="text-[10px] text-gray-400">XLM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Soroban Metrics -->
+      <div class="rounded-xl border border-violet-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center gap-2 mb-1">
+          <h3 class="text-sm font-semibold text-gray-900">Soroban Runtime</h3>
+          <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold text-violet-600 ring-1 ring-violet-100">Smart Contracts</span>
+        </div>
+        <p class="text-[10px] text-gray-400 mb-4">VM execution & state metrics</p>
+
+        <div class="space-y-0">
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">24h Invocations</span>
+            <span class="text-sm font-semibold text-gray-900 tabular">412K</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Active Contracts</span>
+            <span class="text-sm font-semibold text-gray-900 tabular">1,284</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Total State Size</span>
+            <span class="text-sm font-semibold text-gray-900 tabular">2.4 GB</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">24h Rent Burned</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-sm font-semibold text-gray-900 tabular">124K</span>
+              <span class="text-[10px] text-gray-400">XLM</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between py-2.5">
+            <span class="text-xs text-gray-500">Avg CPU Instructions</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-sm font-semibold text-gray-900 tabular">18.4M</span>
+              <span class="text-[10px] text-gray-400">/ invoke</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Protocol Info -->
+      <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold text-gray-900 mb-1">Protocol</h3>
+        <p class="text-[10px] text-gray-400 mb-4">Network configuration</p>
+
+        <div class="space-y-0">
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Protocol Version</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm font-semibold text-gray-900 tabular">22</span>
+              <span class="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-bold text-emerald-700 ring-1 ring-emerald-100">Latest</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Core Version</span>
+            <span class="font-mono text-xs text-gray-900">v21.3.1</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Horizon</span>
+            <span class="font-mono text-xs text-gray-900">v2.30.0</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5 border-b border-gray-100">
+            <span class="text-xs text-gray-500">Soroban RPC</span>
+            <span class="font-mono text-xs text-gray-900">v21.6.0</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5">
+            <span class="text-xs text-gray-500">Next Upgrade</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm font-medium text-gray-600">No upgrade scheduled</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- TOP VALIDATORS TABLE                -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d4 mb-6">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Validator Nodes</h3>
+            <p class="text-[10px] text-gray-400 mt-0.5">Top validators by trust</p>
+          </div>
+          <a href="#" class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-900">View all 37 →</a>
+        </div>
+
+        <!-- Validator header -->
+        <div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-100">
+          <div class="w-6"></div>
+          <div class="flex-1 min-w-[160px]">Validator</div>
+          <div class="w-20 text-right">Version</div>
+          <div class="w-24 text-center">Quorum</div>
+          <div class="w-28 text-right">24h Uptime</div>
+          <div class="w-20 text-right">Latency</div>
+          <div class="w-20 text-center pr-1">Status</div>
+        </div>
+
+        <!-- Validator rows -->
+        <div class="ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-6"><span class="relative flex h-2.5 w-2.5 node-active"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span></span></div>
+          <div class="flex-1 min-w-[160px]">
+            <div class="text-sm font-semibold text-gray-900">SDF 1</div>
+            <span class="font-mono text-[10px] text-gray-400">GCGB...KS41</span>
+          </div>
+          <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">v21.3.1</span></div>
+          <div class="w-24 text-center"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Full</span></div>
+          <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900 tabular">100%</span></div>
+          <div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">420ms</span></div>
+          <div class="w-20 text-center pr-1"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Tracking</span></div>
+        </div>
+
+        <div class="ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-6"><span class="relative flex h-2.5 w-2.5 node-active" style="animation-delay: 0.3s"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span></span></div>
+          <div class="flex-1 min-w-[160px]">
+            <div class="text-sm font-semibold text-gray-900">SDF 2</div>
+            <span class="font-mono text-[10px] text-gray-400">GCM6...E2QR</span>
+          </div>
+          <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">v21.3.1</span></div>
+          <div class="w-24 text-center"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Full</span></div>
+          <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900 tabular">100%</span></div>
+          <div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">380ms</span></div>
+          <div class="w-20 text-center pr-1"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Tracking</span></div>
+        </div>
+
+        <div class="ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-6"><span class="relative flex h-2.5 w-2.5 node-active" style="animation-delay: 0.6s"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span></span></div>
+          <div class="flex-1 min-w-[160px]">
+            <div class="text-sm font-semibold text-gray-900">Lobstr</div>
+            <span class="font-mono text-[10px] text-gray-400">GCFN...7RDP</span>
+          </div>
+          <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">v21.3.1</span></div>
+          <div class="w-24 text-center"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Full</span></div>
+          <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900 tabular">99.97%</span></div>
+          <div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">640ms</span></div>
+          <div class="w-20 text-center pr-1"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Tracking</span></div>
+        </div>
+
+        <div class="ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-6"><span class="relative flex h-2.5 w-2.5 node-active" style="animation-delay: 0.9s"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span></span></div>
+          <div class="flex-1 min-w-[160px]">
+            <div class="text-sm font-semibold text-gray-900">Satoshipay</div>
+            <span class="font-mono text-[10px] text-gray-400">GAK6...MZ4P</span>
+          </div>
+          <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">v21.3.0</span></div>
+          <div class="w-24 text-center"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Full</span></div>
+          <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900 tabular">99.94%</span></div>
+          <div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">720ms</span></div>
+          <div class="w-20 text-center pr-1"><span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Tracking</span></div>
+        </div>
+
+        <!-- Lagging validator -->
+        <div class="ledger-row flex items-center px-5 py-3 cursor-pointer">
+          <div class="w-6"><span class="flex h-2.5 w-2.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span></span></div>
+          <div class="flex-1 min-w-[160px]">
+            <div class="text-sm font-semibold text-gray-900">PublicNode EU</div>
+            <span class="font-mono text-[10px] text-gray-400">GBHX...WD29</span>
+          </div>
+          <div class="w-20 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <span class="font-mono text-xs text-amber-600">v21.2.0</span>
+              <span class="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-bold text-amber-700">OLD</span>
+            </div>
+          </div>
+          <div class="w-24 text-center"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Partial</span></div>
+          <div class="w-28 text-right"><span class="text-sm font-medium text-amber-600 tabular">98.21%</span></div>
+          <div class="w-20 text-right"><span class="text-xs text-amber-600 tabular">1,420ms</span></div>
+          <div class="w-20 text-center pr-1"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Lagging</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- RECENT LEDGERS FEED                 -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d5 mb-10">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Recent Ledgers</h3>
+            <p class="text-[10px] text-gray-400 mt-0.5">Live ledger close feed</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px] text-gray-400">
+            <span class="relative flex h-2 w-2">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            </span>
+            Streaming
+          </div>
+        </div>
+
+        <!-- Ledger header -->
+        <div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-100">
+          <div class="w-28">Ledger</div>
+          <div class="w-32">Closed</div>
+          <div class="w-20 text-right">Txns</div>
+          <div class="w-20 text-right">Ops</div>
+          <div class="w-28 text-right">Soroban Calls</div>
+          <div class="w-24 text-right">Total Fees</div>
+          <div class="flex-1 text-right pr-1">Close Time</div>
+        </div>
+
+        <!-- Ledger rows -->
+        <div class="anim d6 ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-28"><span class="font-mono text-sm font-semibold text-gray-900 tabular">5,104,938</span></div>
+          <div class="w-32"><span class="text-xs text-gray-500">2s ago</span></div>
+          <div class="w-20 text-right"><span class="text-sm font-medium text-gray-900 tabular">142</span></div>
+          <div class="w-20 text-right"><span class="text-sm text-gray-700 tabular">318</span></div>
+          <div class="w-28 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-sm text-gray-700 tabular">24</span>
+              <span class="rounded bg-violet-50 px-1 py-0.5 text-[8px] font-bold text-violet-600">17%</span>
+            </div>
+          </div>
+          <div class="w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">4.82 XLM</span></div>
+          <div class="flex-1 text-right pr-1"><span class="text-sm font-medium text-emerald-600 tabular">5.1s</span></div>
+        </div>
+
+        <div class="anim d6 ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-28"><span class="font-mono text-sm font-semibold text-gray-900 tabular">5,104,937</span></div>
+          <div class="w-32"><span class="text-xs text-gray-500">7s ago</span></div>
+          <div class="w-20 text-right"><span class="text-sm font-medium text-gray-900 tabular">98</span></div>
+          <div class="w-20 text-right"><span class="text-sm text-gray-700 tabular">204</span></div>
+          <div class="w-28 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-sm text-gray-700 tabular">18</span>
+              <span class="rounded bg-violet-50 px-1 py-0.5 text-[8px] font-bold text-violet-600">18%</span>
+            </div>
+          </div>
+          <div class="w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">3.21 XLM</span></div>
+          <div class="flex-1 text-right pr-1"><span class="text-sm font-medium text-emerald-600 tabular">5.0s</span></div>
+        </div>
+
+        <div class="anim d7 ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-28"><span class="font-mono text-sm font-semibold text-gray-900 tabular">5,104,936</span></div>
+          <div class="w-32"><span class="text-xs text-gray-500">12s ago</span></div>
+          <div class="w-20 text-right"><span class="text-sm font-medium text-gray-900 tabular">210</span></div>
+          <div class="w-20 text-right"><span class="text-sm text-gray-700 tabular">487</span></div>
+          <div class="w-28 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-sm text-gray-700 tabular">42</span>
+              <span class="rounded bg-violet-50 px-1 py-0.5 text-[8px] font-bold text-violet-600">20%</span>
+            </div>
+          </div>
+          <div class="w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">8.14 XLM</span></div>
+          <div class="flex-1 text-right pr-1"><span class="text-sm font-medium text-emerald-600 tabular">5.4s</span></div>
+        </div>
+
+        <div class="anim d7 ledger-row flex items-center px-5 py-3 border-b border-gray-100 cursor-pointer">
+          <div class="w-28"><span class="font-mono text-sm font-semibold text-gray-900 tabular">5,104,935</span></div>
+          <div class="w-32"><span class="text-xs text-gray-500">17s ago</span></div>
+          <div class="w-20 text-right"><span class="text-sm font-medium text-gray-900 tabular">76</span></div>
+          <div class="w-20 text-right"><span class="text-sm text-gray-700 tabular">142</span></div>
+          <div class="w-28 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-sm text-gray-700 tabular">8</span>
+              <span class="rounded bg-violet-50 px-1 py-0.5 text-[8px] font-bold text-violet-600">11%</span>
+            </div>
+          </div>
+          <div class="w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">2.04 XLM</span></div>
+          <div class="flex-1 text-right pr-1"><span class="text-sm font-medium text-emerald-600 tabular">5.2s</span></div>
+        </div>
+
+        <!-- Slow ledger (highlighted) -->
+        <div class="anim d8 ledger-row flex items-center px-5 py-3 cursor-pointer bg-amber-50/30">
+          <div class="w-28"><span class="font-mono text-sm font-semibold text-gray-900 tabular">5,104,934</span></div>
+          <div class="w-32"><span class="text-xs text-gray-500">23s ago</span></div>
+          <div class="w-20 text-right"><span class="text-sm font-medium text-gray-900 tabular">184</span></div>
+          <div class="w-20 text-right"><span class="text-sm text-gray-700 tabular">412</span></div>
+          <div class="w-28 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-sm text-gray-700 tabular">38</span>
+              <span class="rounded bg-violet-50 px-1 py-0.5 text-[8px] font-bold text-violet-600">21%</span>
+            </div>
+          </div>
+          <div class="w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">6.88 XLM</span></div>
+          <div class="flex-1 text-right pr-1">
+            <div class="flex items-center justify-end gap-1">
+              <span class="text-sm font-medium text-amber-600 tabular">8.2s</span>
+              <span class="rounded bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700">Slow</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</main>
+</body>
+</html>

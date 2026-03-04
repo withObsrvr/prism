@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Events Firehose</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.anim,.animate-fade-up{animation:fade-up .3s ease-out forwards;opacity:0}
+.d1{animation-delay:.04s}.d2{animation-delay:.08s}.d3{animation-delay:.12s}.d4{animation-delay:.16s}.d5{animation-delay:.2s}.d6{animation-delay:.24s}.d7{animation-delay:.28s}.d8{animation-delay:.32s}
+.slide-panel{animation:slide-in .28s cubic-bezier(.16,1,.3,1) forwards}
+.backdrop-fade{animation:fade-in .2s ease forwards}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.result-row{transition:all .08s}.result-row:hover,.result-row.active{background:rgba(139,92,246,.04)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>Explorer</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>Assets</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Contracts</a>
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search…
+      <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+    </button>
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+<main class="mx-auto max-w-[1320px] px-8 py-6">
+<!-- ═══════════════════════════════════ -->
+    <!-- TOOLBAR: Fixed filter bar            -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim sticky top-0 z-10 border-b border-gray-200 bg-white/95 backdrop-blur-sm px-8 py-3">
+      <div class="flex items-center justify-between gap-4">
+
+        <!-- Left: Search + filters -->
+        <div class="flex items-center gap-3 flex-1">
+          <!-- Search bar -->
+          <div class="relative flex-1 max-w-md">
+            <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input type="text" placeholder="Filter by contract, topic, tx hash..." class="h-8 w-full rounded-lg border border-gray-200 bg-[#FAFAFA] pl-9 pr-3 font-mono text-xs text-gray-900 placeholder-gray-400 shadow-sm outline-none transition-all focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5 focus:bg-white" />
+          </div>
+
+          <!-- Active filter pills -->
+          <div class="flex items-center gap-1.5">
+            <span class="flex items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700 ring-1 ring-violet-200">
+              contract:Soroswap
+              <button class="ml-0.5 text-violet-400 hover:text-violet-600">&times;</button>
+            </span>
+            <span class="flex items-center gap-1.5 rounded-lg bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700 ring-1 ring-cyan-200">
+              type:transfer,swap
+              <button class="ml-0.5 text-cyan-400 hover:text-cyan-600">&times;</button>
+            </span>
+            <button class="rounded-lg border border-dashed border-gray-300 px-2.5 py-1 text-[11px] font-medium text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-600">+ Add filter</button>
+          </div>
+        </div>
+
+        <!-- Right: Stream controls -->
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <!-- Stream throughput mini bar -->
+          <div class="flex items-center gap-2">
+            <div class="stream-bar">
+              <div class="stream-bar-segment" style="height: 4px;"></div>
+              <div class="stream-bar-segment" style="height: 6px;"></div>
+              <div class="stream-bar-segment" style="height: 8px;"></div>
+              <div class="stream-bar-segment active" style="height: 12px;"></div>
+              <div class="stream-bar-segment active" style="height: 10px;"></div>
+              <div class="stream-bar-segment active" style="height: 16px;"></div>
+              <div class="stream-bar-segment high" style="height: 22px;"></div>
+              <div class="stream-bar-segment high" style="height: 18px;"></div>
+              <div class="stream-bar-segment active" style="height: 14px;"></div>
+              <div class="stream-bar-segment active" style="height: 20px;"></div>
+              <div class="stream-bar-segment high" style="height: 24px;"></div>
+              <div class="stream-bar-segment active" style="height: 16px;"></div>
+              <div class="stream-bar-segment" style="height: 8px;"></div>
+              <div class="stream-bar-segment active" style="height: 12px;"></div>
+              <div class="stream-bar-segment high" style="height: 20px;"></div>
+              <div class="stream-bar-segment active" style="height: 14px;"></div>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-xs font-semibold text-gray-900 tabular">~48</span>
+              <span class="text-[9px] text-gray-400">events/s</span>
+            </div>
+          </div>
+
+          <div class="h-6 w-px bg-gray-200"></div>
+
+          <!-- Play/Pause -->
+          <button class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-gray-800">
+            <span class="relative flex h-2 w-2">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+            </span>
+            Streaming
+          </button>
+
+          <!-- Export -->
+          <button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            Export
+          </button>
+
+          <!-- Save filter -->
+          <button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- STREAM STATS BAR                    -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d1 border-b border-gray-100 bg-[#FAFAFA] px-8 py-2.5">
+      <div class="flex items-center gap-6 text-[10px] font-medium text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <span class="h-1.5 w-1.5 rounded-full bg-gray-900"></span>
+          Matched: <span class="font-semibold text-gray-900 tabular">2,847</span> events
+        </span>
+        <span class="text-gray-300">|</span>
+        <span>Ledger range: <span class="font-mono text-gray-900">5,104,892</span> → <span class="font-mono text-gray-900">5,104,938</span></span>
+        <span class="text-gray-300">|</span>
+        <span class="flex items-center gap-1.5">
+          Event types:
+          <span class="rounded bg-violet-50 px-1 py-0.5 text-[9px] font-bold text-violet-600">contract</span>
+          <span class="rounded bg-cyan-50 px-1 py-0.5 text-[9px] font-bold text-cyan-700">transfer</span>
+          <span class="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-bold text-emerald-700">mint</span>
+          <span class="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-700">system</span>
+        </span>
+        <span class="ml-auto text-gray-400">Showing latest 100 events</span>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- EVENT STREAM TABLE                  -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="px-8">
+
+      <!-- Table header -->
+      <div class="anim d2 flex items-center border-b border-gray-200 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+        <div class="w-[72px]">Time</div>
+        <div class="w-20">Type</div>
+        <div class="w-[140px]">Contract</div>
+        <div class="flex-1 min-w-[200px]">Topics & Data</div>
+        <div class="w-24 text-right">Ledger</div>
+        <div class="w-16 text-right pr-1">Tx</div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 1: Token Transfer (NEW — just arrived) ═══════ -->
+      <div class="anim d3 event-row row-new flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]">
+          <span class="font-mono text-[11px] text-gray-500 tabular">0.4s</span>
+        </div>
+        <div class="w-20">
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-transfer">transfer</span>
+        </div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">USDC Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CCW6...7YMK</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">GABC...7X</span></span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">GDEF...2P</span></span>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">2,500.00 USDC</span>
+          </div>
+        </div>
+        <div class="w-24 text-right">
+          <span class="font-mono text-[11px] text-gray-700 tabular">5,104,938</span>
+        </div>
+        <div class="w-16 text-right pr-1">
+          <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">8f2a...1b</a>
+        </div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 2: Swap (NEW) ═══════ -->
+      <div class="anim d3 event-row row-new flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]">
+          <span class="font-mono text-[11px] text-gray-500 tabular">0.4s</span>
+        </div>
+        <div class="w-20">
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-contract">swap</span>
+        </div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">Soroswap Router</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CAXY...Z10P</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">pair:<span class="text-gray-900">XLM/USDC</span></span>
+            <span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] text-red-600">−12,400 XLM</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+1,202.80 USDC</span>
+          </div>
+        </div>
+        <div class="w-24 text-right">
+          <span class="font-mono text-[11px] text-gray-700 tabular">5,104,938</span>
+        </div>
+        <div class="w-16 text-right pr-1">
+          <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">c4e9...3d</a>
+        </div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 3: Transfer ═══════ -->
+      <div class="anim d4 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]">
+          <span class="font-mono text-[11px] text-gray-500 tabular">2.1s</span>
+        </div>
+        <div class="w-20">
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-transfer">transfer</span>
+        </div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">USDC Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CCW6...7YMK</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">GKLM...1V</span></span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">GXYZ...4R</span></span>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">500.00 USDC</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,937</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">a1b2...8e</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 4: Mint ═══════ -->
+      <div class="anim d4 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]">
+          <span class="font-mono text-[11px] text-gray-500 tabular">2.1s</span>
+        </div>
+        <div class="w-20">
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-mint">mint</span>
+        </div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">BLND Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CBLND...E84K</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">GDEF...9R</span></span>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+45,000 BLND</span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">emission_reward</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,937</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">f7d2...4c</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 5: Swap (expanded — detail panel below) ═══════ -->
+      <div class="anim d5 event-row expanded flex items-center border-b border-gray-50 py-2.5 bg-gray-50/50">
+        <div class="w-[72px]">
+          <span class="font-mono text-[11px] text-gray-500 tabular">7.3s</span>
+        </div>
+        <div class="w-20">
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-contract">swap</span>
+        </div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">Soroswap Router</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CAXY...Z10P</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">pair:<span class="text-gray-900">AQUA/XLM</span></span>
+            <span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] text-red-600">−500,000 AQUA</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+6,200 XLM</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,936</span></div>
+        <div class="w-16 text-right pr-1">
+          <div class="flex items-center justify-end gap-1">
+            <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">9e8f...2a</a>
+            <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPANDED DETAIL PANEL -->
+      <div class="event-detail border-b border-gray-200 bg-[#FAFAFA] px-4 py-4" style="display: block;">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <!-- Left: Raw event data -->
+          <div>
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Event Data (XDR decoded)</span>
+              <button class="flex items-center gap-1 text-[10px] font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                Copy
+              </button>
+            </div>
+            <div class="code-block px-4 py-3">
+              <div><span class="punct">{</span></div>
+              <div class="pl-4"><span class="key">"type"</span><span class="punct">:</span> <span class="str">"contract"</span><span class="punct">,</span></div>
+              <div class="pl-4"><span class="key">"contractId"</span><span class="punct">:</span> <span class="addr">"CAXY...Z10P"</span><span class="punct">,</span></div>
+              <div class="pl-4"><span class="key">"topics"</span><span class="punct">:</span> <span class="punct">[</span></div>
+              <div class="pl-8"><span class="str">"swap"</span><span class="punct">,</span></div>
+              <div class="pl-8"><span class="addr">"GHIJ...2M56"</span> <span class="comment">// caller</span></div>
+              <div class="pl-4"><span class="punct">],</span></div>
+              <div class="pl-4"><span class="key">"data"</span><span class="punct">:</span> <span class="punct">{</span></div>
+              <div class="pl-8"><span class="key">"token_in"</span><span class="punct">:</span> <span class="addr">"CAQUA...8K32"</span><span class="punct">,</span></div>
+              <div class="pl-8"><span class="key">"token_out"</span><span class="punct">:</span> <span class="str">"native"</span><span class="punct">,</span></div>
+              <div class="pl-8"><span class="key">"amount_in"</span><span class="punct">:</span> <span class="num">5000000000</span><span class="punct">,</span> <span class="comment">// 500,000 AQUA</span></div>
+              <div class="pl-8"><span class="key">"amount_out"</span><span class="punct">:</span> <span class="num">62000000000</span><span class="punct">,</span> <span class="comment">// 6,200 XLM</span></div>
+              <div class="pl-8"><span class="key">"effective_price"</span><span class="punct">:</span> <span class="num">0.0124</span></div>
+              <div class="pl-4"><span class="punct">}</span></div>
+              <div><span class="punct">}</span></div>
+            </div>
+          </div>
+
+          <!-- Right: Contextual metadata -->
+          <div>
+            <span class="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-gray-400">Context</span>
+            <div class="rounded-lg border border-gray-200 bg-white">
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span class="text-xs text-gray-500">Transaction</span>
+                <a href="#" class="font-mono text-xs text-gray-900 hover:text-violet-600 transition-colors">9e8f7d6c...2a1b</a>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span class="text-xs text-gray-500">Ledger</span>
+                <span class="font-mono text-xs text-gray-900 tabular">5,104,936</span>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span class="text-xs text-gray-500">Timestamp</span>
+                <span class="text-xs text-gray-900">Mar 2, 2026 &middot; 14:32:18 UTC</span>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span class="text-xs text-gray-500">Caller</span>
+                <a href="#" class="font-mono text-xs text-gray-900 hover:text-violet-600 transition-colors">GHIJ...2M56</a>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span class="text-xs text-gray-500">Contract</span>
+                <a href="#" class="flex items-center gap-1.5 text-xs font-medium text-gray-900 hover:text-violet-600 transition-colors">
+                  Soroswap Router
+                  <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span class="text-xs text-gray-500">Effective Price</span>
+                <span class="text-xs font-semibold text-gray-900">1 AQUA = 0.0124 XLM</span>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2.5">
+                <span class="text-xs text-gray-500">CPU Instructions</span>
+                <span class="font-mono text-xs text-gray-700 tabular">24.2M</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 6: Approval ═══════ -->
+      <div class="anim d5 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]"><span class="font-mono text-[11px] text-gray-500 tabular">7.3s</span></div>
+        <div class="w-20"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-approval">approve</span></div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">USDC Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CCW6...7YMK</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">owner:<span class="text-violet-600">GABC...7X</span></span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">spender:<span class="text-violet-600">CAXY...Z1</span></span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">amount:<span class="text-gray-900">∞</span></span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,936</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">9e8f...2a</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 7: System event (TTL extend) ═══════ -->
+      <div class="anim d6 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]"><span class="font-mono text-[11px] text-gray-500 tabular">12.4s</span></div>
+        <div class="w-20"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-system">system</span></div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">Blend Pool</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CBLEN...4R21</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">extend_ttl</span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">key:<span class="text-gray-900">__instance__</span></span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">new_ttl:<span class="text-gray-900">518,400 ledgers</span></span>
+            <span class="text-[10px] text-gray-400">(~36 days)</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,935</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">d4c3...7f</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 8: Burn ═══════ -->
+      <div class="anim d6 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]"><span class="font-mono text-[11px] text-gray-500 tabular">12.4s</span></div>
+        <div class="w-20"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-burn">burn</span></div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">BLND Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CBLND...E84K</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">GNOP...3W</span></span>
+            <span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-600">−10,000 BLND</span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">backstop_deposit</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,935</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">b8a7...1d</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 9: Large swap — highlighted ═══════ -->
+      <div class="anim d7 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]"><span class="font-mono text-[11px] text-gray-500 tabular">17.6s</span></div>
+        <div class="w-20"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-contract">swap</span></div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">Soroswap Router</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CAXY...Z10P</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">pair:<span class="text-gray-900">XLM/USDC</span></span>
+            <span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] text-red-600">−250,000 XLM</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+24,250 USDC</span>
+            <span class="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 ring-1 ring-amber-200">WHALE</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,934</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">e5d4...9g</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 10: Admin event ═══════ -->
+      <div class="anim d7 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]"><span class="font-mono text-[11px] text-gray-500 tabular">17.6s</span></div>
+        <div class="w-20"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-admin">admin</span></div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">USDC Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CCW6...7YMK</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">set_admin</span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">new_admin:<span class="text-violet-600">GADM...N8K</span></span>
+            <span class="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-800 ring-1 ring-red-200">SENSITIVE</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,934</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">1a2b...6h</a></div>
+      </div>
+
+      <!-- ═══════ EVENT ROW 11: Transfer ═══════ -->
+      <div class="anim d7 event-row flex items-center border-b border-gray-50 py-2.5">
+        <div class="w-[72px]"><span class="font-mono text-[11px] text-gray-500 tabular">22.9s</span></div>
+        <div class="w-20"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold type-transfer">transfer</span></div>
+        <div class="w-[140px]">
+          <div class="flex flex-col">
+            <span class="text-xs font-medium text-gray-900 truncate">EURC Token</span>
+            <span class="font-mono text-[10px] text-gray-400 truncate">CEUR...J42P</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">GQRS...5X</span></span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">GTUV...7Y</span></span>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">8,400.00 EURC</span>
+          </div>
+        </div>
+        <div class="w-24 text-right"><span class="font-mono text-[11px] text-gray-700 tabular">5,104,933</span></div>
+        <div class="w-16 text-right pr-1"><a href="#" class="font-mono text-[10px] text-gray-400 hover:text-gray-900 transition-colors">7c8d...3k</a></div>
+      </div>
+
+      <!-- Load more -->
+      <div class="py-4 text-center">
+        <button class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50">
+          Load older events
+        </button>
+      </div>
+    </div>
+</main>
+</body>
+</html>

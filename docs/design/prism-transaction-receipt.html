@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Transaction Receipt</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.anim,.animate-fade-up{animation:fade-up .3s ease-out forwards;opacity:0}
+.d1{animation-delay:.04s}.d2{animation-delay:.08s}.d3{animation-delay:.12s}.d4{animation-delay:.16s}.d5{animation-delay:.2s}.d6{animation-delay:.24s}.d7{animation-delay:.28s}.d8{animation-delay:.32s}
+.slide-panel{animation:slide-in .28s cubic-bezier(.16,1,.3,1) forwards}
+.backdrop-fade{animation:fade-in .2s ease forwards}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.result-row{transition:all .08s}.result-row:hover,.result-row.active{background:rgba(139,92,246,.04)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>Explorer</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>Assets</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Contracts</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search…
+      <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+    </button>
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+<main class="mx-auto max-w-[1320px] px-8 py-6">
+<div class="anim mb-6">
+    <button class="group mb-6 flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-900">
+      <svg class="h-4 w-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Back to Activity
+    </button>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200">
+          <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+          <span class="text-[11px] font-semibold text-emerald-700">Success</span>
+        </div>
+        <div class="rounded-full bg-violet-50 px-3 py-1 ring-1 ring-violet-200">
+          <span class="text-[11px] font-semibold text-violet-700">Soroban</span>
+        </div>
+        <div class="rounded-full bg-gray-100 px-3 py-1 ring-1 ring-gray-200">
+          <span class="text-[11px] font-semibold text-gray-600">+ Classic Ops</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#" class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          Stellar.expert</a>
+        <button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+          Share</button>
+      </div>
+    </div>
+  </div>
+  <!-- HUMAN-READABLE SUMMARY -->
+  <div class="anim d1 mb-8 rounded-xl border border-gray-200 bg-gradient-to-b from-[#FAFAFA] to-white p-6 shadow-sm">
+    <div class="mb-5">
+      <p class="text-lg text-gray-900 leading-relaxed">
+        <span class="font-semibold">GABC...7X92</span> swapped
+        <span class="font-semibold text-red-600">5,000 XLM</span> for
+        <span class="font-semibold text-emerald-600">485.00 USDC</span>
+        via <span class="font-semibold">Soroswap Router</span>
+      </p>
+      <p class="mt-1 text-sm text-gray-500">Oct 24, 2026 at 14:14:22 UTC &middot; Ledger 4,819,284 &middot; 3 operations &middot; 4 events</p>
+    </div>
+
+    <div class="flex items-center gap-0 py-2">
+      <div class="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm min-w-[170px]">
+        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+          <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xs font-semibold text-gray-900">Source</span>
+          <span class="font-mono text-[11px] text-gray-500">GABC...7X92</span>
+          <span class="font-mono text-xs font-semibold text-red-600 mt-0.5">&minus;5,000 XLM</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center flex-1 px-1">
+        <div class="flow-line w-full"></div>
+        <span class="mt-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-500">approve</span>
+      </div>
+
+      <div class="flex items-center gap-2.5 rounded-xl border-2 border-violet-200 bg-violet-50/40 px-4 py-3 shadow-sm min-w-[170px]">
+        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100">
+          <svg class="h-5 w-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xs font-semibold text-gray-900">Soroswap Router</span>
+          <span class="font-mono text-[11px] text-gray-500">CAXY...Z10P</span>
+          <span class="text-[10px] text-violet-600 font-medium mt-0.5">fn: swap()</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center flex-1 px-1">
+        <div class="flow-line w-full"></div>
+        <span class="mt-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-500">transfer</span>
+      </div>
+
+      <div class="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm min-w-[170px]">
+        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+          <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xs font-semibold text-gray-900">Destination</span>
+          <span class="font-mono text-[11px] text-gray-500">GABC...7X92</span>
+          <span class="font-mono text-xs font-semibold text-emerald-600 mt-0.5">+485.00 USDC</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 flex items-center gap-4 text-[11px] text-gray-500">
+      <span>Effective rate: <span class="font-semibold text-gray-900">1 XLM = 0.097 USDC</span></span>
+      <span class="text-gray-300">|</span>
+      <span>Slippage: <span class="font-semibold text-gray-900">0.12%</span></span>
+      <span class="text-gray-300">|</span>
+      <span>Route: <span class="font-semibold text-gray-900">XLM &rarr; USDC (direct)</span></span>
+    </div>
+  </div>
+
+  <div class="anim d2 mb-8 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400">
+    <button class="border-b-2 border-gray-900 pb-3 text-gray-900">Overview</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Operations (3)</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Events (4)</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Raw XDR</button>
+  </div>
+
+  <div class="anim d3 mb-10">
+    <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Transaction Details</h3>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="detail-row flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <span class="text-sm text-gray-500">Transaction Hash</span>
+        <div class="flex items-center gap-2 group cursor-pointer">
+          <span class="font-mono text-sm text-gray-900">8f2a1b3c9d4e5f6a...b7c8d9e0f1a2</span>
+          <svg class="h-4 w-4 text-gray-300 group-hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </div>
+      </div>
+      <div class="detail-row flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <span class="text-sm text-gray-500">Ledger</span>
+        <a href="#" class="font-mono text-sm font-medium text-gray-900 hover:text-violet-600 tabular">4,819,284</a>
+      </div>
+      <div class="detail-row flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <span class="text-sm text-gray-500">Timestamp</span>
+        <span class="text-sm text-gray-900">Oct 24, 2026 &middot; 14:14:22 UTC</span>
+      </div>
+      <div class="detail-row flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <span class="text-sm text-gray-500">Source Account</span>
+        <div class="flex items-center gap-2 group cursor-pointer">
+          <a href="#" class="font-mono text-sm text-gray-900 hover:text-violet-600">GABC...7X92</a>
+          <svg class="h-4 w-4 text-gray-300 group-hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </div>
+      </div>
+      <div class="detail-row flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <span class="text-sm text-gray-500">Fee Paid</span>
+        <div class="flex items-baseline gap-2">
+          <span class="text-sm font-medium text-gray-900">10,200 stroops</span>
+          <span class="text-xs text-gray-400">~$0.001</span>
+        </div>
+      </div>
+      <div class="detail-row flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <span class="text-sm text-gray-500">Soroban Resources</span>
+        <div class="flex items-center gap-3 text-xs text-gray-600">
+          <span class="rounded bg-gray-100 px-2 py-0.5 font-mono">CPU: 24.2M</span>
+          <span class="rounded bg-gray-100 px-2 py-0.5 font-mono">Mem: 1.2 MB</span>
+          <span class="rounded bg-gray-100 px-2 py-0.5 font-mono">Read: 4</span>
+          <span class="rounded bg-gray-100 px-2 py-0.5 font-mono">Write: 3</span>
+        </div>
+      </div>
+      <div class="detail-row flex items-center justify-between px-5 py-3.5">
+        <span class="text-sm text-gray-500">Sequence Number</span>
+        <span class="font-mono text-sm text-gray-900 tabular">1042891748409</span>
+      </div>
+    </div>
+  </div>
+  <!-- OPERATIONS BREAKDOWN -->
+  <div class="anim d4 mb-10">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Operations</h3>
+      <span class="text-[10px] text-gray-400">3 operations in this transaction</span>
+    </div>
+    <div class="space-y-3">
+
+      <!-- OP 1: approve -->
+      <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-[10px] font-bold text-gray-600">1</span>
+            <span class="text-sm font-semibold text-gray-900">Invoke Contract</span>
+            <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-600 ring-1 ring-violet-100">Soroban</span>
+          </div>
+          <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Success</span>
+        </div>
+        <div class="rounded-lg bg-[#FAFAFA] px-4 py-3 mb-3">
+          <p class="text-sm text-gray-700"><span class="font-medium text-gray-900">GABC...7X92</span> approved the <span class="font-medium text-gray-900">Soroswap Router</span> to spend up to <span class="font-semibold text-gray-900">5,000 XLM</span> from their balance</p>
+        </div>
+        <div class="flex items-center gap-4 text-[11px] text-gray-500">
+          <span>Contract: <span class="font-mono text-gray-700">CCW6...7YMK</span></span>
+          <span class="text-gray-300">|</span>
+          <span>Function: <span class="font-mono font-semibold text-violet-600">approve()</span></span>
+          <span class="text-gray-300">|</span>
+          <span>Type: <span class="font-medium text-gray-700">SEP-41 Token (XLM SAC)</span></span>
+        </div>
+      </div>
+
+      <!-- OP 2: swap - PRIMARY with dual display + call graph -->
+      <div class="rounded-xl border-2 border-violet-200 bg-white p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">2</span>
+            <span class="text-sm font-semibold text-gray-900">Invoke Contract</span>
+            <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-600 ring-1 ring-violet-100">Soroban</span>
+            <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-amber-100">Primary</span>
+          </div>
+          <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Success</span>
+        </div>
+        <!-- DUAL DISPLAY: Human-readable + Technical -->
+        <div class="rounded-lg bg-violet-50/50 border border-violet-100 px-4 py-3 mb-3">
+          <p class="text-sm text-gray-700 mb-2"><span class="font-medium text-gray-900">GABC...7X92</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485.00 USDC</span> at a rate of <span class="font-medium text-gray-900">0.097 USDC/XLM</span></p>
+          <p class="font-mono text-[11px] text-gray-500">Address <span class="text-violet-600">CAXY...Z10P</span> called <span class="text-amber-600">swap</span>(<span class="text-gray-700">token_in: native, token_out: CCW6...7YMK, amount_in: 50000000000, min_out: 4840000000</span>)</p>
+        </div>
+        <!-- Call Graph -->
+        <div class="mb-3">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2 block">Call Graph</span>
+          <div class="rounded-lg border border-gray-100 bg-[#FAFAFA] py-1">
+            <div class="flex items-center gap-2 px-3 py-1.5">
+              <svg class="h-3 w-3 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="font-mono text-[11px] text-gray-700"><span class="text-violet-600">Soroswap Router</span>.<span class="text-amber-600">swap</span>()</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 ml-6 border-l-2 border-gray-200">
+              <svg class="h-3 w-3 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+              <span class="font-mono text-[11px] text-gray-700"><span class="text-cyan-600">XLM (Native SAC)</span>.<span class="text-amber-600">transfer</span>(<span class="text-gray-500">from: GABC...7X, to: Pool, 5,000 XLM</span>)</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 ml-6 border-l-2 border-gray-200">
+              <svg class="h-3 w-3 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+              <span class="font-mono text-[11px] text-gray-700"><span class="text-cyan-600">USDC (SEP-41)</span>.<span class="text-amber-600">transfer</span>(<span class="text-gray-500">from: Pool, to: GABC...7X, 485.00 USDC</span>)</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 ml-6 border-l-2 border-gray-200">
+              <svg class="h-3 w-3 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span class="font-mono text-[11px] text-gray-700"><span class="text-violet-600">Soroswap Router</span> emitted <span class="rounded bg-violet-50 px-1 py-0.5 text-[10px] font-bold text-violet-600">swap</span> event</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-[11px] text-gray-500">
+          <span>Contract: <span class="font-mono text-gray-700">CAXY...Z10P</span></span>
+          <span class="text-gray-300">|</span>
+          <span>Function: <span class="font-mono font-semibold text-violet-600">swap()</span></span>
+          <span class="text-gray-300">|</span>
+          <span>CPU: <span class="font-mono text-gray-700">18.4M instructions</span></span>
+        </div>
+      </div>
+
+      <!-- OP 3: Classic operation -->
+      <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-[10px] font-bold text-gray-600">3</span>
+            <span class="text-sm font-semibold text-gray-900">Manage Data</span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 ring-1 ring-gray-200">Classic</span>
+          </div>
+          <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Success</span>
+        </div>
+        <div class="rounded-lg bg-[#FAFAFA] px-4 py-3 mb-3">
+          <p class="text-sm text-gray-700">Set data entry <span class="font-mono font-medium text-gray-900">&quot;last_swap_rate&quot;</span> to <span class="font-mono font-medium text-gray-900">&quot;0.097&quot;</span> on account <span class="font-medium text-gray-900">GABC...7X92</span></p>
+        </div>
+        <div class="flex items-center gap-4 text-[11px] text-gray-500">
+          <span>Type: <span class="font-medium text-gray-700">Classic Manage Data</span></span>
+          <span class="text-gray-300">|</span>
+          <span>Source: <span class="font-mono text-gray-700">GABC...7X92</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- CAP-67 EVENTS -->
+  <div class="anim d5 mb-10">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Contract Events (CAP-67)</h3>
+      <span class="text-[10px] text-gray-400">4 events emitted</span>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="flex items-center px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-100 bg-[#FAFAFA]">
+        <div class="w-8">#</div>
+        <div class="w-20">Type</div>
+        <div class="w-[130px]">Contract</div>
+        <div class="flex-1">Decoded Data</div>
+      </div>
+
+      <div class="detail-row flex items-center px-4 py-3 border-b border-gray-50 cursor-pointer">
+        <div class="w-8"><span class="text-[10px] font-mono text-gray-400">0</span></div>
+        <div class="w-20"><span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-600 bg-gray-100">approve</span></div>
+        <div class="w-[130px]"><span class="text-xs text-gray-700">XLM (Native SAC)</span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">owner:<span class="text-violet-600">GABC...7X</span></span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">spender:<span class="text-violet-600">CAXY...Z1</span></span>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">amount:<span class="text-gray-900">5,000 XLM</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row flex items-center px-4 py-3 border-b border-gray-50 cursor-pointer">
+        <div class="w-8"><span class="text-[10px] font-mono text-gray-400">1</span></div>
+        <div class="w-20"><span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold text-cyan-700 bg-cyan-50">transfer</span></div>
+        <div class="w-[130px]"><span class="text-xs text-gray-700">XLM (Native SAC)</span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">GABC...7X</span></span>
+            <svg class="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">Pool:CXLM..LP</span></span>
+            <span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-600">5,000 XLM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row flex items-center px-4 py-3 border-b border-gray-50 cursor-pointer">
+        <div class="w-8"><span class="text-[10px] font-mono text-gray-400">2</span></div>
+        <div class="w-20"><span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold text-cyan-700 bg-cyan-50">transfer</span></div>
+        <div class="w-[130px]">
+          <div class="flex flex-col">
+            <span class="text-xs text-gray-700">USDC</span>
+            <span class="text-[10px] text-gray-400">SEP-41 + Classic</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">Pool:CUSDC..LP</span></span>
+            <svg class="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">GABC...7X</span></span>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+485.00 USDC</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row flex items-center px-4 py-3 cursor-pointer bg-violet-50/20">
+        <div class="w-8"><span class="text-[10px] font-mono text-gray-400">3</span></div>
+        <div class="w-20"><span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold text-violet-600 bg-violet-50">swap</span></div>
+        <div class="w-[130px]"><span class="text-xs text-gray-700">Soroswap Router</span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">pair:<span class="text-gray-900">XLM/USDC</span></span>
+            <span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] text-red-600">&minus;5,000 XLM</span>
+            <svg class="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+485.00 USDC</span>
+            <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold text-violet-600 ring-1 ring-violet-100" title="Identified as swap based on fn_name + transfer event pair">Swap detected via heuristic</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NET BALANCE CHANGES -->
+  <div class="anim d6 mb-10">
+    <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Net Balance Changes</h3>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-100 bg-[#FAFAFA]">
+        <div class="flex-1">Account</div>
+        <div class="w-28 text-right">Asset</div>
+        <div class="w-28 text-right">Type</div>
+        <div class="w-40 text-right">Change</div>
+      </div>
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="flex-1"><span class="font-mono text-xs text-gray-900">GABC...7X92</span></div>
+        <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900">XLM</span></div>
+        <div class="w-28 text-right"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">Native</span></div>
+        <div class="w-40 text-right"><span class="font-mono text-sm font-semibold text-red-600 tabular">&minus;5,000.0000000</span></div>
+      </div>
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="flex-1"><span class="font-mono text-xs text-gray-900">GABC...7X92</span></div>
+        <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900">USDC</span></div>
+        <div class="w-28 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">Classic</span>
+            <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">SEP-41</span>
+          </div>
+        </div>
+        <div class="w-40 text-right"><span class="font-mono text-sm font-semibold text-emerald-600 tabular">+485.0000000</span></div>
+      </div>
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50 opacity-60">
+        <div class="flex-1"><span class="font-mono text-xs text-gray-900">GABC...7X92</span></div>
+        <div class="w-28 text-right"><span class="text-sm font-medium text-gray-900">XLM</span></div>
+        <div class="w-28 text-right"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">Fee</span></div>
+        <div class="w-40 text-right"><span class="font-mono text-sm text-red-600 tabular">&minus;0.0010200</span></div>
+      </div>
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50 opacity-60">
+        <div class="flex-1"><span class="font-mono text-xs text-gray-500">Pool:CXLM...LP</span></div>
+        <div class="w-28 text-right"><span class="text-sm font-medium text-gray-500">XLM</span></div>
+        <div class="w-28 text-right"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">Native</span></div>
+        <div class="w-40 text-right"><span class="font-mono text-sm text-emerald-600 tabular">+5,000.0000000</span></div>
+      </div>
+      <div class="detail-row flex items-center px-5 py-3 opacity-60">
+        <div class="flex-1"><span class="font-mono text-xs text-gray-500">Pool:CUSDC...LP</span></div>
+        <div class="w-28 text-right"><span class="text-sm font-medium text-gray-500">USDC</span></div>
+        <div class="w-28 text-right"><span class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">SEP-41</span></div>
+        <div class="w-40 text-right"><span class="font-mono text-sm text-red-600 tabular">&minus;485.0000000</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- SOROBAN STATE CHANGES -->
+  <div class="anim d7 mb-10">
+    <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Soroban State Changes</h3>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="detail-row flex items-start px-5 py-3.5 border-b border-gray-50">
+        <div class="w-20 flex-shrink-0"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Modified</span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono text-xs text-gray-900">Balance:GABC...7X92</span>
+            <span class="text-[10px] text-gray-400">on</span>
+            <span class="text-xs text-gray-700">XLM SAC</span>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-[11px]">
+            <span class="text-gray-400 line-through">55,000.0000000</span>
+            <svg class="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="text-gray-900 font-medium">50,000.0000000</span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-row flex items-start px-5 py-3.5 border-b border-gray-50">
+        <div class="w-20 flex-shrink-0"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Modified</span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono text-xs text-gray-900">Balance:GABC...7X92</span>
+            <span class="text-[10px] text-gray-400">on</span>
+            <span class="text-xs text-gray-700">USDC (SEP-41)</span>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-[11px]">
+            <span class="text-gray-400 line-through">1,200.0000000</span>
+            <svg class="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="text-gray-900 font-medium">1,685.0000000</span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-row flex items-start px-5 py-3.5">
+        <div class="w-20 flex-shrink-0"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Modified</span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono text-xs text-gray-900">Pool:reserves</span>
+            <span class="text-[10px] text-gray-400">on</span>
+            <span class="text-xs text-gray-700">Soroswap XLM/USDC Pool</span>
+          </div>
+          <div class="font-mono text-[11px] text-gray-500">Reserve A: 2,450,000 &rarr; 2,455,000 XLM &middot; Reserve B: 237,650 &rarr; 237,165 USDC</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTEXT LINKS -->
+  <div class="anim d8 mb-10">
+    <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Context</h3>
+    <div class="flex items-center gap-3 flex-wrap">
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        <span class="text-xs font-medium text-gray-700">View Contract &rarr;</span>
+        <span class="font-mono text-[10px] text-gray-400">CAXY...Z10P</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="text-xs font-medium text-gray-700">View Account &rarr;</span>
+        <span class="font-mono text-[10px] text-gray-400">GABC...7X92</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span class="text-xs font-medium text-gray-700">View Ledger &rarr;</span>
+        <span class="font-mono text-[10px] text-gray-400">4,819,284</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        <span class="text-xs font-medium text-gray-700">Firehose: Soroswap swaps &rarr;</span>
+      </a>
+    </div>
+  </div>
+</main>
+</body>
+</html>

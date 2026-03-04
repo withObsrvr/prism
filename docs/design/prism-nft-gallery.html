@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — NFT Gallery</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.anim,.animate-fade-up{animation:fade-up .3s ease-out forwards;opacity:0}
+.d1{animation-delay:.04s}.d2{animation-delay:.08s}.d3{animation-delay:.12s}.d4{animation-delay:.16s}.d5{animation-delay:.2s}.d6{animation-delay:.24s}.d7{animation-delay:.28s}.d8{animation-delay:.32s}
+.slide-panel{animation:slide-in .28s cubic-bezier(.16,1,.3,1) forwards}
+.backdrop-fade{animation:fade-in .2s ease forwards}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.result-row{transition:all .08s}.result-row:hover,.result-row.active{background:rgba(139,92,246,.04)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>Explorer</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>Assets</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Contracts</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search…
+      <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+    </button>
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+<main class="mx-auto max-w-[1320px] px-8 py-6">
+<!-- ═══════════════════════════════════ -->
+    <!-- SECTION A: Collection Header        -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="px-12 pt-10 pb-8">
+
+      <!-- Back nav -->
+      <button class="anim group mb-6 flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-gray-900">
+        <svg class="h-4 w-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        Back to Portfolio
+      </button>
+
+      <!-- Collection identity row -->
+      <div class="anim d1 flex items-start justify-between gap-6">
+        <div class="flex items-center gap-5">
+          <!-- Collection avatar — rendered from contract metadata -->
+          <div class="flex h-16 w-16 items-center justify-center rounded-2xl art-3 shadow-md ring-1 ring-black/5">
+            <!-- Abstract SVG mark representing the collection -->
+            <svg class="h-8 w-8 text-white/90" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="1.5" />
+              <circle cx="16" cy="16" r="5" fill="currentColor" opacity="0.4" />
+              <path d="M16 6 L26 16 L16 26 L6 16 Z" stroke="currentColor" stroke-width="1" fill="none" />
+            </svg>
+          </div>
+
+          <div class="flex flex-col">
+            <div class="flex items-center gap-3 mb-1">
+              <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Stellar Geometries</h1>
+              <div class="flex items-center gap-1 rounded-md bg-[#ECFDF5] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#047857]">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                Verified
+              </div>
+              <!-- Soroban NFT standard badge -->
+              <div class="flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-violet-700 ring-1 ring-violet-100">
+                OZ Non-Fungible
+              </div>
+            </div>
+            <p class="text-sm text-gray-500 mb-1.5 max-w-md">Generative on-chain geometric art stored entirely on Soroban. 256 unique pieces, algorithmically composed at mint.</p>
+            <div class="group flex cursor-pointer items-center gap-2">
+              <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
+              <span class="font-mono text-xs text-gray-500 transition-colors group-hover:text-gray-900">CNFT...G7K2</span>
+              <svg class="h-3.5 w-3.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex items-center gap-3 pt-1">
+          <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            Website
+          </a>
+          <button class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800">
+            <svg class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+            Saved
+          </button>
+        </div>
+      </div>
+
+      <!-- Collection stats row — "Decimal Drop" style numbers -->
+      <div class="anim d2 mt-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+          <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Floor Price</span>
+          <div class="flex items-baseline">
+            <span class="text-xl font-semibold tracking-tight text-gray-900">1,200</span>
+            <span class="ml-1 text-sm font-medium text-gray-400">XLM</span>
+          </div>
+          <span class="mt-0.5 text-[10px] text-gray-400">~$116.40</span>
+        </div>
+        <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+          <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Volume</span>
+          <div class="flex items-baseline">
+            <span class="text-xl font-semibold tracking-tight text-gray-900">84,200</span>
+            <span class="ml-1 text-sm font-medium text-gray-400">XLM</span>
+          </div>
+          <span class="mt-0.5 text-[10px] text-gray-400">~$8,167.40</span>
+        </div>
+        <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+          <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Items</span>
+          <div class="flex items-baseline">
+            <span class="text-xl font-semibold tracking-tight text-gray-900">256</span>
+          </div>
+          <span class="mt-0.5 text-[10px] text-gray-400">Max supply</span>
+        </div>
+        <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+          <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Holders</span>
+          <div class="flex items-baseline">
+            <span class="text-xl font-semibold tracking-tight text-gray-900">142</span>
+          </div>
+          <span class="mt-0.5 text-[10px] text-gray-400">55% unique</span>
+        </div>
+        <div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+          <span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Rent Status</span>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+            </span>
+            <span class="text-sm font-semibold text-gray-900">Healthy</span>
+          </div>
+          <span class="mt-0.5 text-[10px] text-gray-400">TTL: ~120 days</span>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="anim d3 mt-8 flex gap-8 border-b border-gray-200 text-sm font-medium text-gray-500">
+        <div class="cursor-pointer border-b-2 border-gray-900 pb-3 text-gray-900">Collection</div>
+        <div class="cursor-pointer pb-3 transition-colors hover:text-gray-900">Activity</div>
+        <div class="cursor-pointer pb-3 transition-colors hover:text-gray-900">Holders</div>
+        <div class="cursor-pointer pb-3 transition-colors hover:text-gray-900">Contract Data</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION B: Featured Item + Detail   -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="anim d4 px-12 pb-10">
+
+      <!-- Filter / Sort controls (Ramp style) -->
+      <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-6">
+          <div class="flex items-center gap-2 text-sm text-gray-500">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+            Filter
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sort by</span>
+            <div class="flex cursor-pointer items-center gap-1 text-sm font-medium text-gray-900">
+              Token ID
+              <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Trait</span>
+            <div class="flex cursor-pointer items-center gap-1 text-sm font-medium text-gray-900">
+              All Traits
+              <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Grid size toggle -->
+          <button class="rounded-lg border border-gray-200 bg-gray-900 p-1.5 text-white shadow-sm">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+          </button>
+          <button class="rounded-lg border border-gray-200 bg-white p-1.5 text-gray-500 shadow-sm transition-colors hover:bg-gray-50">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════ -->
+      <!-- Featured NFT Expanded View          -->
+      <!-- ═══════════════════════════════════ -->
+      <div class="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-5">
+
+        <!-- Left: Large art render -->
+        <div class="lg:col-span-2">
+          <div class="aspect-nft w-full overflow-hidden rounded-2xl art-hero shadow-lg ring-1 ring-black/5 relative">
+            <!-- Generative on-chain SVG representation -->
+            <svg class="absolute inset-0 h-full w-full" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Geometric composition -->
+              <rect x="50" y="50" width="120" height="120" stroke="rgba(255,255,255,0.15)" stroke-width="1" transform="rotate(15 110 110)" />
+              <rect x="80" y="80" width="80" height="80" stroke="rgba(255,255,255,0.2)" stroke-width="1" transform="rotate(30 120 120)" />
+              <circle cx="200" cy="200" r="100" stroke="rgba(255,255,255,0.12)" stroke-width="1" />
+              <circle cx="200" cy="200" r="60" stroke="rgba(233,69,96,0.3)" stroke-width="2" />
+              <circle cx="200" cy="200" r="20" fill="rgba(233,69,96,0.15)" />
+              <line x1="100" y1="300" x2="300" y2="100" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+              <line x1="100" y1="100" x2="300" y2="300" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+              <polygon points="200,80 280,240 120,240" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" fill="none" />
+              <polygon points="200,320 280,160 120,160" stroke="rgba(255,255,255,0.1)" stroke-width="1" fill="none" />
+              <!-- Floating dots -->
+              <circle cx="140" cy="140" r="3" fill="rgba(233,69,96,0.6)" />
+              <circle cx="260" cy="260" r="3" fill="rgba(255,255,255,0.4)" />
+              <circle cx="260" cy="140" r="2" fill="rgba(255,255,255,0.3)" />
+              <circle cx="140" cy="260" r="2" fill="rgba(15,52,96,0.8)" />
+            </svg>
+            <!-- Token ID overlay -->
+            <div class="absolute bottom-4 left-4 rounded-lg bg-black/40 px-3 py-1.5 backdrop-blur-sm">
+              <span class="font-mono text-sm font-medium text-white/90">#0042</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: NFT detail panel -->
+        <div class="lg:col-span-3 flex flex-col">
+
+          <!-- Name & quick stats -->
+          <div class="mb-1 flex items-center gap-2">
+            <span class="text-xs font-medium text-gray-500">Stellar Geometries</span>
+            <span class="text-xs text-gray-300">/</span>
+            <span class="text-xs font-medium text-gray-900">#0042</span>
+          </div>
+          <h2 class="mb-2 text-xl font-semibold tracking-tight text-gray-900">Convergence Point</h2>
+          <p class="mb-5 text-sm text-gray-500">A study in rotational symmetry and negative space. Seed: 0x8f2a1b. Composed at ledger 4,102,847.</p>
+
+          <!-- Owner row (Ramp receipt style) -->
+          <div class="mb-6 flex flex-col border-t border-gray-100">
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-sm text-gray-500">Owner</span>
+              <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                  <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  You
+                </div>
+                <span class="font-mono text-sm text-gray-900">GABC...7X92</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-sm text-gray-500">Token Standard</span>
+              <span class="text-sm font-medium text-gray-900">OZ Non-Fungible (Soroban)</span>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-sm text-gray-500">Token ID</span>
+              <span class="font-mono text-sm text-gray-900">42</span>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <span class="text-sm text-gray-500">Last Transfer</span>
+              <span class="text-sm font-medium text-gray-600">Oct 18, 2026</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+              <span class="text-sm text-gray-500">Metadata Storage</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-medium text-gray-900">On-chain</span>
+                <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">Permanent</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Traits / Attributes — the key metadata rendered from contract state -->
+          <div class="mb-5">
+            <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Traits</h3>
+            <div class="flex flex-wrap gap-2">
+              <div class="trait-pill rounded-lg px-3 py-2">
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Palette</div>
+                <div class="text-sm font-semibold text-gray-900">Midnight Rose</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">12% have this</div>
+              </div>
+              <div class="trait-pill rounded-lg px-3 py-2">
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Complexity</div>
+                <div class="text-sm font-semibold text-gray-900">High</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">8% have this</div>
+              </div>
+              <div class="trait-pill rounded-lg px-3 py-2">
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Shape</div>
+                <div class="text-sm font-semibold text-gray-900">Triangle</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">25% have this</div>
+              </div>
+              <div class="trait-pill rounded-lg px-3 py-2">
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Symmetry</div>
+                <div class="text-sm font-semibold text-gray-900">Rotational</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">18% have this</div>
+              </div>
+              <div class="trait-pill rounded-lg px-3 py-2">
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Elements</div>
+                <div class="text-sm font-semibold text-gray-900">7</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">5% have this</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transfer History (mini activity feed) -->
+          <div>
+            <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Provenance</h3>
+            <div class="space-y-0">
+              <div class="flex items-center justify-between border-b border-gray-100 py-2.5">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-6 w-6 items-center justify-center rounded-full bg-[#7B8B7A]/15 text-[#637362]">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-medium text-gray-900">Transferred to you</span>
+                    <span class="text-[10px] text-gray-500">Oct 18, 2026</span>
+                  </div>
+                </div>
+                <span class="font-mono text-[10px] text-gray-400">from GXYZ...4R21</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-gray-100 py-2.5">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-6 w-6 items-center justify-center rounded-full bg-[#6B728E]/10 text-[#6B728E]">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-medium text-gray-900">Sold for 1,800 XLM</span>
+                    <span class="text-[10px] text-gray-500">Sep 4, 2026</span>
+                  </div>
+                </div>
+                <span class="font-mono text-[10px] text-gray-400">GXYZ...4R21</span>
+              </div>
+              <div class="flex items-center justify-between py-2.5">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-6 w-6 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-medium text-gray-900">Minted</span>
+                    <span class="text-[10px] text-gray-500">Aug 12, 2026 &middot; Ledger 4,102,847</span>
+                  </div>
+                </div>
+                <span class="font-mono text-[10px] text-gray-400">by GMINT...8K32</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════ -->
+      <!-- SECTION C: The Gallery Grid          -->
+      <!-- ═══════════════════════════════════ -->
+      <div class="border-t border-gray-100 pt-8">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-900">All Items</h3>
+          <span class="text-xs text-gray-400">256 items</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+
+          <!-- NFT Card 1 (selected state) -->
+          <div class="anim d5 nft-card group cursor-pointer rounded-xl border-2 border-gray-900 bg-white shadow-md overflow-hidden">
+            <div class="aspect-nft w-full art-hero relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <polygon points="100,30 160,140 40,140" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none" />
+                <circle cx="100" cy="100" r="40" stroke="rgba(233,69,96,0.3)" stroke-width="1.5" />
+                <circle cx="100" cy="100" r="15" fill="rgba(233,69,96,0.15)" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0042</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Convergence Point</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">Floor: 1,200 XLM</span>
+                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">Owned</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 2 -->
+          <div class="anim d5 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-2 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <rect x="40" y="40" width="60" height="60" stroke="rgba(255,255,255,0.15)" stroke-width="1" transform="rotate(20 70 70)" />
+                <rect x="100" y="100" width="60" height="60" stroke="rgba(255,255,255,0.15)" stroke-width="1" transform="rotate(-20 130 130)" />
+                <circle cx="100" cy="100" r="50" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0017</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Dual Equilibrium</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">1,450 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GDEF...2P</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 3 -->
+          <div class="anim d6 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-3 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <polygon points="100,20 180,100 100,180 20,100" stroke="rgba(255,255,255,0.18)" stroke-width="1" fill="none" />
+                <polygon points="100,50 150,100 100,150 50,100" stroke="rgba(255,255,255,0.12)" stroke-width="1" fill="none" />
+                <circle cx="100" cy="100" r="8" fill="rgba(255,255,255,0.2)" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0003</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Nested Diamond</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">3,200 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GHIJ...8T</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 4 -->
+          <div class="anim d6 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-4 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <circle cx="80" cy="80" r="40" stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none" />
+                <circle cx="120" cy="120" r="40" stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none" />
+                <circle cx="100" cy="100" r="20" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="rgba(255,255,255,0.05)" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0091</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Venn Overlap</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">1,100 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GKLM...1V</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 5 -->
+          <div class="anim d7 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-5 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <line x1="20" y1="20" x2="180" y2="180" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+                <line x1="180" y1="20" x2="20" y2="180" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+                <line x1="100" y1="20" x2="100" y2="180" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+                <line x1="20" y1="100" x2="180" y2="100" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+                <circle cx="100" cy="100" r="30" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0128</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Crosshair</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">2,800 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GNOP...3W</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 6 -->
+          <div class="anim d7 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-6 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <circle cx="100" cy="100" r="70" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+                <circle cx="100" cy="100" r="50" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+                <circle cx="100" cy="100" r="30" stroke="rgba(255,255,255,0.14)" stroke-width="1" />
+                <circle cx="100" cy="100" r="10" fill="rgba(255,255,255,0.15)" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0201</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Concentric Depth</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">1,600 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GQRS...5X</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 7 -->
+          <div class="anim d8 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-7 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <path d="M40,160 Q100,40 160,160" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none" />
+                <path d="M60,160 Q100,60 140,160" stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none" />
+                <circle cx="100" cy="80" r="5" fill="rgba(255,255,255,0.25)" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0156</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Parabolic Arc</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">1,200 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GTUV...7Y</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NFT Card 8 -->
+          <div class="anim d8 nft-card group cursor-pointer rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div class="aspect-nft w-full art-8 relative">
+              <svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+                <rect x="60" y="60" width="80" height="80" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
+                <rect x="70" y="70" width="60" height="60" stroke="rgba(255,255,255,0.12)" stroke-width="1" transform="rotate(10 100 100)" />
+                <rect x="80" y="80" width="40" height="40" stroke="rgba(255,255,255,0.1)" stroke-width="1" transform="rotate(20 100 100)" />
+                <rect x="90" y="90" width="20" height="20" fill="rgba(255,255,255,0.08)" transform="rotate(30 100 100)" />
+              </svg>
+              <div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                <span class="font-mono text-[11px] text-white/90">#0244</span>
+              </div>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-sm font-semibold text-gray-900 truncate">Recursive Frame</div>
+              <div class="mt-1 flex items-center justify-between">
+                <span class="text-xs text-gray-500">4,100 XLM</span>
+                <span class="font-mono text-[10px] text-gray-400">GWXY...9Z</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-8 flex items-center justify-center gap-1">
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium text-gray-400 transition-colors hover:bg-gray-100">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-sm font-semibold text-white">1</button>
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100">2</button>
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100">3</button>
+          <span class="px-1 text-sm text-gray-400">...</span>
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100">32</button>
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium text-gray-400 transition-colors hover:bg-gray-100">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+</main>
+</body>
+</html>

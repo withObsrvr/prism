@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Stellar Block Explorer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.3)}70%{box-shadow:0 0 0 6px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes float-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ticker{0%{transform:translateY(0)}10%{transform:translateY(-100%)}10.001%{transform:translateY(100%)}20%{transform:translateY(0)}}
+.anim{animation:fade-up .4s ease-out forwards;opacity:0}
+.d1{animation-delay:.08s}.d2{animation-delay:.16s}.d3{animation-delay:.24s}.d4{animation-delay:.32s}.d5{animation-delay:.4s}.d6{animation-delay:.48s}.d7{animation-delay:.56s}.d8{animation-delay:.64s}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.search-ring{transition:all .2s ease}.search-ring:focus-within{box-shadow:0 0 0 3px rgba(16,185,129,.15);border-color:#10B981}
+.hint-pill{transition:all .12s ease}.hint-pill:hover{background:#111;color:#fff;transform:translateY(-1px)}
+.tx-row{animation:float-up .3s ease-out forwards;opacity:0}
+.tx-row:nth-child(1){animation-delay:.1s}.tx-row:nth-child(2){animation-delay:.18s}.tx-row:nth-child(3){animation-delay:.26s}.tx-row:nth-child(4){animation-delay:.34s}.tx-row:nth-child(5){animation-delay:.42s}.tx-row:nth-child(6){animation-delay:.5s}
+.card-hover{transition:all .15s ease}.card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 24px -8px rgba(0,0,0,.08)}
+.glow{background:linear-gradient(90deg,transparent,rgba(16,185,129,.04),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<!-- ═══ TOP NAV ═══ -->
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Explorer</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+        Assets</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Contracts</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500 pulse-dot"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+
+
+<main>
+
+<!-- ═══ HERO SECTION ═══ -->
+<section class="relative overflow-hidden bg-white border-b border-gray-100">
+  <!-- Subtle grid texture -->
+  <div class="absolute inset-0 opacity-[.025]" style="background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><line x1=%2220%22 y1=%220%22 x2=%2220%22 y2=%2240%22 stroke=%22%23111%22 stroke-width=%220.5%22/><line x1=%220%22 y1=%2220%22 x2=%2240%22 y2=%2220%22 stroke=%22%23111%22 stroke-width=%220.5%22/></svg>')"></div>
+
+  <div class="relative mx-auto max-w-[1320px] px-8 py-16 pb-12">
+
+    <!-- Tagline -->
+    <div class="anim text-center mb-8">
+      <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200/60 mb-5">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+        <span class="text-[11px] font-semibold text-emerald-700">Stellar Mainnet • Protocol v22 • Ledger 5,104,938</span>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-900 tracking-tight mb-2">Explore the Stellar network</h1>
+      <p class="text-[15px] text-gray-500 max-w-md mx-auto">Search any account, transaction, contract, asset, or ledger. Soroban-native with full smart contract support.</p>
+    </div>
+
+    <!-- ═══ SEARCH BAR (the hero) ═══ -->
+    <div class="anim d1 mx-auto max-w-[680px] mb-8">
+      <div class="search-ring flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-lg shadow-gray-200/50">
+        <svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" placeholder="Search by address, tx hash, contract, asset, or ledger…" class="flex-1 text-[15px] text-gray-900 placeholder-gray-400 outline-none bg-transparent"/>
+        <kbd class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-400">⌘K</kbd>
+      </div>
+
+      <!-- Smart hints -->
+      <div class="flex items-center justify-center gap-2 mt-3">
+        <span class="text-[10px] text-gray-400 mr-1">Try:</span>
+        <a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">G… → Account</a>
+        <a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">C… → Contract</a>
+        <a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">64-char hex → Transaction</a>
+        <a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">USDC → Asset</a>
+        <a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">5104938 → Ledger</a>
+      </div>
+    </div>
+
+    <!-- ═══ NETWORK PULSE (5 metrics) ═══ -->
+    <div class="anim d2 mx-auto max-w-[820px] grid grid-cols-5 gap-px rounded-xl bg-gray-200 overflow-hidden ring-1 ring-gray-200">
+      <div class="bg-white px-4 py-3 text-center">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Latest Ledger</div>
+        <div class="text-lg font-bold text-gray-900 tabular font-mono mt-0.5">5,104,938</div>
+        <div class="flex items-center justify-center gap-1 mt-0.5"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span><span class="text-[10px] text-emerald-600 font-medium">3.8s ago</span></div>
+      </div>
+      <div class="bg-white px-4 py-3 text-center">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Transactions (24h)</div>
+        <div class="text-lg font-bold text-gray-900 tabular mt-0.5">1,284,392</div>
+        <div class="text-[10px] text-emerald-600 font-medium mt-0.5">↑ 12.3%</div>
+      </div>
+      <div class="bg-white px-4 py-3 text-center">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">TPS (avg)</div>
+        <div class="text-lg font-bold text-gray-900 tabular mt-0.5">14.8</div>
+        <div class="text-[10px] text-gray-500 mt-0.5">peak: 142</div>
+      </div>
+      <div class="bg-white px-4 py-3 text-center">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Soroban Calls (24h)</div>
+        <div class="text-lg font-bold text-gray-900 tabular mt-0.5">847,201</div>
+        <div class="text-[10px] text-emerald-600 font-medium mt-0.5">↑ 28.7%</div>
+      </div>
+      <div class="bg-white px-4 py-3 text-center">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Validators</div>
+        <div class="text-lg font-bold text-gray-900 tabular mt-0.5">42</div>
+        <div class="flex items-center justify-center gap-1 mt-0.5"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span><span class="text-[10px] text-emerald-600 font-medium">All healthy</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<section class="mx-auto max-w-[1320px] px-8 py-8">
+
+  <div class="grid grid-cols-3 gap-6">
+
+    <!-- ═══ LEFT: LIVE TRANSACTION FEED (2 cols) ═══ -->
+    <div class="col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-sm font-semibold text-gray-900">Latest Transactions</h2>
+          <div class="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+            <span class="text-[10px] font-medium text-emerald-700">Live</span>
+          </div>
+        </div>
+        <a href="#" class="text-[12px] font-medium text-gray-500 hover:text-gray-900 transition-colors">View all →</a>
+      </div>
+
+      <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+
+        <div class="tx-row flex items-center gap-4 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <!-- Hash + Type -->
+          <div class="w-[280px] flex-shrink-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <a href="#" class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">8f2a7c...1b3c</a>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">Contract Call</span>
+            </div>
+            <div class="text-[11px] text-gray-500 truncate max-w-[260px]">Soroswap Router • swap()</div>
+          </div>
+          <!-- From → To -->
+          <div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+            <span class="font-mono text-gray-600">GBXK4...R2M7</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="font-mono text-gray-600">CDLZ9...WK42</span>
+          </div>
+          <!-- Meta -->
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <span class="text-[10px] text-gray-400 tabular w-10 text-right">3 ops</span>
+            <span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">0.012 XLM</span>
+            <span class="text-[10px] text-gray-400 tabular w-12 text-right">4s ago</span>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center gap-4 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <!-- Hash + Type -->
+          <div class="w-[280px] flex-shrink-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <a href="#" class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">a91e03...fc82</a>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-emerald-700 bg-emerald-50 ring-emerald-200">Payment</span>
+            </div>
+            <div class="text-[11px] text-gray-500 truncate max-w-[260px]">500.00 USDC → Circle hot wallet</div>
+          </div>
+          <!-- From → To -->
+          <div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+            <span class="font-mono text-gray-600">GCKW2...NP4X</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="font-mono text-gray-600">GDQP7...H93A</span>
+          </div>
+          <!-- Meta -->
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <span class="text-[10px] text-gray-400 tabular w-10 text-right">1 op</span>
+            <span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">0.001 XLM</span>
+            <span class="text-[10px] text-gray-400 tabular w-12 text-right">8s ago</span>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center gap-4 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <!-- Hash + Type -->
+          <div class="w-[280px] flex-shrink-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <a href="#" class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">3d72b1...e4a7</a>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">Contract Call</span>
+            </div>
+            <div class="text-[11px] text-gray-500 truncate max-w-[260px]">Blend Protocol • supply()</div>
+          </div>
+          <!-- From → To -->
+          <div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+            <span class="font-mono text-gray-600">GA7TN...QE5L</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="font-mono text-gray-600">CBTRE...P8N1</span>
+          </div>
+          <!-- Meta -->
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <span class="text-[10px] text-gray-400 tabular w-10 text-right">5 ops</span>
+            <span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">0.034 XLM</span>
+            <span class="text-[10px] text-gray-400 tabular w-12 text-right">12s ago</span>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center gap-4 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <!-- Hash + Type -->
+          <div class="w-[280px] flex-shrink-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <a href="#" class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">c504a8...29d1</a>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-amber-700 bg-amber-50 ring-amber-200">Account Merge</span>
+            </div>
+            <div class="text-[11px] text-gray-500 truncate max-w-[260px]">Merge into GDQP7...H93A</div>
+          </div>
+          <!-- From → To -->
+          <div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+            <span class="font-mono text-gray-600">GCVN8...WT3R</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="font-mono text-gray-600">GDQP7...H93A</span>
+          </div>
+          <!-- Meta -->
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <span class="text-[10px] text-gray-400 tabular w-10 text-right">1 op</span>
+            <span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">0.001 XLM</span>
+            <span class="text-[10px] text-gray-400 tabular w-12 text-right">15s ago</span>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center gap-4 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <!-- Hash + Type -->
+          <div class="w-[280px] flex-shrink-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <a href="#" class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">71f3e2...8bc0</a>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">Contract Call</span>
+            </div>
+            <div class="text-[11px] text-gray-500 truncate max-w-[260px]">Phoenix DEX • provide_liquidity()</div>
+          </div>
+          <!-- From → To -->
+          <div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+            <span class="font-mono text-gray-600">GBXR5...KM92</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="font-mono text-gray-600">CDNS4...A7Q3</span>
+          </div>
+          <!-- Meta -->
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <span class="text-[10px] text-gray-400 tabular w-10 text-right">4 ops</span>
+            <span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">0.028 XLM</span>
+            <span class="text-[10px] text-gray-400 tabular w-12 text-right">19s ago</span>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center gap-4 px-5 py-3  hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <!-- Hash + Type -->
+          <div class="w-[280px] flex-shrink-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <a href="#" class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">e28f91...4d56</a>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-emerald-700 bg-emerald-50 ring-emerald-200">Payment</span>
+            </div>
+            <div class="text-[11px] text-gray-500 truncate max-w-[260px]">12,450.00 yXLM → Yield distributor</div>
+          </div>
+          <!-- From → To -->
+          <div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+            <span class="font-mono text-gray-600">GAUTH...B4KQ</span>
+            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <span class="font-mono text-gray-600">GCYLD...M7R2</span>
+          </div>
+          <!-- Meta -->
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <span class="text-[10px] text-gray-400 tabular w-10 text-right">2 ops</span>
+            <span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">0.002 XLM</span>
+            <span class="text-[10px] text-gray-400 tabular w-12 text-right">23s ago</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ RIGHT: LATEST LEDGERS ═══ -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-gray-900">Latest Ledgers</h2>
+        <a href="#" class="text-[12px] font-medium text-gray-500 hover:text-gray-900 transition-colors">View all →</a>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors glow">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,938</a>
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">3.8s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">42 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">14 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,937</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">8.9s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">38 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">12 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,936</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">14.2s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">51 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">18 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,935</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">19.6s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">29 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">9 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,934</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">24.8s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">44 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">15 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,933</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">30.1s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">36 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">11 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,932</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">35.4s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">47 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">16 ops</div>
+          </div>
+        </div>
+
+        <div class="tx-row flex items-center justify-between px-4 py-2.5  hover:bg-gray-50/50 cursor-pointer transition-colors">
+          <div>
+            <div class="flex items-center gap-2">
+              <a href="#" class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">5,104,931</a>
+              
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">40.7s</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] text-gray-900 tabular">33 txs</div>
+            <div class="text-[10px] text-gray-400 tabular">10 ops</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ CURATED SECTIONS ═══ -->
+<section class="mx-auto max-w-[1320px] px-8 pb-8">
+
+  <div class="grid grid-cols-3 gap-6">
+
+    <!-- ═══ TOP CONTRACTS (by invocations this week) ═══ -->
+    <div class="anim d3">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-900">Trending Contracts</h2>
+        <span class="text-[10px] text-gray-400">7d invocations</span>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500 flex-shrink-0 tabular">1</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900 truncate">Soroswap Router</span>
+              <span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">DEX</span>
+            </div>
+            <span class="font-mono text-[10px] text-gray-400">CDLZ9...WK42</span>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">284,102</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+18%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500 flex-shrink-0 tabular">2</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900 truncate">Blend Protocol</span>
+              <span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-cyan-700 bg-cyan-50 ring-cyan-200">Lending</span>
+            </div>
+            <span class="font-mono text-[10px] text-gray-400">CBTRE...P8N1</span>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">198,433</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+42%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500 flex-shrink-0 tabular">3</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900 truncate">Phoenix DEX</span>
+              <span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">DEX</span>
+            </div>
+            <span class="font-mono text-[10px] text-gray-400">CDNS4...A7Q3</span>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">156,891</div>
+            <div class="text-[10px] text-red-500 font-medium tabular">+7%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500 flex-shrink-0 tabular">4</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900 truncate">Aquarius AMM</span>
+              <span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">DEX</span>
+            </div>
+            <span class="font-mono text-[10px] text-gray-400">CAUQR...L2B5</span>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">134,220</div>
+            <div class="text-[10px] text-red-500 font-medium tabular">-3%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5  hover:bg-gray-50/50 transition-colors">
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500 flex-shrink-0 tabular">5</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900 truncate">FxDAO Vault</span>
+              <span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-emerald-700 bg-emerald-50 ring-emerald-200">Stablecoin</span>
+            </div>
+            <span class="font-mono text-[10px] text-gray-400">CCWN7...QR41</span>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">89,744</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+31%</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ═══ TOP ASSETS (by transfer volume) ═══ -->
+    <div class="anim d4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-900">Top Assets</h2>
+        <span class="text-[10px] text-gray-400">24h volume</span>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900 text-white text-[9px] font-bold flex-shrink-0">X</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900">XLM</span>
+              <span class="text-[10px] text-gray-400">Native</span>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">$12.4M</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+5.2%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white text-[9px] font-bold flex-shrink-0">U</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900">USDC</span>
+              <span class="text-[10px] text-gray-400">Centre</span>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">$8.7M</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+1.8%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-bold flex-shrink-0">y</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900">yXLM</span>
+              <span class="text-[10px] text-gray-400">Ultra Capital</span>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">$3.2M</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+14.1%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-white text-[9px] font-bold flex-shrink-0">A</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900">AQUA</span>
+              <span class="text-[10px] text-gray-400">Aquarius</span>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">$1.8M</div>
+            <div class="text-[10px] text-red-500 font-medium tabular">-2.4%</div>
+          </div>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5  hover:bg-gray-50/50 transition-colors">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-white text-[9px] font-bold flex-shrink-0">S</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] font-semibold text-gray-900">SHX</span>
+              <span class="text-[10px] text-gray-400">Stronghold</span>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[12px] font-semibold text-gray-900 tabular">$924K</div>
+            <div class="text-[10px] text-emerald-600 font-medium tabular">+8.7%</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ═══ NETWORK ACTIVITY ═══ -->
+    <div class="anim d5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-900">Network Activity</h2>
+      </div>
+      <div class="flex flex-col gap-3">
+
+        <!-- Mini chart: 24h tx volume -->
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Transactions (24h)</span>
+            <span class="text-[11px] font-semibold text-gray-900 tabular">1.28M</span>
+          </div>
+          <div class="flex items-end gap-[2px] h-12">
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:67%;opacity:0.80"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:76%;opacity:0.86"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:60%;opacity:0.76"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:65%;opacity:0.79"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:59%;opacity:0.76"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:49%;opacity:0.70"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:72%;opacity:0.83"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:95%;opacity:0.97"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:65%;opacity:0.79"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:53%;opacity:0.72"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:99%;opacity:1.00"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:35%;opacity:0.61"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:70%;opacity:0.82"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:38%;opacity:0.63"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:98%;opacity:0.99"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:57%;opacity:0.74"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:59%;opacity:0.76"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:99%;opacity:1.00"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:84%;opacity:0.91"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:58%;opacity:0.75"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:77%;opacity:0.86"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:76%;opacity:0.86"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:50%;opacity:0.70"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:46%;opacity:0.68"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:68%;opacity:0.81"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:95%;opacity:0.97"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:61%;opacity:0.77"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:63%;opacity:0.78"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:59%;opacity:0.76"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:44%;opacity:0.67"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:45%;opacity:0.67"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:60%;opacity:0.76"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:91%;opacity:0.95"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:44%;opacity:0.67"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:47%;opacity:0.68"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:62%;opacity:0.77"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:77%;opacity:0.86"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:46%;opacity:0.68"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:47%;opacity:0.68"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:94%;opacity:0.97"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:45%;opacity:0.67"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:68%;opacity:0.81"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:89%;opacity:0.94"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:100%;opacity:1.00"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:70%;opacity:0.82"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:99%;opacity:1.00"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:62%;opacity:0.77"></div>
+            <div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:100%;opacity:1.00"></div>
+          </div>
+          <div class="flex justify-between mt-1.5 text-[8px] text-gray-400"><span>24h ago</span><span>12h ago</span><span>Now</span></div>
+        </div>
+
+        <!-- Soroban adoption -->
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Soroban Ratio</span>
+            <span class="text-[11px] font-semibold text-violet-600 tabular">65.9%</span>
+          </div>
+          <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div class="h-2 rounded-full bg-gradient-to-r from-violet-500 to-violet-400" style="width:65.9%"></div>
+          </div>
+          <div class="flex justify-between mt-1.5 text-[10px]">
+            <span class="text-violet-600 font-medium">847K Soroban</span>
+            <span class="text-gray-400">437K Classic</span>
+          </div>
+        </div>
+
+        <!-- Fee market -->
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Fee Market</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            <div class="text-center">
+              <div class="text-[9px] text-gray-400">Min</div>
+              <div class="text-[13px] font-semibold text-gray-900 tabular font-mono">100</div>
+              <div class="text-[8px] text-gray-400">stroops</div>
+            </div>
+            <div class="text-center">
+              <div class="text-[9px] text-gray-400">Median</div>
+              <div class="text-[13px] font-semibold text-gray-900 tabular font-mono">1,200</div>
+              <div class="text-[8px] text-gray-400">stroops</div>
+            </div>
+            <div class="text-center">
+              <div class="text-[9px] text-gray-400">P99</div>
+              <div class="text-[13px] font-semibold text-amber-600 tabular font-mono">34,000</div>
+              <div class="text-[8px] text-gray-400">stroops</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══ QUICK ACCESS ═══ -->
+<section class="mx-auto max-w-[1320px] px-8 pb-12">
+  <div class="grid grid-cols-5 gap-3">
+    <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 flex-shrink-0">
+        <svg class="h-4.5 w-4.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <div><div class="text-[12px] font-semibold text-gray-900">Smart Accounts</div><div class="text-[10px] text-gray-400">OZ v0.5.0 wallets</div></div>
+    </a>
+    <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 flex-shrink-0">
+        <svg class="h-4.5 w-4.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div><div class="text-[12px] font-semibold text-gray-900">Events Firehose</div><div class="text-[10px] text-gray-400">Real-time streaming</div></div>
+    </a>
+    <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-100 flex-shrink-0">
+        <svg class="h-4.5 w-4.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div><div class="text-[12px] font-semibold text-gray-900">State & Rent</div><div class="text-[10px] text-gray-400">TTL monitoring</div></div>
+    </a>
+    <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 flex-shrink-0">
+        <svg class="h-4.5 w-4.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+      <div><div class="text-[12px] font-semibold text-gray-900">NFT Gallery</div><div class="text-[10px] text-gray-400">Stellar NFTs</div></div>
+    </a>
+    <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 flex-shrink-0">
+        <svg class="h-4.5 w-4.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      </div>
+      <div><div class="text-[12px] font-semibold text-gray-900">Validators</div><div class="text-[10px] text-gray-400">Network health</div></div>
+    </a>
+  </div>
+</section>
+
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="border-t border-gray-200 bg-white">
+  <div class="mx-auto max-w-[1320px] px-8 py-6 flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-2">
+        <div class="flex h-5 w-5 items-center justify-center rounded bg-[#111] text-white">
+          <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+        </div>
+        <span class="text-[12px] font-semibold text-gray-900">Prism</span>
+        <span class="text-[11px] text-gray-400">by Obsrvr</span>
+      </div>
+      <a href="#" class="text-[11px] text-gray-400 hover:text-gray-900 transition-colors">API Docs</a>
+      <a href="#" class="text-[11px] text-gray-400 hover:text-gray-900 transition-colors">GitHub</a>
+      <a href="#" class="text-[11px] text-gray-400 hover:text-gray-900 transition-colors">Status</a>
+    </div>
+    <div class="flex items-center gap-4 text-[11px] text-gray-400">
+      <span>Powered by Obsrvr Lake</span>
+      <span class="text-gray-300">•</span>
+      <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>All systems operational</span>
+    </div>
+  </div>
+</footer>
+
+</main>
+</body>
+</html>
