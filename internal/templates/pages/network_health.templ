@@ -1,0 +1,250 @@
+package pages
+
+import (
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type NetworkHealthData struct {
+	Status        string // "Operational", "Degraded"
+	StatusColor   string
+	LatestLedger  string
+	LedgerAge     string
+	AvgCloseTime  string
+	CurrentTPS    string
+	PeakTPS       string
+	Tx24h         string
+	TxChange      string
+	Ops24h        string
+	OpsPerTx      string
+	FailureRate   string
+	// Fee market
+	FeeBase       string
+	FeeMedian     string
+	FeeP99        string
+	DailyFees     string
+	// Soroban
+	SorobanInvocations string
+	ActiveContracts string
+	TotalState    string
+	RentBurned    string
+	AvgCPU        string
+	// Protocol
+	ProtocolVer   string
+	HorizonVer    string
+	SorobanRPCVer string
+	// Consensus
+	Agreement     string
+	ValidatorCount string
+	QuorumSets    string
+	AvgLatency    string
+	Validators    []ValidatorRow
+	RecentLedgers []NetworkLedger
+}
+
+type ValidatorRow struct {
+	Name       string
+	Org        string
+	Address    string
+	Uptime     string
+	LastVote   string
+	Status     string
+	StatusColor string
+}
+
+type NetworkLedger struct {
+	Sequence    string
+	Age         string
+	TxCount     string
+	SorobanCalls string
+	Fees        string
+	CloseTime   string
+	IsLatest    bool
+}
+
+templ NetworkHealth(data NetworkHealthData) {
+	@layouts.Base("Network Health — Prism", "network") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Status Banner -->
+			<div class="anim mb-6 flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<h1 class="text-2xl font-bold text-gray-900">Network Health</h1>
+					<div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200">
+						<span class="h-2 w-2 rounded-full bg-emerald-500 pulse-dot"></span>
+						<span class="text-[11px] font-semibold text-emerald-700">{ data.Status }</span>
+					</div>
+				</div>
+				<div class="flex items-center gap-2">
+					<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-[11px] font-semibold text-white">Live</button>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">1h</button>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">24h</button>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">7d</button>
+				</div>
+			</div>
+
+			<!-- Primary Metrics -->
+			<div class="anim d1 mb-8 grid grid-cols-6 gap-3">
+				@components.StatCard("Latest Ledger", data.LatestLedger, "normal", -1)
+				@components.StatCard("Avg Close Time", data.AvgCloseTime, "normal", -1)
+				@components.StatCard("Current TPS", data.CurrentTPS, "normal", -1)
+				@components.StatCard("24h Transactions", data.Tx24h, "normal", -1)
+				@components.StatCard("24h Operations", data.Ops24h, "normal", -1)
+				@components.StatCard("Failure Rate", data.FailureRate, "normal", -1)
+			</div>
+
+			<!-- Chart + Consensus -->
+			<div class="anim d2 mb-8 grid grid-cols-3 gap-6">
+				<!-- Throughput chart -->
+				<div class="col-span-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+					<div class="flex items-center justify-between mb-4">
+						<span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Transaction Throughput (24h)</span>
+						<div class="flex items-center gap-3 text-[10px]">
+							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-900"></span>Total</span>
+							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-violet-500"></span>Soroban</span>
+							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Classic</span>
+						</div>
+					</div>
+					<!-- SVG area chart placeholder -->
+					<div class="h-40 flex items-end gap-[1px]">
+						@networkBarChart()
+					</div>
+					<div class="flex justify-between mt-2 text-[8px] text-gray-400">
+						<span>24h ago</span><span>18h</span><span>12h</span><span>6h</span><span>Now</span>
+					</div>
+				</div>
+
+				<!-- Consensus -->
+				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">Consensus</div>
+					<!-- Ring visualization -->
+					<div class="flex justify-center mb-4">
+						<div class="relative h-24 w-24">
+							<svg class="h-24 w-24" viewBox="0 0 100 100">
+								<circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" stroke-width="8"></circle>
+								<circle cx="50" cy="50" r="40" fill="none" stroke="#10B981" stroke-width="8" stroke-dasharray="244" stroke-dashoffset="7" transform="rotate(-90 50 50)"></circle>
+							</svg>
+							<div class="absolute inset-0 flex items-center justify-center">
+								<span class="text-xl font-bold text-gray-900">{ data.Agreement }</span>
+							</div>
+						</div>
+					</div>
+					<div class="grid grid-cols-2 gap-3 text-center">
+						<div>
+							<div class="text-[10px] text-gray-400">Validators</div>
+							<div class="text-sm font-semibold text-gray-900">{ data.ValidatorCount }</div>
+						</div>
+						<div>
+							<div class="text-[10px] text-gray-400">Quorum Sets</div>
+							<div class="text-sm font-semibold text-gray-900">{ data.QuorumSets }</div>
+						</div>
+						<div>
+							<div class="text-[10px] text-gray-400">Avg Latency</div>
+							<div class="text-sm font-semibold text-gray-900">{ data.AvgLatency }</div>
+						</div>
+						<div>
+							<div class="text-[10px] text-gray-400">Agreement</div>
+							<div class="text-sm font-semibold text-emerald-600">{ data.Agreement }</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Fee Market + Soroban + Protocol -->
+			<div class="anim d3 mb-8 grid grid-cols-3 gap-6">
+				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Fee Market</div>
+					<div class="space-y-3">
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Base</span><span class="font-mono text-xs font-medium text-gray-900">{ data.FeeBase } stroops</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Median</span><span class="font-mono text-xs font-medium text-gray-900">{ data.FeeMedian } stroops</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">p99</span><span class="font-mono text-xs font-medium text-amber-600">{ data.FeeP99 } stroops</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Daily Fees</span><span class="text-xs font-medium text-gray-900">{ data.DailyFees }</span></div>
+					</div>
+				</div>
+				<div class="rounded-xl border border-violet-200 bg-violet-50/20 p-5 shadow-sm">
+					<div class="text-[11px] font-semibold uppercase tracking-wider text-violet-500 mb-3">Soroban Metrics</div>
+					<div class="space-y-3">
+						<div class="flex justify-between"><span class="text-xs text-violet-600">Invocations (24h)</span><span class="font-mono text-xs font-medium text-violet-900">{ data.SorobanInvocations }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-violet-600">Active Contracts</span><span class="font-mono text-xs font-medium text-violet-900">{ data.ActiveContracts }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-violet-600">Total State</span><span class="font-mono text-xs font-medium text-violet-900">{ data.TotalState }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-violet-600">Rent Burned (24h)</span><span class="font-mono text-xs font-medium text-violet-900">{ data.RentBurned }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-violet-600">Avg CPU/Invocation</span><span class="font-mono text-xs font-medium text-violet-900">{ data.AvgCPU }</span></div>
+					</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Protocol Info</div>
+					<div class="space-y-3">
+						<div class="flex justify-between items-center"><span class="text-xs text-gray-500">Protocol Version</span><div class="flex items-center gap-1"><span class="font-mono text-xs font-medium text-gray-900">v{ data.ProtocolVer }</span>@components.Badge("Latest", "emerald")</div></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Horizon</span><span class="font-mono text-xs font-medium text-gray-900">{ data.HorizonVer }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Soroban RPC</span><span class="font-mono text-xs font-medium text-gray-900">{ data.SorobanRPCVer }</span></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Validators Table -->
+			<div class="anim d4 mb-8">
+				@components.SectionHeader("Validators")
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+						<div class="flex-1">Validator</div>
+						<div class="w-28">Organization</div>
+						<div class="w-20 text-right">Uptime</div>
+						<div class="w-24 text-right">Last Vote</div>
+						<div class="w-20 text-right">Status</div>
+					</div>
+					for i, v := range data.Validators {
+						<a href={ templ.SafeURL("/network/validators/" + v.Address) } class={ "detail-row flex items-center px-5 py-3 hover:bg-gray-50/50 cursor-pointer", templ.KV("border-b border-gray-50", i < len(data.Validators)-1) }>
+							<div class="flex-1">
+								<div class="text-sm font-medium text-gray-900">{ v.Name }</div>
+								<span class="font-mono text-[10px] text-gray-400">{ v.Address }</span>
+							</div>
+							<div class="w-28"><span class="text-xs text-gray-700">{ v.Org }</span></div>
+							<div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">{ v.Uptime }</span></div>
+							<div class="w-24 text-right"><span class="text-xs text-gray-500">{ v.LastVote }</span></div>
+							<div class="w-20 text-right">
+								@components.Badge(v.Status, v.StatusColor)
+							</div>
+						</a>
+					}
+				</div>
+			</div>
+
+			<!-- Recent Ledgers -->
+			<div class="anim d5 mb-10">
+				@components.SectionHeader("Recent Ledgers")
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+						<div class="w-28">Ledger</div>
+						<div class="w-20">Age</div>
+						<div class="w-20 text-right">Txs</div>
+						<div class="w-28 text-right">Soroban Calls</div>
+						<div class="w-24 text-right">Fees</div>
+						<div class="flex-1 text-right">Close Time</div>
+					</div>
+					for i, l := range data.RecentLedgers {
+						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("border-b border-gray-50", i < len(data.RecentLedgers)-1), templ.KV("glow", l.IsLatest) }>
+							<div class="w-28">
+								<div class="flex items-center gap-1.5">
+									<a href={ templ.SafeURL("/ledger/" + l.Sequence) } class="font-mono text-xs font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ l.Sequence }</a>
+									if l.IsLatest {
+										<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+									}
+								</div>
+							</div>
+							<div class="w-20"><span class="text-[10px] text-gray-400">{ l.Age }</span></div>
+							<div class="w-20 text-right"><span class="text-xs text-gray-900 tabular">{ l.TxCount }</span></div>
+							<div class="w-28 text-right"><span class="text-xs text-violet-600 tabular">{ l.SorobanCalls }</span></div>
+							<div class="w-24 text-right"><span class="font-mono text-[10px] text-gray-500 tabular">{ l.Fees }</span></div>
+							<div class="flex-1 text-right"><span class="text-[10px] text-gray-400">{ l.CloseTime }</span></div>
+						</div>
+					}
+				</div>
+			</div>
+		</main>
+	}
+}
+
+templ networkBarChart() {
+	for _, h := range []string{"45%", "52%", "48%", "55%", "62%", "58%", "65%", "72%", "68%", "75%", "82%", "78%", "85%", "72%", "68%", "75%", "82%", "88%", "92%", "85%", "78%", "72%", "68%", "75%", "82%", "88%", "92%", "95%", "88%", "82%", "78%", "85%", "92%", "95%", "100%", "92%"} {
+		<div class="flex-1 rounded-t-[1px] bg-emerald-500/80" style={ "height:" + h }></div>
+	}
+}

@@ -1,0 +1,148 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type AssetDirectoryData struct {
+	TotalAssets   string
+	ClassicCount  string
+	SEP41Count    string
+	NetworkVolume string
+	VolumeChange  string
+	Trustlines    string
+	DEXLiquidity  string
+	ActiveFilter  string
+	Assets        []AssetRow
+	CurrentPage   int
+	TotalPages    int
+}
+
+type AssetRow struct {
+	Rank      int
+	Code      string
+	Name      string
+	Issuer    string
+	BgColor   string
+	Initial   string
+	Price     string
+	Change    string
+	IsUp      bool
+	MarketCap string
+	Volume    string
+	Supply    string
+	Holders   string
+	TypeBadge string
+	TypeColor string
+}
+
+templ AssetDirectory(data AssetDirectoryData) {
+	@layouts.Base("Assets — Prism", "assets") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Header -->
+			<div class="anim mb-6">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<h1 class="text-2xl font-bold text-gray-900">Asset Directory</h1>
+						<div class="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
+							<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+							<span class="text-[10px] font-medium text-emerald-700">Live</span>
+						</div>
+					</div>
+					<div class="text-right text-[11px] text-gray-500">
+						<span class="font-semibold text-gray-900 tabular">{ data.TotalAssets }</span> total assets
+						<span class="text-gray-300 mx-1">&middot;</span>
+						{ data.ClassicCount } Classic + { data.SEP41Count } SEP-41
+					</div>
+				</div>
+			</div>
+
+			<!-- Stats -->
+			<div class="anim d1 mb-6 grid grid-cols-4 gap-3">
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">24h Network Volume</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.NetworkVolume }</div>
+					<div class="text-[10px] text-emerald-600 font-medium mt-0.5">{ data.VolumeChange }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Active Trustlines</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.Trustlines }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">DEX Liquidity</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.DEXLiquidity }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Assets</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.TotalAssets }</div>
+				</div>
+			</div>
+
+			<!-- Filter controls -->
+			<div class="anim d2 mb-6 flex items-center gap-3">
+				<div class="flex items-center gap-1">
+					<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm">All</button>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">Classic</button>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-violet-600 shadow-sm hover:bg-violet-50">SEP-41</button>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-amber-600 shadow-sm hover:bg-amber-50">LP Tokens</button>
+				</div>
+				<div class="flex-1"></div>
+				<div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 shadow-sm">
+					<svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+					<input type="text" placeholder="Search assets..." class="text-[12px] text-gray-900 placeholder-gray-400 outline-none bg-transparent w-40"/>
+				</div>
+			</div>
+
+			<!-- Asset table -->
+			<div class="anim d3 mb-6">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+						<div class="w-10">#</div>
+						<div class="w-[180px]">Asset</div>
+						<div class="w-24 text-right">Price</div>
+						<div class="w-20 text-right">24h</div>
+						<div class="w-28 text-right">Market Cap</div>
+						<div class="w-24 text-right">Volume</div>
+						<div class="w-28 text-right">Supply</div>
+						<div class="w-20 text-right">Holders</div>
+						<div class="w-16 text-right">Type</div>
+					</div>
+					for _, a := range data.Assets {
+						<div class="detail-row flex items-center px-5 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50/50">
+							<div class="w-10"><span class="text-xs font-semibold text-gray-400 tabular">{ fmt.Sprintf("%d", a.Rank) }</span></div>
+							<div class="w-[180px]">
+								<div class="flex items-center gap-2.5">
+									<div class={ "flex h-7 w-7 items-center justify-center rounded-full text-white text-[9px] font-bold", a.BgColor }>{ a.Initial }</div>
+									<div>
+										<div class="text-sm font-semibold text-gray-900">{ a.Code }</div>
+										<div class="text-[10px] text-gray-400">{ a.Name }</div>
+									</div>
+								</div>
+							</div>
+							<div class="w-24 text-right font-mono text-sm text-gray-900 tabular">{ a.Price }</div>
+							<div class="w-20 text-right">
+								if a.IsUp {
+									<span class="text-xs font-semibold text-emerald-600 tabular">{ a.Change }</span>
+								} else {
+									<span class="text-xs font-semibold text-red-500 tabular">{ a.Change }</span>
+								}
+							</div>
+							<div class="w-28 text-right text-xs text-gray-700 tabular">{ a.MarketCap }</div>
+							<div class="w-24 text-right text-xs text-gray-700 tabular">{ a.Volume }</div>
+							<div class="w-28 text-right font-mono text-xs text-gray-500 tabular">{ a.Supply }</div>
+							<div class="w-20 text-right text-xs text-gray-500 tabular">{ a.Holders }</div>
+							<div class="w-16 text-right">
+								@components.Badge(a.TypeBadge, a.TypeColor)
+							</div>
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- Pagination -->
+			@components.Pagination(data.CurrentPage, data.TotalPages, "/assets")
+		</main>
+	}
+}

@@ -1,0 +1,328 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type SmartAccountData struct {
+	Name          string
+	ContractID    string
+	TotalBalance  string
+	BalanceCents  string
+	Signers       []SmartSigner
+	Policies      []SmartPolicy
+	SessionKeys   []SmartSessionKey
+	// Thresholds
+	LowThreshold  string
+	MedThreshold  string
+	HighThreshold string
+	MasterWeight  string
+	// Security log
+	SecurityLog   []SecurityEvent
+}
+
+type SmartSigner struct {
+	Name       string
+	Role       string
+	RoleColor  string
+	Address    string
+	KeyType    string
+	Weight     string
+}
+
+type SmartPolicy struct {
+	Name        string
+	Description string
+	IsActive    bool
+	// For spending limit
+	Limit       string
+	Spent       string
+	Remaining   string
+	SpentPct    string
+	ResetsIn    string
+	// For allowlist
+	Contracts   []AllowedContract
+}
+
+type AllowedContract struct {
+	Initial  string
+	InitialBg string
+	Name     string
+	Address  string
+	Methods  string
+}
+
+type SmartSessionKey struct {
+	Name        string
+	Description string
+	Key         string
+	SpendLimit  string
+	Used        string
+	UsedPct     string
+	Expires     string
+	Scope       string
+}
+
+type SecurityEvent struct {
+	Action    string
+	Detail    string
+	Time      string
+	Status    string
+	StatusColor string
+}
+
+templ SmartAccount(data SmartAccountData) {
+	@layouts.Base("Smart Account — Prism", "explorer") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Header -->
+			<div class="anim mb-8 flex items-center justify-between">
+				<div class="flex flex-col">
+					<span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">My Portfolio</span>
+					<div class="mt-1 flex items-center gap-3">
+						<h1 class="text-2xl font-semibold tracking-tight text-gray-900">{ data.Name }</h1>
+						<div class="flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-violet-700 ring-1 ring-violet-100">
+							<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+							Smart Account
+						</div>
+					</div>
+					<div class="mt-1 flex items-center gap-2">
+						<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
+						<span class="font-mono text-sm text-gray-500">{ data.ContractID }</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Balance -->
+			<div class="anim d1 mb-10">
+				<div class="text-sm font-medium text-gray-500 mb-1">Total Balance</div>
+				<div class="flex items-baseline">
+					<span class="text-[56px] font-semibold leading-none tracking-tight text-gray-900">{ data.TotalBalance }</span>
+					<span class="text-[28px] font-medium leading-none text-gray-400">{ data.BalanceCents }</span>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d2">
+				@components.TabBar([]components.Tab{
+					{ID: "overview", Label: "Overview"},
+					{ID: "security", Label: "Account Security"},
+					{ID: "activity", Label: "Activity"},
+					{ID: "developer", Label: "Developer Data"},
+				}, "security")
+			</div>
+
+			<!-- Content: 2/3 + 1/3 -->
+			<div class="grid grid-cols-1 gap-10 lg:grid-cols-3">
+				<!-- Left column -->
+				<div class="lg:col-span-2 space-y-10">
+					<!-- Active Signers -->
+					<div class="anim d3">
+						<div class="mb-4 flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<h3 class="text-sm font-semibold text-gray-900">Active Signers</h3>
+								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d registered", len(data.Signers)) }</span>
+							</div>
+						</div>
+						<div class="space-y-3">
+							for _, s := range data.Signers {
+								<div class="flex items-center justify-between rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 hover:border-gray-200 hover:shadow-sm">
+									<div class="flex items-center gap-4">
+										<div class="flex flex-col">
+											<div class="flex items-center gap-2">
+												<span class="text-sm font-semibold text-gray-900">{ s.Name }</span>
+												@components.Badge(s.Role, s.RoleColor)
+											</div>
+											<div class="flex items-center gap-2 mt-0.5">
+												<span class="font-mono text-xs text-gray-500">{ s.Address }</span>
+												<span class="text-[10px] text-gray-400">· { s.KeyType }</span>
+											</div>
+										</div>
+									</div>
+									<div class="text-right">
+										<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Weight</div>
+										<div class="text-lg font-semibold text-gray-900">{ s.Weight }</div>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+
+					<!-- Authorization Policies -->
+					<div class="anim d4">
+						<div class="mb-4 flex items-center gap-2">
+							<h3 class="text-sm font-semibold text-gray-900">Authorization Policies</h3>
+							<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d active", len(data.Policies)) }</span>
+						</div>
+						<div class="space-y-3">
+							for _, p := range data.Policies {
+								<div class="rounded-xl border border-gray-100 bg-[#FAFAFA] p-5 hover:border-gray-200 hover:shadow-sm">
+									<div class="flex items-center justify-between mb-4">
+										<div>
+											<span class="text-sm font-semibold text-gray-900">{ p.Name }</span>
+											<p class="text-xs text-gray-500 mt-0.5">{ p.Description }</p>
+										</div>
+										if p.IsActive {
+											<div class="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+												<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+												Active
+											</div>
+										}
+									</div>
+									if p.Limit != "" {
+										<div class="grid grid-cols-3 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
+											<div>
+												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Limit</div>
+												<div class="flex items-baseline">
+													<span class="text-lg font-semibold text-gray-900">{ p.Limit }</span>
+													<span class="ml-1 text-xs font-medium text-gray-500">XLM</span>
+												</div>
+											</div>
+											<div>
+												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spent Today</div>
+												<div class="flex items-baseline">
+													<span class="text-lg font-semibold text-gray-900">{ p.Spent }</span>
+													<span class="ml-1 text-xs font-medium text-gray-500">XLM</span>
+												</div>
+											</div>
+											<div>
+												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Resets In</div>
+												<div class="text-lg font-semibold text-gray-900">{ p.ResetsIn }</div>
+											</div>
+										</div>
+										<div class="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+											<div class="h-full rounded-full bg-gray-900" style={ "width:" + p.SpentPct }></div>
+										</div>
+										<div class="mt-1 flex justify-between text-[10px] font-medium text-gray-400">
+											<span>{ p.SpentPct } used</span>
+											<span>{ p.Remaining } XLM remaining</span>
+										</div>
+									}
+									if len(p.Contracts) > 0 {
+										<div class="space-y-2">
+											for _, c := range p.Contracts {
+												<div class="flex items-center justify-between rounded-lg bg-white p-3 ring-1 ring-gray-100">
+													<div class="flex items-center gap-2">
+														<div class={ "flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold", c.InitialBg }>{ c.Initial }</div>
+														<span class="text-sm font-medium text-gray-900">{ c.Name }</span>
+														<span class="font-mono text-[10px] text-gray-400">{ c.Address }</span>
+													</div>
+													<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500">{ c.Methods }</span>
+												</div>
+											}
+										</div>
+									}
+								</div>
+							}
+						</div>
+					</div>
+
+					<!-- Session Keys -->
+					<div class="anim d5">
+						<div class="mb-4 flex items-center gap-2">
+							<h3 class="text-sm font-semibold text-gray-900">Session Keys</h3>
+							<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-800">{ fmt.Sprintf("%d active", len(data.SessionKeys)) }</span>
+						</div>
+						for _, sk := range data.SessionKeys {
+							<div class="rounded-xl border border-yellow-100 bg-yellow-50/30 p-5 ring-1 ring-yellow-100/50">
+								<div class="flex items-center justify-between mb-4">
+									<div>
+										<span class="text-sm font-semibold text-gray-900">{ sk.Name }</span>
+										<p class="text-xs text-gray-500 mt-0.5">{ sk.Description }</p>
+									</div>
+									<button class="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50">Revoke</button>
+								</div>
+								<div class="grid grid-cols-4 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
+									<div>
+										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Key</div>
+										<span class="font-mono text-xs text-gray-700">{ sk.Key }</span>
+									</div>
+									<div>
+										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spend Limit</div>
+										<div class="flex items-baseline">
+											<span class="text-sm font-semibold text-gray-900">{ sk.SpendLimit }</span>
+											<span class="ml-1 text-[10px] font-medium text-gray-500">XLM</span>
+										</div>
+									</div>
+									<div>
+										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Used</div>
+										<div class="flex items-baseline">
+											<span class="text-sm font-semibold text-gray-900">{ sk.Used }</span>
+											<span class="ml-1 text-[10px] font-medium text-gray-500">XLM</span>
+										</div>
+									</div>
+									<div>
+										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Expires</div>
+										<div class="text-sm font-semibold text-gray-900">{ sk.Expires }</div>
+									</div>
+								</div>
+								<div class="mt-3 h-1.5 w-full rounded-full bg-yellow-100 overflow-hidden">
+									<div class="h-full rounded-full bg-yellow-500" style={ "width:" + sk.UsedPct }></div>
+								</div>
+								<div class="mt-1 flex justify-between text-[10px] font-medium text-gray-400">
+									<span>{ sk.UsedPct } of session budget used</span>
+									<span>Scoped to: { sk.Scope }</span>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+
+				<!-- Right column: Thresholds + Security Log -->
+				<div class="space-y-6 anim d3">
+					<!-- Threshold Visualization -->
+					<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+						<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">Signing Thresholds</div>
+						<div class="flex justify-center mb-4">
+							<div class="relative h-24 w-24">
+								<svg class="h-24 w-24" viewBox="0 0 100 100">
+									<circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" stroke-width="8"></circle>
+									<circle cx="50" cy="50" r="40" fill="none" stroke="#111" stroke-width="8" stroke-dasharray="251" stroke-dashoffset="50" transform="rotate(-90 50 50)"></circle>
+								</svg>
+								<div class="absolute inset-0 flex items-center justify-center">
+									<div class="text-center">
+										<div class="text-lg font-bold text-gray-900">{ data.MasterWeight }</div>
+										<div class="text-[8px] text-gray-400">MASTER</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="space-y-3">
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">Low Threshold</span>
+								<span class="text-xs font-semibold text-gray-900 tabular">{ data.LowThreshold }</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">Med Threshold</span>
+								<span class="text-xs font-semibold text-gray-900 tabular">{ data.MedThreshold }</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">High Threshold</span>
+								<span class="text-xs font-semibold text-gray-900 tabular">{ data.HighThreshold }</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Security Log -->
+					<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+						<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">Security Log</div>
+						<div class="space-y-0">
+							for _, ev := range data.SecurityLog {
+								<div class="flex items-center justify-between py-2.5 border-b border-gray-50">
+									<div class="flex flex-col">
+										<span class="text-xs font-medium text-gray-900">{ ev.Action }</span>
+										<span class="text-[10px] text-gray-400">{ ev.Detail }</span>
+									</div>
+									<div class="text-right">
+										<span class="text-[10px] text-gray-400">{ ev.Time }</span>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		</main>
+	}
+}

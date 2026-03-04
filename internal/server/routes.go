@@ -48,7 +48,7 @@ func (app *Application) Routes() http.Handler {
 	// ─────────────────────────────────────────────
 
 	mux.HandleFunc("GET /assets", h.AssetDirectory)
-	mux.HandleFunc("GET /assets/{code}-{issuer}", h.AssetDetail)
+	mux.HandleFunc("GET /assets/{slug}", h.AssetDetail)
 
 	// ─────────────────────────────────────────────
 	// Contracts routes (Soroban)
@@ -71,6 +71,12 @@ func (app *Application) Routes() http.Handler {
 
 	mux.HandleFunc("GET /events", h.EventsFirehose)
 	mux.HandleFunc("GET /state", h.StateRentTracker)
+
+	// ─────────────────────────────────────────────
+	// NFT routes
+	// ─────────────────────────────────────────────
+
+	mux.HandleFunc("GET /nft", h.NftGallery)
 
 	// ─────────────────────────────────────────────
 	// htmx partial endpoints

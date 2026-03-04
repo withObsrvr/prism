@@ -33,9 +33,12 @@ templ Base(title string, activeNav string) {
 		@topNav(activeNav)
 
 		<!-- Page Content -->
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main>
 			{ children... }
 		</main>
+
+		<!-- Footer -->
+		@footer()
 
 		<!-- Slide-out panel container (htmx swaps content here) -->
 		<div id="slideout-backdrop" class="hidden fixed inset-0 bg-black/8 backdrop-blur-[1px] z-40"
@@ -45,6 +48,30 @@ templ Base(title string, activeNav string) {
 
 	</body>
 	</html>
+}
+
+templ footer() {
+	<footer class="border-t border-gray-200 bg-white">
+		<div class="mx-auto max-w-[1320px] px-8 py-6 flex items-center justify-between">
+			<div class="flex items-center gap-6">
+				<div class="flex items-center gap-2">
+					<div class="flex h-5 w-5 items-center justify-center rounded bg-[#111] text-white">
+						<svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"></polygon></svg>
+					</div>
+					<span class="text-[12px] font-semibold text-gray-900">Prism</span>
+					<span class="text-[11px] text-gray-400">by Obsrvr</span>
+				</div>
+				<a href="#" class="text-[11px] text-gray-400 hover:text-gray-900 transition-colors">API Docs</a>
+				<a href="#" class="text-[11px] text-gray-400 hover:text-gray-900 transition-colors">GitHub</a>
+				<a href="#" class="text-[11px] text-gray-400 hover:text-gray-900 transition-colors">Status</a>
+			</div>
+			<div class="flex items-center gap-4 text-[11px] text-gray-400">
+				<span>Powered by Obsrvr Lake</span>
+				<span class="text-gray-300">&bull;</span>
+				<span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>All systems operational</span>
+			</div>
+		</div>
+	</footer>
 }
 
 // topNav renders the sticky navigation bar.

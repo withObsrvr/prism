@@ -1,0 +1,271 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type ContractDetailData struct {
+	Name           string
+	Address        string
+	IsVerified     bool
+	Tags           []string
+	DeployedAt     string
+	DeployLedger   string
+	TotalInvocations string
+	StorageEntries string
+	StateSize      string
+	MonthlyRent    string
+	LastInvoked    string
+	Functions      []ContractFunction
+	Invocations    []ContractInvocation
+	StorageItems   []ContractStorageItem
+	CodePreview    string
+	WASMHash       string
+}
+
+type ContractFunction struct {
+	Name       string
+	Calls      string
+	Pct        string
+	AvgCPU     string
+	LastCalled string
+}
+
+type ContractInvocation struct {
+	TxHash    string
+	ShortHash string
+	Function  string
+	Caller    string
+	Status    string
+	Age       string
+}
+
+type ContractStorageItem struct {
+	Key      string
+	Type     string // "Instance", "Persistent", "Temporary"
+	TypeColor string
+	Size     string
+	TTL      string
+}
+
+templ ContractDetail(data ContractDetailData) {
+	@layouts.Base(data.Name + " — Prism", "contracts") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Header -->
+			<div class="anim mb-6">
+				@components.BackNav("Back to Contracts", "/contracts")
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 shadow-sm">
+							<svg class="h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+						</div>
+						<div>
+							<div class="flex items-center gap-2">
+								<span class="text-xl font-bold text-gray-900">{ data.Name }</span>
+								if data.IsVerified {
+									@components.Badge("Verified", "emerald")
+								}
+								for _, tag := range data.Tags {
+									@components.Badge(tag, "violet")
+								}
+							</div>
+							<div class="flex items-center gap-2 mt-1">
+								<span class="font-mono text-[12px] text-gray-500">{ data.Address }</span>
+								<span class="text-[10px] text-gray-400">Deployed { data.DeployedAt } · Ledger { data.DeployLedger }</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Quick Stats -->
+			<div class="anim d1 mb-8 grid grid-cols-5 gap-3">
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Invocations</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.TotalInvocations }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Storage Entries</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.StorageEntries }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">State Size</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.StateSize }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Monthly Rent</div>
+					<div class="text-lg font-semibold text-gray-900 tabular">{ data.MonthlyRent }</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Last Invoked</div>
+					<div class="text-lg font-semibold text-gray-900">{ data.LastInvoked }</div>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d2">
+				@components.TabBar([]components.Tab{
+					{ID: "overview", Label: "Overview"},
+					{ID: "invocations", Label: "Invocations"},
+					{ID: "events", Label: "Events (CAP-67)"},
+					{ID: "storage", Label: "Storage"},
+					{ID: "code", Label: "Code"},
+				}, "overview")
+			</div>
+
+			<!-- Top Functions -->
+			<div class="anim d3 mb-10">
+				@components.SectionHeader("Top Functions")
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+						<div class="w-[200px]">Function</div>
+						<div class="w-24 text-right">Calls</div>
+						<div class="w-20 text-right">%</div>
+						<div class="w-28 text-right">Avg CPU</div>
+						<div class="flex-1 text-right">Last Called</div>
+					</div>
+					for i, fn := range data.Functions {
+						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.Functions)-1) }>
+							<div class="w-[200px]"><span class="font-mono text-sm font-medium text-violet-600">{ fn.Name }</span></div>
+							<div class="w-24 text-right"><span class="font-mono text-sm font-semibold text-gray-900 tabular">{ fn.Calls }</span></div>
+							<div class="w-20 text-right"><span class="text-xs text-gray-500 tabular">{ fn.Pct }</span></div>
+							<div class="w-28 text-right"><span class="font-mono text-xs text-gray-500 tabular">{ fn.AvgCPU }</span></div>
+							<div class="flex-1 text-right"><span class="text-xs text-gray-500">{ fn.LastCalled }</span></div>
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- Recent Invocations -->
+			<div class="anim d4 mb-10">
+				@components.SectionHeader("Recent Invocations")
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					for i, inv := range data.Invocations {
+						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.Invocations)-1) }>
+							<div class="flex-1">
+								<div class="flex items-center gap-2">
+									<a href={ templ.SafeURL("/tx/" + inv.TxHash) } class="font-mono text-xs text-gray-900 hover:text-violet-600">{ inv.ShortHash }</a>
+									<span class="font-mono text-xs text-violet-600">{ inv.Function }</span>
+									@components.Badge(inv.Status, "emerald")
+								</div>
+								<span class="font-mono text-[10px] text-gray-400 mt-0.5">by { inv.Caller }</span>
+							</div>
+							<span class="text-[10px] text-gray-400">{ inv.Age }</span>
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- Storage Preview -->
+			<div class="anim d5 mb-10">
+				@components.SectionHeader("Storage Entries")
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+						<div class="flex-1">Key</div>
+						<div class="w-28">Type</div>
+						<div class="w-20 text-right">Size</div>
+						<div class="w-28 text-right">TTL</div>
+					</div>
+					for i, s := range data.StorageItems {
+						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.StorageItems)-1) }>
+							<div class="flex-1"><span class="font-mono text-xs text-gray-900">{ s.Key }</span></div>
+							<div class="w-28">
+								@components.Badge(s.Type, s.TypeColor)
+							</div>
+							<div class="w-20 text-right"><span class="text-xs text-gray-500 tabular">{ s.Size }</span></div>
+							<div class="w-28 text-right"><span class="text-xs text-gray-500 tabular">{ s.TTL }</span></div>
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- Code Preview -->
+			<div class="anim d6 mb-10">
+				@components.SectionHeader("Code & WASM")
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-[#FAFAFA]">
+						<span class="text-xs text-gray-500">WASM Hash: <span class="font-mono text-gray-700">{ data.WASMHash }</span></span>
+						@components.Badge("Rust", "amber")
+					</div>
+					<pre class="p-5 text-xs font-mono text-gray-700 overflow-x-auto bg-gray-50/50 leading-relaxed">{ data.CodePreview }</pre>
+				</div>
+			</div>
+
+			<!-- Context -->
+			<div class="anim d7 mb-10">
+				@components.SectionHeader("Context")
+				<div class="flex items-center gap-3 flex-wrap">
+					<a href="/events" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+						<span class="text-xs font-medium text-gray-700">Firehose: { data.Name } events</span>
+					</a>
+					<a href="/state" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+						<span class="text-xs font-medium text-gray-700">State &amp; Rent Tracker</span>
+					</a>
+					<a href="/assets" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+						<span class="text-xs font-medium text-gray-700">Asset Directory</span>
+					</a>
+				</div>
+			</div>
+		</main>
+	}
+}
+
+// ContractList stub — just reuse ContractDetail page pattern but simplified.
+type ContractListData struct {
+	Contracts []ContractListItem
+}
+
+type ContractListItem struct {
+	Rank       int
+	Name       string
+	Address    string
+	Tag        string
+	TagColor   string
+	Invocations string
+	Change     string
+	IsPositive bool
+}
+
+templ ContractList(data ContractListData) {
+	@layouts.Base("Contracts — Prism", "contracts") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<div class="anim mb-6">
+				<h1 class="text-2xl font-bold text-gray-900">Smart Contracts</h1>
+				<p class="text-sm text-gray-500 mt-1">Browse deployed Soroban smart contracts on Stellar</p>
+			</div>
+			<div class="anim d1 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+					<div class="w-10">#</div>
+					<div class="flex-1">Contract</div>
+					<div class="w-28 text-right">7d Invocations</div>
+					<div class="w-20 text-right">Change</div>
+				</div>
+				for _, c := range data.Contracts {
+					<a href={ templ.SafeURL("/contracts/" + c.Address) } class="detail-row flex items-center px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50">
+						<div class="w-10"><span class="text-xs font-semibold text-gray-400 tabular">{ fmt.Sprintf("%d", c.Rank) }</span></div>
+						<div class="flex-1">
+							<div class="flex items-center gap-2">
+								<span class="text-sm font-semibold text-gray-900">{ c.Name }</span>
+								@components.Badge(c.Tag, c.TagColor)
+							</div>
+							<span class="font-mono text-[10px] text-gray-400">{ c.Address }</span>
+						</div>
+						<div class="w-28 text-right"><span class="font-mono text-sm font-semibold text-gray-900 tabular">{ c.Invocations }</span></div>
+						<div class="w-20 text-right">
+							if c.IsPositive {
+								<span class="text-xs font-semibold text-emerald-600 tabular">{ c.Change }</span>
+							} else {
+								<span class="text-xs font-semibold text-red-500 tabular">{ c.Change }</span>
+							}
+						</div>
+					</a>
+				}
+			</div>
+		</main>
+	}
+}

@@ -1,0 +1,140 @@
+package pages
+
+import (
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type EventsFirehoseData struct {
+	MatchedEvents string
+	LedgerStart   string
+	LedgerEnd     string
+	EventsPerSec  string
+	Filters       []EventFilter
+	Events        []FirehoseEvent
+}
+
+type EventFilter struct {
+	Label string
+	Color string // "violet", "cyan"
+}
+
+type FirehoseEvent struct {
+	Time         string
+	Type         string
+	TypeColor    string
+	ContractName string
+	ContractAddr string
+	TopicsHTML   string
+	Ledger       string
+	TxShort      string
+	TxHash       string
+	IsNew        bool
+}
+
+templ EventsFirehose(data EventsFirehoseData) {
+	@layouts.Base("Events Firehose — Prism", "devtools") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Toolbar -->
+			<div class="anim mb-4">
+				<div class="flex items-center justify-between gap-4">
+					<div class="flex items-center gap-3 flex-1">
+						<div class="relative flex-1 max-w-md">
+							<svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+							<input type="text" placeholder="Filter by contract, topic, tx hash..." class="h-8 w-full rounded-lg border border-gray-200 bg-[#FAFAFA] pl-9 pr-3 font-mono text-xs text-gray-900 placeholder-gray-400 shadow-sm outline-none"/>
+						</div>
+						<div class="flex items-center gap-1.5">
+							for _, f := range data.Filters {
+								<span class={ "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium ring-1", templ.KV("bg-violet-50 text-violet-700 ring-violet-200", f.Color == "violet"), templ.KV("bg-cyan-50 text-cyan-700 ring-cyan-200", f.Color == "cyan") }>
+									{ f.Label }
+								</span>
+							}
+							<button class="rounded-lg border border-dashed border-gray-300 px-2.5 py-1 text-[11px] font-medium text-gray-400 hover:border-gray-400 hover:text-gray-600">+ Add filter</button>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 flex-shrink-0">
+						<div class="flex items-center gap-2">
+							<div class="flex items-end gap-[2px] h-6">
+								for _, h := range []string{"4px","6px","8px","12px","10px","16px","22px","18px","14px","20px","24px","16px","8px","12px","20px","14px"} {
+									<div class="w-1 rounded-t-sm bg-emerald-500/60" style={ "height:" + h }></div>
+								}
+							</div>
+							<div class="flex flex-col">
+								<span class="text-xs font-semibold text-gray-900 tabular">~{ data.EventsPerSec }</span>
+								<span class="text-[9px] text-gray-400">events/s</span>
+							</div>
+						</div>
+						<div class="h-6 w-px bg-gray-200"></div>
+						<button class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm">
+							<span class="relative flex h-2 w-2">
+								<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+								<span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+							</span>
+							Streaming
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Stats bar -->
+			<div class="anim d1 border-b border-gray-100 bg-[#FAFAFA] rounded-lg px-5 py-2.5 mb-4">
+				<div class="flex items-center gap-6 text-[10px] font-medium text-gray-500">
+					<span class="flex items-center gap-1.5">
+						<span class="h-1.5 w-1.5 rounded-full bg-gray-900"></span>
+						Matched: <span class="font-semibold text-gray-900 tabular">{ data.MatchedEvents }</span> events
+					</span>
+					<span class="text-gray-300">|</span>
+					<span>Ledger range: <span class="font-mono text-gray-900">{ data.LedgerStart }</span> → <span class="font-mono text-gray-900">{ data.LedgerEnd }</span></span>
+					<span class="ml-auto text-gray-400">Showing latest 100 events</span>
+				</div>
+			</div>
+
+			<!-- Event table -->
+			<div class="anim d2">
+				<div class="flex items-center border-b border-gray-200 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+					<div class="w-[72px]">Time</div>
+					<div class="w-20">Type</div>
+					<div class="w-[140px]">Contract</div>
+					<div class="flex-1 min-w-[200px]">Topics &amp; Data</div>
+					<div class="w-24 text-right">Ledger</div>
+					<div class="w-16 text-right pr-1">Tx</div>
+				</div>
+
+				for _, ev := range data.Events {
+					<div class={ "flex items-center border-b border-gray-50 py-2.5", templ.KV("bg-emerald-50/30", ev.IsNew) }>
+						<div class="w-[72px]">
+							<span class="font-mono text-[11px] text-gray-500 tabular">{ ev.Time }</span>
+						</div>
+						<div class="w-20">
+							@eventTypeBadge(ev.Type, ev.TypeColor)
+						</div>
+						<div class="w-[140px]">
+							<div class="flex flex-col">
+								<span class="text-xs font-medium text-gray-900 truncate">{ ev.ContractName }</span>
+								<span class="font-mono text-[10px] text-gray-400 truncate">{ ev.ContractAddr }</span>
+							</div>
+						</div>
+						<div class="flex-1 min-w-[200px]">
+							@templ.Raw(ev.TopicsHTML)
+						</div>
+						<div class="w-24 text-right">
+							<span class="font-mono text-[11px] text-gray-700 tabular">{ ev.Ledger }</span>
+						</div>
+						<div class="w-16 text-right pr-1">
+							<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-[10px] text-gray-400 hover:text-gray-900">{ ev.TxShort }</a>
+						</div>
+					</div>
+				}
+			</div>
+		</main>
+	}
+}
+
+templ eventTypeBadge(label, color string) {
+	<span class={ "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold",
+		templ.KV("bg-cyan-50 text-cyan-700", color == "transfer"),
+		templ.KV("bg-violet-50 text-violet-700", color == "contract"),
+		templ.KV("bg-emerald-50 text-emerald-700", color == "mint"),
+		templ.KV("bg-amber-50 text-amber-700", color == "system"),
+		templ.KV("bg-blue-50 text-blue-700", color == "approve"),
+	}>{ label }</span>
+}
