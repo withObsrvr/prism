@@ -1,0 +1,267 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type NftGalleryData struct {
+	CollectionName string
+	Description    string
+	ContractID     string
+	IsVerified     bool
+	Standard       string
+	// Stats
+	FloorPrice     string
+	FloorUSD       string
+	TotalVolume    string
+	VolumeUSD      string
+	ItemCount      string
+	HolderCount    string
+	HolderPct      string
+	RentStatus     string
+	RentTTL        string
+	// Featured
+	Featured       NftItem
+	// Gallery
+	Items          []NftCard
+}
+
+type NftItem struct {
+	TokenID    string
+	Name       string
+	Description string
+	Owner      string
+	TokenStandard string
+	LastTransfer string
+	MetadataStorage string
+	Traits     []NftTrait
+	Provenance []NftProvenance
+}
+
+type NftTrait struct {
+	Name   string
+	Value  string
+	Rarity string
+}
+
+type NftProvenance struct {
+	Action string
+	Date   string
+	Detail string
+}
+
+type NftCard struct {
+	TokenID string
+	Name    string
+	Floor   string
+	IsOwned bool
+	ArtClass string
+}
+
+templ NftGallery(data NftGalleryData) {
+	@layouts.Base("NFT Gallery — Prism", "explorer") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Back nav -->
+			<div class="anim mb-6">
+				@components.BackNav("Back to Portfolio", "/accounts")
+			</div>
+
+			<!-- Collection identity -->
+			<div class="anim d1 flex items-start justify-between gap-6 mb-8">
+				<div class="flex items-center gap-5">
+					<div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-rose-500 shadow-md ring-1 ring-black/5">
+						<svg class="h-8 w-8 text-white/90" viewBox="0 0 32 32" fill="none">
+							<circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="1.5"></circle>
+							<circle cx="16" cy="16" r="5" fill="currentColor" opacity="0.4"></circle>
+							<path d="M16 6 L26 16 L16 26 L6 16 Z" stroke="currentColor" stroke-width="1" fill="none"></path>
+						</svg>
+					</div>
+					<div class="flex flex-col">
+						<div class="flex items-center gap-3 mb-1">
+							<h1 class="text-2xl font-semibold tracking-tight text-gray-900">{ data.CollectionName }</h1>
+							if data.IsVerified {
+								@components.Badge("Verified", "emerald")
+							}
+							@components.Badge(data.Standard, "violet")
+						</div>
+						<p class="text-sm text-gray-500 mb-1.5 max-w-md">{ data.Description }</p>
+						<div class="flex items-center gap-2">
+							<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
+							<span class="font-mono text-xs text-gray-500">{ data.ContractID }</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Stats -->
+			<div class="anim d2 mb-8 grid grid-cols-5 gap-4">
+				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Floor Price</span>
+					<div class="flex items-baseline">
+						<span class="text-xl font-semibold text-gray-900">{ data.FloorPrice }</span>
+						<span class="ml-1 text-sm font-medium text-gray-400">XLM</span>
+					</div>
+					<span class="mt-0.5 text-[10px] text-gray-400">~{ data.FloorUSD }</span>
+				</div>
+				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Volume</span>
+					<div class="flex items-baseline">
+						<span class="text-xl font-semibold text-gray-900">{ data.TotalVolume }</span>
+						<span class="ml-1 text-sm font-medium text-gray-400">XLM</span>
+					</div>
+					<span class="mt-0.5 text-[10px] text-gray-400">~{ data.VolumeUSD }</span>
+				</div>
+				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Items</span>
+					<span class="text-xl font-semibold text-gray-900">{ data.ItemCount }</span>
+					<span class="mt-0.5 text-[10px] text-gray-400">Max supply</span>
+				</div>
+				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Holders</span>
+					<span class="text-xl font-semibold text-gray-900">{ data.HolderCount }</span>
+					<span class="mt-0.5 text-[10px] text-gray-400">{ data.HolderPct } unique</span>
+				</div>
+				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
+					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Rent Status</span>
+					<div class="flex items-center gap-1.5 mt-0.5">
+						<span class="relative flex h-2.5 w-2.5">
+							<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+							<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+						</span>
+						<span class="text-sm font-semibold text-gray-900">{ data.RentStatus }</span>
+					</div>
+					<span class="mt-0.5 text-[10px] text-gray-400">TTL: ~{ data.RentTTL }</span>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d3">
+				@components.TabBar([]components.Tab{
+					{ID: "collection", Label: "Collection"},
+					{ID: "activity", Label: "Activity"},
+					{ID: "holders", Label: "Holders"},
+					{ID: "contract", Label: "Contract Data"},
+				}, "collection")
+			</div>
+
+			<!-- Featured NFT -->
+			<div class="anim d4 mb-10 grid grid-cols-5 gap-8">
+				<!-- Art -->
+				<div class="col-span-2">
+					<div class="aspect-square w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] shadow-lg ring-1 ring-black/5 relative">
+						<svg class="absolute inset-0 h-full w-full" viewBox="0 0 400 400" fill="none">
+							<rect x="50" y="50" width="120" height="120" stroke="rgba(255,255,255,0.15)" stroke-width="1" transform="rotate(15 110 110)"></rect>
+							<circle cx="200" cy="200" r="100" stroke="rgba(255,255,255,0.12)" stroke-width="1"></circle>
+							<circle cx="200" cy="200" r="60" stroke="rgba(233,69,96,0.3)" stroke-width="2"></circle>
+							<circle cx="200" cy="200" r="20" fill="rgba(233,69,96,0.15)"></circle>
+							<polygon points="200,80 280,240 120,240" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" fill="none"></polygon>
+						</svg>
+						<div class="absolute bottom-4 left-4 rounded-lg bg-black/40 px-3 py-1.5 backdrop-blur-sm">
+							<span class="font-mono text-sm font-medium text-white/90">#{ data.Featured.TokenID }</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Detail -->
+				<div class="col-span-3 flex flex-col">
+					<div class="mb-1 flex items-center gap-2">
+						<span class="text-xs font-medium text-gray-500">{ data.CollectionName }</span>
+						<span class="text-xs text-gray-300">/</span>
+						<span class="text-xs font-medium text-gray-900">#{ data.Featured.TokenID }</span>
+					</div>
+					<h2 class="mb-2 text-xl font-semibold tracking-tight text-gray-900">{ data.Featured.Name }</h2>
+					<p class="mb-5 text-sm text-gray-500">{ data.Featured.Description }</p>
+
+					<!-- Details -->
+					<div class="mb-6 flex flex-col border-t border-gray-100">
+						<div class="flex items-center justify-between py-3 border-b border-gray-100">
+							<span class="text-sm text-gray-500">Owner</span>
+							<span class="font-mono text-sm text-gray-900">{ data.Featured.Owner }</span>
+						</div>
+						<div class="flex items-center justify-between py-3 border-b border-gray-100">
+							<span class="text-sm text-gray-500">Token Standard</span>
+							<span class="text-sm font-medium text-gray-900">{ data.Featured.TokenStandard }</span>
+						</div>
+						<div class="flex items-center justify-between py-3 border-b border-gray-100">
+							<span class="text-sm text-gray-500">Token ID</span>
+							<span class="font-mono text-sm text-gray-900">{ data.Featured.TokenID }</span>
+						</div>
+						<div class="flex items-center justify-between py-3 border-b border-gray-100">
+							<span class="text-sm text-gray-500">Last Transfer</span>
+							<span class="text-sm font-medium text-gray-600">{ data.Featured.LastTransfer }</span>
+						</div>
+						<div class="flex items-center justify-between py-3">
+							<span class="text-sm text-gray-500">Metadata Storage</span>
+							<div class="flex items-center gap-1.5">
+								<span class="text-sm font-medium text-gray-900">{ data.Featured.MetadataStorage }</span>
+								@components.Badge("Permanent", "emerald")
+							</div>
+						</div>
+					</div>
+
+					<!-- Traits -->
+					<div class="mb-5">
+						<h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Traits</h3>
+						<div class="flex flex-wrap gap-2">
+							for _, t := range data.Featured.Traits {
+								<div class="rounded-lg border border-gray-100 bg-[#FAFAFA] px-3 py-2">
+									<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{ t.Name }</div>
+									<div class="text-sm font-semibold text-gray-900">{ t.Value }</div>
+									<div class="text-[10px] text-gray-400 mt-0.5">{ t.Rarity } have this</div>
+								</div>
+							}
+						</div>
+					</div>
+
+					<!-- Provenance -->
+					<div>
+						<h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Provenance</h3>
+						for _, p := range data.Featured.Provenance {
+							<div class="flex items-center justify-between border-b border-gray-100 py-2.5">
+								<div class="flex flex-col">
+									<span class="text-xs font-medium text-gray-900">{ p.Action }</span>
+									<span class="text-[10px] text-gray-500">{ p.Date }</span>
+								</div>
+								<span class="font-mono text-[10px] text-gray-400">{ p.Detail }</span>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+
+			<!-- Gallery Grid -->
+			<div class="anim d5 border-t border-gray-100 pt-8 mb-10">
+				<div class="mb-4 flex items-center justify-between">
+					<h3 class="text-sm font-semibold text-gray-900">All Items</h3>
+					<span class="text-xs text-gray-400">{ data.ItemCount } items</span>
+				</div>
+				<div class="grid grid-cols-4 gap-4">
+					for i, nft := range data.Items {
+						<div class={ "rounded-xl bg-white shadow-sm overflow-hidden cursor-pointer", templ.KV("border-2 border-gray-900 shadow-md", i == 0), templ.KV("border border-gray-100 hover:shadow-md", i != 0) }>
+							<div class={ "aspect-square w-full relative", templ.KV("bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]", nft.ArtClass == "hero"), templ.KV("bg-gradient-to-br from-violet-400 to-blue-500", nft.ArtClass == "cool"), templ.KV("bg-gradient-to-br from-amber-400 to-orange-500", nft.ArtClass == "warm"), templ.KV("bg-gradient-to-br from-emerald-400 to-cyan-500", nft.ArtClass == "nature") }>
+								<svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+									<polygon points={ fmt.Sprintf("100,30 %d,140 %d,140", 130+i*10, 70-i*5) } stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"></polygon>
+									<circle cx="100" cy="100" r={ fmt.Sprintf("%d", 30+i*5) } stroke="rgba(255,255,255,0.15)" stroke-width="1"></circle>
+								</svg>
+								<div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+									<span class="font-mono text-[11px] text-white/90">#{ nft.TokenID }</span>
+								</div>
+							</div>
+							<div class="px-3 py-3">
+								<div class="text-sm font-semibold text-gray-900 truncate">{ nft.Name }</div>
+								<div class="mt-1 flex items-center justify-between">
+									<span class="text-xs text-gray-500">Floor: { nft.Floor }</span>
+									if nft.IsOwned {
+										<span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">Owned</span>
+									}
+								</div>
+							</div>
+						</div>
+					}
+				</div>
+			</div>
+		</main>
+	}
+}

@@ -102,14 +102,20 @@ These routes return HTML fragments, not full pages:
 
 ### Prerequisites
 
-- Go 1.26+
-- [templ](https://templ.guide/) (`go install github.com/a-h/templ/cmd/templ@latest`)
-- Node.js (for Tailwind CSS CLI)
-- [air](https://github.com/air-verse/air) (optional, for live reload)
+- [Nix](https://nixos.org/download/) with flakes enabled
 
-### Run
+### Setup
 
 ```bash
+# Enter the development shell (provides Go, templ, Node.js, air, etc.)
+nix develop
+
+# Install npm dependencies (Tailwind CSS)
+npm install
+
+# Install Go dependencies
+go mod tidy
+
 # Generate templ files and build Tailwind
 make generate
 make css

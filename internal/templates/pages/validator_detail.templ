@@ -1,0 +1,304 @@
+package pages
+
+import (
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+type ValidatorDetailData struct {
+	Name           string
+	NodeType       string
+	NodeID         string
+	ShortNodeID    string
+	StatusBadge    string
+	Badges         []string
+	// Stats
+	NodeIndex      string
+	IndexWidth     string
+	Validating24H  string
+	Val24HWidth    string
+	Validating30D  string
+	Val30DWidth    string
+	CrawlerReject  string
+	CrawlerWidth   string
+	TrustsCount    string
+	TrustsOrgs     string
+	TrustedByCount string
+	ExtLag         string
+	// Node details
+	Host           string
+	IP             string
+	ISP            string
+	Domain         string
+	Organization   string
+	Country        string
+	Version        string
+	Overlay        string
+	LedgerVer      string
+	HistoryURL     string
+	Discovered     string
+	// Org
+	OrgName        string
+	OrgNodes       []OrgNode
+	OrgUptime      string
+	OrgValidators  string
+	// Quorum
+	QuorumThreshold string
+	QuorumSets     []QuorumSet
+}
+
+type OrgNode struct {
+	Name      string
+	ShortID   string
+	Uptime    string
+	IsViewing bool
+}
+
+type QuorumSet struct {
+	Name      string
+	Threshold string
+	IsSelf    bool
+	Nodes     []QuorumNode
+}
+
+type QuorumNode struct {
+	Name   string
+	IsSelf bool
+	Status string // "up", "down"
+}
+
+templ ValidatorDetail(data ValidatorDetailData) {
+	@layouts.Base(data.Name + " — Prism", "network") {
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			<!-- Breadcrumb -->
+			<div class="anim">
+				@components.Breadcrumb([]components.BreadcrumbItem{
+					{Label: "Network", Href: "/network"},
+					{Label: data.Organization, Href: "/network"},
+					{Label: data.Name, Href: ""},
+				})
+			</div>
+
+			<!-- Validator identity -->
+			<div class="anim d1 flex items-center justify-between mb-7">
+				<div class="flex items-center gap-4">
+					<div class="relative">
+						<div class="flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-cyan-50 ring-1 ring-gray-200 shadow-sm">
+							<svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+						</div>
+						<div class="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white pulse-dot"></div>
+					</div>
+					<div>
+						<div class="flex items-center gap-2.5">
+							<span class="text-xl font-bold text-gray-900">{ data.Name }</span>
+							<span class="text-sm text-gray-400">{ data.NodeType }</span>
+						</div>
+						<div class="flex items-center gap-1.5 mt-0.5">
+							<span class="font-mono text-[12px] text-gray-500">{ data.NodeID }</span>
+						</div>
+						<div class="flex items-center gap-1.5 mt-2">
+							@components.Badge(data.StatusBadge, "emerald")
+							for _, b := range data.Badges {
+								@components.Badge(b, "gray")
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Stats -->
+			<div class="anim d2 mb-7 grid grid-cols-6 gap-3">
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Node Index</div>
+					<div class="text-2xl font-bold text-gray-900 tabular">{ data.NodeIndex }</div>
+					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style={ "width:" + data.IndexWidth }></div></div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">24H Validating</div>
+					<div class="text-2xl font-bold text-emerald-600 tabular">{ data.Validating24H }</div>
+					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style={ "width:" + data.Val24HWidth }></div></div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">30D Validating</div>
+					<div class="text-2xl font-bold text-emerald-600 tabular">{ data.Validating30D }</div>
+					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style={ "width:" + data.Val30DWidth }></div></div>
+				</div>
+				<div class="rounded-xl border border-amber-200/60 bg-amber-50/20 px-4 py-3">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">30D Crawler Rejected</div>
+					<div class="text-2xl font-bold text-amber-600 tabular">{ data.CrawlerReject }</div>
+					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-amber-400" style={ "width:" + data.CrawlerWidth }></div></div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusts</div>
+					<div class="text-xl font-bold text-gray-900 tabular">{ data.TrustsCount } <span class="text-sm font-normal text-gray-400">nodes</span></div>
+					<div class="text-[10px] text-gray-500 mt-0.5">across { data.TrustsOrgs } organizations</div>
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusted By</div>
+					<div class="text-xl font-bold text-gray-900 tabular">{ data.TrustedByCount } <span class="text-sm font-normal text-gray-400">nodes</span></div>
+					<div class="text-[10px] text-gray-500 mt-0.5">Externalize lag: { data.ExtLag }</div>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d2">
+				@components.TabBar([]components.Tab{
+					{ID: "overview", Label: "Overview"},
+					{ID: "quorum", Label: "Quorum Set"},
+					{ID: "trusts", Label: "Trusts (" + data.TrustsCount + ")"},
+					{ID: "trusted-by", Label: "Trusted By (" + data.TrustedByCount + ")"},
+					{ID: "updates", Label: "Updates"},
+				}, "overview")
+			</div>
+
+			<!-- 30D Charts -->
+			<div class="anim d3 mb-7 grid grid-cols-3 gap-4">
+				@validatorChart("Validating", "emerald")
+				@validatorChart("History Archive", "emerald")
+				@validatorChartAmber("Crawler Rejected")
+			</div>
+
+			<!-- Node Details + Org -->
+			<div class="anim d4 mb-7 grid grid-cols-4 gap-4">
+				<div class="col-span-3 rounded-xl border border-gray-200 bg-white overflow-hidden">
+					<div class="px-5 py-2.5 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
+						<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Node Details</span>
+						<span class="text-[10px] text-gray-400">Discovered { data.Discovered }</span>
+					</div>
+					<div class="grid grid-cols-3">
+						<div class="border-r border-gray-100">
+							@components.DetailRow("Public Key") {
+								<span class="font-mono text-[11px] text-gray-900">{ data.ShortNodeID }</span>
+							}
+							@components.DetailRow("Host") {
+								<span class="font-mono text-[11px] text-gray-900">{ data.Host }</span>
+							}
+							@components.DetailRow("IP Address") {
+								<span class="font-mono text-[11px] text-gray-900">{ data.IP }</span>
+							}
+							@components.DetailRowLast("ISP") {
+								<span class="text-xs text-gray-900">{ data.ISP }</span>
+							}
+						</div>
+						<div class="border-r border-gray-100">
+							@components.DetailRow("Domain") {
+								<a href="#" class="text-xs font-medium text-emerald-700 hover:text-emerald-800">{ data.Domain }</a>
+							}
+							@components.DetailRow("Organization") {
+								<a href="#" class="text-xs font-medium text-emerald-700 hover:text-emerald-800">{ data.Organization }</a>
+							}
+							@components.DetailRow("Country") {
+								<span class="text-xs text-gray-900">{ data.Country }</span>
+							}
+							@components.DetailRowLast("Version") {
+								<span class="text-xs text-gray-900">{ data.Version }</span>
+							}
+						</div>
+						<div>
+							@components.DetailRow("Overlay") {
+								<span class="text-xs text-gray-900 tabular">{ data.Overlay }</span>
+							}
+							@components.DetailRow("Ledger Ver.") {
+								<span class="text-xs text-gray-900 tabular">{ data.LedgerVer }</span>
+							}
+							@components.DetailRow("Ext. Lag") {
+								<span class="text-xs font-medium text-emerald-600">{ data.ExtLag }</span>
+							}
+							@components.DetailRowLast("History") {
+								<span class="font-mono text-[10px] text-emerald-700 truncate max-w-[180px]">{ data.HistoryURL }</span>
+							}
+						</div>
+					</div>
+				</div>
+
+				<!-- Org card -->
+				<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+					<div class="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100"><span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{ data.OrgName } Organization</span></div>
+					for _, n := range data.OrgNodes {
+						<div class={ "px-4 py-2.5 border-b border-gray-100", templ.KV("bg-emerald-50/20", n.IsViewing) }>
+							<div class="flex items-center gap-2 mb-0.5">
+								<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+								<span class="text-[13px] font-semibold text-gray-900">{ n.Name }</span>
+								if n.IsViewing {
+									<span class="rounded bg-emerald-100 px-1 py-0.5 text-[7px] font-bold text-emerald-700">VIEWING</span>
+								}
+							</div>
+							<div class="font-mono text-[10px] text-gray-400 ml-4">{ n.ShortID } · <span class="text-emerald-600 font-medium">{ n.Uptime }</span></div>
+						</div>
+					}
+					<div class="px-4 py-2.5 bg-gray-50/80 grid grid-cols-2 gap-2 text-center">
+						<div><div class="text-[9px] text-gray-400">Org Uptime</div><div class="text-sm font-bold text-emerald-600">{ data.OrgUptime }</div></div>
+						<div><div class="text-[9px] text-gray-400">Validators</div><div class="text-sm font-bold text-gray-900">{ data.OrgValidators }</div></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Quorum Set -->
+			<div class="anim d5 mb-7">
+				<div class="flex items-center justify-between mb-3">
+					<h3 class="text-sm font-semibold text-gray-900">Quorum Set</h3>
+					@components.Badge(data.QuorumThreshold, "amber")
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white p-5">
+					<div class="grid grid-cols-7 gap-3">
+						for _, qs := range data.QuorumSets {
+							<div class={ "rounded-lg border p-3", templ.KV("border-emerald-200 bg-emerald-50/30", qs.IsSelf), templ.KV("border-gray-200 bg-white", !qs.IsSelf) }>
+								<div class="flex items-center mb-2"><span class={ "text-[9px] font-bold uppercase tracking-wider", templ.KV("text-emerald-700", qs.IsSelf), templ.KV("text-gray-700", !qs.IsSelf) }>{ qs.Name }</span></div>
+								<div class="rounded bg-gray-100/80 px-1.5 py-0.5 text-[8px] font-bold text-gray-500 mb-2 inline-block">{ qs.Threshold }</div>
+								<div class="flex flex-col gap-1.5">
+									for _, n := range qs.Nodes {
+										<div class="flex items-center gap-1.5">
+											<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+											<span class="font-mono text-[10px] text-gray-600">{ n.Name }</span>
+											if n.IsSelf {
+												<span class="ml-auto text-[7px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">YOU</span>
+											}
+										</div>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+		</main>
+	}
+}
+
+templ validatorChart(title, color string) {
+	<div class="rounded-xl border border-gray-200 bg-white p-4">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-xs font-semibold text-gray-900">{ title }</span>
+			<div class="flex gap-1">
+				<button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">1H</button>
+			</div>
+		</div>
+		<div class="flex items-end gap-[3px] h-20">
+			for _, h := range []string{"100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","85%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%"} {
+				<div class={ "flex-1 rounded-t-sm", templ.KV("bg-emerald-500", h == "100%"), templ.KV("bg-amber-400", h != "100%") } style={ "height:" + h }></div>
+			}
+		</div>
+		<div class="flex justify-between mt-2 text-[9px] text-gray-400"><span>Feb 1</span><span>Feb 15</span><span>Mar 2</span></div>
+	</div>
+}
+
+templ validatorChartAmber(title string) {
+	<div class="rounded-xl border border-amber-200/60 bg-amber-50/10 p-4">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-xs font-semibold text-gray-900">{ title }</span>
+			<div class="flex gap-1">
+				<button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">1H</button>
+			</div>
+		</div>
+		<div class="flex items-end gap-[3px] h-20">
+			for _, h := range []string{"65%","44%","73%","50%","79%","79%","33%","44%","32%","50%","55%","47%","34%","43%","66%","75%","50%","43%","71%","61%","55%","71%","59%","39%","46%","38%","45%","77%","65%","64%"} {
+				<div class="flex-1 rounded-t-sm bg-red-400" style={ "height:" + h }></div>
+			}
+		</div>
+		<div class="flex justify-between mt-2 text-[9px] text-gray-400"><span>Feb 1</span><span>Feb 15</span><span>Mar 2</span></div>
+	</div>
+}

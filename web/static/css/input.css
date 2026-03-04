@@ -70,4 +70,99 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
     border-color: #10B981;
   }
+
+  /* Fade-in animation */
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Shimmer / glow effect */
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Float-up for transaction rows */
+  @keyframes float-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Staggered fade-up animation */
+  .anim {
+    animation: fade-up 0.4s ease-out forwards;
+    opacity: 0;
+  }
+  .d1 { animation-delay: .08s; }
+  .d2 { animation-delay: .16s; }
+  .d3 { animation-delay: .24s; }
+  .d4 { animation-delay: .32s; }
+  .d5 { animation-delay: .4s; }
+  .d6 { animation-delay: .48s; }
+  .d7 { animation-delay: .56s; }
+  .d8 { animation-delay: .64s; }
+
+  /* Hint pills */
+  .hint-pill {
+    transition: all .12s ease;
+  }
+  .hint-pill:hover {
+    background: #111;
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  /* Transaction row animation */
+  .tx-row {
+    animation: float-up .3s ease-out forwards;
+    opacity: 0;
+  }
+  .tx-row:nth-child(1) { animation-delay: .1s; }
+  .tx-row:nth-child(2) { animation-delay: .18s; }
+  .tx-row:nth-child(3) { animation-delay: .26s; }
+  .tx-row:nth-child(4) { animation-delay: .34s; }
+  .tx-row:nth-child(5) { animation-delay: .42s; }
+  .tx-row:nth-child(6) { animation-delay: .5s; }
+  .tx-row:nth-child(7) { animation-delay: .58s; }
+  .tx-row:nth-child(8) { animation-delay: .66s; }
+
+  /* Glow shimmer */
+  .glow {
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, .04), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  /* Tab active underline */
+  .tab-active {
+    border-bottom: 2px solid #111;
+    color: #111;
+  }
+
+  /* Expandable accordion */
+  .expandable {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .expandable.open {
+    max-height: 1000px;
+  }
+
+  /* Bar segment for stacked charts */
+  .bar-segment {
+    transition: width 0.3s ease;
+  }
+
+  /* Flow line for transaction diagrams */
+  .flow-line {
+    height: 2px;
+    background: linear-gradient(90deg, #D1D5DB, #9CA3AF, #D1D5DB);
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
 }

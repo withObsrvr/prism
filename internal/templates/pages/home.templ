@@ -1,75 +1,488 @@
 package pages
 
-import "github.com/withObsrvr/prism/internal/templates/layouts"
-import "github.com/withObsrvr/prism/internal/templates/components"
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
 
 // HomeData holds everything the home page needs to render.
 type HomeData struct {
-	LatestLedger uint64
-	TPS          float64
-	TxCount24H   uint64
+	Network       string
+	LatestLedger  string
+	LedgerAge     string
+	TxCount24H    string
+	TxChange      string
+	TPSAvg        string
+	TPSPeak       string
+	SorobanCalls  string
+	SorobanChange string
+	Validators    int
+	Transactions  []HomeTx
+	Ledgers       []HomeLedger
+	Contracts     []HomeContract
+	Assets        []HomeAsset
+}
+
+type HomeTx struct {
+	Hash     string
+	ShortHash string
+	Type     string // "contract_call", "payment", "account_merge"
+	TypeLabel string
+	Summary  string
+	From     string
+	To       string
+	Ops      string
+	Fee      string
+	Age      string
+}
+
+type HomeLedger struct {
+	Sequence string
+	Age      string
+	TxCount  string
+	OpCount  string
+	IsLatest bool
+}
+
+type HomeContract struct {
+	Rank        int
+	Name        string
+	Tag         string
+	TagColor    string // "violet", "cyan", "emerald"
+	Address     string
+	Invocations string
+	Change      string
+	IsPositive  bool
+}
+
+type HomeAsset struct {
+	Code       string
+	Issuer     string
+	Initial    string
+	BgColor    string
+	Volume     string
+	Change     string
+	IsPositive bool
 }
 
 // Home renders the search-first landing page.
 templ Home(data HomeData) {
 	@layouts.Base("Prism — Soroban-first Block Explorer", "explorer") {
 
-		<!-- Search hero -->
-		<div class="mx-auto max-w-[640px] pt-16 pb-12 text-center">
-			<h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">
-				Explore Stellar
-			</h1>
-			<p class="text-[13px] text-gray-500 mb-8">
-				Search by address, transaction hash, contract ID, asset code, or ledger number
-			</p>
+		<!-- Hero Section -->
+		<section class="relative overflow-hidden bg-white border-b border-gray-100">
+			<!-- Subtle grid texture -->
+			<div class="absolute inset-0 opacity-[.025]" style="background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><line x1=%2220%22 y1=%220%22 x2=%2220%22 y2=%2240%22 stroke=%22%23111%22 stroke-width=%220.5%22/><line x1=%220%22 y1=%2220%22 x2=%2240%22 y2=%2220%22 stroke=%22%23111%22 stroke-width=%220.5%22/></svg>')"></div>
 
-			<!-- Search input with htmx live results -->
-			<div class="search-ring flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-lg shadow-gray-200/50">
-				<svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-				</svg>
-				<input
-					type="text"
-					name="q"
-					placeholder="Search…"
-					class="flex-1 text-[15px] text-gray-900 placeholder-gray-400 outline-none bg-transparent"
-					autocomplete="off"
-					hx-get="/partials/search-results"
-					hx-trigger="keyup changed delay:300ms"
-					hx-target="#search-live-results"
-				/>
-				<kbd class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-400">⌘K</kbd>
+			<div class="relative mx-auto max-w-[1320px] px-8 py-16 pb-12">
+				<!-- Tagline -->
+				<div class="anim text-center mb-8">
+					<div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200/60 mb-5">
+						<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+						<span class="text-[11px] font-semibold text-emerald-700">Stellar Mainnet &bull; Protocol v22 &bull; Ledger { data.LatestLedger }</span>
+					</div>
+					<h1 class="text-3xl font-bold text-gray-900 tracking-tight mb-2">Explore the Stellar network</h1>
+					<p class="text-[15px] text-gray-500 max-w-md mx-auto">Search any account, transaction, contract, asset, or ledger. Soroban-native with full smart contract support.</p>
+				</div>
+
+				<!-- Search Bar -->
+				<div class="anim d1 mx-auto max-w-[680px] mb-8">
+					<div class="search-ring flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-lg shadow-gray-200/50">
+						<svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+						</svg>
+						<input
+							type="text"
+							name="q"
+							placeholder="Search by address, tx hash, contract, asset, or ledger…"
+							class="flex-1 text-[15px] text-gray-900 placeholder-gray-400 outline-none bg-transparent"
+							autocomplete="off"
+							hx-get="/partials/search-results"
+							hx-trigger="keyup changed delay:300ms"
+							hx-target="#search-live-results"
+						/>
+						<kbd class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-400">⌘K</kbd>
+					</div>
+
+					<!-- Live search results -->
+					<div id="search-live-results" class="mt-2 text-left"></div>
+
+					<!-- Smart hints -->
+					<div class="flex items-center justify-center gap-2 mt-3">
+						<span class="text-[10px] text-gray-400 mr-1">Try:</span>
+						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">G… → Account</a>
+						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">C… → Contract</a>
+						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">64-char hex → Transaction</a>
+						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">USDC → Asset</a>
+						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">{ data.LatestLedger } → Ledger</a>
+					</div>
+				</div>
+
+				<!-- Network Pulse (5 metrics) -->
+				<div class="anim d2 mx-auto max-w-[820px] grid grid-cols-5 gap-px rounded-xl bg-gray-200 overflow-hidden ring-1 ring-gray-200">
+					<div class="bg-white px-4 py-3 text-center">
+						<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Latest Ledger</div>
+						<div class="text-lg font-bold text-gray-900 tabular font-mono mt-0.5">{ data.LatestLedger }</div>
+						<div class="flex items-center justify-center gap-1 mt-0.5">
+							<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+							<span class="text-[10px] text-emerald-600 font-medium">{ data.LedgerAge }</span>
+						</div>
+					</div>
+					<div class="bg-white px-4 py-3 text-center">
+						<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Transactions (24h)</div>
+						<div class="text-lg font-bold text-gray-900 tabular mt-0.5">{ data.TxCount24H }</div>
+						<div class="text-[10px] text-emerald-600 font-medium mt-0.5">{ data.TxChange }</div>
+					</div>
+					<div class="bg-white px-4 py-3 text-center">
+						<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">TPS (avg)</div>
+						<div class="text-lg font-bold text-gray-900 tabular mt-0.5">{ data.TPSAvg }</div>
+						<div class="text-[10px] text-gray-500 mt-0.5">peak: { data.TPSPeak }</div>
+					</div>
+					<div class="bg-white px-4 py-3 text-center">
+						<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Soroban Calls (24h)</div>
+						<div class="text-lg font-bold text-gray-900 tabular mt-0.5">{ data.SorobanCalls }</div>
+						<div class="text-[10px] text-emerald-600 font-medium mt-0.5">{ data.SorobanChange }</div>
+					</div>
+					<div class="bg-white px-4 py-3 text-center">
+						<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Validators</div>
+						<div class="text-lg font-bold text-gray-900 tabular mt-0.5">{ fmt.Sprintf("%d", data.Validators) }</div>
+						<div class="flex items-center justify-center gap-1 mt-0.5">
+							<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+							<span class="text-[10px] text-emerald-600 font-medium">All healthy</span>
+						</div>
+					</div>
+				</div>
+
 			</div>
+		</section>
 
-			<!-- Live search results drop here -->
-			<div id="search-live-results" class="mt-2 text-left"></div>
+		<!-- Main Content: Transactions + Ledgers -->
+		<section class="mx-auto max-w-[1320px] px-8 py-8">
+			<div class="grid grid-cols-3 gap-6">
 
-			<!-- Type hints -->
-			<div class="flex items-center justify-center gap-2 mt-4 text-[11px] text-gray-400">
-				<span class="rounded-full border border-gray-200 px-2.5 py-0.5 font-medium">G… → Account</span>
-				<span class="rounded-full border border-gray-200 px-2.5 py-0.5 font-medium">C… → Contract</span>
-				<span class="rounded-full border border-gray-200 px-2.5 py-0.5 font-medium">hex → Transaction</span>
-				<span class="rounded-full border border-gray-200 px-2.5 py-0.5 font-medium"># → Ledger</span>
+				<!-- Latest Transactions (2 cols) -->
+				<div class="col-span-2">
+					<div class="flex items-center justify-between mb-4">
+						<div class="flex items-center gap-2.5">
+							<h2 class="text-sm font-semibold text-gray-900">Latest Transactions</h2>
+							<div class="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
+								<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+								<span class="text-[10px] font-medium text-emerald-700">Live</span>
+							</div>
+						</div>
+						<a href="#" class="text-[12px] font-medium text-gray-500 hover:text-gray-900 transition-colors">View all →</a>
+					</div>
+
+					<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+						for i, tx := range data.Transactions {
+							<div class={ "tx-row flex items-center gap-4 px-5 py-3 hover:bg-gray-50/50 cursor-pointer transition-colors", templ.KV("border-b border-gray-50", i < len(data.Transactions)-1) }>
+								<!-- Hash + Type -->
+								<div class="w-[280px] flex-shrink-0">
+									<div class="flex items-center gap-2 mb-0.5">
+										<a href={ templ.SafeURL("/tx/" + tx.Hash) } class="font-mono text-[12px] font-medium text-emerald-700 hover:text-emerald-800">{ tx.ShortHash }</a>
+										@txTypeBadge(tx.Type, tx.TypeLabel)
+									</div>
+									<div class="text-[11px] text-gray-500 truncate max-w-[260px]">{ tx.Summary }</div>
+								</div>
+								<!-- From → To -->
+								<div class="flex-1 min-w-0 flex items-center gap-1.5 text-[11px]">
+									<span class="font-mono text-gray-600">{ tx.From }</span>
+									<svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+									</svg>
+									<span class="font-mono text-gray-600">{ tx.To }</span>
+								</div>
+								<!-- Meta -->
+								<div class="flex items-center gap-4 flex-shrink-0">
+									<span class="text-[10px] text-gray-400 tabular w-10 text-right">{ tx.Ops }</span>
+									<span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">{ tx.Fee }</span>
+									<span class="text-[10px] text-gray-400 tabular w-12 text-right">{ tx.Age }</span>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+
+				<!-- Latest Ledgers (1 col) -->
+				<div>
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="text-sm font-semibold text-gray-900">Latest Ledgers</h2>
+						<a href="#" class="text-[12px] font-medium text-gray-500 hover:text-gray-900 transition-colors">View all →</a>
+					</div>
+					<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+						for i, ledger := range data.Ledgers {
+							<div class={ "tx-row flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/50 cursor-pointer transition-colors", templ.KV("border-b border-gray-50", i < len(data.Ledgers)-1), templ.KV("glow", ledger.IsLatest) }>
+								<div>
+									<div class="flex items-center gap-2">
+										<a href={ templ.SafeURL("/ledger/" + ledger.Sequence) } class="font-mono text-[12px] font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ ledger.Sequence }</a>
+										if ledger.IsLatest {
+											<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+										}
+									</div>
+									<div class="text-[10px] text-gray-400 mt-0.5">{ ledger.Age }</div>
+								</div>
+								<div class="text-right">
+									<div class="text-[11px] text-gray-900 tabular">{ ledger.TxCount }</div>
+									<div class="text-[10px] text-gray-400 tabular">{ ledger.OpCount }</div>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+
 			</div>
-		</div>
+		</section>
 
-		<!-- Network pulse -->
-		@components.NetworkPulse(data.LatestLedger, data.TPS)
+		<!-- Curated Sections -->
+		<section class="mx-auto max-w-[1320px] px-8 pb-8">
+			<div class="grid grid-cols-3 gap-6">
 
-		<!-- Live transaction feed (polls every 3s) -->
-		<div class="mt-8">
-			<div class="flex items-center gap-2 mb-3">
-				<span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-				<span class="text-[12px] font-semibold text-gray-700">Live Transactions</span>
+				<!-- Trending Contracts -->
+				<div class="anim d3">
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="text-sm font-semibold text-gray-900">Trending Contracts</h2>
+						<span class="text-[10px] text-gray-400">7d invocations</span>
+					</div>
+					<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+						for i, c := range data.Contracts {
+							<a href="#" class={ "flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors", templ.KV("border-b border-gray-50", i < len(data.Contracts)-1) }>
+								<span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500 flex-shrink-0 tabular">{ fmt.Sprintf("%d", c.Rank) }</span>
+								<div class="flex-1 min-w-0">
+									<div class="flex items-center gap-1.5">
+										<span class="text-[12px] font-semibold text-gray-900 truncate">{ c.Name }</span>
+										@contractTag(c.Tag, c.TagColor)
+									</div>
+									<span class="font-mono text-[10px] text-gray-400">{ c.Address }</span>
+								</div>
+								<div class="text-right flex-shrink-0">
+									<div class="text-[12px] font-semibold text-gray-900 tabular">{ c.Invocations }</div>
+									if c.IsPositive {
+										<div class="text-[10px] text-emerald-600 font-medium tabular">{ c.Change }</div>
+									} else {
+										<div class="text-[10px] text-red-500 font-medium tabular">{ c.Change }</div>
+									}
+								</div>
+							</a>
+						}
+					</div>
+				</div>
+
+				<!-- Top Assets -->
+				<div class="anim d4">
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="text-sm font-semibold text-gray-900">Top Assets</h2>
+						<span class="text-[10px] text-gray-400">24h volume</span>
+					</div>
+					<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+						for i, a := range data.Assets {
+							<a href="#" class={ "flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors", templ.KV("border-b border-gray-50", i < len(data.Assets)-1) }>
+								<div class={ "flex h-7 w-7 items-center justify-center rounded-full text-white text-[9px] font-bold flex-shrink-0", a.BgColor }>{ a.Initial }</div>
+								<div class="flex-1 min-w-0">
+									<div class="flex items-center gap-1.5">
+										<span class="text-[12px] font-semibold text-gray-900">{ a.Code }</span>
+										<span class="text-[10px] text-gray-400">{ a.Issuer }</span>
+									</div>
+								</div>
+								<div class="text-right flex-shrink-0">
+									<div class="text-[12px] font-semibold text-gray-900 tabular">{ a.Volume }</div>
+									if a.IsPositive {
+										<div class="text-[10px] text-emerald-600 font-medium tabular">{ a.Change }</div>
+									} else {
+										<div class="text-[10px] text-red-500 font-medium tabular">{ a.Change }</div>
+									}
+								</div>
+							</a>
+						}
+					</div>
+				</div>
+
+				<!-- Network Activity -->
+				<div class="anim d5">
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="text-sm font-semibold text-gray-900">Network Activity</h2>
+					</div>
+					<div class="flex flex-col gap-3">
+						<!-- Mini chart: 24h tx volume -->
+						<div class="rounded-xl border border-gray-200 bg-white p-4">
+							<div class="flex items-center justify-between mb-2">
+								<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Transactions (24h)</span>
+								<span class="text-[11px] font-semibold text-gray-900 tabular">1.28M</span>
+							</div>
+							<div class="flex items-end gap-[2px] h-12">
+								@barChart()
+							</div>
+							<div class="flex justify-between mt-1.5 text-[8px] text-gray-400">
+								<span>24h ago</span><span>12h ago</span><span>Now</span>
+							</div>
+						</div>
+
+						<!-- Soroban Ratio -->
+						<div class="rounded-xl border border-gray-200 bg-white p-4">
+							<div class="flex items-center justify-between mb-2">
+								<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Soroban Ratio</span>
+								<span class="text-[11px] font-semibold text-violet-600 tabular">65.9%</span>
+							</div>
+							<div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+								<div class="h-2 rounded-full bg-gradient-to-r from-violet-500 to-violet-400" style="width:65.9%"></div>
+							</div>
+							<div class="flex justify-between mt-1.5 text-[10px]">
+								<span class="text-violet-600 font-medium">847K Soroban</span>
+								<span class="text-gray-400">437K Classic</span>
+							</div>
+						</div>
+
+						<!-- Fee Market -->
+						<div class="rounded-xl border border-gray-200 bg-white p-4">
+							<div class="flex items-center justify-between mb-1">
+								<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Fee Market</span>
+							</div>
+							<div class="grid grid-cols-3 gap-2 mt-2">
+								<div class="text-center">
+									<div class="text-[9px] text-gray-400">Min</div>
+									<div class="text-[13px] font-semibold text-gray-900 tabular font-mono">100</div>
+									<div class="text-[8px] text-gray-400">stroops</div>
+								</div>
+								<div class="text-center">
+									<div class="text-[9px] text-gray-400">Median</div>
+									<div class="text-[13px] font-semibold text-gray-900 tabular font-mono">1,200</div>
+									<div class="text-[8px] text-gray-400">stroops</div>
+								</div>
+								<div class="text-center">
+									<div class="text-[9px] text-gray-400">P99</div>
+									<div class="text-[13px] font-semibold text-amber-600 tabular font-mono">34,000</div>
+									<div class="text-[8px] text-gray-400">stroops</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
 			</div>
-			<div
-				hx-get="/partials/live-feed"
-				hx-trigger="every 3s"
-				hx-swap="innerHTML"
-			>
-				<!-- Initial content rendered server-side, then htmx replaces -->
-				<div class="text-[12px] text-gray-400">Connecting to network…</div>
+		</section>
+
+		<!-- Quick Access Cards -->
+		<section class="mx-auto max-w-[1320px] px-8 pb-12">
+			<div class="grid grid-cols-5 gap-3">
+				@quickAccessCard("/smart-accounts", "bg-emerald-100", "text-emerald-600", "Smart Accounts", "OZ v0.5.0 wallets", shieldIcon())
+				@quickAccessCard("/events", "bg-violet-100", "text-violet-600", "Events Firehose", "Real-time streaming", boltIcon())
+				@quickAccessCard("/state", "bg-cyan-100", "text-cyan-600", "State & Rent", "TTL monitoring", clockIcon())
+				@quickAccessCard("/nft", "bg-amber-100", "text-amber-600", "NFT Gallery", "Stellar NFTs", imageIcon())
+				@quickAccessCard("/validators", "bg-gray-100", "text-gray-600", "Validators", "Network health", chartIcon())
 			</div>
-		</div>
+		</section>
 	}
+}
+
+// Transaction type badge with color coding
+templ txTypeBadge(txType string, label string) {
+	switch txType {
+		case "contract_call":
+			<span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">{ label }</span>
+		case "payment":
+			<span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-emerald-700 bg-emerald-50 ring-emerald-200">{ label }</span>
+		case "account_merge":
+			<span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-amber-700 bg-amber-50 ring-amber-200">{ label }</span>
+		default:
+			<span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 text-gray-700 bg-gray-50 ring-gray-200">{ label }</span>
+	}
+}
+
+// Contract category tag
+templ contractTag(tag string, color string) {
+	switch color {
+		case "violet":
+			<span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-violet-700 bg-violet-50 ring-violet-200">{ tag }</span>
+		case "cyan":
+			<span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-cyan-700 bg-cyan-50 ring-cyan-200">{ tag }</span>
+		case "emerald":
+			<span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-emerald-700 bg-emerald-50 ring-emerald-200">{ tag }</span>
+		default:
+			<span class="rounded-full px-1.5 py-0.5 text-[8px] font-semibold ring-1 text-gray-700 bg-gray-50 ring-gray-200">{ tag }</span>
+	}
+}
+
+// Bar chart with hardcoded values from design
+templ barChart() {
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:67%;opacity:0.80"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:76%;opacity:0.86"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:60%;opacity:0.76"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:65%;opacity:0.79"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:59%;opacity:0.76"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:49%;opacity:0.70"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:72%;opacity:0.83"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:95%;opacity:0.97"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:65%;opacity:0.79"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:53%;opacity:0.72"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:99%;opacity:1.00"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:35%;opacity:0.61"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:70%;opacity:0.82"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:38%;opacity:0.63"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:98%;opacity:0.99"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:57%;opacity:0.74"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:59%;opacity:0.76"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:99%;opacity:1.00"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:84%;opacity:0.91"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:58%;opacity:0.75"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:77%;opacity:0.86"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:76%;opacity:0.86"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:50%;opacity:0.70"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:46%;opacity:0.68"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:68%;opacity:0.81"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:95%;opacity:0.97"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:61%;opacity:0.77"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:63%;opacity:0.78"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:59%;opacity:0.76"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:44%;opacity:0.67"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:45%;opacity:0.67"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:60%;opacity:0.76"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:91%;opacity:0.95"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:44%;opacity:0.67"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:47%;opacity:0.68"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:62%;opacity:0.77"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:77%;opacity:0.86"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:46%;opacity:0.68"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:47%;opacity:0.68"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:94%;opacity:0.97"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:45%;opacity:0.67"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:68%;opacity:0.81"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:89%;opacity:0.94"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:100%;opacity:1.00"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:70%;opacity:0.82"></div>
+	<div class="flex-1 rounded-t-[1px] bg-emerald-500" style="height:99%;opacity:1.00"></div>
+}
+
+// Quick access card
+templ quickAccessCard(href string, bgColor string, textColor string, title string, subtitle string, icon templ.Component) {
+	<a href={ templ.SafeURL(href) } class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+		<div class={ "flex h-9 w-9 items-center justify-center rounded-lg flex-shrink-0", bgColor }>
+			<div class={ textColor }>
+				@icon
+			</div>
+		</div>
+		<div>
+			<div class="text-[12px] font-semibold text-gray-900">{ title }</div>
+			<div class="text-[10px] text-gray-400">{ subtitle }</div>
+		</div>
+	</a>
+}
+
+// SVG icon components
+templ shieldIcon() {
+	<svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+}
+
+templ boltIcon() {
+	<svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+}
+
+templ clockIcon() {
+	<svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+}
+
+templ imageIcon() {
+	<svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+}
+
+templ chartIcon() {
+	<svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
 }

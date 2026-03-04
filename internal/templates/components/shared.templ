@@ -107,3 +107,150 @@ func statBarColor(status string) string {
 		return "bg-emerald-500"
 	}
 }
+
+// Badge renders a colored pill label.
+// color: "emerald", "violet", "amber", "red", "cyan", "gray", "blue"
+templ Badge(label string, color string) {
+	<span class={ badgeClasses(color) }>{ label }</span>
+}
+
+func badgeClasses(color string) string {
+	base := "rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 "
+	switch color {
+	case "emerald":
+		return base + "text-emerald-700 bg-emerald-50 ring-emerald-200"
+	case "violet":
+		return base + "text-violet-700 bg-violet-50 ring-violet-200"
+	case "amber":
+		return base + "text-amber-700 bg-amber-50 ring-amber-200"
+	case "red":
+		return base + "text-red-600 bg-red-50 ring-red-200"
+	case "cyan":
+		return base + "text-cyan-700 bg-cyan-50 ring-cyan-200"
+	case "blue":
+		return base + "text-blue-700 bg-blue-50 ring-blue-200"
+	default:
+		return base + "text-gray-600 bg-gray-100 ring-gray-200"
+	}
+}
+
+// Tab represents a single tab in a TabBar.
+type Tab struct {
+	ID    string
+	Label string
+}
+
+// TabBar renders a horizontal tab strip with an underline active state.
+templ TabBar(tabs []Tab, activeID string) {
+	<div class="mb-8 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400">
+		for _, tab := range tabs {
+			if tab.ID == activeID {
+				<button class="border-b-2 border-gray-900 pb-3 text-gray-900">{ tab.Label }</button>
+			} else {
+				<button class="pb-3.5 cursor-pointer hover:text-gray-900">{ tab.Label }</button>
+			}
+		}
+	</div>
+}
+
+// DetailRow renders a key-value row with hover effect.
+templ DetailRow(label string) {
+	<div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-100">
+		<span class="text-sm text-gray-500">{ label }</span>
+		<div>
+			{ children... }
+		</div>
+	</div>
+}
+
+// DetailRowLast renders a key-value row without bottom border.
+templ DetailRowLast(label string) {
+	<div class="detail-row flex items-center justify-between px-5 py-3">
+		<span class="text-sm text-gray-500">{ label }</span>
+		<div>
+			{ children... }
+		</div>
+	</div>
+}
+
+// BackNav renders a back arrow + label link.
+templ BackNav(label string, href string) {
+	<a href={ templ.SafeURL(href) } class="group mb-5 flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-900">
+		<svg class="h-4 w-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+		{ label }
+	</a>
+}
+
+// BreadcrumbItem represents a single breadcrumb entry.
+type BreadcrumbItem struct {
+	Label string
+	Href  string
+}
+
+// Breadcrumb renders a trail with separator arrows.
+templ Breadcrumb(items []BreadcrumbItem) {
+	<nav class="flex items-center gap-1.5 text-sm mb-5">
+		for i, item := range items {
+			if i > 0 {
+				<svg class="h-3.5 w-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+			}
+			if i == len(items)-1 {
+				<span class="font-medium text-gray-900">{ item.Label }</span>
+			} else {
+				<a href={ templ.SafeURL(item.Href) } class="text-gray-400 hover:text-gray-900">{ item.Label }</a>
+			}
+		}
+	</nav>
+}
+
+// Pagination renders prev/next + page numbers.
+templ Pagination(current int, total int, baseURL string) {
+	<div class="flex items-center justify-center gap-2 mt-6">
+		if current > 1 {
+			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current-1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50">
+				<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+			</a>
+		}
+		for i := 1; i <= total; i++ {
+			if i == current {
+				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-semibold">{ fmt.Sprintf("%d", i) }</span>
+			} else {
+				<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, i)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50">{ fmt.Sprintf("%d", i) }</a>
+			}
+		}
+		if current < total {
+			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current+1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50">
+				<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+			</a>
+		}
+	</div>
+}
+
+// ProgressBar renders a horizontal progress bar.
+templ ProgressBar(value float64, max float64, color string) {
+	<div class="h-1.5 w-full rounded-full bg-gray-100">
+		<div class={ "h-1.5 rounded-full", progressBarColor(color) } style={ fmt.Sprintf("width:%.1f%%", (value/max)*100) }></div>
+	</div>
+}
+
+func progressBarColor(color string) string {
+	switch color {
+	case "emerald":
+		return "bg-emerald-500"
+	case "violet":
+		return "bg-violet-500"
+	case "amber":
+		return "bg-amber-500"
+	case "red":
+		return "bg-red-500"
+	case "cyan":
+		return "bg-cyan-500"
+	default:
+		return "bg-gray-500"
+	}
+}
+
+// SectionHeader renders a section title.
+templ SectionHeader(title string) {
+	<h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{ title }</h3>
+}
