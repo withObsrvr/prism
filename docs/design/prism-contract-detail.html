@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Contract Detail</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.anim,.animate-fade-up{animation:fade-up .3s ease-out forwards;opacity:0}
+.d1{animation-delay:.04s}.d2{animation-delay:.08s}.d3{animation-delay:.12s}.d4{animation-delay:.16s}.d5{animation-delay:.2s}.d6{animation-delay:.24s}.d7{animation-delay:.28s}.d8{animation-delay:.32s}
+.slide-panel{animation:slide-in .28s cubic-bezier(.16,1,.3,1) forwards}
+.backdrop-fade{animation:fade-in .2s ease forwards}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.result-row{transition:all .08s}.result-row:hover,.result-row.active{background:rgba(139,92,246,.04)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>Explorer</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>Assets</a>
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Contracts</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search…
+      <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+    </button>
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+<main class="mx-auto max-w-[1320px] px-8 py-6">
+<div class="anim mb-8">
+    <button class="group mb-5 flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-900">
+      <svg class="h-4 w-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Back to Search
+    </button>
+
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 ring-2 ring-white shadow-sm">
+          <svg class="h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-semibold text-gray-900">Soroswap Router</span>
+            <svg class="h-4 w-4 text-gray-300 hover:text-gray-600 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="font-mono text-sm text-gray-500">CAXY...Z10P...8MQR</span>
+          </div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <span class="rounded-full bg-violet-50 px-2.5 py-0.5 ring-1 ring-violet-200 text-[10px] font-semibold text-violet-700">Soroban Contract</span>
+            <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 ring-1 ring-emerald-200 text-[10px] font-semibold text-emerald-700">Verified</span>
+            <span class="rounded-full bg-cyan-50 px-2.5 py-0.5 ring-1 ring-cyan-200 text-[10px] font-semibold text-cyan-700">DEX Router</span>
+            <span class="text-[10px] text-gray-400">Deployed Ledger 3,842,109 &middot; Aug 14, 2025</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#" class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          Stellar.expert</a>
+        <button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+          Share</button>
+      </div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="grid grid-cols-5 gap-3">
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Invocations</div>
+        <div class="text-lg font-semibold text-gray-900 tabular">248,391</div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Storage Entries</div>
+        <div class="text-lg font-semibold text-gray-900 tabular">1,847</div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">State Size</div>
+        <div class="text-lg font-semibold text-gray-900 tabular">2.4 MB</div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Monthly Rent</div>
+        <div class="text-lg font-semibold text-gray-900 tabular">~184 XLM</div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Last Invoked</div>
+        <div class="text-sm font-semibold text-gray-900">2 min ago</div>
+      </div>
+    </div>
+  </div>
+  <!-- TABS -->
+  <div class="anim d1 mb-8 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400">
+    <button class="border-b-2 border-gray-900 pb-3 text-gray-900">Overview</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Invocations</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Events (CAP-67)</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Storage (1,847)</button>
+    <button class="pb-3.5 cursor-pointer hover:text-gray-900">Code</button>
+  </div>
+
+  <!-- ACTIVITY SPARKLINE + METADATA -->
+  <div class="anim d2 mb-10 grid grid-cols-3 gap-4">
+    <!-- Sparkline -->
+    <div class="col-span-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Daily Invocations (30 days)</div>
+        <div class="flex items-center gap-1.5 text-[10px] text-gray-400">
+          <span class="h-1.5 w-1.5 rounded-full bg-violet-500"></span> Successful
+          <span class="ml-2 h-1.5 w-1.5 rounded-full bg-red-400"></span> Failed
+        </div>
+      </div>
+      <!-- SVG sparkline chart -->
+      <div class="relative h-[120px] w-full">
+        <svg class="w-full h-full" viewBox="0 0 600 120" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgb(139,92,246)" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="rgb(139,92,246)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Area fill -->
+          <path d="M0,80 L20,75 40,70 60,65 80,72 100,60 120,55 140,50 160,58 180,45 200,40 220,48 240,42 260,38 280,45 300,35 320,30 340,38 360,32 380,28 400,20 420,25 440,18 460,22 480,15 500,18 520,12 540,15 560,10 580,8 600,5 600,120 0,120Z" fill="url(#sparkFill)"/>
+          <!-- Line -->
+          <path d="M0,80 L20,75 40,70 60,65 80,72 100,60 120,55 140,50 160,58 180,45 200,40 220,48 240,42 260,38 280,45 300,35 320,30 340,38 360,32 380,28 400,20 420,25 440,18 460,22 480,15 500,18 520,12 540,15 560,10 580,8 600,5" fill="none" stroke="rgb(139,92,246)" stroke-width="2"/>
+          <!-- Failed line (small, lower) -->
+          <path d="M0,110 L20,112 40,108 60,110 80,109 100,112 120,110 140,111 160,108 180,110 200,112 220,109 240,111 260,110 280,112 300,108 320,110 340,112 360,109 380,110 400,108 420,112 440,110 460,109 480,112 500,110 520,108 540,110 560,112 580,109 600,110" fill="none" stroke="rgb(248,113,113)" stroke-width="1.5" stroke-dasharray="3,3"/>
+        </svg>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-between text-[9px] text-gray-400 pt-1">
+          <span>30d ago</span><span>20d</span><span>10d</span><span>Today</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+        <span>Avg: <span class="font-semibold text-gray-900">8,280/day</span></span>
+        <span class="text-gray-300">|</span>
+        <span>Peak: <span class="font-semibold text-gray-900">14,892</span> (3 days ago)</span>
+        <span class="text-gray-300">|</span>
+        <span>Success rate: <span class="font-semibold text-emerald-600">99.2%</span></span>
+      </div>
+    </div>
+
+    <!-- Contract metadata -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="px-4 py-2.5 bg-[#FAFAFA] border-b border-gray-100">
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Contract Info</span>
+      </div>
+      <div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+        <span class="text-xs text-gray-500">Creator</span>
+        <a href="#" class="font-mono text-xs text-gray-900 hover:text-violet-600">GSORO...W8PQ</a>
+      </div>
+      <div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+        <span class="text-xs text-gray-500">Deployed</span>
+        <span class="text-xs text-gray-900">Ledger 3,842,109</span>
+      </div>
+      <div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+        <span class="text-xs text-gray-500">WASM Hash</span>
+        <div class="flex items-center gap-1 group cursor-pointer">
+          <span class="font-mono text-xs text-gray-900">e4f5a6...b7c8d9</span>
+          <svg class="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </div>
+      </div>
+      <div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+        <span class="text-xs text-gray-500">WASM Size</span>
+        <span class="text-xs text-gray-900">48.2 KB</span>
+      </div>
+      <div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+        <span class="text-xs text-gray-500">Functions</span>
+        <span class="text-xs font-medium text-gray-900">12 exported</span>
+      </div>
+      <div class="detail-row flex items-center justify-between px-4 py-2.5">
+        <span class="text-xs text-gray-500">Source</span>
+        <div class="flex items-center gap-1">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-medium text-emerald-700">Verified</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP FUNCTIONS -->
+  <div class="anim d3 mb-10">
+    <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Top Functions</h3>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+        <div class="w-[160px]">Function</div>
+        <div class="w-24 text-right">24h</div>
+        <div class="w-24 text-right">7d</div>
+        <div class="w-24 text-right">30d</div>
+        <div class="w-28 text-right">Success Rate</div>
+        <div class="flex-1 text-right">Avg CPU/call</div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-[160px]"><span class="font-mono text-sm font-semibold text-violet-600">swap()</span></div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">3,841</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">28,420</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">124,891</div>
+        <div class="w-28 text-right"><span class="font-mono text-sm font-medium text-emerald-600">99.4%</span></div>
+        <div class="flex-1 text-right"><span class="font-mono text-xs text-gray-500">18.4M</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-[160px]"><span class="font-mono text-sm font-semibold text-violet-600">add_liquidity()</span></div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">412</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">3,102</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">14,284</div>
+        <div class="w-28 text-right"><span class="font-mono text-sm font-medium text-emerald-600">98.8%</span></div>
+        <div class="flex-1 text-right"><span class="font-mono text-xs text-gray-500">24.1M</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-[160px]"><span class="font-mono text-sm font-semibold text-violet-600">remove_liquidity()</span></div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">189</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">1,421</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">6,847</div>
+        <div class="w-28 text-right"><span class="font-mono text-sm font-medium text-emerald-600">99.1%</span></div>
+        <div class="flex-1 text-right"><span class="font-mono text-xs text-gray-500">22.8M</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-[160px]"><span class="font-mono text-sm font-semibold text-violet-600">get_reserves()</span></div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">4,210</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">31,847</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">98,241</div>
+        <div class="w-28 text-right"><span class="font-mono text-sm font-medium text-emerald-600">100%</span></div>
+        <div class="flex-1 text-right"><span class="font-mono text-xs text-gray-500">1.2M</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3">
+        <div class="w-[160px]"><span class="font-mono text-sm font-semibold text-violet-600">swap_exact_out()</span></div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">284</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">2,048</div>
+        <div class="w-24 text-right font-mono text-sm text-gray-900 tabular">9,128</div>
+        <div class="w-28 text-right"><span class="font-mono text-sm font-medium text-red-500">94.2%</span></div>
+        <div class="flex-1 text-right"><span class="font-mono text-xs text-gray-500">21.6M</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- RECENT INVOCATIONS -->
+  <div class="anim d4 mb-10">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Recent Invocations</h3>
+      <button class="text-[11px] font-medium text-gray-500 hover:text-violet-600">View all invocations &rarr;</button>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+
+      <div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-50">
+        <div class="flex items-center gap-3">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100">
+            <svg class="h-3.5 w-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-700"><span class="font-medium text-gray-900">GABC...7X</span> called <span class="font-mono text-violet-600">swap()</span> &mdash; <span class="font-semibold text-red-600">5,000 XLM</span> &rarr; <span class="font-semibold text-emerald-600">485 USDC</span></p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-bold text-emerald-700">OK</span>
+              <span class="font-mono text-[10px] text-gray-400">CPU: 18.4M</span>
+              <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-violet-600">8f2a...1b3c</a>
+            </div>
+          </div>
+        </div>
+        <span class="text-[10px] text-gray-400 flex-shrink-0">2 min ago</span>
+      </div>
+
+      <div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-50">
+        <div class="flex items-center gap-3">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100">
+            <svg class="h-3.5 w-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-700"><span class="font-medium text-gray-900">GNOP...3W</span> called <span class="font-mono text-violet-600">swap()</span> &mdash; <span class="font-semibold text-red-600">12,400 XLM</span> &rarr; <span class="font-semibold text-emerald-600">1,202 USDC</span></p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-bold text-emerald-700">OK</span>
+              <span class="font-mono text-[10px] text-gray-400">CPU: 18.1M</span>
+              <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-violet-600">a1b2...8e4f</a>
+            </div>
+          </div>
+        </div>
+        <span class="text-[10px] text-gray-400 flex-shrink-0">4 min ago</span>
+      </div>
+
+      <div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-50 bg-red-50/30">
+        <div class="flex items-center gap-3">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-red-100">
+            <svg class="h-3.5 w-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-700"><span class="font-medium text-gray-900">GFAIL...4K</span> called <span class="font-mono text-violet-600">swap()</span> &mdash; <span class="text-red-600 font-medium">insufficient balance</span></p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="rounded bg-red-50 px-1 py-0.5 text-[9px] font-bold text-red-600">Failed</span>
+              <span class="font-mono text-[10px] text-gray-400">CPU: 6.1M</span>
+              <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-violet-600">e5d4...9g0h</a>
+            </div>
+          </div>
+        </div>
+        <span class="text-[10px] text-gray-400 flex-shrink-0">8 min ago</span>
+      </div>
+
+      <div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-50">
+        <div class="flex items-center gap-3">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
+            <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-700"><span class="font-medium text-gray-900">GKLM...1V</span> called <span class="font-mono text-violet-600">add_liquidity()</span> &mdash; deposited <span class="font-semibold text-gray-900">20,000 XLM + 1,940 USDC</span></p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-bold text-emerald-700">OK</span>
+              <span class="font-mono text-[10px] text-gray-400">CPU: 24.1M</span>
+              <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-violet-600">f1e2...3d4c</a>
+            </div>
+          </div>
+        </div>
+        <span class="text-[10px] text-gray-400 flex-shrink-0">12 min ago</span>
+      </div>
+
+      <div class="detail-row flex items-center justify-between px-5 py-3">
+        <div class="flex items-center gap-3">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100">
+            <svg class="h-3.5 w-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-700"><span class="font-medium text-gray-900">GWXY...9Z</span> called <span class="font-mono text-violet-600">swap_exact_out()</span> &mdash; paid <span class="font-semibold text-red-600">~1,042 XLM</span> for exactly <span class="font-semibold text-emerald-600">100 USDC</span></p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-bold text-emerald-700">OK</span>
+              <span class="font-mono text-[10px] text-gray-400">CPU: 21.6M</span>
+              <a href="#" class="font-mono text-[10px] text-gray-400 hover:text-violet-600">a8b7...c6d5</a>
+            </div>
+          </div>
+        </div>
+        <span class="text-[10px] text-gray-400 flex-shrink-0">15 min ago</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORAGE PREVIEW -->
+  <div class="anim d5 mb-10">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Storage Entries (Top by Size)</h3>
+      <button class="text-[11px] font-medium text-gray-500 hover:text-violet-600">View all 1,847 entries &rarr;</button>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+        <div class="w-24">Type</div>
+        <div class="flex-1">Key</div>
+        <div class="w-20 text-right">Size</div>
+        <div class="w-28 text-right">TTL Remaining</div>
+        <div class="w-28 text-right">Last Modified</div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-24"><span class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">Instance</span></div>
+        <div class="flex-1">
+          <span class="font-mono text-xs text-gray-900">Admin</span>
+          <span class="font-mono text-[10px] text-gray-400 ml-1">&rarr; GSORO...W8PQ</span>
+        </div>
+        <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">128 B</span></div>
+        <div class="w-28 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs text-gray-700">184 days</span>
+          </div>
+        </div>
+        <div class="w-28 text-right"><span class="text-xs text-gray-500">Ledger 5,104,200</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-24"><span class="rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-bold text-cyan-700">Persistent</span></div>
+        <div class="flex-1">
+          <span class="font-mono text-xs text-gray-900">PairReserves:XLM/USDC</span>
+        </div>
+        <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">2.1 KB</span></div>
+        <div class="w-28 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs text-gray-700">92 days</span>
+          </div>
+        </div>
+        <div class="w-28 text-right"><span class="text-xs text-gray-500">Ledger 5,104,938</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-24"><span class="rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-bold text-cyan-700">Persistent</span></div>
+        <div class="flex-1">
+          <span class="font-mono text-xs text-gray-900">PairReserves:XLM/EURC</span>
+        </div>
+        <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">2.1 KB</span></div>
+        <div class="w-28 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs text-gray-700">88 days</span>
+          </div>
+        </div>
+        <div class="w-28 text-right"><span class="text-xs text-gray-500">Ledger 5,104,892</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3 border-b border-gray-50">
+        <div class="w-24"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Temporary</span></div>
+        <div class="flex-1">
+          <span class="font-mono text-xs text-gray-900">SwapCache:GABC...7X</span>
+        </div>
+        <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">512 B</span></div>
+        <div class="w-28 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+            <span class="text-xs text-amber-700 font-medium">12 days</span>
+          </div>
+        </div>
+        <div class="w-28 text-right"><span class="text-xs text-gray-500">Ledger 5,104,938</span></div>
+      </div>
+
+      <div class="detail-row flex items-center px-5 py-3">
+        <div class="w-24"><span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Temporary</span></div>
+        <div class="flex-1">
+          <span class="font-mono text-xs text-gray-900">SwapCache:GNOP...3W</span>
+        </div>
+        <div class="w-20 text-right"><span class="font-mono text-xs text-gray-700">512 B</span></div>
+        <div class="w-28 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+            <span class="text-xs text-red-600 font-medium">3 days</span>
+          </div>
+        </div>
+        <div class="w-28 text-right"><span class="text-xs text-gray-500">Ledger 5,102,100</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- CODE PREVIEW -->
+  <div class="anim d6 mb-10">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Code &amp; WASM</h3>
+      <button class="text-[11px] font-medium text-gray-500 hover:text-violet-600">View full Code tab &rarr;</button>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="px-5 py-3 bg-[#FAFAFA] border-b border-gray-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-medium text-emerald-700">Source Verified</span>
+          <span class="text-[10px] text-gray-400 ml-2">Rust &middot; soroswap-router v2.1.0</span>
+        </div>
+        <a href="#" class="text-[11px] font-medium text-gray-500 hover:text-violet-600 flex items-center gap-1">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          View on GitHub</a>
+      </div>
+      <div class="px-5 py-3 border-b border-gray-100">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Exported Functions (12)</div>
+        <div class="flex flex-wrap gap-2">
+          <span class="rounded bg-violet-50 px-2 py-1 font-mono text-[11px] text-violet-700 ring-1 ring-violet-100">swap()</span>
+          <span class="rounded bg-violet-50 px-2 py-1 font-mono text-[11px] text-violet-700 ring-1 ring-violet-100">swap_exact_out()</span>
+          <span class="rounded bg-violet-50 px-2 py-1 font-mono text-[11px] text-violet-700 ring-1 ring-violet-100">add_liquidity()</span>
+          <span class="rounded bg-violet-50 px-2 py-1 font-mono text-[11px] text-violet-700 ring-1 ring-violet-100">remove_liquidity()</span>
+          <span class="rounded bg-violet-50 px-2 py-1 font-mono text-[11px] text-violet-700 ring-1 ring-violet-100">get_reserves()</span>
+          <span class="rounded bg-violet-50 px-2 py-1 font-mono text-[11px] text-violet-700 ring-1 ring-violet-100">get_pair()</span>
+          <span class="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-600 ring-1 ring-gray-200">initialize()</span>
+          <span class="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-600 ring-1 ring-gray-200">set_admin()</span>
+          <span class="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-600 ring-1 ring-gray-200">upgrade()</span>
+          <span class="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-600 ring-1 ring-gray-200">get_factory()</span>
+          <span class="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-600 ring-1 ring-gray-200">get_admin()</span>
+          <span class="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-600 ring-1 ring-gray-200">version()</span>
+        </div>
+      </div>
+      <!-- Code snippet preview -->
+      <div class="bg-[#1E1E2E] px-5 py-4 font-mono text-[11px] leading-relaxed overflow-x-auto">
+        <div><span class="text-[#C678DD]">pub fn</span> <span class="text-[#61AFEF]">swap</span><span class="text-[#ABB2BF]">(</span></div>
+        <div class="pl-4"><span class="text-[#E5C07B]">env</span><span class="text-[#ABB2BF]">: </span><span class="text-[#E5C07B]">Env</span><span class="text-[#ABB2BF]">,</span></div>
+        <div class="pl-4"><span class="text-[#E5C07B]">token_in</span><span class="text-[#ABB2BF]">: </span><span class="text-[#E5C07B]">Address</span><span class="text-[#ABB2BF]">,</span></div>
+        <div class="pl-4"><span class="text-[#E5C07B]">token_out</span><span class="text-[#ABB2BF]">: </span><span class="text-[#E5C07B]">Address</span><span class="text-[#ABB2BF]">,</span></div>
+        <div class="pl-4"><span class="text-[#E5C07B]">amount_in</span><span class="text-[#ABB2BF]">: </span><span class="text-[#E5C07B]">i128</span><span class="text-[#ABB2BF]">,</span></div>
+        <div class="pl-4"><span class="text-[#E5C07B]">amount_out_min</span><span class="text-[#ABB2BF]">: </span><span class="text-[#E5C07B]">i128</span><span class="text-[#ABB2BF]">,</span></div>
+        <div><span class="text-[#ABB2BF]">) -> </span><span class="text-[#E5C07B]">i128</span> <span class="text-[#ABB2BF]">{</span></div>
+        <div class="pl-4"><span class="text-[#7F848E]">// Verify caller authorization</span></div>
+        <div class="pl-4"><span class="text-[#E5C07B]">token_in</span><span class="text-[#ABB2BF]">.</span><span class="text-[#61AFEF]">require_auth</span><span class="text-[#ABB2BF]">();</span></div>
+        <div class="pl-4"><span class="text-[#7F848E]">// Get pool reserves and compute output</span></div>
+        <div class="pl-4"><span class="text-[#C678DD]">let</span> <span class="text-[#E5C07B]">reserves</span> <span class="text-[#ABB2BF]">=</span> <span class="text-[#61AFEF]">get_reserves</span><span class="text-[#ABB2BF]">(&</span><span class="text-[#E5C07B]">env</span><span class="text-[#ABB2BF]">, &</span><span class="text-[#E5C07B]">token_in</span><span class="text-[#ABB2BF]">, &</span><span class="text-[#E5C07B]">token_out</span><span class="text-[#ABB2BF]">);</span></div>
+        <div class="pl-4 text-[#7F848E]">// ...</div>
+        <div><span class="text-[#ABB2BF]">}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTEXT -->
+  <div class="anim d7 mb-10">
+    <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Context</h3>
+    <div class="flex items-center gap-3 flex-wrap">
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="text-xs font-medium text-gray-700">Creator Account &rarr;</span>
+        <span class="font-mono text-[10px] text-gray-400">GSORO...W8PQ</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        <span class="text-xs font-medium text-gray-700">Firehose: This contract&rsquo;s events &rarr;</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+        <span class="text-xs font-medium text-gray-700">State &amp; Rent for this contract &rarr;</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span class="text-xs font-medium text-gray-700">Asset Directory &rarr;</span>
+        <span class="text-[10px] text-gray-400">if SEP-41 token</span>
+      </a>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        <span class="text-xs font-medium text-gray-700">View on Stellar.expert &rarr;</span>
+      </a>
+    </div>
+  </div>
+</main>
+</body>
+</html>

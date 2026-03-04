@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Smart Account Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.font-mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.anim,.animate-fade-up{animation:fade-up .3s ease-out forwards;opacity:0}
+.d1{animation-delay:.04s}.d2{animation-delay:.08s}.d3{animation-delay:.12s}.d4{animation-delay:.16s}.d5{animation-delay:.2s}.d6{animation-delay:.24s}.d7{animation-delay:.28s}.d8{animation-delay:.32s}
+.slide-panel{animation:slide-in .28s cubic-bezier(.16,1,.3,1) forwards}
+.backdrop-fade{animation:fade-in .2s ease forwards}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.result-row{transition:all .08s}.result-row:hover,.result-row.active{background:rgba(139,92,246,.04)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-[#FAFAFA] text-[#111] antialiased selection:bg-emerald-100">
+
+<header class="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+  <div class="flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <span class="text-[15px] font-bold tracking-tight">Prism</span>
+    </a>
+    <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+      <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>Explorer</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Network</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>Assets</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Contracts</a>
+      <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>Dev Tools</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search…
+      <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+    </button>
+    <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+      <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+      <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+  </div>
+</header>
+<main class="mx-auto max-w-[1320px] px-8 py-6">
+<!-- Context Header -->
+    <div class="animate-fade-up mb-8 flex items-center justify-between">
+      <div class="flex flex-col">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">My Portfolio</span>
+        <div class="group mt-1 flex cursor-pointer items-center gap-3">
+          <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Treasury Multisig</h1>
+          <!-- Smart Account Badge — this is the key visual differentiator -->
+          <div class="flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-violet-700 ring-1 ring-violet-100">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            Smart Account
+          </div>
+        </div>
+        <!-- Contract ID with copy interaction -->
+        <div class="group mt-1 flex cursor-pointer items-center gap-2">
+          <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
+          <span class="font-mono text-sm text-gray-500 transition-colors group-hover:text-gray-900">CDLZ...Q8M4</span>
+          <svg class="h-3.5 w-3.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+        </div>
+      </div>
+
+      <!-- Right side controls -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          Mainnet
+        </div>
+        <button class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+          Stellar.expert
+        </button>
+      </div>
+    </div>
+
+    <!-- The "Decimal Drop" Balance Section -->
+    <div class="animate-fade-up delay-1 mb-10">
+      <div class="text-sm font-medium text-gray-500 mb-1">Total Balance</div>
+      <div class="flex items-baseline">
+        <span class="text-[56px] font-semibold leading-none tracking-tight text-gray-900">$87,204</span>
+        <span class="text-[28px] font-medium leading-none text-gray-400">.51</span>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────── -->
+    <!-- PROGRESSIVE DISCLOSURE TABS         -->
+    <!-- ─────────────────────────────────── -->
+    <div class="animate-fade-up delay-2 mb-8 flex gap-8 border-b border-gray-200 text-sm font-medium text-gray-500">
+      <div class="cursor-pointer pb-3 transition-colors hover:text-gray-900">Overview</div>
+      <!-- ACTIVE TAB: Account Security -->
+      <div class="cursor-pointer border-b-2 border-gray-900 pb-3 text-gray-900">Account Security</div>
+      <div class="flex cursor-pointer items-center gap-2 pb-3 transition-colors hover:text-gray-900">
+        Activity
+        <span class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">Live</span>
+      </div>
+      <div class="cursor-pointer pb-3 transition-colors hover:text-gray-900">Developer Data</div>
+    </div>
+
+    <!-- ─────────────────────────────────── -->
+    <!-- 3. ACCOUNT SECURITY TAB CONTENT     -->
+    <!-- ─────────────────────────────────── -->
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-3">
+
+      <!-- ────────── LEFT COLUMN: Signers + Policies (2/3 width) ────────── -->
+      <div class="lg:col-span-2 space-y-10">
+
+        <!-- ── SECTION: Active Signers ── -->
+        <div class="animate-fade-up delay-3">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold text-gray-900">Active Signers</h3>
+              <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">3 registered</span>
+            </div>
+            <button class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-900">Manage signers &rarr;</button>
+          </div>
+
+          <div class="space-y-3">
+
+            <!-- Signer 1: Owner -->
+            <div class="group flex items-center justify-between rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 transition-all hover:border-gray-200 hover:shadow-sm">
+              <div class="flex items-center gap-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-900">Owner Key</span>
+                    <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-100">Admin</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="font-mono text-xs text-gray-500">GBXC...4K71</span>
+                    <span class="text-[10px] text-gray-400">&middot; Ed25519</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Weight</div>
+                  <div class="text-lg font-semibold text-gray-900">10</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Signer 2: Operations -->
+            <div class="group flex items-center justify-between rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 transition-all hover:border-gray-200 hover:shadow-sm">
+              <div class="flex items-center gap-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-900">Operations Signer</span>
+                    <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 ring-1 ring-blue-100">Signer</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="font-mono text-xs text-gray-500">GDEF...9R23</span>
+                    <span class="text-[10px] text-gray-400">&middot; Ed25519</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Weight</div>
+                  <div class="text-lg font-semibold text-gray-900">10</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Signer 3: Recovery -->
+            <div class="group flex items-center justify-between rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 transition-all hover:border-gray-200 hover:shadow-sm">
+              <div class="flex items-center gap-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-900">Recovery Signer</span>
+                    <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-100">Recovery</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="font-mono text-xs text-gray-500">GHIJ...2M56</span>
+                    <span class="text-[10px] text-gray-400">&middot; Ed25519</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Weight</div>
+                  <div class="text-lg font-semibold text-gray-900">10</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SECTION: Authorization Policies ── -->
+        <div class="animate-fade-up delay-4">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold text-gray-900">Authorization Policies</h3>
+              <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">2 active</span>
+            </div>
+            <button class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-900">View policy log &rarr;</button>
+          </div>
+
+          <div class="space-y-3">
+
+            <!-- Policy 1: Spending Limit -->
+            <div class="rounded-xl border border-gray-100 bg-[#FAFAFA] p-5 transition-all hover:border-gray-200 hover:shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div>
+                    <span class="text-sm font-semibold text-gray-900">Daily Spending Limit</span>
+                    <p class="text-xs text-gray-500 mt-0.5">Caps single-signer withdrawals per 24-hour period</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  Active
+                </div>
+              </div>
+
+              <!-- Policy Details Grid -->
+              <div class="grid grid-cols-3 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                <div>
+                  <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Limit</div>
+                  <div class="flex items-baseline">
+                    <span class="text-lg font-semibold text-gray-900">10,000</span>
+                    <span class="ml-1 text-xs font-medium text-gray-500">XLM</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spent Today</div>
+                  <div class="flex items-baseline">
+                    <span class="text-lg font-semibold text-gray-900">2,400</span>
+                    <span class="ml-1 text-xs font-medium text-gray-500">XLM</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Resets In</div>
+                  <div class="text-lg font-semibold text-gray-900">14h 22m</div>
+                </div>
+              </div>
+
+              <!-- Spending bar -->
+              <div class="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                <div class="h-full w-[24%] rounded-full bg-gray-900 transition-all"></div>
+              </div>
+              <div class="mt-1 flex justify-between text-[10px] font-medium text-gray-400">
+                <span>24% used</span>
+                <span>7,600 XLM remaining</span>
+              </div>
+            </div>
+
+            <!-- Policy 2: Allowlisted Contracts -->
+            <div class="rounded-xl border border-gray-100 bg-[#FAFAFA] p-5 transition-all hover:border-gray-200 hover:shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  </div>
+                  <div>
+                    <span class="text-sm font-semibold text-gray-900">Contract Allowlist</span>
+                    <p class="text-xs text-gray-500 mt-0.5">Only pre-approved contracts can be invoked</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  Active
+                </div>
+              </div>
+
+              <!-- Allowlisted Contracts -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                  <div class="flex items-center gap-2">
+                    <div class="flex h-6 w-6 items-center justify-center rounded-full bg-[#9B6568]/10 text-[#9B6568]">
+                      <span class="text-[9px] font-bold">S</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">Soroswap Router</span>
+                    <span class="font-mono text-[10px] text-gray-400">CAXY...Z10P</span>
+                  </div>
+                  <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500">swap, add_liq</span>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                  <div class="flex items-center gap-2">
+                    <div class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                      <span class="text-[9px] font-bold">B</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">Blend Protocol</span>
+                    <span class="font-mono text-[10px] text-gray-400">CBLND...P2R8</span>
+                  </div>
+                  <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500">supply, borrow</span>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                  <div class="flex items-center gap-2">
+                    <div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                      <span class="text-[9px] font-bold">U</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">USDC Token</span>
+                    <span class="font-mono text-[10px] text-gray-400">CCTP...W5A3</span>
+                  </div>
+                  <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500">transfer, approve</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SECTION: Active Session Keys ── -->
+        <div class="animate-fade-up delay-5">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold text-gray-900">Session Keys</h3>
+              <span class="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-800">1 active</span>
+            </div>
+            <button class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-900">Revoke all &rarr;</button>
+          </div>
+
+          <!-- Session Key Card -->
+          <div class="rounded-xl border border-yellow-100 bg-yellow-50/30 p-5 ring-1 ring-yellow-100/50">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100 text-yellow-700">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div>
+                  <span class="text-sm font-semibold text-gray-900">DeFi Trading Session</span>
+                  <p class="text-xs text-gray-500 mt-0.5">Temporary key for Soroswap interactions</p>
+                </div>
+              </div>
+              <button class="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 hover:border-red-200">
+                Revoke
+              </button>
+            </div>
+
+            <!-- Session Details -->
+            <div class="grid grid-cols-4 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <div>
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Key</div>
+                <span class="font-mono text-xs text-gray-700">GSESS...K8P2</span>
+              </div>
+              <div>
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spend Limit</div>
+                <div class="flex items-baseline">
+                  <span class="text-sm font-semibold text-gray-900">500</span>
+                  <span class="ml-1 text-[10px] font-medium text-gray-500">XLM</span>
+                </div>
+              </div>
+              <div>
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Used</div>
+                <div class="flex items-baseline">
+                  <span class="text-sm font-semibold text-gray-900">127</span>
+                  <span class="ml-1 text-[10px] font-medium text-gray-500">XLM</span>
+                </div>
+              </div>
+              <div>
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Expires</div>
+                <div class="text-sm font-semibold text-gray-900">2h 41m</div>
+              </div>
+            </div>
+
+            <!-- Session spend bar -->
+            <div class="mt-3 h-1.5 w-full rounded-full bg-yellow-100 overflow-hidden">
+              <div class="h-full w-[25%] rounded-full bg-yellow-500 transition-all"></div>
+            </div>
+            <div class="mt-1 flex justify-between text-[10px] font-medium text-gray-400">
+              <span>25% of session budget used</span>
+              <span>Scoped to: Soroswap Router only</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ────────── RIGHT COLUMN: Threshold Viz + Quick Info (1/3 width) ────────── -->
+      <div class="space-y-6 animate-fade-up delay-3">
+
+        <!-- Threshold Visualization Card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 class="mb-1 text-sm font-semibold text-gray-900">Signing Threshold</h3>
+          <p class="text-xs text-gray-500 mb-6">Required approval weight for transactions</p>
+
+          <!-- The SVG Threshold Ring -->
+          <div class="flex flex-col items-center mb-6">
+            <div class="relative">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <!-- Background ring -->
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#F3F4F6" stroke-width="8" />
+                <!-- Progress ring (2 of 3 filled) -->
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#111827" stroke-width="8"
+                  stroke-linecap="round"
+                  stroke-dasharray="364"
+                  stroke-dashoffset="121"
+                  transform="rotate(-90 70 70)"
+                  class="threshold-ring"
+                />
+                <!-- Signer dots on the ring -->
+                <!-- Dot 1: top (filled) -->
+                <circle cx="70" cy="12" r="6" fill="#111827" stroke="white" stroke-width="3" />
+                <!-- Dot 2: bottom-right (filled) -->
+                <circle cx="120" cy="95" r="6" fill="#111827" stroke="white" stroke-width="3" />
+                <!-- Dot 3: bottom-left (empty — not required) -->
+                <circle cx="20" cy="95" r="6" fill="white" stroke="#D1D5DB" stroke-width="2" />
+              </svg>
+              <!-- Center text -->
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-3xl font-semibold text-gray-900">2</span>
+                <span class="text-xs font-medium text-gray-400">of 3</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Threshold breakdown -->
+          <div class="space-y-3 border-t border-gray-100 pt-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Required Weight</span>
+              <span class="text-sm font-semibold text-gray-900">20</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Total Signer Weight</span>
+              <span class="text-sm font-semibold text-gray-900">30</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Min. Signers Needed</span>
+              <span class="text-sm font-semibold text-gray-900">2 of 3</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contract Health Card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 class="mb-4 text-sm font-semibold text-gray-900">Contract Health</h3>
+
+          <div class="space-y-4">
+            <!-- Rent Status -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Ledger Rent</span>
+              <div class="flex items-center gap-1.5">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                </span>
+                <span class="text-sm font-semibold text-gray-900">Healthy</span>
+              </div>
+            </div>
+
+            <!-- TTL -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">TTL Remaining</span>
+              <span class="text-sm font-semibold text-gray-900">~58 days</span>
+            </div>
+
+            <!-- WASM Hash -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Contract WASM</span>
+              <div class="group flex cursor-pointer items-center gap-1">
+                <span class="font-mono text-xs text-gray-600 group-hover:text-gray-900">0xa4f2...c8b1</span>
+                <svg class="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              </div>
+            </div>
+
+            <!-- OZ Version -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">OZ Framework</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-semibold text-gray-900">v0.5.0</span>
+                <div class="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                  <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                  Audited
+                </div>
+              </div>
+            </div>
+
+            <!-- Deployed -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Deployed</span>
+              <span class="text-sm font-medium text-gray-600">Oct 2, 2026</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Security Events -->
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900">Security Log</h3>
+            <button class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-900">View all</button>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Event 1 -->
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs font-medium text-gray-900">Session key created</span>
+                <span class="text-[10px] text-gray-500">Today, 11:02 AM &middot; by Owner Key</span>
+              </div>
+            </div>
+            <!-- Event 2 -->
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs font-medium text-gray-900">Blend Protocol added to allowlist</span>
+                <span class="text-[10px] text-gray-500">Yesterday, 3:18 PM &middot; 2-of-3 approval</span>
+              </div>
+            </div>
+            <!-- Event 3 -->
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs font-medium text-gray-900">Session key expired</span>
+                <span class="text-[10px] text-gray-500">Oct 23, 2026 &middot; auto-revoked</span>
+              </div>
+            </div>
+            <!-- Event 4 -->
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs font-medium text-gray-900">Threshold updated to 2-of-3</span>
+                <span class="text-[10px] text-gray-500">Oct 2, 2026 &middot; at deployment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+</main>
+</body>
+</html>

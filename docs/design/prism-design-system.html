@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism Design System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{font-family:'Instrument Sans','SF Pro Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace!important}
+.tabular{font-variant-numeric:tabular-nums}
+
+/* DS page chrome */
+.ds-section{scroll-margin-top:72px}
+.ds-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px}
+.ds-value{font-size:12px;color:#374151;font-family:'JetBrains Mono',monospace}
+.swatch{width:100%;aspect-ratio:2.2;border-radius:10px;display:flex;align-items:flex-end;padding:10px 12px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace}
+
+/* Live component styles (from Prism) */
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.35)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.anim{animation:fade-up .3s ease-out forwards;opacity:0}
+.pulse-dot{animation:pulse-ring 2s infinite}
+.nav-item{position:relative}.nav-item::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#111;transform:scaleX(0);transition:transform .15s ease}.nav-item:hover::after{transform:scaleX(1)}.nav-item.active::after{transform:scaleX(1)}
+.detail-row{transition:background-color .08s}.detail-row:hover{background-color:rgba(0,0,0,.018)}
+.card-hover{transition:all .15s ease}.card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 24px -8px rgba(0,0,0,.08)}
+.search-ring{transition:all .2s ease}.search-ring:focus-within{box-shadow:0 0 0 3px rgba(16,185,129,.15);border-color:#10B981}
+.hint-pill{transition:all .12s ease}.hint-pill:hover{background:#111;color:#fff;transform:translateY(-1px)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+</style>
+</head>
+<body class="bg-white text-[#111]">
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DS NAVIGATION (fixed left sidebar for the doc) -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="flex min-h-screen">
+<nav class="fixed top-0 left-0 w-[220px] h-screen border-r border-gray-200 bg-[#FAFAFA] overflow-y-auto py-8 px-5 z-50">
+  <div class="flex items-center gap-2 mb-8">
+    <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+    </div>
+    <div>
+      <div class="text-[14px] font-bold">Prism</div>
+      <div class="text-[10px] text-gray-400 -mt-0.5">Design System v1.0</div>
+    </div>
+  </div>
+  <div class="space-y-1 text-[12px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Foundation</div>
+    <a href="#brand" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Brand & Logo</a>
+    <a href="#colors" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Colors</a>
+    <a href="#typography" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Typography</a>
+    <a href="#spacing" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Spacing & Layout</a>
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">Components</div>
+    <a href="#navigation" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Navigation</a>
+    <a href="#badges" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Badges & Tags</a>
+    <a href="#cards" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Cards & Stat Cards</a>
+    <a href="#tables" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Tables</a>
+    <a href="#buttons" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Buttons & Inputs</a>
+    <a href="#tabs" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Tabs</a>
+    <a href="#charts" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Charts</a>
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">Patterns</div>
+    <a href="#data-display" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Data Display</a>
+    <a href="#slideout" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Slide-out Panels</a>
+    <a href="#animations" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Animation</a>
+    <a href="#status" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Status & Feedback</a>
+    <a href="#dark" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Dark Variant</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DS CONTENT                                     -->
+<!-- ═══════════════════════════════════════════════ -->
+<main class="ml-[220px] flex-1">
+
+<!-- COVER -->
+<div class="border-b border-gray-200 bg-[#FAFAFA] px-12 py-16">
+  <div class="max-w-[900px]">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111] text-white shadow-lg">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+      </div>
+      <div>
+        <div class="text-2xl font-bold">Prism Design System</div>
+        <div class="text-[13px] text-gray-400">v1.0 — March 2026</div>
+      </div>
+    </div>
+    <p class="text-[15px] text-gray-500 leading-relaxed max-w-[600px] mb-6">
+      The visual language for Prism, a Soroban-first block explorer for the Stellar network. This document defines every color, type scale, component, and interaction pattern used across the product.
+    </p>
+    <div class="flex items-center gap-3 text-[12px]">
+      <span class="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 text-gray-600 font-medium">Go + Templ + htmx</span>
+      <span class="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 text-gray-600 font-medium">Tailwind CSS</span>
+      <span class="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 text-gray-600 font-medium">Instrument Sans</span>
+      <span class="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 text-gray-600 font-medium">JetBrains Mono</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- BRAND & LOGO                                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="brand" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Foundation</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Brand & Logo</h2>
+
+    <div class="grid grid-cols-3 gap-6 mb-8">
+      <!-- Logo on light -->
+      <div class="rounded-xl border border-gray-200 bg-[#FAFAFA] p-8 flex flex-col items-center justify-center">
+        <div class="flex items-center gap-2.5 mb-3">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#111] text-white">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+          </div>
+          <span class="text-[18px] font-bold tracking-tight">Prism</span>
+        </div>
+        <div class="ds-label mt-2">Light background</div>
+      </div>
+      <!-- Logo on dark -->
+      <div class="rounded-xl border border-gray-200 bg-[#09090B] p-8 flex flex-col items-center justify-center">
+        <div class="flex items-center gap-2.5 mb-3">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#111]">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+          </div>
+          <span class="text-[18px] font-bold tracking-tight text-white">Prism</span>
+        </div>
+        <div class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mt-2">Dark background</div>
+      </div>
+      <!-- Logo mark only -->
+      <div class="rounded-xl border border-gray-200 bg-white p-8 flex flex-col items-center justify-center">
+        <div class="flex gap-4 mb-3">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#111] text-white">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+          </div>
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-cyan-50 ring-1 ring-gray-200">
+            <svg class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+          </div>
+        </div>
+        <div class="ds-label mt-2">Mark variants</div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Usage rules</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Triangle mark</strong> — Always inside a rounded-xl container (16px radius). Never freestanding. The triangle is a stroke-only SVG polygon, not filled.</div>
+        <div><strong class="text-gray-700">Wordmark</strong> — "Prism" in Instrument Sans 700 with letter-spacing: -0.02em. Always paired with the mark. "by Obsrvr" may appear below in 400 weight, gray-400.</div>
+        <div><strong class="text-gray-700">Minimum size</strong> — Mark: 28×28px. Full lockup: 120px wide. Never distort or recolor the mark outside the defined variants.</div>
+        <div><strong class="text-gray-700">Clear space</strong> — Minimum clear space around the full lockup equals the height of the triangle mark.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- COLORS                                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="colors" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Foundation</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-2">Colors</h2>
+    <p class="text-[13px] text-gray-500 mb-8 max-w-[500px]">Prism uses a neutral gray base with emerald as the primary semantic color. Purple accents appear in the marketing/dark variant. Color conveys meaning, never decoration.</p>
+
+    <!-- Neutrals -->
+    <h3 class="text-[12px] font-semibold text-gray-700 mb-3">Neutrals</h3>
+    <div class="grid grid-cols-8 gap-2 mb-8">
+      <div><div class="swatch bg-white text-gray-400 ring-1 ring-gray-200">White</div><div class="ds-value mt-1">#FFFFFF</div></div>
+      <div><div class="swatch bg-[#FAFAFA] text-gray-500">FAFAFA</div><div class="ds-value mt-1">#FAFAFA</div><div class="ds-label">Page bg</div></div>
+      <div><div class="swatch bg-gray-100 text-gray-500">100</div><div class="ds-value mt-1">#F3F4F6</div></div>
+      <div><div class="swatch bg-gray-200 text-gray-600">200</div><div class="ds-value mt-1">#E5E7EB</div><div class="ds-label">Borders</div></div>
+      <div><div class="swatch bg-gray-400 text-white">400</div><div class="ds-value mt-1">#9CA3AF</div><div class="ds-label">Muted text</div></div>
+      <div><div class="swatch bg-gray-500 text-white">500</div><div class="ds-value mt-1">#6B7280</div></div>
+      <div><div class="swatch bg-gray-700 text-white">700</div><div class="ds-value mt-1">#374151</div></div>
+      <div><div class="swatch bg-[#111] text-white">900</div><div class="ds-value mt-1">#111111</div><div class="ds-label">Text / Logo</div></div>
+    </div>
+
+    <!-- Semantic colors -->
+    <h3 class="text-[12px] font-semibold text-gray-700 mb-3">Semantic</h3>
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <!-- Emerald -->
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-2">Emerald — Primary / Success / Live</div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <div><div class="swatch bg-emerald-50 text-emerald-600 text-[9px]">50</div><div class="ds-value mt-1">#ECFDF5</div><div class="ds-label">Badge bg</div></div>
+          <div><div class="swatch bg-emerald-200 text-emerald-700 text-[9px]">200</div><div class="ds-value mt-1">#A7F3D0</div><div class="ds-label">Ring</div></div>
+          <div><div class="swatch bg-emerald-500 text-white text-[9px]">500</div><div class="ds-value mt-1">#10B981</div><div class="ds-label">Dot / Bar</div></div>
+        </div>
+      </div>
+      <!-- Violet -->
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-2">Violet — Contract / Soroban</div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <div><div class="swatch bg-violet-50 text-violet-600 text-[9px]">50</div><div class="ds-value mt-1">#F5F3FF</div></div>
+          <div><div class="swatch bg-violet-200 text-violet-700 text-[9px]">200</div><div class="ds-value mt-1">#DDD6FE</div></div>
+          <div><div class="swatch bg-violet-600 text-white text-[9px]">600</div><div class="ds-value mt-1">#7C3AED</div></div>
+        </div>
+      </div>
+      <!-- Amber -->
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-2">Amber — Warning / Caution</div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <div><div class="swatch bg-amber-50 text-amber-600 text-[9px]">50</div><div class="ds-value mt-1">#FFFBEB</div></div>
+          <div><div class="swatch bg-amber-200 text-amber-700 text-[9px]">200</div><div class="ds-value mt-1">#FDE68A</div></div>
+          <div><div class="swatch bg-amber-500 text-white text-[9px]">500</div><div class="ds-value mt-1">#F59E0B</div></div>
+        </div>
+      </div>
+      <!-- Red -->
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-2">Red — Error / Failed / Rejected</div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <div><div class="swatch bg-red-50 text-red-600 text-[9px]">50</div><div class="ds-value mt-1">#FEF2F2</div></div>
+          <div><div class="swatch bg-red-200 text-red-700 text-[9px]">200</div><div class="ds-value mt-1">#FECACA</div></div>
+          <div><div class="swatch bg-red-500 text-white text-[9px]">500</div><div class="ds-value mt-1">#EF4444</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accent / dark mode -->
+    <h3 class="text-[12px] font-semibold text-gray-700 mb-3">Dark Variant Accent (marketing pages)</h3>
+    <div class="grid grid-cols-5 gap-2 mb-6">
+      <div><div class="swatch bg-[#09090B] text-gray-500">Background</div><div class="ds-value mt-1">#09090B</div></div>
+      <div><div class="swatch bg-[#12131a] text-gray-400">Surface</div><div class="ds-value mt-1">#12131A</div></div>
+      <div><div class="swatch bg-[#1e2030] text-gray-400">Border</div><div class="ds-value mt-1">#1E2030</div></div>
+      <div><div class="swatch bg-[#7c6cf0] text-white">Accent</div><div class="ds-value mt-1">#7C6CF0</div></div>
+      <div><div class="swatch bg-[#a78bfa] text-white">Highlight</div><div class="ds-value mt-1">#A78BFA</div></div>
+    </div>
+
+    <!-- Color usage rules -->
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Color rules</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Emerald links</strong> — All clickable blockchain data (addresses, hashes, ledger numbers) use emerald-700 (#047857). Never blue.</div>
+        <div><strong class="text-gray-700">Violet = Soroban</strong> — Contract calls, Soroban events, and smart contract badges always use the violet palette. This creates instant visual distinction between classic and Soroban activity.</div>
+        <div><strong class="text-gray-700">No decorative color</strong> — Color always conveys meaning (status, type, interaction). Never use color just for visual variety.</div>
+        <div><strong class="text-gray-700">Amber threshold</strong> — Amber appears when a metric is concerning but not critical (e.g., 57.3% crawler rejection). Red appears only for failures and errors.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- TYPOGRAPHY                                      -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="typography" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Foundation</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Typography</h2>
+
+    <!-- Type specimens -->
+    <div class="grid grid-cols-2 gap-8 mb-8">
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-3">Instrument Sans — UI & Body</div>
+        <div class="space-y-3">
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[24px] font-bold tracking-tight text-gray-900">Heading 1</span>
+            <span class="ds-value">24px / 700 / -0.02em</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[18px] font-bold text-gray-900">Heading 2</span>
+            <span class="ds-value">18px / 700</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[14px] font-semibold text-gray-900">Section Label</span>
+            <span class="ds-value">14px / 600</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[13px] text-gray-700">Body text</span>
+            <span class="ds-value">13px / 400</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[12px] text-gray-600">Table cell</span>
+            <span class="ds-value">12px / 400</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[11px] text-gray-500">Secondary text</span>
+            <span class="ds-value">11px / 400</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CATEGORY LABEL</span>
+            <span class="ds-value">10px / 600 / 0.1em / upper</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span class="text-[9px] font-bold text-gray-500">BADGE TEXT</span>
+            <span class="ds-value">9px / 700</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-3">JetBrains Mono — Data & Code</div>
+        <div class="space-y-3">
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="mono text-[14px] text-gray-900 tabular">5,104,938</span>
+            <span class="ds-value">14px / 400 / tabular-nums</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="mono text-[12px] text-emerald-700">GCGB2S2K...ZSTYH</span>
+            <span class="ds-value">12px / 500 / emerald-700</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="mono text-[11px] text-gray-500">a7c2f1...8b3d</span>
+            <span class="ds-value">11px / 400 / gray-500</span>
+          </div>
+          <div class="flex items-baseline justify-between border-b border-gray-50 pb-2">
+            <span class="mono text-[10px] text-gray-400">core-live-a.stellar.org:11625</span>
+            <span class="ds-value">10px / 400 / gray-400</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span class="mono text-[24px] font-bold text-gray-900 tabular">99.95%</span>
+            <span class="ds-value">24px / 700 / Stat card value</span>
+          </div>
+        </div>
+        <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+          <div class="text-[11px] font-semibold text-gray-700 mb-1">tabular-nums</div>
+          <div class="text-[12px] text-gray-500">All numeric data uses <code class="mono text-[11px] bg-gray-100 px-1 py-0.5 rounded">font-variant-numeric: tabular-nums</code> so columns align. Applied via the <code class="mono text-[11px] bg-gray-100 px-1 py-0.5 rounded">.tabular</code> class.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Type rules</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Mono for all blockchain data</strong> — Addresses, hashes, ledger numbers, amounts, fees, sequences, public keys. Never render these in the sans-serif face.</div>
+        <div><strong class="text-gray-700">Sans for all UI text</strong> — Labels, descriptions, navigation, buttons, headings. Never use mono for UI elements.</div>
+        <div><strong class="text-gray-700">Address truncation</strong> — Format: first 5–6 chars + "…" + last 4–5 chars. Example: GCGB2S...ZSTYH. Always pair with a copy-to-clipboard button.</div>
+        <div><strong class="text-gray-700">Number formatting</strong> — Use comma separators for integers ≥1,000. Preserve full decimal precision for amounts. Use unit suffixes (K, M) only in charts and stat cards.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SPACING & LAYOUT                                -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="spacing" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Foundation</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Spacing & Layout</h2>
+
+    <div class="grid grid-cols-2 gap-8 mb-8">
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-3">Page structure</div>
+        <div class="rounded-lg border border-gray-200 overflow-hidden">
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Top nav height</span><span class="ds-value">56px (h-14)</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Content max-width</span><span class="ds-value">1320px</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Content padding</span><span class="ds-value">32px (px-8)</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Section gap</span><span class="ds-value">28px (mb-7)</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Slide-out panel width</span><span class="ds-value">480px</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5"><span class="text-[12px] text-gray-500">Page background</span><span class="ds-value">#FAFAFA</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-[11px] font-semibold text-gray-600 mb-3">Component spacing</div>
+        <div class="rounded-lg border border-gray-200 overflow-hidden">
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Card padding</span><span class="ds-value">16–20px (p-4 to p-5)</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Card radius</span><span class="ds-value">12px (rounded-xl)</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Card border</span><span class="ds-value">1px gray-200</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Table row padding</span><span class="ds-value">10px 16px (py-2.5 px-4)</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-[12px] text-gray-500">Badge padding</span><span class="ds-value">2–4px 8–10px</span></div>
+          <div class="detail-row flex justify-between px-4 py-2.5"><span class="text-[12px] text-gray-500">Grid gap (cards)</span><span class="ds-value">12px (gap-3)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual layout diagram -->
+    <div class="rounded-xl border border-gray-200 bg-[#FAFAFA] p-6">
+      <div class="text-[11px] font-semibold text-gray-600 mb-3">Page anatomy</div>
+      <div class="border border-dashed border-gray-300 rounded-lg overflow-hidden">
+        <div class="h-8 bg-white border-b border-gray-200 flex items-center px-3"><span class="text-[9px] font-bold text-gray-400 uppercase">Top Nav — 56px sticky</span></div>
+        <div class="p-4">
+          <div class="mx-auto border border-dashed border-gray-300 rounded-lg p-3" style="max-width:70%">
+            <span class="text-[9px] font-bold text-gray-400 uppercase">Max-width: 1320px · px-8</span>
+            <div class="mt-2 grid grid-cols-6 gap-1.5">
+              <div class="col-span-6 h-5 bg-gray-200 rounded text-[7px] text-gray-500 flex items-center px-2">Breadcrumb</div>
+              <div class="col-span-6 h-8 bg-gray-200 rounded text-[7px] text-gray-500 flex items-center px-2">Entity Header</div>
+              <div class="h-7 bg-emerald-100 rounded text-[7px] text-emerald-600 flex items-center justify-center">Stat</div>
+              <div class="h-7 bg-emerald-100 rounded text-[7px] text-emerald-600 flex items-center justify-center">Stat</div>
+              <div class="h-7 bg-emerald-100 rounded text-[7px] text-emerald-600 flex items-center justify-center">Stat</div>
+              <div class="h-7 bg-amber-100 rounded text-[7px] text-amber-600 flex items-center justify-center">Stat</div>
+              <div class="h-7 bg-emerald-100 rounded text-[7px] text-emerald-600 flex items-center justify-center">Stat</div>
+              <div class="h-7 bg-emerald-100 rounded text-[7px] text-emerald-600 flex items-center justify-center">Stat</div>
+              <div class="col-span-6 h-5 bg-gray-200 rounded text-[7px] text-gray-500 flex items-center px-2">Tabs</div>
+              <div class="col-span-6 h-16 bg-gray-100 rounded text-[7px] text-gray-400 flex items-center justify-center">Content area</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- NAVIGATION                                      -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="navigation" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Navigation</h2>
+
+    <!-- Live top nav -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Top nav bar (sticky, 56px)</div>
+    <div class="rounded-xl border border-gray-200 overflow-hidden mb-6">
+      <div class="flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+        <div class="flex items-center gap-8">
+          <a href="#" class="flex items-center gap-2">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+            </div>
+            <span class="text-[15px] font-bold tracking-tight">Prism</span>
+          </a>
+          <nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+            <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900">Explorer</a>
+            <a href="#" class="nav-item active flex items-center gap-1 px-3 h-full text-gray-900">Network</a>
+            <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900">Assets</a>
+            <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900">Contracts</a>
+            <a href="#" class="nav-item flex items-center gap-1 px-3 h-full hover:text-gray-900">Dev Tools</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500">
+            Search…
+            <kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+          </button>
+          <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Mainnet
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Breadcrumb</div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 mb-6">
+      <div class="flex items-center gap-2 text-[13px] text-gray-400">
+        <a href="#" class="hover:text-gray-900 transition-colors">Network</a>
+        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <a href="#" class="hover:text-gray-900 transition-colors">Stellar Development Foundation</a>
+        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <span class="text-gray-900 font-medium">SDF 1</span>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Nav specs</h3>
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        Active state: 2px bottom border in #111, text-gray-900. Hover: scaleX(1) transition on the underline, 150ms ease. Items use text-[13px] font-medium. The search trigger sits at the right with ⌘K keyboard shortcut. Mainnet/Testnet selector uses a pulsing green dot for live networks.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- BADGES & TAGS                                   -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="badges" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Badges & Tags</h2>
+
+    <div class="flex flex-wrap gap-3 mb-6">
+      <!-- Status badges -->
+      <span class="rounded-full bg-emerald-50 px-2.5 py-1 ring-1 ring-emerald-200/80 text-[10px] font-semibold text-emerald-700">Validating</span>
+      <span class="rounded-full bg-emerald-50 px-2.5 py-1 ring-1 ring-emerald-200/80 text-[10px] font-semibold text-emerald-700">Success</span>
+      <span class="rounded-full bg-amber-50 px-2.5 py-1 ring-1 ring-amber-200/80 text-[10px] font-semibold text-amber-700">Warning</span>
+      <span class="rounded-full bg-red-50 px-2.5 py-1 ring-1 ring-red-200/80 text-[10px] font-semibold text-red-700">Failed</span>
+      <!-- Type badges -->
+      <span class="rounded-full bg-violet-50 px-2.5 py-1 ring-1 ring-violet-200/80 text-[10px] font-semibold text-violet-700">Contract Call</span>
+      <span class="rounded-full bg-gray-100 px-2.5 py-1 ring-1 ring-gray-200 text-[10px] font-semibold text-gray-600">Tier 1</span>
+      <span class="rounded-full bg-gray-100 px-2.5 py-1 ring-1 ring-gray-200 text-[10px] font-semibold text-gray-600">Archive Publisher</span>
+      <span class="rounded-full bg-cyan-50 px-2.5 py-1 ring-1 ring-cyan-200/80 text-[10px] font-semibold text-cyan-700">Lending</span>
+    </div>
+
+    <!-- Inline badges (smaller) -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Inline badges (inside table rows)</div>
+    <div class="flex flex-wrap gap-2 mb-6">
+      <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold text-violet-600 ring-1 ring-violet-200/60">Path Payment</span>
+      <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 ring-1 ring-emerald-200/60">Payment</span>
+      <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600 ring-1 ring-amber-200/60">Account Merge</span>
+      <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-500 ring-1 ring-gray-200">DEX</span>
+      <span class="rounded bg-emerald-100 px-1 py-0.5 text-[7px] font-bold text-emerald-700">YOU</span>
+      <span class="rounded bg-emerald-100 px-1 py-0.5 text-[7px] font-bold text-emerald-700">VIEWING</span>
+    </div>
+
+    <!-- Live dot -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Status indicators</div>
+    <div class="flex items-center gap-6 mb-6">
+      <div class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500 pulse-dot"></span><span class="text-[12px] text-gray-600">Pulsing live dot</span></div>
+      <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span><span class="text-[12px] text-gray-600">Static healthy</span></div>
+      <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span><span class="text-[12px] text-gray-600">Warning</span></div>
+      <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-red-500"></span><span class="text-[12px] text-gray-600">Down</span></div>
+      <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-gray-300"></span><span class="text-[12px] text-gray-600">Unknown</span></div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Badge anatomy</h3>
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        Rounded-full for status/entity badges, rounded (4px) for inline operation types. Always use the ring-1 pattern with a translucent ring color matching the badge family. Text is font-semibold (600) at 10px for standard badges, font-bold (700) at 9px for inline. The pulsing live dot uses a repeating box-shadow keyframe at 2s intervals.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CARDS & STAT CARDS                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="cards" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Cards & Stat Cards</h2>
+
+    <!-- Stat cards -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Stat cards (6-col grid)</div>
+    <div class="grid grid-cols-6 gap-3 mb-8">
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Node Index</div>
+        <div class="text-2xl font-bold text-gray-900 tabular">0.83</div>
+        <div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style="width:83%"></div></div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">24H Validating</div>
+        <div class="text-2xl font-bold text-emerald-600 tabular">100%</div>
+        <div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style="width:100%"></div></div>
+      </div>
+      <div class="rounded-xl border border-amber-200/60 bg-amber-50/20 px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Crawler Rejected</div>
+        <div class="text-2xl font-bold text-amber-600 tabular">57.3%</div>
+        <div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-amber-400" style="width:57.3%"></div></div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusts</div>
+        <div class="text-xl font-bold text-gray-900 tabular">21 <span class="text-sm font-normal text-gray-400">nodes</span></div>
+        <div class="text-[10px] text-gray-500 mt-0.5">across 7 organizations</div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">TPS (avg)</div>
+        <div class="text-2xl font-bold text-gray-900 tabular">14.8</div>
+        <div class="text-[10px] text-gray-500 mt-0.5">peak: 142</div>
+      </div>
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Soroban Calls</div>
+        <div class="text-2xl font-bold text-gray-900 tabular">847K</div>
+        <div class="text-[10px] text-emerald-600 font-medium mt-0.5">↑ 28.7%</div>
+      </div>
+    </div>
+
+    <!-- Detail card -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Detail card (key-value rows)</div>
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6" style="max-width:400px">
+      <div class="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100"><span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Node Details</span></div>
+      <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-xs text-gray-500">Host</span><span class="mono text-[11px] text-gray-900">core-live-a.stellar.org</span></div>
+      <div class="detail-row flex justify-between px-4 py-2.5 border-b border-gray-50"><span class="text-xs text-gray-500">Version</span><span class="text-xs text-gray-900">stellar-core 25.2.0.rc2</span></div>
+      <div class="detail-row flex justify-between px-4 py-2.5"><span class="text-xs text-gray-500">Country</span><span class="text-xs text-gray-900">🇺🇸 United States</span></div>
+    </div>
+
+    <!-- Quick access card -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Quick access card (with hover lift)</div>
+    <div class="flex gap-3" style="max-width:500px">
+      <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 flex-shrink-0">
+          <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div><div class="text-[12px] font-semibold text-gray-900">Smart Accounts</div><div class="text-[10px] text-gray-400">OZ v0.5.0 wallets</div></div>
+      </a>
+      <a href="#" class="card-hover flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 flex-shrink-0">
+          <svg class="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div><div class="text-[12px] font-semibold text-gray-900">Events Firehose</div><div class="text-[10px] text-gray-400">Real-time streaming</div></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- TABLES                                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="tables" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Tables</h2>
+
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6">
+      <table class="w-full">
+        <thead>
+          <tr class="bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            <th class="text-left px-4 py-2.5">Validator</th>
+            <th class="text-center px-3 py-2.5">Index</th>
+            <th class="text-left px-3 py-2.5">Trust</th>
+            <th class="text-right px-3 py-2.5">24H</th>
+            <th class="text-right px-3 py-2.5">30D</th>
+            <th class="text-left px-3 py-2.5">Version</th>
+          </tr>
+        </thead>
+        <tbody class="text-xs">
+          <tr class="border-t border-gray-50 detail-row cursor-pointer">
+            <td class="px-4 py-2.5"><div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0"></span><a class="font-medium text-emerald-700">Blockdaemon 1</a><span class="rounded bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700">Warning</span></div></td>
+            <td class="px-3 py-2.5 text-center tabular text-gray-900">1</td>
+            <td class="px-3 py-2.5"><div class="flex items-center gap-1.5"><div class="w-12 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-1.5 rounded-full bg-emerald-500" style="width:100%"></div></div><span class="tabular text-gray-600">10</span></div></td>
+            <td class="px-3 py-2.5 text-right tabular text-gray-900">100%</td>
+            <td class="px-3 py-2.5 text-right tabular text-emerald-600 font-medium">99.85%</td>
+            <td class="px-3 py-2.5 mono text-[10px] text-gray-500">25.1.3</td>
+          </tr>
+          <tr class="border-t border-gray-50 detail-row cursor-pointer">
+            <td class="px-4 py-2.5"><div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0"></span><a class="font-medium text-emerald-700">SatoshiPay Frankfurt</a></div></td>
+            <td class="px-3 py-2.5 text-center tabular text-gray-900">1</td>
+            <td class="px-3 py-2.5"><div class="flex items-center gap-1.5"><div class="w-12 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-1.5 rounded-full bg-emerald-500" style="width:100%"></div></div><span class="tabular text-gray-600">10</span></div></td>
+            <td class="px-3 py-2.5 text-right tabular text-gray-900">99.65%</td>
+            <td class="px-3 py-2.5 text-right tabular text-amber-600 font-medium">99.71%</td>
+            <td class="px-3 py-2.5 mono text-[10px] text-gray-500">25.1.3</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="px-4 py-2.5 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between">
+        <span class="text-[10px] text-gray-400">Showing 2 of 21</span>
+        <div class="flex items-center gap-1">
+          <button class="rounded bg-gray-900 px-2.5 py-1 text-[10px] font-bold text-white">1</button>
+          <button class="rounded bg-gray-100 px-2.5 py-1 text-[10px] font-medium text-gray-500">2</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Table specs</h3>
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        Header: bg-gray-50/80, text-[10px] font-semibold uppercase tracking-wider text-gray-400. Rows: border-t border-gray-50, py-2.5 px-4, hover bg change via .detail-row. Trust bars: w-12 h-1.5 with progress fill. Uptime colors: ≥99.9% emerald-600, <99.9% amber-600, <99% red-500. Pagination: active page bg-gray-900 text-white, inactive bg-gray-100.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- BUTTONS & INPUTS                                -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="buttons" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Buttons & Inputs</h2>
+
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+      <button class="rounded-lg bg-gray-900 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-gray-800 transition-colors">Primary action</button>
+      <button class="rounded-lg border border-gray-200 px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">Secondary</button>
+      <button class="rounded-lg border border-gray-200 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-50 transition-colors">Small</button>
+      <button class="rounded bg-gray-900 px-2.5 py-1 text-[10px] font-bold text-white">Pagination active</button>
+      <button class="rounded bg-gray-100 px-2.5 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-200">Pagination</button>
+      <button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
+      <button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
+    </div>
+
+    <!-- Search input -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Search input (hero)</div>
+    <div class="search-ring flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-lg shadow-gray-200/50 mb-6" style="max-width:600px">
+      <svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" placeholder="Search by address, tx hash, contract, asset…" class="flex-1 text-[15px] text-gray-900 placeholder-gray-400 outline-none bg-transparent"/>
+      <kbd class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-400">⌘K</kbd>
+    </div>
+
+    <!-- Copy button pattern -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Address with copy</div>
+    <div class="flex items-center gap-1.5">
+      <span class="mono text-[12px] text-gray-500">GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH</span>
+      <svg class="h-3.5 w-3.5 text-gray-300 hover:text-gray-600 cursor-pointer transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- TABS                                            -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="tabs" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Tabs</h2>
+
+    <div class="flex gap-6 border-b border-gray-200 text-[13px] font-medium text-gray-400 mb-4">
+      <button class="border-b-2 border-gray-900 pb-3 text-gray-900">Overview</button>
+      <button class="pb-3.5 hover:text-gray-900 transition-colors cursor-pointer">Quorum Set</button>
+      <button class="pb-3.5 hover:text-gray-900 transition-colors cursor-pointer">Trusts (21)</button>
+      <button class="pb-3.5 hover:text-gray-900 transition-colors cursor-pointer">Trusted By (91)</button>
+      <button class="pb-3.5 hover:text-gray-900 transition-colors cursor-pointer">Updates</button>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Tab specs</h3>
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        Active: border-b-2 border-gray-900, text-gray-900. Inactive: text-gray-400, pb-3.5 (extra 0.5 to compensate for missing border). Counts appear in parentheses after the label. Gap between tabs: 24px (gap-6). Tabs sit directly above the content area with border-b border-gray-200 as the separator. Powered by htmx hx-get for partial content swaps.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CHARTS                                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="charts" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Charts</h2>
+
+    <div class="grid grid-cols-2 gap-6 mb-6">
+      <!-- 30D bar chart (healthy) -->
+      <div class="rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold text-gray-900">Validating (healthy)</span>
+          <div class="flex gap-1">
+            <button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
+            <button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
+          </div>
+        </div>
+        <div class="flex items-end gap-[3px] h-16" id="chart-healthy"></div>
+        <div class="flex justify-between mt-2 text-[9px] text-gray-400"><span>Feb 1</span><span>Mar 2</span></div>
+      </div>
+      <!-- 30D bar chart (warning) -->
+      <div class="rounded-xl border border-amber-200/60 bg-amber-50/10 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold text-gray-900">Crawler Rejected (warning)</span>
+          <div class="flex gap-1">
+            <button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
+            <button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
+          </div>
+        </div>
+        <div class="flex items-end gap-[3px] h-16" id="chart-warning"></div>
+        <div class="flex justify-between mt-2 text-[9px] text-gray-400"><span>Feb 1</span><span>Mar 2</span></div>
+      </div>
+    </div>
+
+    <!-- Progress bars -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Progress / ratio bars</div>
+    <div class="space-y-3 mb-6" style="max-width:400px">
+      <div>
+        <div class="flex justify-between text-[10px] mb-1"><span class="text-gray-500">Soroban Ratio</span><span class="font-semibold text-violet-600">65.9%</span></div>
+        <div class="h-2 rounded-full bg-gray-100"><div class="h-2 rounded-full bg-gradient-to-r from-violet-500 to-violet-400" style="width:65.9%"></div></div>
+      </div>
+      <div>
+        <div class="flex justify-between text-[10px] mb-1"><span class="text-gray-500">Node Index</span><span class="font-semibold text-gray-900">0.83</span></div>
+        <div class="h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style="width:83%"></div></div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        Bar charts: flex container with gap-[3px], bars are flex-1 rounded-t-sm. Healthy bars: bg-emerald-500 at 100% height, dips show in amber. Warning charts: bg-red-400, height varies 30–80%. Progress bars: h-1 or h-2 rounded-full with bg-gray-100 track. All charts are pure CSS — no JavaScript charting library needed. In production, htmx can swap chart data on time range toggle.
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// Generate chart bars
+function makeChart(id, type) {
+  const el = document.getElementById(id);
+  for (let i = 0; i < 30; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'flex-1 rounded-t-sm';
+    if (type === 'healthy') {
+      const isAmber = i === 18;
+      bar.className += isAmber ? ' bg-amber-400' : ' bg-emerald-500';
+      bar.style.height = isAmber ? '85%' : '100%';
+    } else {
+      const h = 30 + Math.floor(Math.random() * 50);
+      bar.className += ' bg-red-400';
+      bar.style.height = h + '%';
+    }
+    el.appendChild(bar);
+  }
+}
+makeChart('chart-healthy', 'healthy');
+makeChart('chart-warning', 'warning');
+</script>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DATA DISPLAY PATTERNS                           -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="data-display" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Patterns</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Data Display</h2>
+
+    <!-- Entity header -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Entity header (account, validator, contract)</div>
+    <div class="rounded-xl border border-gray-200 bg-white p-5 mb-6">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <h1 class="text-xl font-bold text-gray-900">SDF 1</h1>
+            <span class="rounded-full bg-emerald-50 px-2.5 py-1 ring-1 ring-emerald-200/80 text-[10px] font-semibold text-emerald-700">Validating</span>
+            <span class="rounded-full bg-gray-100 px-2.5 py-1 ring-1 ring-gray-200 text-[10px] font-semibold text-gray-600">Tier 1</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="mono text-[12px] text-gray-500">GCGB2S2K...ZSTYH</span>
+            <svg class="h-3.5 w-3.5 text-gray-300 hover:text-gray-600 cursor-pointer transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="text-[12px] text-gray-400 mt-1">Stellar Development Foundation · San Francisco, US</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="rounded-lg border border-gray-200 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-50">Share</button>
+          <button class="rounded-lg border border-gray-200 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-50">Raw JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction row pattern -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Transaction row (inline operations)</div>
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6">
+      <!-- Header -->
+      <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-2">
+            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700 ring-1 ring-emerald-200/60">Success</span>
+            <span class="mono text-[11px] text-gray-500">a7c2f1...8b3d</span>
+            <svg class="h-3 w-3 text-gray-300 cursor-pointer hover:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="flex items-center gap-3 text-[10px] text-gray-400 tabular">
+            <span>Ledger <a href="#" class="text-emerald-600 mono font-medium">61,472,124</a></span>
+            <span>·</span>
+            <span>Mar 2, 2026 19:42 UTC</span>
+          </div>
+        </div>
+        <div class="text-[13px] text-gray-700">
+          <span class="mono text-[11px] text-emerald-700 font-medium">GDCR…Q3LD</span>
+          swapped via path payment, received
+          <span class="font-semibold text-gray-900 tabular">1,704.41 XLM</span>
+        </div>
+      </div>
+      <!-- Operations inline -->
+      <div class="px-4 py-1">
+        <div class="flex items-center gap-2.5 py-2.5 border-b border-gray-50">
+          <div class="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 flex-shrink-0">
+            <svg class="h-3 w-3 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 text-[12px]">
+              <span class="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold text-violet-600 ring-1 ring-violet-200/60">Path Payment</span>
+              <span class="text-gray-500">→</span>
+              <span class="font-semibold text-gray-900 tabular">1,704.4112745 XLM</span>
+            </div>
+            <div class="text-[11px] text-gray-400 mt-0.5">
+              <span class="mono text-emerald-600">GDCR…Q3LD</span>
+              <span class="text-gray-300 mx-1">→</span>
+              <span class="mono text-emerald-600">GDCR…Q3LD</span>
+              <span class="text-gray-300 mx-1">·</span>
+              <span>self-payment (DEX routing)</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 py-2.5">
+          <div class="flex h-6 w-6 items-center justify-center rounded-md bg-gray-100 flex-shrink-0">
+            <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <div class="text-[12px] text-gray-400"><span class="tabular">0.00001 XLM</span> fee charged</div>
+        </div>
+      </div>
+      <!-- Collapsed technical -->
+      <div class="px-4 py-2.5 bg-gray-50/50 border-t border-gray-100">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4 text-[10px] text-gray-400">
+            <span>Source: <span class="mono text-gray-600">GDCR…Q3LD</span></span>
+            <span>·</span>
+            <span>Seq: <span class="mono text-gray-600 tabular">240270…9116</span></span>
+          </div>
+          <button class="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
+            Technical
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Data display principles</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Human-readable first</strong> — Every transaction shows a natural language summary line before the raw operation details. Powered by SEP-41/SEP-50.</div>
+        <div><strong class="text-gray-700">Progressive disclosure</strong> — Show the most useful data by default. Signatures, sequence numbers, XDR, and fee accounts are collapsed behind a "Technical" toggle.</div>
+        <div><strong class="text-gray-700">Operations inline</strong> — Never separate operations onto a different tab or page. Each operation is a dense, typed row within the transaction.</div>
+        <div><strong class="text-gray-700">Pattern detection</strong> — Annotate detected patterns: self-payment → "DEX routing", multi-hop → "swap path", same source/dest → "self-transfer".</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE-OUT PANELS                                -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="slideout" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Patterns</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Slide-out Panels</h2>
+
+    <!-- Static mockup of the slide-out -->
+    <div class="relative rounded-xl border border-gray-200 bg-[#FAFAFA] overflow-hidden mb-6" style="height:380px">
+      <!-- Fake page behind -->
+      <div class="absolute inset-0 p-4 opacity-40">
+        <div class="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+        <div class="h-3 w-48 bg-gray-100 rounded mb-4"></div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="h-20 bg-gray-100 rounded"></div>
+          <div class="h-20 bg-gray-100 rounded"></div>
+          <div class="h-20 bg-gray-100 rounded"></div>
+        </div>
+      </div>
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/8 backdrop-blur-[1px]"></div>
+      <!-- Panel -->
+      <div class="absolute right-0 top-0 bottom-0 w-[340px] bg-white border-l border-gray-200 shadow-2xl shadow-gray-400/10 overflow-y-auto">
+        <div class="sticky top-0 z-10 flex items-center justify-between px-5 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+          <button class="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-gray-600">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Back
+          </button>
+          <button class="rounded p-1 hover:bg-gray-100">
+            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-5 py-4">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-[15px] font-bold text-gray-900">Blockdaemon 1</h3>
+            <span class="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/80 text-[9px] font-semibold text-emerald-700">Validating</span>
+          </div>
+          <div class="flex items-center gap-1.5 mb-4">
+            <span class="mono text-[11px] text-gray-400">GCNS7...GP1D</span>
+            <svg class="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </div>
+          <!-- Mini stat cards -->
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 text-center">
+              <div class="text-[9px] text-gray-400 font-semibold uppercase">Index</div>
+              <div class="text-[14px] font-bold text-gray-900 tabular">1</div>
+            </div>
+            <div class="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 text-center">
+              <div class="text-[9px] text-gray-400 font-semibold uppercase">24H</div>
+              <div class="text-[14px] font-bold text-emerald-600 tabular">100%</div>
+            </div>
+            <div class="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 text-center">
+              <div class="text-[9px] text-gray-400 font-semibold uppercase">30D</div>
+              <div class="text-[14px] font-bold text-emerald-600 tabular">99.85%</div>
+            </div>
+          </div>
+          <!-- Details -->
+          <div class="space-y-2 text-[11px]">
+            <div class="flex justify-between"><span class="text-gray-400">Org</span><span class="text-gray-900 font-medium">Blockdaemon</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Host</span><span class="mono text-gray-600 text-[10px]">stellar.blockdaemon.com</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Version</span><span class="text-gray-600">25.1.3</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Country</span><span class="text-gray-900">🇺🇸 United States</span></div>
+          </div>
+          <!-- CTA -->
+          <a href="#" class="mt-4 flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-[12px] font-medium text-white hover:bg-gray-800 transition-colors">
+            Open Full Page
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Slide-out specs</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Width: 480px</strong> in production (340px shown here for fit). Slides from right with a spring easing (300ms). Backdrop: bg-black/8 with 1px blur.</div>
+        <div><strong class="text-gray-700">Ramp pattern</strong> — Inspired by Ramp's contextual panels. Shows entity preview without navigating away. Always includes "Open Full Page" CTA at the bottom.</div>
+        <div><strong class="text-gray-700">Sticky header</strong> — Back button + close button stay pinned. Content scrolls beneath with bg-white/95 backdrop-blur.</div>
+        <div><strong class="text-gray-700">htmx integration</strong> — Triggered via <code class="mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">hx-get="/validators/{id}/preview" hx-target="#slideout"</code>. Panel content is a server-rendered partial.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- ANIMATION                                       -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="animations" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Patterns</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Animation</h2>
+
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6">
+      <div class="detail-row flex justify-between px-4 py-3 border-b border-gray-50">
+        <div><span class="text-[12px] font-medium text-gray-900">Fade up (page load)</span><div class="text-[10px] text-gray-400 mt-0.5">All page content uses staggered fade-up on entry</div></div>
+        <div class="mono text-[11px] text-gray-500 text-right">0→1 opacity, 6px translateY<br/>300ms ease-out · 40ms stagger</div>
+      </div>
+      <div class="detail-row flex justify-between px-4 py-3 border-b border-gray-50">
+        <div><span class="text-[12px] font-medium text-gray-900">Nav underline</span><div class="text-[10px] text-gray-400 mt-0.5">scaleX transition on ::after pseudo-element</div></div>
+        <div class="mono text-[11px] text-gray-500">scaleX(0) → scaleX(1)<br/>150ms ease</div>
+      </div>
+      <div class="detail-row flex justify-between px-4 py-3 border-b border-gray-50">
+        <div><span class="text-[12px] font-medium text-gray-900">Card hover lift</span><div class="text-[10px] text-gray-400 mt-0.5">Quick access cards and clickable cards</div></div>
+        <div class="mono text-[11px] text-gray-500">translateY(-2px)<br/>150ms ease · shadow-lg</div>
+      </div>
+      <div class="detail-row flex justify-between px-4 py-3 border-b border-gray-50">
+        <div><span class="text-[12px] font-medium text-gray-900">Slide-out panel</span><div class="text-[10px] text-gray-400 mt-0.5">Right panel entry with backdrop</div></div>
+        <div class="mono text-[11px] text-gray-500">translateX(100%) → translateX(0)<br/>300ms spring</div>
+      </div>
+      <div class="detail-row flex justify-between px-4 py-3 border-b border-gray-50">
+        <div><span class="text-[12px] font-medium text-gray-900">Pulse ring (live dot)</span><div class="text-[10px] text-gray-400 mt-0.5">Mainnet indicator and live feed badges</div></div>
+        <div class="mono text-[11px] text-gray-500">box-shadow 0→7px ring<br/>2s infinite ease</div>
+      </div>
+      <div class="detail-row flex justify-between px-4 py-3">
+        <div><span class="text-[12px] font-medium text-gray-900">Row hover</span><div class="text-[10px] text-gray-400 mt-0.5">Table rows and detail rows</div></div>
+        <div class="mono text-[11px] text-gray-500">bg-color change<br/>80ms ease</div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        <strong class="text-gray-700">Animation philosophy:</strong> Motion should be fast and subtle. Nothing bounces, nothing overshoots. Staggered fade-ups on page load (40ms between elements) create rhythm without delay. Hover transitions are ≤150ms. The only continuous animation is the pulsing live dot — everything else is triggered by user interaction or page load. All animations are CSS-only; no JavaScript animation libraries.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- STATUS & FEEDBACK                               -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="status" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Patterns</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Status & Feedback</h2>
+
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <!-- Healthy state -->
+      <div class="rounded-xl border border-emerald-200/60 bg-emerald-50/20 p-4">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 mb-2">Healthy / Success</div>
+        <div class="space-y-2 text-[11px] text-gray-600">
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Border: emerald-200/60</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Bg: emerald-50/20</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Text: emerald-600 / 700</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Values ≥ 99.9%</div>
+        </div>
+      </div>
+      <!-- Warning state -->
+      <div class="rounded-xl border border-amber-200/60 bg-amber-50/20 p-4">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-amber-600 mb-2">Warning / Caution</div>
+        <div class="space-y-2 text-[11px] text-gray-600">
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Border: amber-200/60</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Bg: amber-50/20</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Text: amber-600 / 700</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Values < 99.9% or flagged</div>
+        </div>
+      </div>
+      <!-- Error state -->
+      <div class="rounded-xl border border-red-200/60 bg-red-50/20 p-4">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-red-600 mb-2">Error / Failed</div>
+        <div class="space-y-2 text-[11px] text-gray-600">
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-red-500"></span>Border: red-200/60</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-red-500"></span>Bg: red-50/20</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-red-500"></span>Text: red-600 / 700</div>
+          <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-red-500"></span>Values < 99% or failed tx</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stat card warning threshold example -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Stat card threshold example</div>
+    <div class="grid grid-cols-3 gap-3 mb-6" style="max-width:500px">
+      <div class="rounded-xl border border-gray-200 bg-white px-3.5 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Normal</div>
+        <div class="text-xl font-bold text-emerald-600 tabular">99.95%</div>
+        <div class="mt-1 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style="width:99.95%"></div></div>
+      </div>
+      <div class="rounded-xl border border-amber-200/60 bg-amber-50/20 px-3.5 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Warning</div>
+        <div class="text-xl font-bold text-amber-600 tabular">97.2%</div>
+        <div class="mt-1 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-amber-400" style="width:97.2%"></div></div>
+      </div>
+      <div class="rounded-xl border border-red-200/60 bg-red-50/20 px-3.5 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Critical</div>
+        <div class="text-xl font-bold text-red-600 tabular">84.1%</div>
+        <div class="mt-1 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-red-500" style="width:84.1%"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DARK VARIANT                                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="dark" class="ds-section px-12 py-12">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Patterns</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-2">Dark Variant</h2>
+    <p class="text-[13px] text-gray-500 mb-6 max-w-[520px]">The dark theme is used exclusively for marketing pages (coming soon, landing) and is <strong class="text-gray-700">never</strong> used in the explorer product. This creates intentional contrast: marketing feels premium and editorial, the explorer feels like a professional tool.</p>
+
+    <!-- Dark preview -->
+    <div class="rounded-xl border border-[#1e2030] bg-[#09090B] p-8 mb-6">
+      <div class="flex items-center gap-2.5 mb-6">
+        <div style="display:flex;height:36px;width:36px;align-items:center;justify-content:center;border-radius:10px;background:linear-gradient(135deg,#7c6cf0,#a78bfa)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="12 2 22 20 2 20"/></svg>
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#fff;letter-spacing:-.02em">Prism</div>
+        </div>
+      </div>
+      <div style="font-size:24px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:8px">
+        Soroban-first block explorer for <span style="background:linear-gradient(135deg,#7c6cf0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Stellar</span>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:16px">
+        Human-readable smart contracts, unified event streams, and complete ledger history from genesis.
+      </div>
+      <div class="flex gap-2">
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:9999px;border:1px solid rgba(124,108,240,.25);background:rgba(124,108,240,.06);font-size:11px;color:rgba(167,139,250,.9);font-weight:500"><strong>SCF #42</strong></span>
+        <span style="display:inline-flex;padding:4px 10px;border-radius:9999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);font-size:11px;color:rgba(255,255,255,.4)">Open Source</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:9999px;border:1px solid rgba(16,185,129,.2);background:rgba(16,185,129,.06);font-size:11px;color:rgba(52,211,153,.9)">
+          <span class="pulse-dot" style="height:6px;width:6px;border-radius:50%;background:#10B981;display:block"></span>
+          Building now
+        </span>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Dark variant rules</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Background: #09090B</strong> — Near-black with a subtle blue tint. Surface cards use #12131A. Borders: #1E2030.</div>
+        <div><strong class="text-gray-700">Accent: #7C6CF0 → #A78BFA</strong> — Purple gradient for the logo mark, headline accent, and interactive elements. Not emerald.</div>
+        <div><strong class="text-gray-700">Text hierarchy</strong> — White (#fff) for headlines. rgba(255,255,255,.45) for body. rgba(255,255,255,.25) for tertiary. Never use gray-400/500 named colors.</div>
+        <div><strong class="text-gray-700">No dark mode toggle</strong> — The explorer is always light. The dark variant is a separate design context for marketing only. Never mix them.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main><!-- end main content -->
+</div><!-- end flex layout -->
+</body>
+</html>

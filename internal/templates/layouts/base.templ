@@ -1,0 +1,105 @@
+package layouts
+
+// Base renders the full HTML document shell.
+// Every page template composes this layout.
+//
+// Usage in a page template:
+//
+//	@layouts.Base("Ledger 61,472,843 — Prism", "explorer") {
+//	    <div>page content here</div>
+//	}
+templ Base(title string, activeNav string) {
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title }</title>
+
+		<!-- Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com"/>
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+		<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+		<!-- Tailwind (CDN for dev, compiled CSS for production) -->
+		<link rel="stylesheet" href="/static/css/app.css"/>
+
+		<!-- htmx -->
+		<script src="/static/js/htmx.min.js"></script>
+	</head>
+	<body class="bg-[#FAFAFA] text-[#111] antialiased">
+
+		<!-- Top Nav — 56px sticky -->
+		@topNav(activeNav)
+
+		<!-- Page Content -->
+		<main class="mx-auto max-w-[1320px] px-8 py-6">
+			{ children... }
+		</main>
+
+		<!-- Slide-out panel container (htmx swaps content here) -->
+		<div id="slideout-backdrop" class="hidden fixed inset-0 bg-black/8 backdrop-blur-[1px] z-40"
+			 hx-on:click="this.classList.add('hidden'); document.getElementById('slideout').innerHTML = '';"></div>
+		<div id="slideout" class="fixed right-0 top-0 bottom-0 w-[480px] z-50 empty:hidden"
+			 hx-on::after-swap="document.getElementById('slideout-backdrop').classList.remove('hidden')"></div>
+
+	</body>
+	</html>
+}
+
+// topNav renders the sticky navigation bar.
+// activeNav should be one of: "explorer", "network", "assets", "contracts", "devtools"
+templ topNav(active string) {
+	<header class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6">
+		<div class="flex items-center gap-8">
+			<a href="/" class="flex items-center gap-2">
+				<div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
+					<!-- Triangle mark -->
+					<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+						<polygon points="12 2 22 20 2 20"/>
+					</svg>
+				</div>
+				<span class="text-[15px] font-bold tracking-tight">Prism</span>
+			</a>
+			<nav class="flex items-center gap-1 h-14 text-[13px] font-medium text-gray-500">
+				@navItem("/", "Explorer", active == "explorer")
+				@navItem("/network", "Network", active == "network")
+				@navItem("/assets", "Assets", active == "assets")
+				@navItem("/contracts", "Contracts", active == "contracts")
+				@navItem("/events", "Dev Tools", active == "devtools")
+			</nav>
+		</div>
+		<div class="flex items-center gap-3">
+			<!-- Search trigger -->
+			<button class="flex items-center gap-2 rounded-lg border border-gray-200 bg-[#FAFAFA] px-3 py-1.5 text-[12px] text-gray-500"
+					onclick="document.getElementById('search-modal').showModal()">
+				Search…
+				<kbd class="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">⌘K</kbd>
+			</button>
+			<!-- Network selector -->
+			<div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700">
+				<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+				Mainnet
+			</div>
+		</div>
+	</header>
+}
+
+templ navItem(href string, label string, isActive bool) {
+	if isActive {
+		<a href={ templ.SafeURL(href) }
+		   class="relative flex items-center px-3 h-full text-gray-900
+				  after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:right-0
+				  after:h-[2px] after:bg-[#111]">
+			{ label }
+		</a>
+	} else {
+		<a href={ templ.SafeURL(href) }
+		   class="relative flex items-center px-3 h-full hover:text-gray-900 transition-colors
+				  after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:right-0
+				  after:h-[2px] after:bg-[#111] after:scale-x-0 hover:after:scale-x-100
+				  after:transition-transform after:duration-150 after:ease-out after:origin-left">
+			{ label }
+		</a>
+	}
+}

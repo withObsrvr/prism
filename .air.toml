@@ -1,0 +1,21 @@
+# .air.toml — live reload for development
+# Install: go install github.com/air-verse/air@latest
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/prism"
+  cmd = "go build -o ./tmp/prism ."
+  args_bin = ["serve"]
+  delay = 500
+  exclude_dir = ["tmp", "bin", "web/static/node_modules"]
+  exclude_regex = ["_templ\\.go$"]
+  include_ext = ["go", "templ", "yaml"]
+  kill_delay = "1s"
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true
