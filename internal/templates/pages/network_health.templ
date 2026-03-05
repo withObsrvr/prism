@@ -23,6 +23,7 @@ type NetworkHealthData struct {
 	FeeMedian     string
 	FeeP99        string
 	DailyFees     string
+	SurgePricing  string
 	// Soroban
 	SorobanInvocations string
 	ActiveContracts string
@@ -31,10 +32,14 @@ type NetworkHealthData struct {
 	AvgCPU        string
 	// Protocol
 	ProtocolVer   string
+	ProtocolSubtitle string
+	CoreVersion   string
+	NextUpgrade   string
 	HorizonVer    string
 	SorobanRPCVer string
 	// Consensus
-	Agreement     string
+	Agreement      string
+	ConsensusHalted string
 	ValidatorCount string
 	QuorumSets    string
 	AvgLatency    string
@@ -50,16 +55,22 @@ type ValidatorRow struct {
 	LastVote   string
 	Status     string
 	StatusColor string
+	Version    string
+	Quorum     string
+	Latency    string
 }
 
 type NetworkLedger struct {
 	Sequence    string
 	Age         string
 	TxCount     string
+	OpsCount    string
 	SorobanCalls string
+	SorobanPct  string
 	Fees        string
 	CloseTime   string
 	IsLatest    bool
+	IsSlow      bool
 }
 
 templ NetworkHealth(data NetworkHealthData) {
@@ -68,17 +79,26 @@ templ NetworkHealth(data NetworkHealthData) {
 			<!-- Status Banner -->
 			<div class="anim mb-6 flex items-center justify-between">
 				<div class="flex items-center gap-3">
-					<h1 class="text-2xl font-bold text-gray-900">Network Health</h1>
+					<div>
+						<h1 class="text-2xl font-bold text-gray-900">Network Health</h1>
+						<p class="text-xs text-gray-500 mt-0.5">Protocol v{ data.ProtocolVer } · { data.ProtocolSubtitle }</p>
+					</div>
 					<div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200">
 						<span class="h-2 w-2 rounded-full bg-emerald-500 pulse-dot"></span>
 						<span class="text-[11px] font-semibold text-emerald-700">{ data.Status }</span>
 					</div>
 				</div>
-				<div class="flex items-center gap-2">
-					<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-[11px] font-semibold text-white">Live</button>
-					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">1h</button>
-					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">24h</button>
-					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">7d</button>
+				<div class="flex items-center gap-4">
+					<div class="flex items-center gap-1.5 text-[10px] text-gray-400">
+						<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+						<span>Auto-refresh: 5s</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-[11px] font-semibold text-white">Live</button>
+						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">1h</button>
+						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">24h</button>
+						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">7d</button>
+					</div>
 				</div>
 			</div>
 
@@ -104,9 +124,16 @@ templ NetworkHealth(data NetworkHealthData) {
 							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Classic</span>
 						</div>
 					</div>
-					<!-- SVG area chart placeholder -->
-					<div class="h-40 flex items-end gap-[1px]">
-						@networkBarChart()
+					<!-- SVG area chart -->
+					<div class="h-40">
+						<svg class="h-full w-full" viewBox="0 0 400 160" preserveAspectRatio="none">
+							<!-- Total (dark) -->
+							<path d="M0,120 C20,110 40,100 60,95 C80,90 100,80 120,70 C140,65 160,55 180,50 C200,45 220,40 240,35 C260,38 280,42 300,30 C320,25 340,20 360,15 C380,18 400,12 400,12 L400,160 L0,160 Z" fill="rgba(17,24,39,0.08)"></path>
+							<path d="M0,120 C20,110 40,100 60,95 C80,90 100,80 120,70 C140,65 160,55 180,50 C200,45 220,40 240,35 C260,38 280,42 300,30 C320,25 340,20 360,15 C380,18 400,12 400,12" fill="none" stroke="#111827" stroke-width="2"></path>
+							<!-- Soroban (violet) -->
+							<path d="M0,145 C20,140 40,135 60,130 C80,128 100,120 120,115 C140,110 160,100 180,95 C200,90 220,85 240,80 C260,82 280,78 300,70 C320,65 340,60 360,55 C380,58 400,52 400,52 L400,160 L0,160 Z" fill="rgba(139,92,246,0.08)"></path>
+							<path d="M0,145 C20,140 40,135 60,130 C80,128 100,120 120,115 C140,110 160,100 180,95 C200,90 220,85 240,80 C260,82 280,78 300,70 C320,65 340,60 360,55 C380,58 400,52 400,52" fill="none" stroke="#8B5CF6" stroke-width="1.5"></path>
+						</svg>
 					</div>
 					<div class="flex justify-between mt-2 text-[8px] text-gray-400">
 						<span>24h ago</span><span>18h</span><span>12h</span><span>6h</span><span>Now</span>
@@ -115,7 +142,8 @@ templ NetworkHealth(data NetworkHealthData) {
 
 				<!-- Consensus -->
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">Consensus</div>
+					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Consensus</div>
+					<div class="text-[10px] text-gray-400 mb-4">Stellar Consensus Protocol (SCP)</div>
 					<!-- Ring visualization -->
 					<div class="flex justify-center mb-4">
 						<div class="relative h-24 w-24">
@@ -142,8 +170,8 @@ templ NetworkHealth(data NetworkHealthData) {
 							<div class="text-sm font-semibold text-gray-900">{ data.AvgLatency }</div>
 						</div>
 						<div>
-							<div class="text-[10px] text-gray-400">Agreement</div>
-							<div class="text-sm font-semibold text-emerald-600">{ data.Agreement }</div>
+							<div class="text-[10px] text-gray-400">Halted</div>
+							<div class="text-sm font-semibold text-emerald-600">{ data.ConsensusHalted }</div>
 						</div>
 					</div>
 				</div>
@@ -158,6 +186,7 @@ templ NetworkHealth(data NetworkHealthData) {
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Median</span><span class="font-mono text-xs font-medium text-gray-900">{ data.FeeMedian } stroops</span></div>
 						<div class="flex justify-between"><span class="text-xs text-gray-500">p99</span><span class="font-mono text-xs font-medium text-amber-600">{ data.FeeP99 } stroops</span></div>
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Daily Fees</span><span class="text-xs font-medium text-gray-900">{ data.DailyFees }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Surge Pricing</span><span class="text-xs font-medium text-gray-900">{ data.SurgePricing }</span></div>
 					</div>
 				</div>
 				<div class="rounded-xl border border-violet-200 bg-violet-50/20 p-5 shadow-sm">
@@ -175,7 +204,9 @@ templ NetworkHealth(data NetworkHealthData) {
 					<div class="space-y-3">
 						<div class="flex justify-between items-center"><span class="text-xs text-gray-500">Protocol Version</span><div class="flex items-center gap-1"><span class="font-mono text-xs font-medium text-gray-900">v{ data.ProtocolVer }</span>@components.Badge("Latest", "emerald")</div></div>
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Horizon</span><span class="font-mono text-xs font-medium text-gray-900">{ data.HorizonVer }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Core Version</span><span class="font-mono text-xs font-medium text-gray-900">{ data.CoreVersion }</span></div>
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Soroban RPC</span><span class="font-mono text-xs font-medium text-gray-900">{ data.SorobanRPCVer }</span></div>
+						<div class="flex justify-between"><span class="text-xs text-gray-500">Next Upgrade</span><span class="text-xs font-medium text-gray-500">{ data.NextUpgrade }</span></div>
 					</div>
 				</div>
 			</div>
@@ -188,23 +219,31 @@ templ NetworkHealth(data NetworkHealthData) {
 						<div class="flex-1">Validator</div>
 						<div class="w-28">Organization</div>
 						<div class="w-20 text-right">Uptime</div>
-						<div class="w-24 text-right">Last Vote</div>
+						<div class="w-20 text-right">Version</div>
+						<div class="w-20 text-right">Latency</div>
 						<div class="w-20 text-right">Status</div>
 					</div>
 					for i, v := range data.Validators {
 						<a href={ templ.SafeURL("/network/validators/" + v.Address) } class={ "detail-row flex items-center px-5 py-3 hover:bg-gray-50/50 cursor-pointer", templ.KV("border-b border-gray-50", i < len(data.Validators)-1) }>
 							<div class="flex-1">
-								<div class="text-sm font-medium text-gray-900">{ v.Name }</div>
-								<span class="font-mono text-[10px] text-gray-400">{ v.Address }</span>
+								<div class="flex items-center gap-1.5">
+									<span class={ "h-2 w-2 rounded-full", "bg-" + v.StatusColor + "-500" }></span>
+									<span class="text-sm font-medium text-gray-900">{ v.Name }</span>
+								</div>
+								<span class="font-mono text-[10px] text-gray-400 ml-3.5">{ v.Address }</span>
 							</div>
 							<div class="w-28"><span class="text-xs text-gray-700">{ v.Org }</span></div>
 							<div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">{ v.Uptime }</span></div>
-							<div class="w-24 text-right"><span class="text-xs text-gray-500">{ v.LastVote }</span></div>
+							<div class="w-20 text-right"><span class="font-mono text-[10px] text-gray-500">{ v.Version }</span></div>
+							<div class="w-20 text-right"><span class="text-xs text-gray-500 tabular">{ v.Latency }</span></div>
 							<div class="w-20 text-right">
 								@components.Badge(v.Status, v.StatusColor)
 							</div>
 						</a>
 					}
+				</div>
+				<div class="mt-3 text-center">
+					<a href="/network/validators" class="text-xs font-medium text-gray-500 hover:text-gray-900">View all { data.ValidatorCount } validators →</a>
 				</div>
 			</div>
 
@@ -215,13 +254,14 @@ templ NetworkHealth(data NetworkHealthData) {
 					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="w-28">Ledger</div>
 						<div class="w-20">Age</div>
-						<div class="w-20 text-right">Txs</div>
-						<div class="w-28 text-right">Soroban Calls</div>
+						<div class="w-16 text-right">Txs</div>
+						<div class="w-16 text-right">Ops</div>
+						<div class="w-24 text-right">Soroban</div>
 						<div class="w-24 text-right">Fees</div>
 						<div class="flex-1 text-right">Close Time</div>
 					</div>
 					for i, l := range data.RecentLedgers {
-						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("border-b border-gray-50", i < len(data.RecentLedgers)-1), templ.KV("glow", l.IsLatest) }>
+						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("border-b border-gray-50", i < len(data.RecentLedgers)-1), templ.KV("glow", l.IsLatest), templ.KV("bg-amber-50/40", l.IsSlow) }>
 							<div class="w-28">
 								<div class="flex items-center gap-1.5">
 									<a href={ templ.SafeURL("/ledger/" + l.Sequence) } class="font-mono text-xs font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ l.Sequence }</a>
@@ -231,10 +271,18 @@ templ NetworkHealth(data NetworkHealthData) {
 								</div>
 							</div>
 							<div class="w-20"><span class="text-[10px] text-gray-400">{ l.Age }</span></div>
-							<div class="w-20 text-right"><span class="text-xs text-gray-900 tabular">{ l.TxCount }</span></div>
-							<div class="w-28 text-right"><span class="text-xs text-violet-600 tabular">{ l.SorobanCalls }</span></div>
+							<div class="w-16 text-right"><span class="text-xs text-gray-900 tabular">{ l.TxCount }</span></div>
+							<div class="w-16 text-right"><span class="text-xs text-gray-700 tabular">{ l.OpsCount }</span></div>
+							<div class="w-24 text-right">
+								<span class="text-xs text-violet-600 tabular">{ l.SorobanCalls }</span>
+								if l.SorobanPct != "" {
+									<span class="ml-1 rounded bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-600">{ l.SorobanPct }</span>
+								}
+							</div>
 							<div class="w-24 text-right"><span class="font-mono text-[10px] text-gray-500 tabular">{ l.Fees }</span></div>
-							<div class="flex-1 text-right"><span class="text-[10px] text-gray-400">{ l.CloseTime }</span></div>
+							<div class="flex-1 text-right">
+								<span class={ "text-[10px] tabular", templ.KV("text-amber-600 font-medium", l.IsSlow), templ.KV("text-gray-400", !l.IsSlow) }>{ l.CloseTime }</span>
+							</div>
 						</div>
 					}
 				</div>
@@ -243,8 +291,3 @@ templ NetworkHealth(data NetworkHealthData) {
 	}
 }
 
-templ networkBarChart() {
-	for _, h := range []string{"45%", "52%", "48%", "55%", "62%", "58%", "65%", "72%", "68%", "75%", "82%", "78%", "85%", "72%", "68%", "75%", "82%", "88%", "92%", "85%", "78%", "72%", "68%", "75%", "82%", "88%", "92%", "95%", "88%", "82%", "78%", "85%", "92%", "95%", "100%", "92%"} {
-		<div class="flex-1 rounded-t-[1px] bg-emerald-500/80" style={ "height:" + h }></div>
-	}
-}

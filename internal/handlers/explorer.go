@@ -80,6 +80,19 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 		DetectedDesc:   "Starts with G + alphanumeric characters. Redirecting to account view.",
 		DetectedHref:   "/account/" + query,
 		RecentSearches: []string{"Soroswap Router", "GABC...7X92", "8f2a...1b3c", "USDC", "Ledger 5,104,938"},
+		Results: []pages.SearchResultGroup{
+			{Category: "Contracts", Items: []pages.SearchResultItem{
+				{Name: "Soroswap Router", Badge: "DEX", BadgeColor: "violet", Subtitle: "CAXY...Z10P · 284K invocations", IconBg: "bg-violet-100", IconHTML: `<svg class="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>`, Href: "/contracts/CAXY"},
+				{Name: "Soroswap Factory", Badge: "DEX", BadgeColor: "violet", Subtitle: "CFACT...R2K8 · 12K invocations", IconBg: "bg-violet-100", IconHTML: `<svg class="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>`, Href: "/contracts/CFACT"},
+			}},
+			{Category: "Accounts", Items: []pages.SearchResultItem{
+				{Name: "GABC...7X92", Badge: "Funded", BadgeColor: "emerald", Subtitle: "$58,247 total value · 12 trustlines", IconBg: "bg-gray-100", IconHTML: `<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`, Href: "/account/GABC"},
+			}},
+			{Category: "Assets", Items: []pages.SearchResultItem{
+				{Name: "USDC", Badge: "Classic", BadgeColor: "gray", Subtitle: "USD Coin · Centre · $142M market cap", IconBg: "bg-blue-100", IconHTML: `<svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, Href: "/assets/USDC-Centre"},
+				{Name: "yUSDC", Badge: "SEP-41", BadgeColor: "violet", Subtitle: "Blend USDC · $84M market cap", IconBg: "bg-emerald-100", IconHTML: `<svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, Href: "/assets/yUSDC-Blend"},
+			}},
+		},
 	}
 
 	if err := pages.Search(data).Render(r.Context(), w); err != nil {

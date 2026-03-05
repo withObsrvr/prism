@@ -124,6 +124,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							<span class="font-mono text-[12px] text-gray-500">{ data.NodeID }</span>
+							@components.CopyButton(data.NodeID)
 						</div>
 						<div class="flex items-center gap-1.5 mt-2">
 							@components.Badge(data.StatusBadge, "emerald")
@@ -132,6 +133,12 @@ templ ValidatorDetail(data ValidatorDetailData) {
 							}
 						</div>
 					</div>
+				</div>
+				<div class="flex items-center gap-2">
+					@components.ActionButtons([]components.ActionButton{
+						{Label: "View Account", Href: "/account/" + data.ShortNodeID, Icon: "account"},
+						{Label: "Radar", Href: "#", Icon: "external"},
+					})
 				</div>
 			</div>
 

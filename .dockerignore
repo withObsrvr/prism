@@ -1,0 +1,8 @@
+bin/
+tmp/
+docs/
+.git/
+.claude/
+.github/
+*.md
+node_modules/

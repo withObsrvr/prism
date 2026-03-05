@@ -15,12 +15,17 @@ type SmartAccountData struct {
 	Policies      []SmartPolicy
 	SessionKeys   []SmartSessionKey
 	// Thresholds
-	LowThreshold  string
-	MedThreshold  string
-	HighThreshold string
-	MasterWeight  string
+	LowThreshold    string
+	MedThreshold    string
+	HighThreshold   string
+	MasterWeight    string
+	RequiredWeight  string
+	TotalWeight     string
+	MinSigners      string
+	// Contract health
+	Health          ContractHealth
 	// Security log
-	SecurityLog   []SecurityEvent
+	SecurityLog     []SecurityEvent
 }
 
 type SmartSigner struct {
@@ -30,6 +35,16 @@ type SmartSigner struct {
 	Address    string
 	KeyType    string
 	Weight     string
+	IconSVG    string // "key", "user", "recovery"
+	IconBg     string // "bg-amber-50 text-amber-600 ring-1 ring-amber-100"
+}
+
+type ContractHealth struct {
+	RentStatus   string // "Healthy", "Low"
+	TTLRemaining string
+	WASMHash     string
+	OZVersion    string
+	Deployed     string
 }
 
 type SmartPolicy struct {
@@ -66,11 +81,13 @@ type SmartSessionKey struct {
 }
 
 type SecurityEvent struct {
-	Action    string
-	Detail    string
-	Time      string
-	Status    string
+	Action      string
+	Detail      string
+	Time        string
+	Status      string
 	StatusColor string
+	IconSVG     string // "check", "plus", "x", "key"
+	IconBg      string // "bg-emerald-50 text-emerald-600", etc.
 }
 
 templ SmartAccount(data SmartAccountData) {
@@ -124,11 +141,23 @@ templ SmartAccount(data SmartAccountData) {
 								<h3 class="text-sm font-semibold text-gray-900">Active Signers</h3>
 								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d registered", len(data.Signers)) }</span>
 							</div>
+							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">Manage signers &rarr;</span>
 						</div>
 						<div class="space-y-3">
 							for _, s := range data.Signers {
 								<div class="flex items-center justify-between rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 hover:border-gray-200 hover:shadow-sm">
 									<div class="flex items-center gap-4">
+										<div class={ "flex h-10 w-10 items-center justify-center rounded-full", s.IconBg }>
+											if s.IconSVG == "key" {
+												<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+											}
+											if s.IconSVG == "user" {
+												<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+											}
+											if s.IconSVG == "recovery" {
+												<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+											}
+										</div>
 										<div class="flex flex-col">
 											<div class="flex items-center gap-2">
 												<span class="text-sm font-semibold text-gray-900">{ s.Name }</span>
@@ -136,7 +165,7 @@ templ SmartAccount(data SmartAccountData) {
 											</div>
 											<div class="flex items-center gap-2 mt-0.5">
 												<span class="font-mono text-xs text-gray-500">{ s.Address }</span>
-												<span class="text-[10px] text-gray-400">· { s.KeyType }</span>
+												<span class="text-[10px] text-gray-400">&middot; { s.KeyType }</span>
 											</div>
 										</div>
 									</div>
@@ -151,17 +180,29 @@ templ SmartAccount(data SmartAccountData) {
 
 					<!-- Authorization Policies -->
 					<div class="anim d4">
-						<div class="mb-4 flex items-center gap-2">
-							<h3 class="text-sm font-semibold text-gray-900">Authorization Policies</h3>
-							<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d active", len(data.Policies)) }</span>
+						<div class="mb-4 flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<h3 class="text-sm font-semibold text-gray-900">Authorization Policies</h3>
+								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d active", len(data.Policies)) }</span>
+							</div>
+							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">View policy log &rarr;</span>
 						</div>
 						<div class="space-y-3">
 							for _, p := range data.Policies {
 								<div class="rounded-xl border border-gray-100 bg-[#FAFAFA] p-5 hover:border-gray-200 hover:shadow-sm">
 									<div class="flex items-center justify-between mb-4">
-										<div>
-											<span class="text-sm font-semibold text-gray-900">{ p.Name }</span>
-											<p class="text-xs text-gray-500 mt-0.5">{ p.Description }</p>
+										<div class="flex items-center gap-3">
+											<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+												if p.Limit != "" {
+													<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+												} else {
+													<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+												}
+											</div>
+											<div>
+												<span class="text-sm font-semibold text-gray-900">{ p.Name }</span>
+												<p class="text-xs text-gray-500 mt-0.5">{ p.Description }</p>
+											</div>
 										</div>
 										if p.IsActive {
 											<div class="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
@@ -220,16 +261,24 @@ templ SmartAccount(data SmartAccountData) {
 
 					<!-- Session Keys -->
 					<div class="anim d5">
-						<div class="mb-4 flex items-center gap-2">
-							<h3 class="text-sm font-semibold text-gray-900">Session Keys</h3>
-							<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-800">{ fmt.Sprintf("%d active", len(data.SessionKeys)) }</span>
+						<div class="mb-4 flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<h3 class="text-sm font-semibold text-gray-900">Session Keys</h3>
+								<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-800">{ fmt.Sprintf("%d active", len(data.SessionKeys)) }</span>
+							</div>
+							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">Revoke all &rarr;</span>
 						</div>
 						for _, sk := range data.SessionKeys {
 							<div class="rounded-xl border border-yellow-100 bg-yellow-50/30 p-5 ring-1 ring-yellow-100/50">
 								<div class="flex items-center justify-between mb-4">
-									<div>
-										<span class="text-sm font-semibold text-gray-900">{ sk.Name }</span>
-										<p class="text-xs text-gray-500 mt-0.5">{ sk.Description }</p>
+									<div class="flex items-center gap-3">
+										<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100 text-yellow-700">
+											<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+										</div>
+										<div>
+											<span class="text-sm font-semibold text-gray-900">{ sk.Name }</span>
+											<p class="text-xs text-gray-500 mt-0.5">{ sk.Description }</p>
+										</div>
 									</div>
 									<button class="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50">Revoke</button>
 								</div>
@@ -269,53 +318,120 @@ templ SmartAccount(data SmartAccountData) {
 					</div>
 				</div>
 
-				<!-- Right column: Thresholds + Security Log -->
+				<!-- Right column: Thresholds + Contract Health + Security Log -->
 				<div class="space-y-6 anim d3">
 					<!-- Threshold Visualization -->
-					<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-						<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">Signing Thresholds</div>
-						<div class="flex justify-center mb-4">
-							<div class="relative h-24 w-24">
-								<svg class="h-24 w-24" viewBox="0 0 100 100">
-									<circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" stroke-width="8"></circle>
-									<circle cx="50" cy="50" r="40" fill="none" stroke="#111" stroke-width="8" stroke-dasharray="251" stroke-dashoffset="50" transform="rotate(-90 50 50)"></circle>
+					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+						<h3 class="mb-1 text-sm font-semibold text-gray-900">Signing Threshold</h3>
+						<p class="text-xs text-gray-500 mb-6">Required approval weight for transactions</p>
+
+						<!-- SVG Threshold Ring -->
+						<div class="flex flex-col items-center mb-6">
+							<div class="relative">
+								<svg width="140" height="140" viewBox="0 0 140 140">
+									<!-- Background ring -->
+									<circle cx="70" cy="70" r="58" fill="none" stroke="#F3F4F6" stroke-width="8"></circle>
+									<!-- Progress ring (2 of 3 filled) -->
+									<circle cx="70" cy="70" r="58" fill="none" stroke="#111827" stroke-width="8"
+										stroke-linecap="round"
+										stroke-dasharray="364"
+										stroke-dashoffset="121"
+										transform="rotate(-90 70 70)"></circle>
+									<!-- Signer dots on the ring -->
+									<circle cx="70" cy="12" r="6" fill="#111827" stroke="white" stroke-width="3"></circle>
+									<circle cx="120" cy="95" r="6" fill="#111827" stroke="white" stroke-width="3"></circle>
+									<circle cx="20" cy="95" r="6" fill="white" stroke="#D1D5DB" stroke-width="2"></circle>
 								</svg>
-								<div class="absolute inset-0 flex items-center justify-center">
-									<div class="text-center">
-										<div class="text-lg font-bold text-gray-900">{ data.MasterWeight }</div>
-										<div class="text-[8px] text-gray-400">MASTER</div>
-									</div>
+								<!-- Center text -->
+								<div class="absolute inset-0 flex flex-col items-center justify-center">
+									<span class="text-3xl font-semibold text-gray-900">2</span>
+									<span class="text-xs font-medium text-gray-400">of 3</span>
 								</div>
 							</div>
 						</div>
-						<div class="space-y-3">
+
+						<!-- Threshold breakdown -->
+						<div class="space-y-3 border-t border-gray-100 pt-4">
 							<div class="flex items-center justify-between">
-								<span class="text-xs text-gray-500">Low Threshold</span>
-								<span class="text-xs font-semibold text-gray-900 tabular">{ data.LowThreshold }</span>
+								<span class="text-xs text-gray-500">Required Weight</span>
+								<span class="text-sm font-semibold text-gray-900">{ data.RequiredWeight }</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-xs text-gray-500">Med Threshold</span>
-								<span class="text-xs font-semibold text-gray-900 tabular">{ data.MedThreshold }</span>
+								<span class="text-xs text-gray-500">Total Signer Weight</span>
+								<span class="text-sm font-semibold text-gray-900">{ data.TotalWeight }</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-xs text-gray-500">High Threshold</span>
-								<span class="text-xs font-semibold text-gray-900 tabular">{ data.HighThreshold }</span>
+								<span class="text-xs text-gray-500">Min. Signers Needed</span>
+								<span class="text-sm font-semibold text-gray-900">{ data.MinSigners }</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Contract Health -->
+					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+						<h3 class="mb-4 text-sm font-semibold text-gray-900">Contract Health</h3>
+						<div class="space-y-4">
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">Ledger Rent</span>
+								<div class="flex items-center gap-1.5">
+									<span class="relative flex h-2.5 w-2.5">
+										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+										<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+									</span>
+									<span class="text-sm font-semibold text-gray-900">{ data.Health.RentStatus }</span>
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">TTL Remaining</span>
+								<span class="text-sm font-semibold text-gray-900">{ data.Health.TTLRemaining }</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">Contract WASM</span>
+								<span class="font-mono text-xs text-gray-600">{ data.Health.WASMHash }</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">OZ Framework</span>
+								<div class="flex items-center gap-1.5">
+									<span class="text-sm font-semibold text-gray-900">{ data.Health.OZVersion }</span>
+									<div class="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+										<svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+										Audited
+									</div>
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-gray-500">Deployed</span>
+								<span class="text-sm font-medium text-gray-600">{ data.Health.Deployed }</span>
 							</div>
 						</div>
 					</div>
 
 					<!-- Security Log -->
-					<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-						<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">Security Log</div>
-						<div class="space-y-0">
+					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between">
+							<h3 class="text-sm font-semibold text-gray-900">Security Log</h3>
+							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">View all</span>
+						</div>
+						<div class="space-y-3">
 							for _, ev := range data.SecurityLog {
-								<div class="flex items-center justify-between py-2.5 border-b border-gray-50">
+								<div class="flex items-start gap-3">
+									<div class={ "mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full", ev.IconBg }>
+										if ev.IconSVG == "check" {
+											<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+										}
+										if ev.IconSVG == "plus" {
+											<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+										}
+										if ev.IconSVG == "x" {
+											<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+										}
+										if ev.IconSVG == "key" {
+											<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+										}
+									</div>
 									<div class="flex flex-col">
 										<span class="text-xs font-medium text-gray-900">{ ev.Action }</span>
-										<span class="text-[10px] text-gray-400">{ ev.Detail }</span>
-									</div>
-									<div class="text-right">
-										<span class="text-[10px] text-gray-400">{ ev.Time }</span>
+										<span class="text-[10px] text-gray-500">{ ev.Detail }</span>
 									</div>
 								</div>
 							}

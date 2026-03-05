@@ -125,6 +125,38 @@ templ Search(data SearchData) {
 				</div>
 			}
 
+			<!-- Search Results -->
+			if len(data.Results) > 0 {
+				<div class="anim d3 mb-10">
+					for _, group := range data.Results {
+						<div class="mb-6">
+							@components.SectionHeader(group.Category)
+							<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+								for i, item := range group.Items {
+									<a href={ templ.SafeURL(item.Href) } class={ "detail-row flex items-center gap-3 px-5 py-3 hover:bg-gray-50", templ.KV("border-b border-gray-50", i < len(group.Items)-1) }>
+										<div class={ "flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0", item.IconBg }>
+											@templ.Raw(item.IconHTML)
+										</div>
+										<div class="flex-1">
+											<div class="flex items-center gap-2">
+												<span class="text-sm font-medium text-gray-900">{ item.Name }</span>
+												if item.Badge != "" {
+													@components.Badge(item.Badge, item.BadgeColor)
+												}
+											</div>
+											if item.Subtitle != "" {
+												<span class="text-[10px] text-gray-400">{ item.Subtitle }</span>
+											}
+										</div>
+										<svg class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+									</a>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			}
+
 			<!-- Search Tips -->
 			<div class="anim d4 mb-10">
 				@components.SectionHeader("Search Tips")

@@ -59,9 +59,9 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 		TotalBalance: "$87,204",
 		BalanceCents: ".51",
 		Signers: []pages.SmartSigner{
-			{Name: "Owner Key", Role: "Admin", RoleColor: "amber", Address: "GBXC...4K71", KeyType: "Ed25519", Weight: "10"},
-			{Name: "Operations Signer", Role: "Signer", RoleColor: "blue", Address: "GDEF...9R23", KeyType: "Ed25519", Weight: "10"},
-			{Name: "Recovery Signer", Role: "Recovery", RoleColor: "emerald", Address: "GHIJ...2M56", KeyType: "Ed25519", Weight: "10"},
+			{Name: "Owner Key", Role: "Admin", RoleColor: "amber", Address: "GBXC...4K71", KeyType: "Ed25519", Weight: "10", IconSVG: "key", IconBg: "bg-amber-50 text-amber-600 ring-1 ring-amber-100"},
+			{Name: "Operations Signer", Role: "Signer", RoleColor: "blue", Address: "GDEF...9R23", KeyType: "Ed25519", Weight: "10", IconSVG: "user", IconBg: "bg-blue-50 text-blue-600 ring-1 ring-blue-100"},
+			{Name: "Recovery Signer", Role: "Recovery", RoleColor: "emerald", Address: "GHIJ...2M56", KeyType: "Ed25519", Weight: "10", IconSVG: "recovery", IconBg: "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100"},
 		},
 		Policies: []pages.SmartPolicy{
 			{
@@ -80,15 +80,25 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 		SessionKeys: []pages.SmartSessionKey{
 			{Name: "DeFi Trading Session", Description: "Temporary key for Soroswap interactions", Key: "GSESS...K8P2", SpendLimit: "500", Used: "127", UsedPct: "25%", Expires: "2h 41m", Scope: "Soroswap Router only"},
 		},
-		LowThreshold:  "10",
-		MedThreshold:  "20",
-		HighThreshold: "20",
-		MasterWeight:  "10",
+		LowThreshold:   "10",
+		MedThreshold:   "20",
+		HighThreshold:  "20",
+		MasterWeight:   "10",
+		RequiredWeight: "20",
+		TotalWeight:    "30",
+		MinSigners:     "2 of 3",
+		Health: pages.ContractHealth{
+			RentStatus:   "Healthy",
+			TTLRemaining: "~58 days",
+			WASMHash:     "0xa4f2...c8b1",
+			OZVersion:    "v0.5.0",
+			Deployed:     "Oct 2, 2026",
+		},
 		SecurityLog: []pages.SecurityEvent{
-			{Action: "Session key created", Detail: "DeFi Trading Session", Time: "2h ago", Status: "OK", StatusColor: "emerald"},
-			{Action: "Policy updated", Detail: "Spending limit: 10,000 XLM", Time: "1d ago", Status: "OK", StatusColor: "emerald"},
-			{Action: "Signer added", Detail: "Recovery Signer GHIJ...2M56", Time: "3d ago", Status: "OK", StatusColor: "emerald"},
-			{Action: "Contract allowlisted", Detail: "USDC Token CCTP...W5A3", Time: "5d ago", Status: "OK", StatusColor: "emerald"},
+			{Action: "Session key created", Detail: "Today, 11:02 AM · by Owner Key", Time: "2h ago", Status: "OK", StatusColor: "emerald", IconSVG: "check", IconBg: "bg-emerald-50 text-emerald-600"},
+			{Action: "Blend Protocol added to allowlist", Detail: "Yesterday, 3:18 PM · 2-of-3 approval", Time: "1d ago", Status: "OK", StatusColor: "blue", IconSVG: "plus", IconBg: "bg-blue-50 text-blue-600"},
+			{Action: "Session key expired", Detail: "Oct 23, 2026 · auto-revoked", Time: "3d ago", Status: "Expired", StatusColor: "red", IconSVG: "x", IconBg: "bg-red-50 text-red-600"},
+			{Action: "Threshold updated to 2-of-3", Detail: "Oct 2, 2026 · at deployment", Time: "5d ago", Status: "OK", StatusColor: "amber", IconSVG: "key", IconBg: "bg-amber-50 text-amber-600"},
 		},
 	}
 	pages.SmartAccount(data).Render(r.Context(), w)
