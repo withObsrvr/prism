@@ -170,8 +170,21 @@ dialog[open] {
     background: linear-gradient(90deg, #D1D5DB, #9CA3AF, #D1D5DB);
   }
 
+  /* Horizontal scroll shadow hint */
+  .scroll-hint {
+    background:
+      linear-gradient(to right, white 30%, transparent),
+      linear-gradient(to left, white 30%, transparent),
+      linear-gradient(to right, rgba(0,0,0,.08), transparent 40%),
+      linear-gradient(to left, rgba(0,0,0,.08), transparent 40%);
+    background-position: left center, right center, left center, right center;
+    background-repeat: no-repeat;
+    background-size: 20px 100%, 20px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+
   /* Scrollbar styling */
-  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
 }

@@ -145,7 +145,7 @@ type Tab struct {
 
 // TabBar renders a horizontal tab strip with an underline active state.
 templ TabBar(tabs []Tab, activeID string) {
-	<div class="mb-8 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400">
+	<div class="mb-8 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 overflow-x-auto flex-nowrap whitespace-nowrap">
 		for _, tab := range tabs {
 			if tab.ID == activeID {
 				<button class="border-b-2 border-gray-900 pb-3 text-gray-900">{ tab.Label }</button>
@@ -158,9 +158,9 @@ templ TabBar(tabs []Tab, activeID string) {
 
 // DetailRow renders a key-value row with hover effect.
 templ DetailRow(label string) {
-	<div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-100">
-		<span class="text-sm text-gray-500">{ label }</span>
-		<div>
+	<div class="detail-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-5 py-3 border-b border-gray-100">
+		<span class="text-sm text-gray-500 flex-shrink-0">{ label }</span>
+		<div class="min-w-0 break-all sm:break-normal sm:text-right">
 			{ children... }
 		</div>
 	</div>
@@ -168,9 +168,9 @@ templ DetailRow(label string) {
 
 // DetailRowLast renders a key-value row without bottom border.
 templ DetailRowLast(label string) {
-	<div class="detail-row flex items-center justify-between px-5 py-3">
-		<span class="text-sm text-gray-500">{ label }</span>
-		<div>
+	<div class="detail-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-5 py-3">
+		<span class="text-sm text-gray-500 flex-shrink-0">{ label }</span>
+		<div class="min-w-0 break-all sm:break-normal sm:text-right">
 			{ children... }
 		</div>
 	</div>
