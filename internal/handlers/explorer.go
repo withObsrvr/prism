@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/withObsrvr/prism/internal/events"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
@@ -25,6 +26,11 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		SorobanCalls:  "847,201",
 		SorobanChange: "↑ 28.7%",
 		Validators:    42,
+		FeeEconomy:    "100",
+		FeeStandard:   "1,200",
+		FeePriority:   "34,000",
+		SurgeActive:   false,
+		SurgeContext:  "Network is uncongested",
 		Transactions: []pages.HomeTx{
 			{Hash: "8f2a7c1b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d1b3c", ShortHash: "8f2a7c...1b3c", Type: "contract_call", TypeLabel: "Contract Call", Summary: "Soroswap Router • swap()", From: "GBXK4...R2M7", To: "CDLZ9...WK42", Ops: "3 ops", Fee: "0.012 XLM", Age: "4s ago"},
 			{Hash: "a91e03fc824d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8dfc82", ShortHash: "a91e03...fc82", Type: "payment", TypeLabel: "Payment", Summary: "500.00 USDC → Circle hot wallet", From: "GCKW2...NP4X", To: "GDQP7...H93A", Ops: "1 op", Fee: "0.001 XLM", Age: "8s ago"},
@@ -214,12 +220,7 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 			{Index: "2", Type: "Invoke Contract", IsSoroban: true, IsPrimary: true, Status: "Success", SummaryHTML: `<span class="font-medium text-gray-900">GABC...7X92</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485.00 USDC</span> at a rate of <span class="font-medium text-gray-900">0.097 USDC/XLM</span>`, Contract: "CAXY...Z10P", Function: "swap()"},
 			{Index: "3", Type: "Manage Data", Status: "Success", SummaryHTML: `Set data entry <span class="font-mono font-medium text-gray-900">"last_swap_rate"</span> to <span class="font-mono font-medium text-gray-900">"0.097"</span> on account <span class="font-medium text-gray-900">GABC...7X92</span>`},
 		},
-		Events: []pages.TxEvent{
-			{Index: "0", Type: "approve", TypeColor: "gray", Contract: "XLM (Native SAC)", DataHTML: `<div class="flex items-center gap-1.5 flex-wrap"><span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">owner:<span class="text-violet-600">GABC...7X</span></span><span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">amount:<span class="text-gray-900">5,000 XLM</span></span></div>`},
-			{Index: "1", Type: "transfer", TypeColor: "cyan", Contract: "XLM (Native SAC)", DataHTML: `<div class="flex items-center gap-1.5 flex-wrap"><span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from:<span class="text-violet-600">GABC...7X</span></span><span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-600">5,000 XLM</span></div>`},
-			{Index: "2", Type: "transfer", TypeColor: "cyan", Contract: "USDC", DataHTML: `<div class="flex items-center gap-1.5 flex-wrap"><span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to:<span class="text-violet-600">GABC...7X</span></span><span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+485.00 USDC</span></div>`},
-			{Index: "3", Type: "swap", TypeColor: "violet", Contract: "Soroswap Router", DataHTML: `<div class="flex items-center gap-1.5 flex-wrap"><span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">pair:<span class="text-gray-900">XLM/USDC</span></span><span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] text-red-600">−5,000 XLM</span><span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+485.00 USDC</span></div>`},
-		},
+		Events: buildTxEvents(),
 		BalanceChanges: []pages.TxBalanceChange{
 			{Account: "GABC...7X92", Asset: "XLM", AssetType: "Native", TypeColor: "gray", Change: "−5,000.0000000", IsPositive: false},
 			{Account: "GABC...7X92", Asset: "USDC", AssetType: "SEP-41", TypeColor: "violet", Change: "+485.0000000", IsPositive: true},
@@ -238,4 +239,42 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 		h.Logger.Error("render transaction receipt", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// buildTxEvents creates mock transaction receipt events using the event decoder
+// to generate human-readable DataHTML from structured event data.
+func buildTxEvents() []pages.TxEvent {
+	type mockTxEvent struct {
+		pages.TxEvent
+		raw events.RawEvent
+	}
+
+	mocks := []mockTxEvent{
+		{
+			TxEvent: pages.TxEvent{Index: "0", Type: "approve", TypeColor: "gray", Contract: "XLM (Native SAC)"},
+			raw:     events.RawEvent{Type: "approve", From: "GABC...7X", Spender: "Soroswap Router", Amount: "5,000", Asset: "XLM"},
+		},
+		{
+			TxEvent: pages.TxEvent{Index: "1", Type: "transfer", TypeColor: "cyan", Contract: "XLM (Native SAC)"},
+			raw:     events.RawEvent{Type: "transfer", From: "GABC...7X", To: "Pool:CXLM...LP", Amount: "5,000", Asset: "XLM"},
+		},
+		{
+			TxEvent: pages.TxEvent{Index: "2", Type: "transfer", TypeColor: "cyan", Contract: "USDC"},
+			raw:     events.RawEvent{Type: "transfer", From: "Pool:CUSDC...LP", To: "GABC...7X", Amount: "485.00", Asset: "USDC"},
+		},
+		{
+			TxEvent: pages.TxEvent{Index: "3", Type: "swap", TypeColor: "violet", Contract: "Soroswap Router"},
+			raw:     events.RawEvent{Type: "swap", From: "GABC...7X", PairIn: "5,000 XLM", PairOut: "485.00 USDC", Router: "Soroswap"},
+		},
+	}
+
+	result := make([]pages.TxEvent, len(mocks))
+	for i, m := range mocks {
+		te := m.TxEvent
+		if decoded := events.Decode(m.raw); decoded != nil {
+			te.DataHTML = decoded.TopicsHTML()
+		}
+		result[i] = te
+	}
+	return result
 }

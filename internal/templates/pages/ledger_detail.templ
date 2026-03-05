@@ -105,7 +105,11 @@ templ LedgerDetail(data LedgerDetailData) {
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
 					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Transactions</div>
 					<div class="text-lg font-semibold text-gray-900 tabular">{ data.TxCount }</div>
-					<div class="text-[10px] text-gray-500 mt-0.5">{ data.TxSuccess } successful, { data.TxFailed } failed</div>
+					if data.TxFailed != "0" {
+						<div class="text-[10px] text-gray-400 mt-0.5">{ data.TxFailed } expired — normal for competing offers</div>
+					} else {
+						<div class="text-[10px] text-emerald-600 mt-0.5">All successful</div>
+					}
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
 					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Operations</div>
