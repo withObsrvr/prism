@@ -17,7 +17,9 @@ type NetworkHealthData struct {
 	TxChange      string
 	Ops24h        string
 	OpsPerTx      string
-	FailureRate   string
+	FailureRate    string
+	LedgerCapacity string // e.g. "42%"
+	CapacityStatus string // e.g. "Plenty of room"
 	// Fee market
 	FeeBase       string
 	FeeMedian     string
@@ -109,7 +111,7 @@ templ NetworkHealth(data NetworkHealthData) {
 				@components.StatCard("Current TPS", data.CurrentTPS, "normal", -1)
 				@components.StatCard("24h Transactions", data.Tx24h, "normal", -1)
 				@components.StatCard("24h Operations", data.Ops24h, "normal", -1)
-				@components.StatCard("Failure Rate", data.FailureRate, "normal", -1)
+				@components.StatCard("Ledger Capacity", data.LedgerCapacity, "normal", -1)
 			</div>
 
 			<!-- Chart + Consensus -->

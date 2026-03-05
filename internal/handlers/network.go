@@ -21,6 +21,8 @@ func (h *Handlers) NetworkHealth(w http.ResponseWriter, r *http.Request) {
 		Ops24h:             "3.8M",
 		OpsPerTx:           "3.2",
 		FailureRate:        "0.12%",
+		LedgerCapacity:     "42%",
+		CapacityStatus:     "Plenty of room",
 		FeeBase:            "100",
 		FeeMedian:          "200",
 		FeeP99:             "50,000",
