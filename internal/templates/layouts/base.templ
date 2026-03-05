@@ -305,16 +305,16 @@ templ topNav(active string) {
 				</div>
 			</div>
 			<!-- Mobile hamburger -->
-			<button onclick="document.getElementById('mobile-drawer').classList.remove('-translate-x-full'); document.getElementById('drawer-backdrop').classList.remove('hidden');" class="flex md:hidden items-center justify-center h-9 w-9 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+			<button onclick="document.getElementById('mobile-drawer').style.transform='translateX(0)'; document.getElementById('drawer-backdrop').classList.remove('hidden');" class="flex md:hidden items-center justify-center h-9 w-9 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
 				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
 			</button>
 		</div>
 	</header>
 
 	<!-- Mobile drawer overlay -->
-	<div id="drawer-backdrop" class="hidden fixed inset-0 bg-black/30 z-40" onclick="document.getElementById('mobile-drawer').classList.add('-translate-x-full'); this.classList.add('hidden');"></div>
+	<div id="drawer-backdrop" class="hidden fixed inset-0 bg-black/30 z-40" onclick="document.getElementById('mobile-drawer').style.transform='translateX(-100%)'; this.classList.add('hidden');"></div>
 	<!-- Mobile drawer -->
-	<nav id="mobile-drawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-xl overflow-y-auto">
+	<nav id="mobile-drawer" style="transform: translateX(-100%)" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 transition-transform duration-300 ease-in-out shadow-xl overflow-y-auto">
 		<div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
 			<a href="/" class="flex items-center gap-2">
 				<div class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111] text-white">
@@ -322,7 +322,7 @@ templ topNav(active string) {
 				</div>
 				<span class="text-[15px] font-bold tracking-tight">Prism</span>
 			</a>
-			<button onclick="document.getElementById('mobile-drawer').classList.add('-translate-x-full'); document.getElementById('drawer-backdrop').classList.add('hidden');" class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">
+			<button onclick="document.getElementById('mobile-drawer').style.transform='translateX(-100%)'; document.getElementById('drawer-backdrop').classList.add('hidden');" class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">
 				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
 			</button>
 		</div>
@@ -338,12 +338,12 @@ templ topNav(active string) {
 
 templ mobileNavItem(href string, label string, isActive bool) {
 	if isActive {
-		<a href={ templ.SafeURL(href) } onclick="document.getElementById('mobile-drawer').classList.add('-translate-x-full'); document.getElementById('drawer-backdrop').classList.add('hidden');"
+		<a href={ templ.SafeURL(href) } onclick="document.getElementById('mobile-drawer').style.transform='translateX(-100%)'; document.getElementById('drawer-backdrop').classList.add('hidden');"
 		   class="flex items-center px-5 py-3 text-[14px] font-semibold text-gray-900 bg-gray-50 border-l-2 border-[#111]">
 			{ label }
 		</a>
 	} else {
-		<a href={ templ.SafeURL(href) } onclick="document.getElementById('mobile-drawer').classList.add('-translate-x-full'); document.getElementById('drawer-backdrop').classList.add('hidden');"
+		<a href={ templ.SafeURL(href) } onclick="document.getElementById('mobile-drawer').style.transform='translateX(-100%)'; document.getElementById('drawer-backdrop').classList.add('hidden');"
 		   class="flex items-center px-5 py-3 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors border-l-2 border-transparent">
 			{ label }
 		</a>
