@@ -70,7 +70,7 @@ type LedgerTx struct {
 
 templ LedgerDetail(data LedgerDetailData) {
 	@layouts.Base(fmt.Sprintf("Ledger %s — Prism", data.Sequence), "explorer") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<div class="anim mb-6">
 				@components.BackNav("Back to Explorer", "/")
 				<div class="flex items-center justify-between">
@@ -93,7 +93,7 @@ templ LedgerDetail(data LedgerDetailData) {
 			</div>
 
 			<!-- Stats Row -->
-			<div class="anim d1 mb-8 grid grid-cols-6 gap-3">
+			<div class="anim d1 mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
 					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Close Time</div>
 					<div class="text-lg font-semibold text-gray-900 tabular">{ data.CloseTime }</div>
@@ -135,7 +135,7 @@ templ LedgerDetail(data LedgerDetailData) {
 			<!-- Ledger Details -->
 			<div class="anim d2 mb-10">
 				@components.SectionHeader("Ledger Details")
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					@components.DetailRow("Sequence") {
 						<span class="font-mono text-sm font-medium text-gray-900 tabular">{ data.Sequence }</span>
 					}
@@ -175,7 +175,7 @@ templ LedgerDetail(data LedgerDetailData) {
 			<!-- Soroban Runtime -->
 			<div class="anim d3 mb-10">
 				@components.SectionHeader("Soroban Runtime (this ledger)")
-				<div class="grid grid-cols-4 gap-3">
+				<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 					<div class="rounded-xl border border-violet-200 bg-violet-50/30 px-4 py-3">
 						<div class="text-[10px] font-semibold uppercase tracking-wider text-violet-500 mb-1">Total CPU</div>
 						<div class="text-lg font-semibold text-violet-900 tabular font-mono">{ data.TotalCPU }</div>
@@ -231,18 +231,18 @@ templ LedgerDetail(data LedgerDetailData) {
 						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-red-500 hover:bg-red-50">Failed</button>
 					</div>
 				</div>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
-						<div class="w-8">#</div>
+						<div class="hidden md:block w-8">#</div>
 						<div class="w-16">Status</div>
 						<div class="w-[140px]">Hash</div>
 						<div class="flex-1">Human-Readable Summary</div>
-						<div class="w-14 text-right">Ops</div>
-						<div class="w-20 text-right">Fee</div>
+						<div class="hidden md:block w-14 text-right">Ops</div>
+						<div class="hidden md:block w-20 text-right">Fee</div>
 					</div>
 					for _, tx := range data.Transactions {
 						<div class={ "tx-row flex items-center px-5 py-3 border-b border-gray-50", templ.KV("bg-red-50/30", tx.IsFailed) }>
-							<div class="w-8"><span class="text-[10px] font-mono text-gray-400">{ tx.Index }</span></div>
+							<div class="hidden md:block w-8"><span class="text-[10px] font-mono text-gray-400">{ tx.Index }</span></div>
 							<div class="w-16">
 								if tx.IsFailed {
 									<span class="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600">Failed</span>
@@ -261,8 +261,8 @@ templ LedgerDetail(data LedgerDetailData) {
 							<div class="flex-1 text-xs text-gray-700 leading-relaxed pr-4">
 								@templ.Raw(tx.Summary)
 							</div>
-							<div class="w-14 text-right"><span class="font-mono text-xs text-gray-700 tabular">{ tx.Ops }</span></div>
-							<div class="w-20 text-right"><span class="font-mono text-xs text-gray-500 tabular">{ tx.Fee }</span></div>
+							<div class="hidden md:block w-14 text-right"><span class="font-mono text-xs text-gray-700 tabular">{ tx.Ops }</span></div>
+							<div class="hidden md:block w-20 text-right"><span class="font-mono text-xs text-gray-500 tabular">{ tx.Fee }</span></div>
 						</div>
 					}
 					<div class="px-5 py-3 text-center border-t border-gray-100 bg-[#FAFAFA]">
@@ -276,7 +276,7 @@ templ LedgerDetail(data LedgerDetailData) {
 			<div class="anim d6 mb-10">
 				@components.SectionHeader("Fee Distribution")
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-					<div class="grid grid-cols-4 gap-6">
+					<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
 						<div>
 							<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Base Fee</div>
 							<div class="font-mono text-sm font-medium text-gray-900">{ data.FeeBase } stroops</div>

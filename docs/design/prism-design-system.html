@@ -626,6 +626,38 @@
         Header: bg-gray-50/80, text-[10px] font-semibold uppercase tracking-wider text-gray-400. Rows: border-t border-gray-50, py-2.5 px-4, hover bg change via .detail-row. Trust bars: w-12 h-1.5 with progress fill. Uptime colors: ≥99.9% emerald-600, <99.9% amber-600, <99% red-500. Pagination: active page bg-gray-900 text-white, inactive bg-gray-100.
       </div>
     </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5 mt-4">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Responsive tables (<code class="text-[11px] bg-gray-100 px-1 py-0.5 rounded">md:</code> breakpoint · 768px)</h3>
+      <div class="text-[12px] text-gray-500 leading-relaxed mb-3">
+        Below <code class="text-[11px] bg-gray-100 px-1 py-0.5 rounded">md:</code> (768px), secondary columns are hidden to prevent horizontal scrolling. Only essential identification and primary-metric columns remain visible on mobile. The container keeps <code class="text-[11px] bg-gray-100 px-1 py-0.5 rounded">overflow-x-auto</code> as a fallback.
+      </div>
+      <div class="text-[12px] text-gray-500 leading-relaxed mb-3">
+        <span class="font-semibold text-gray-700">Utility classes by layout:</span>
+      </div>
+      <table class="w-full text-[11px] mb-3">
+        <thead>
+          <tr class="text-left text-gray-400 uppercase tracking-wider border-b border-gray-200">
+            <th class="py-1.5 font-semibold">Layout</th>
+            <th class="py-1.5 font-semibold">Hidden class</th>
+            <th class="py-1.5 font-semibold">Use when</th>
+          </tr>
+        </thead>
+        <tbody class="text-gray-600">
+          <tr class="border-b border-gray-100"><td class="py-1.5"><code class="bg-gray-100 px-1 rounded">div</code> flex rows</td><td class="py-1.5"><code class="bg-gray-100 px-1 rounded">hidden md:block</code></td><td class="py-1.5">Most tables (div-based columns)</td></tr>
+          <tr class="border-b border-gray-100"><td class="py-1.5"><code class="bg-gray-100 px-1 rounded">div</code> flex containers</td><td class="py-1.5"><code class="bg-gray-100 px-1 rounded">hidden md:flex</code></td><td class="py-1.5">Wrapper divs with flex children (e.g. meta rows)</td></tr>
+          <tr><td class="py-1.5"><code class="bg-gray-100 px-1 rounded">&lt;table&gt;</code> elements</td><td class="py-1.5"><code class="bg-gray-100 px-1 rounded">hidden md:table-cell</code></td><td class="py-1.5">Semantic <code class="bg-gray-100 px-1 rounded">&lt;th&gt;</code> / <code class="bg-gray-100 px-1 rounded">&lt;td&gt;</code> cells</td></tr>
+        </tbody>
+      </table>
+      <div class="text-[12px] text-gray-500 leading-relaxed mb-2">
+        <span class="font-semibold text-gray-700">Column priority guide:</span>
+      </div>
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        <span class="text-emerald-600 font-semibold">Always visible:</span> Name/identifier, primary metric (price, status, amount), key change indicator.
+        <br/>
+        <span class="text-amber-600 font-semibold">Hide &lt; md:</span> Rank/index (#), secondary metrics (market cap, volume, supply), metadata (version, ISP, org), tertiary stats (success rate, avg CPU), size/health indicators, checkboxes.
+      </div>
+    </div>
   </div>
 </section>
 

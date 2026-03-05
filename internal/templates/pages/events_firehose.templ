@@ -38,9 +38,9 @@ type FirehoseEvent struct {
 
 templ EventsFirehose(data EventsFirehoseData) {
 	@layouts.Base("Events Firehose — Prism", "devtools") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<!-- Toolbar -->
-			<div class="anim mb-4 sticky top-14 z-20 bg-[#FAFAFA] -mx-8 px-8 py-2">
+			<div class="anim mb-4 sticky top-14 z-20 bg-[#FAFAFA] -mx-4 px-4 md:-mx-8 md:px-8 py-2">
 				<div class="flex items-center justify-between gap-4">
 					<div class="flex items-center gap-3 flex-1">
 						<div class="relative flex-1 max-w-md">
@@ -107,10 +107,10 @@ templ EventsFirehose(data EventsFirehoseData) {
 				<div class="flex items-center border-b border-gray-200 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
 					<div class="w-[72px]">Time</div>
 					<div class="w-20">Type</div>
-					<div class="w-[140px]">Contract</div>
+					<div class="hidden md:block w-[140px]">Contract</div>
 					<div class="flex-1 min-w-[200px]">Topics &amp; Data</div>
-					<div class="w-24 text-right">Ledger</div>
-					<div class="w-16 text-right pr-1">Tx</div>
+					<div class="hidden md:block w-24 text-right">Ledger</div>
+					<div class="hidden md:block w-16 text-right pr-1">Tx</div>
 				</div>
 
 				for _, ev := range data.Events {
@@ -122,7 +122,7 @@ templ EventsFirehose(data EventsFirehoseData) {
 							<div class="w-20">
 								@eventTypeBadge(ev.Type, ev.TypeColor)
 							</div>
-							<div class="w-[140px]">
+							<div class="hidden md:block w-[140px]">
 								<div class="flex flex-col">
 									<span class="text-xs font-medium text-gray-900 truncate">{ ev.ContractName }</span>
 									<span class="font-mono text-[10px] text-gray-400 truncate">{ ev.ContractAddr }</span>
@@ -136,10 +136,10 @@ templ EventsFirehose(data EventsFirehoseData) {
 									}
 								</div>
 							</div>
-							<div class="w-24 text-right">
+							<div class="hidden md:block w-24 text-right">
 								<span class="font-mono text-[11px] text-gray-700 tabular">{ ev.Ledger }</span>
 							</div>
-							<div class="w-16 text-right pr-1">
+							<div class="hidden md:block w-16 text-right pr-1">
 								<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-[10px] text-gray-400 hover:text-gray-900">{ ev.TxShort }</a>
 							</div>
 						</summary>

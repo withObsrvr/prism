@@ -90,11 +90,11 @@ type AccountThreshold struct {
 
 templ AccountPortfolio(data AccountData) {
 	@layouts.Base("Account " + data.ShortAddress + " — Prism", "explorer") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<div class="anim mb-8">
 				@components.BackNav("Back to Search", "/")
 				<!-- Account identity -->
-				<div class="flex items-center justify-between mb-4">
+				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
 					<div class="flex items-center gap-3">
 						<div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-cyan-100 ring-2 ring-white shadow-sm">
 							<svg class="h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -131,15 +131,15 @@ templ AccountPortfolio(data AccountData) {
 				}
 				<!-- Balance hero -->
 				<div class="rounded-xl border border-gray-200 bg-gradient-to-b from-[#FAFAFA] to-white p-6 shadow-sm">
-					<div class="flex items-end justify-between">
+					<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 						<div>
 							<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Estimated Value</div>
 							<div class="flex items-baseline">
-								<span class="text-[40px] font-semibold leading-none text-gray-900 tabular">{ data.TotalValue }</span>
+								<span class="text-2xl md:text-[40px] font-semibold leading-none text-gray-900 tabular">{ data.TotalValue }</span>
 								<span class="text-xl font-medium text-gray-400 ml-1">{ data.TotalCents }</span>
 							</div>
 						</div>
-						<div class="flex items-center gap-6 text-sm">
+						<div class="flex flex-wrap items-center gap-4 md:gap-6 text-sm">
 							<div class="text-right">
 								<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">XLM Balance</div>
 								<div class="font-mono font-semibold text-gray-900 tabular">{ data.XLMBalance }</div>
@@ -175,10 +175,10 @@ templ AccountPortfolio(data AccountData) {
 			<!-- Balances -->
 			<div class="anim d2 mb-10">
 				@components.SectionHeader("Balances")
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="w-[200px]">Asset</div>
-						<div class="w-28">Type</div>
+						<div class="hidden md:block w-28">Type</div>
 						<div class="flex-1 text-right">Balance</div>
 						<div class="w-32 text-right">Value (USD)</div>
 					</div>
@@ -193,7 +193,7 @@ templ AccountPortfolio(data AccountData) {
 									</div>
 								</div>
 							</div>
-							<div class="w-28">
+							<div class="hidden md:block w-28">
 								@components.Badge(b.Type, b.TypeColor)
 							</div>
 							<div class="flex-1 text-right">
@@ -214,7 +214,7 @@ templ AccountPortfolio(data AccountData) {
 					@components.SectionHeader("Recent Activity")
 					<a href="#" class="text-xs font-medium text-gray-500 hover:text-gray-900">View all activity →</a>
 				</div>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					for i, act := range data.Activities {
 						if i == 0 || act.DateGroup != data.Activities[i-1].DateGroup {
 							<div class="px-5 py-1.5 bg-[#FAFAFA] border-b border-gray-100">
@@ -248,13 +248,13 @@ templ AccountPortfolio(data AccountData) {
 					@components.SectionHeader("Contract Interactions")
 					<a href="#" class="text-xs font-medium text-gray-500 hover:text-gray-900">View Soroban tab →</a>
 				</div>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="flex-1">Contract</div>
-						<div class="w-28">Top Function</div>
+						<div class="hidden md:block w-28">Top Function</div>
 						<div class="w-20 text-right">Calls</div>
-						<div class="w-24 text-right">Total Fees</div>
-						<div class="w-28 text-right">Last Called</div>
+						<div class="hidden md:block w-24 text-right">Total Fees</div>
+						<div class="hidden md:block w-28 text-right">Last Called</div>
 					</div>
 					for i, c := range data.Contracts {
 						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.Contracts)-1) }>
@@ -265,10 +265,10 @@ templ AccountPortfolio(data AccountData) {
 								</div>
 								<span class="font-mono text-[10px] text-gray-400">{ c.Address }</span>
 							</div>
-							<div class="w-28"><span class="font-mono text-xs text-violet-600">{ c.TopFn }</span></div>
+							<div class="hidden md:block w-28"><span class="font-mono text-xs text-violet-600">{ c.TopFn }</span></div>
 							<div class="w-20 text-right"><span class="font-mono text-sm font-semibold text-gray-900 tabular">{ c.Calls }</span></div>
-							<div class="w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">{ c.Fees }</span></div>
-							<div class="w-28 text-right"><span class="text-xs text-gray-500">{ c.LastCall }</span></div>
+							<div class="hidden md:block w-24 text-right"><span class="font-mono text-xs text-gray-700 tabular">{ c.Fees }</span></div>
+							<div class="hidden md:block w-28 text-right"><span class="text-xs text-gray-500">{ c.LastCall }</span></div>
 						</div>
 					}
 				</div>
@@ -278,13 +278,13 @@ templ AccountPortfolio(data AccountData) {
 			if len(data.Offers) > 0 {
 				<div class="anim d5 mb-10">
 					@components.SectionHeader(fmt.Sprintf("Active Offers (%d)", len(data.Offers)))
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 						<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 							<div class="w-16">Side</div>
 							<div class="w-32">Pair</div>
 							<div class="flex-1">Price</div>
 							<div class="w-32 text-right">Amount</div>
-							<div class="w-24 text-right">Offer ID</div>
+							<div class="hidden md:block w-24 text-right">Offer ID</div>
 						</div>
 						for i, o := range data.Offers {
 							<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.Offers)-1) }>
@@ -294,7 +294,7 @@ templ AccountPortfolio(data AccountData) {
 								<div class="w-32"><span class="text-sm text-gray-900">{ o.Pair }</span></div>
 								<div class="flex-1"><span class="font-mono text-sm text-gray-900">{ o.Price }</span> <span class="text-xs text-gray-400">{ o.PriceUnit }</span></div>
 								<div class="w-32 text-right font-mono text-sm text-gray-900 tabular">{ o.Amount }</div>
-								<div class="w-24 text-right"><span class="font-mono text-xs text-gray-500">{ o.OfferID }</span></div>
+								<div class="hidden md:block w-24 text-right"><span class="font-mono text-xs text-gray-500">{ o.OfferID }</span></div>
 							</div>
 						}
 					</div>
@@ -308,7 +308,7 @@ templ AccountPortfolio(data AccountData) {
 					<a href="#" class="text-xs font-medium text-gray-500 hover:text-gray-900">View full details →</a>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-					<div class="grid grid-cols-2 gap-6">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<div>
 							<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Thresholds</div>
 							<div class="space-y-3">

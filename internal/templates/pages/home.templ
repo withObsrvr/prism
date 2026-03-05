@@ -101,7 +101,7 @@ templ Home(data HomeData) {
 			<!-- Subtle grid texture -->
 			<div class="absolute inset-0 opacity-[.025]" style="background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><line x1=%2220%22 y1=%220%22 x2=%2220%22 y2=%2240%22 stroke=%22%23111%22 stroke-width=%220.5%22/><line x1=%220%22 y1=%2220%22 x2=%2240%22 y2=%2220%22 stroke=%22%23111%22 stroke-width=%220.5%22/></svg>')"></div>
 
-			<div class="relative mx-auto max-w-[1320px] px-8 py-16 pb-12">
+			<div class="relative mx-auto max-w-[1320px] px-4 md:px-8 py-10 md:py-16 pb-10 md:pb-12">
 				<!-- Tagline -->
 				<div class="anim text-center mb-8">
 					<h1 class="text-3xl font-bold text-gray-900 tracking-tight">Explore the Stellar network</h1>
@@ -130,7 +130,7 @@ templ Home(data HomeData) {
 					<div id="search-live-results" class="mt-2 text-left"></div>
 
 					<!-- Smart hints -->
-					<div class="flex items-center justify-center gap-2 mt-3">
+					<div class="flex flex-wrap items-center justify-center gap-2 mt-3">
 						<span class="text-[10px] text-gray-400 mr-1">Try:</span>
 						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">G… → Account</a>
 						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">C… → Contract</a>
@@ -141,7 +141,7 @@ templ Home(data HomeData) {
 				</form>
 
 				<!-- Network Pulse (5 metrics) -->
-				<div class="anim d2 mx-auto max-w-[820px] grid grid-cols-5 gap-px rounded-xl bg-gray-200 overflow-hidden ring-1 ring-gray-200">
+				<div class="anim d2 mx-auto max-w-[820px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-px rounded-xl bg-gray-200 overflow-hidden ring-1 ring-gray-200">
 					<div class="bg-white px-4 py-3 text-center">
 						<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Latest Ledger</div>
 						<div class="text-lg font-bold text-gray-900 tabular font-mono mt-0.5">{ data.LatestLedger }</div>
@@ -179,11 +179,11 @@ templ Home(data HomeData) {
 		</section>
 
 		<!-- Main Content: Transactions + Ledgers -->
-		<section class="mx-auto max-w-[1320px] px-8 py-8">
-			<div class="grid grid-cols-3 gap-6">
+		<section class="mx-auto max-w-[1320px] px-4 md:px-8 py-8">
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
 				<!-- Latest Transactions (2 cols) -->
-				<div class="col-span-2">
+				<div class="lg:col-span-2">
 					<div class="flex items-center justify-between mb-4">
 						<div class="flex items-center gap-2.5">
 							<h2 class="text-sm font-semibold text-gray-900">Latest Transactions</h2>
@@ -196,6 +196,8 @@ templ Home(data HomeData) {
 					</div>
 
 					<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+						<div class="overflow-x-auto">
+						<div class="min-w-[600px]">
 						for i, tx := range data.Transactions {
 							<div class={ "tx-row flex items-center gap-4 px-5 py-3 hover:bg-gray-50/50 cursor-pointer transition-colors", templ.KV("border-b border-gray-50", i < len(data.Transactions)-1) }>
 								<!-- Hash + Type -->
@@ -215,13 +217,15 @@ templ Home(data HomeData) {
 									<span class="font-mono text-gray-600">{ tx.To }</span>
 								</div>
 								<!-- Meta -->
-								<div class="flex items-center gap-4 flex-shrink-0">
+								<div class="hidden md:flex items-center gap-4 flex-shrink-0">
 									<span class="text-[10px] text-gray-400 tabular w-10 text-right">{ tx.Ops }</span>
 									<span class="font-mono text-[10px] text-gray-400 tabular w-16 text-right">{ tx.Fee }</span>
 									<span class="text-[10px] text-gray-400 tabular w-12 text-right">{ tx.Age }</span>
 								</div>
 							</div>
 						}
+					</div>
+					</div>
 					</div>
 				</div>
 
@@ -256,8 +260,8 @@ templ Home(data HomeData) {
 		</section>
 
 		<!-- Curated Sections -->
-		<section class="mx-auto max-w-[1320px] px-8 pb-8">
-			<div class="grid grid-cols-3 gap-6">
+		<section class="mx-auto max-w-[1320px] px-4 md:px-8 pb-8">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
 				<!-- Trending Contracts -->
 				<div class="anim d3">
@@ -383,8 +387,8 @@ templ Home(data HomeData) {
 		</section>
 
 		<!-- Quick Access Cards -->
-		<section class="mx-auto max-w-[1320px] px-8 pb-12">
-			<div class="grid grid-cols-5 gap-3">
+		<section class="mx-auto max-w-[1320px] px-4 md:px-8 pb-12">
+			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
 				@quickAccessCard("/account/CDLZQ8M4/smart", "bg-emerald-100", "text-emerald-600", "Smart Accounts", "OZ v0.5.0 wallets", shieldIcon())
 				@quickAccessCard("/events", "bg-violet-100", "text-violet-600", "Events Firehose", "Real-time streaming", boltIcon())
 				@quickAccessCard("/state", "bg-cyan-100", "text-cyan-600", "State & Rent", "TTL monitoring", clockIcon())

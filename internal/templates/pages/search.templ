@@ -37,7 +37,7 @@ type SearchTip struct {
 
 templ Search(data SearchData) {
 	@layouts.Base("Search: " + data.Query + " — Prism", "explorer") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<!-- Search bar -->
 			<div class="anim mb-8">
 				<div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-sm">
@@ -79,7 +79,7 @@ templ Search(data SearchData) {
 			<!-- Disambiguation -->
 			<div class="anim d2 mb-10">
 				@components.SectionHeader("Also search as")
-				<div class="grid grid-cols-3 gap-3">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 					<a href={ templ.SafeURL("/search?q=" + data.Query + "&type=tx") } class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm hover:bg-gray-50 group">
 						<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 flex-shrink-0 group-hover:bg-gray-200">
 							<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>

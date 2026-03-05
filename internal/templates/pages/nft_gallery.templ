@@ -63,7 +63,7 @@ type NftCard struct {
 
 templ NftGallery(data NftGalleryData) {
 	@layouts.Base("NFT Gallery — Prism", "explorer") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<!-- Back nav -->
 			<div class="anim mb-6">
 				@components.BackNav("Back to Portfolio", "/accounts")
@@ -104,7 +104,7 @@ templ NftGallery(data NftGalleryData) {
 			</div>
 
 			<!-- Stats -->
-			<div class="anim d2 mb-8 grid grid-cols-5 gap-4">
+			<div class="anim d2 mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
 					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Floor Price</span>
 					<div class="flex items-baseline">
@@ -155,7 +155,7 @@ templ NftGallery(data NftGalleryData) {
 			</div>
 
 			<!-- Featured NFT -->
-			<div class="anim d4 mb-10 grid grid-cols-5 gap-8">
+			<div class="anim d4 mb-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-8">
 				<!-- Art -->
 				<div class="col-span-2">
 					<div class="aspect-square w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] shadow-lg ring-1 ring-black/5 relative">
@@ -265,7 +265,7 @@ templ NftGallery(data NftGalleryData) {
 						</select>
 					</div>
 				</div>
-				<div class="grid grid-cols-4 gap-4">
+				<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
 					for i, nft := range data.Items {
 						<div class={ "rounded-xl bg-white shadow-sm overflow-hidden cursor-pointer", templ.KV("border-2 border-gray-900 shadow-md", i == 0), templ.KV("border border-gray-100 hover:shadow-md", i != 0) }>
 							<div class={ "aspect-square w-full relative", templ.KV("bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]", nft.ArtClass == "hero"), templ.KV("bg-gradient-to-br from-violet-400 to-blue-500", nft.ArtClass == "cool"), templ.KV("bg-gradient-to-br from-amber-400 to-orange-500", nft.ArtClass == "warm"), templ.KV("bg-gradient-to-br from-emerald-400 to-cyan-500", nft.ArtClass == "nature") }>

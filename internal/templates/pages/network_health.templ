@@ -75,7 +75,7 @@ type NetworkLedger struct {
 
 templ NetworkHealth(data NetworkHealthData) {
 	@layouts.Base("Network Health — Prism", "network") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<!-- Status Banner -->
 			<div class="anim mb-6 flex items-center justify-between">
 				<div class="flex items-center gap-3">
@@ -103,7 +103,7 @@ templ NetworkHealth(data NetworkHealthData) {
 			</div>
 
 			<!-- Primary Metrics -->
-			<div class="anim d1 mb-8 grid grid-cols-6 gap-3">
+			<div class="anim d1 mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
 				@components.StatCard("Latest Ledger", data.LatestLedger, "normal", -1)
 				@components.StatCard("Avg Close Time", data.AvgCloseTime, "normal", -1)
 				@components.StatCard("Current TPS", data.CurrentTPS, "normal", -1)
@@ -113,7 +113,7 @@ templ NetworkHealth(data NetworkHealthData) {
 			</div>
 
 			<!-- Chart + Consensus -->
-			<div class="anim d2 mb-8 grid grid-cols-3 gap-6">
+			<div class="anim d2 mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
 				<!-- Throughput chart -->
 				<div class="col-span-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
 					<div class="flex items-center justify-between mb-4">
@@ -178,7 +178,7 @@ templ NetworkHealth(data NetworkHealthData) {
 			</div>
 
 			<!-- Fee Market + Soroban + Protocol -->
-			<div class="anim d3 mb-8 grid grid-cols-3 gap-6">
+			<div class="anim d3 mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
 					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Fee Market</div>
 					<div class="space-y-3">
@@ -214,13 +214,13 @@ templ NetworkHealth(data NetworkHealthData) {
 			<!-- Validators Table -->
 			<div class="anim d4 mb-8">
 				@components.SectionHeader("Validators")
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="flex-1">Validator</div>
-						<div class="w-28">Organization</div>
+						<div class="hidden md:block w-28">Organization</div>
 						<div class="w-20 text-right">Uptime</div>
-						<div class="w-20 text-right">Version</div>
-						<div class="w-20 text-right">Latency</div>
+						<div class="hidden md:block w-20 text-right">Version</div>
+						<div class="hidden md:block w-20 text-right">Latency</div>
 						<div class="w-20 text-right">Status</div>
 					</div>
 					for i, v := range data.Validators {
@@ -232,10 +232,10 @@ templ NetworkHealth(data NetworkHealthData) {
 								</div>
 								<span class="font-mono text-[10px] text-gray-400 ml-3.5">{ v.Address }</span>
 							</div>
-							<div class="w-28"><span class="text-xs text-gray-700">{ v.Org }</span></div>
+							<div class="hidden md:block w-28"><span class="text-xs text-gray-700">{ v.Org }</span></div>
 							<div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">{ v.Uptime }</span></div>
-							<div class="w-20 text-right"><span class="font-mono text-[10px] text-gray-500">{ v.Version }</span></div>
-							<div class="w-20 text-right"><span class="text-xs text-gray-500 tabular">{ v.Latency }</span></div>
+							<div class="hidden md:block w-20 text-right"><span class="font-mono text-[10px] text-gray-500">{ v.Version }</span></div>
+							<div class="hidden md:block w-20 text-right"><span class="text-xs text-gray-500 tabular">{ v.Latency }</span></div>
 							<div class="w-20 text-right">
 								@components.Badge(v.Status, v.StatusColor)
 							</div>
@@ -250,15 +250,15 @@ templ NetworkHealth(data NetworkHealthData) {
 			<!-- Recent Ledgers -->
 			<div class="anim d5 mb-10">
 				@components.SectionHeader("Recent Ledgers")
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
 					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="w-28">Ledger</div>
 						<div class="w-20">Age</div>
 						<div class="w-16 text-right">Txs</div>
-						<div class="w-16 text-right">Ops</div>
-						<div class="w-24 text-right">Soroban</div>
-						<div class="w-24 text-right">Fees</div>
-						<div class="flex-1 text-right">Close Time</div>
+						<div class="hidden md:block w-16 text-right">Ops</div>
+						<div class="hidden md:block w-24 text-right">Soroban</div>
+						<div class="hidden md:block w-24 text-right">Fees</div>
+						<div class="hidden md:block flex-1 text-right">Close Time</div>
 					</div>
 					for i, l := range data.RecentLedgers {
 						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("border-b border-gray-50", i < len(data.RecentLedgers)-1), templ.KV("glow", l.IsLatest), templ.KV("bg-amber-50/40", l.IsSlow) }>
@@ -272,14 +272,14 @@ templ NetworkHealth(data NetworkHealthData) {
 							</div>
 							<div class="w-20"><span class="text-[10px] text-gray-400">{ l.Age }</span></div>
 							<div class="w-16 text-right"><span class="text-xs text-gray-900 tabular">{ l.TxCount }</span></div>
-							<div class="w-16 text-right"><span class="text-xs text-gray-700 tabular">{ l.OpsCount }</span></div>
+							<div class="hidden md:block w-16 text-right"><span class="text-xs text-gray-700 tabular">{ l.OpsCount }</span></div>
 							<div class="w-24 text-right">
 								<span class="text-xs text-violet-600 tabular">{ l.SorobanCalls }</span>
 								if l.SorobanPct != "" {
 									<span class="ml-1 rounded bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-600">{ l.SorobanPct }</span>
 								}
 							</div>
-							<div class="w-24 text-right"><span class="font-mono text-[10px] text-gray-500 tabular">{ l.Fees }</span></div>
+							<div class="hidden md:block w-24 text-right"><span class="font-mono text-[10px] text-gray-500 tabular">{ l.Fees }</span></div>
 							<div class="flex-1 text-right">
 								<span class={ "text-[10px] tabular", templ.KV("text-amber-600 font-medium", l.IsSlow), templ.KV("text-gray-400", !l.IsSlow) }>{ l.CloseTime }</span>
 							</div>

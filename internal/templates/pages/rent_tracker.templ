@@ -51,7 +51,7 @@ type RentStorageEntry struct {
 
 templ RentTracker(data RentTrackerData) {
 	@layouts.Base("State & Rent Tracker — Prism", "devtools") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<!-- Header -->
 			<div class="anim mb-8">
 				<span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">State &amp; Rent Tracker</span>
@@ -84,7 +84,7 @@ templ RentTracker(data RentTrackerData) {
 			</div>
 
 			<!-- TTL Health Overview -->
-			<div class="anim d1 mb-8 grid grid-cols-5 gap-4">
+			<div class="anim d1 mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
 					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Entries</span>
 					<span class="text-xl font-semibold text-gray-900 tabular">{ data.TotalEntries }</span>
@@ -116,7 +116,7 @@ templ RentTracker(data RentTrackerData) {
 			</div>
 
 			<!-- Storage Breakdown + Extend Rent -->
-			<div class="anim d2 mb-10 grid grid-cols-3 gap-6">
+			<div class="anim d2 mb-10 grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="col-span-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 					<h3 class="mb-1 text-sm font-semibold text-gray-900">Storage Breakdown</h3>
 					<p class="text-xs text-gray-500 mb-5">Data entries by Soroban storage type</p>
@@ -207,19 +207,19 @@ templ RentTracker(data RentTrackerData) {
 				</div>
 
 				<div class="flex items-center border-b border-gray-200 pb-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-					<div class="w-8"><input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300"/></div>
+					<div class="hidden md:block w-8"><input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300"/></div>
 					<div class="w-24">Type</div>
 					<div class="flex-1 min-w-[180px]">Key</div>
-					<div class="w-20 text-right">Size</div>
+					<div class="hidden md:block w-20 text-right">Size</div>
 					<div class="w-32 text-right">TTL Remaining</div>
-					<div class="w-[160px] text-center px-3">Health</div>
-					<div class="w-24 text-right">Rent/mo</div>
+					<div class="hidden md:block w-[160px] text-center px-3">Health</div>
+					<div class="hidden md:block w-24 text-right">Rent/mo</div>
 					<div class="w-20 text-right pr-1">Action</div>
 				</div>
 
 				for _, e := range data.StorageEntries {
 					<div class={ "flex items-center border-b border-gray-100 py-3.5", templ.KV("opacity-50", e.IsEvicted), templ.KV("bg-emerald-50/20", e.IsRestored) }>
-						<div class="w-8"><input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300"/></div>
+						<div class="hidden md:block w-8"><input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300"/></div>
 						<div class="w-24">
 							<div class="flex items-center gap-1.5">
 								if e.TypeIconSVG != "" {
@@ -242,7 +242,7 @@ templ RentTracker(data RentTrackerData) {
 								<span class="text-[10px] text-gray-400">{ e.KeyDesc }</span>
 							</div>
 						</div>
-						<div class="w-20 text-right">
+						<div class="hidden md:block w-20 text-right">
 							<span class="text-xs font-medium text-gray-700 tabular">{ e.Size }</span>
 						</div>
 						<div class="w-32 text-right">
@@ -251,12 +251,12 @@ templ RentTracker(data RentTrackerData) {
 								<span class="font-mono text-[9px] text-gray-400">~{ e.TTLLedgers } ledgers</span>
 							</div>
 						</div>
-						<div class="w-[160px] px-3">
+						<div class="hidden md:block w-[160px] px-3">
 							<div class="h-1.5 w-full rounded-full bg-gray-100">
 								<div class={ "h-1.5 rounded-full", templ.KV("bg-red-500", e.HealthColor == "red"), templ.KV("bg-amber-500", e.HealthColor == "amber"), templ.KV("bg-emerald-500", e.HealthColor == "emerald") } style={ "width:" + e.HealthPct }></div>
 							</div>
 						</div>
-						<div class="w-24 text-right">
+						<div class="hidden md:block w-24 text-right">
 							<span class="text-xs font-medium text-gray-700 tabular">{ e.RentPerMonth }</span>
 						</div>
 						<div class="w-20 flex justify-end pr-1">

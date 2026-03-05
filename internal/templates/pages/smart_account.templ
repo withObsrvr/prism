@@ -92,7 +92,7 @@ type SecurityEvent struct {
 
 templ SmartAccount(data SmartAccountData) {
 	@layouts.Base("Smart Account — Prism", "explorer") {
-		<main class="mx-auto max-w-[1320px] px-8 py-6">
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 			<!-- Header -->
 			<div class="anim mb-8 flex items-center justify-between">
 				<div class="flex flex-col">
@@ -115,7 +115,7 @@ templ SmartAccount(data SmartAccountData) {
 			<div class="anim d1 mb-10">
 				<div class="text-sm font-medium text-gray-500 mb-1">Total Balance</div>
 				<div class="flex items-baseline">
-					<span class="text-[56px] font-semibold leading-none tracking-tight text-gray-900">{ data.TotalBalance }</span>
+					<span class="text-3xl md:text-[56px] font-semibold leading-none tracking-tight text-gray-900">{ data.TotalBalance }</span>
 					<span class="text-[28px] font-medium leading-none text-gray-400">{ data.BalanceCents }</span>
 				</div>
 			</div>
@@ -212,7 +212,7 @@ templ SmartAccount(data SmartAccountData) {
 										}
 									</div>
 									if p.Limit != "" {
-										<div class="grid grid-cols-3 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
+										<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
 											<div>
 												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Limit</div>
 												<div class="flex items-baseline">
@@ -282,7 +282,7 @@ templ SmartAccount(data SmartAccountData) {
 									</div>
 									<button class="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50">Revoke</button>
 								</div>
-								<div class="grid grid-cols-4 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
+								<div class="grid grid-cols-2 md:grid-cols-4 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
 									<div>
 										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Key</div>
 										<span class="font-mono text-xs text-gray-700">{ sk.Key }</span>
