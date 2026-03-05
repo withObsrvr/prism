@@ -21,21 +21,22 @@ type AssetDirectoryData struct {
 }
 
 type AssetRow struct {
-	Rank      int
-	Code      string
-	Name      string
-	Issuer    string
-	BgColor   string
-	Initial   string
-	Price     string
-	Change    string
-	IsUp      bool
-	MarketCap string
-	Volume    string
-	Supply    string
-	Holders   string
-	TypeBadge string
-	TypeColor string
+	Rank       int
+	Code       string
+	Name       string
+	Issuer     string
+	BgColor    string
+	Initial    string
+	Price      string
+	Change     string
+	IsUp       bool
+	IsVerified bool
+	MarketCap  string
+	Volume     string
+	Supply     string
+	Holders    string
+	TypeBadge  string
+	TypeColor  string
 }
 
 templ AssetDirectory(data AssetDirectoryData) {
@@ -45,7 +46,10 @@ templ AssetDirectory(data AssetDirectoryData) {
 			<div class="anim mb-6">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
+						<div>
 						<h1 class="text-2xl font-bold text-gray-900">Asset Directory</h1>
+						<p class="text-xs text-gray-500 mt-0.5">Browse all classic and SEP-41 assets on Stellar</p>
+					</div>
 						<div class="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
 							<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
 							<span class="text-[10px] font-medium text-emerald-700">Live</span>
@@ -83,10 +87,25 @@ templ AssetDirectory(data AssetDirectoryData) {
 			<!-- Filter controls -->
 			<div class="anim d2 mb-6 flex items-center gap-3">
 				<div class="flex items-center gap-1">
+					<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mr-1">Asset Type</span>
 					<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm">All</button>
 					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">Classic</button>
 					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-violet-600 shadow-sm hover:bg-violet-50">SEP-41</button>
 					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-amber-600 shadow-sm hover:bg-amber-50">LP Tokens</button>
+				</div>
+				<div class="flex items-center gap-2">
+					<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Filters</span>
+					<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm outline-none">
+						<option>All Categories</option>
+						<option>Stablecoins</option>
+						<option>DeFi</option>
+						<option>Meme</option>
+						<option>Wrapped</option>
+					</select>
+					<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50 flex items-center gap-1">
+						<svg class="h-3 w-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+						Verified only
+					</button>
 				</div>
 				<div class="flex-1"></div>
 				<div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 shadow-sm">
@@ -116,7 +135,12 @@ templ AssetDirectory(data AssetDirectoryData) {
 								<div class="flex items-center gap-2.5">
 									<div class={ "flex h-7 w-7 items-center justify-center rounded-full text-white text-[9px] font-bold", a.BgColor }>{ a.Initial }</div>
 									<div>
-										<div class="text-sm font-semibold text-gray-900">{ a.Code }</div>
+										<div class="flex items-center gap-1">
+											<span class="text-sm font-semibold text-gray-900">{ a.Code }</span>
+											if a.IsVerified {
+												<svg class="h-3.5 w-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+											}
+										</div>
 										<div class="text-[10px] text-gray-400">{ a.Name }</div>
 									</div>
 								</div>

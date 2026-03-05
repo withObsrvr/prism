@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@source "../../../internal/templates/**/*.templ";
+
 /* Dialog centering */
 dialog[open] {
   position: fixed;

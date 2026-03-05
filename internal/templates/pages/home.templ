@@ -104,16 +104,11 @@ templ Home(data HomeData) {
 			<div class="relative mx-auto max-w-[1320px] px-8 py-16 pb-12">
 				<!-- Tagline -->
 				<div class="anim text-center mb-8">
-					<div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200/60 mb-5">
-						<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
-						<span class="text-[11px] font-semibold text-emerald-700">Stellar Mainnet &bull; Protocol v25 &bull; Ledger { data.LatestLedger }</span>
-					</div>
-					<h1 class="text-3xl font-bold text-gray-900 tracking-tight mb-2">Explore the Stellar network</h1>
-					<p class="text-[15px] text-gray-500 max-w-md mx-auto">Search any account, transaction, contract, asset, or ledger. Soroban-native with full smart contract support.</p>
+					<h1 class="text-3xl font-bold text-gray-900 tracking-tight">Explore the Stellar network</h1>
 				</div>
 
 				<!-- Search Bar -->
-				<div class="anim d1 mx-auto max-w-[680px] mb-8">
+				<form action="/search" method="GET" class="anim d1 mx-auto max-w-[680px] mb-8">
 					<div class="search-ring flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-lg shadow-gray-200/50">
 						<svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -128,7 +123,7 @@ templ Home(data HomeData) {
 							hx-trigger="keyup changed delay:300ms"
 							hx-target="#search-live-results"
 						/>
-						<kbd class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-400">⌘K</kbd>
+						<kbd class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-400">Ctrl+K</kbd>
 					</div>
 
 					<!-- Live search results -->
@@ -143,7 +138,7 @@ templ Home(data HomeData) {
 						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">USDC → Asset</a>
 						<a href="#" class="hint-pill rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">{ data.LatestLedger } → Ledger</a>
 					</div>
-				</div>
+				</form>
 
 				<!-- Network Pulse (5 metrics) -->
 				<div class="anim d2 mx-auto max-w-[820px] grid grid-cols-5 gap-px rounded-xl bg-gray-200 overflow-hidden ring-1 ring-gray-200">
@@ -390,11 +385,11 @@ templ Home(data HomeData) {
 		<!-- Quick Access Cards -->
 		<section class="mx-auto max-w-[1320px] px-8 pb-12">
 			<div class="grid grid-cols-5 gap-3">
-				@quickAccessCard("/smart-accounts", "bg-emerald-100", "text-emerald-600", "Smart Accounts", "OZ v0.5.0 wallets", shieldIcon())
+				@quickAccessCard("/account/CDLZQ8M4/smart", "bg-emerald-100", "text-emerald-600", "Smart Accounts", "OZ v0.5.0 wallets", shieldIcon())
 				@quickAccessCard("/events", "bg-violet-100", "text-violet-600", "Events Firehose", "Real-time streaming", boltIcon())
 				@quickAccessCard("/state", "bg-cyan-100", "text-cyan-600", "State & Rent", "TTL monitoring", clockIcon())
 				@quickAccessCard("/nft", "bg-amber-100", "text-amber-600", "NFT Gallery", "Stellar NFTs", imageIcon())
-				@quickAccessCard("/validators", "bg-gray-100", "text-gray-600", "Validators", "Network health", chartIcon())
+				@quickAccessCard("/network", "bg-gray-100", "text-gray-600", "Validators", "Network health", chartIcon())
 			</div>
 		</section>
 	}

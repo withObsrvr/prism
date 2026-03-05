@@ -53,11 +53,12 @@ type NftProvenance struct {
 }
 
 type NftCard struct {
-	TokenID string
-	Name    string
-	Floor   string
-	IsOwned bool
-	ArtClass string
+	TokenID   string
+	Name      string
+	Floor     string
+	IsOwned   bool
+	OwnerAddr string
+	ArtClass  string
 }
 
 templ NftGallery(data NftGalleryData) {
@@ -90,8 +91,15 @@ templ NftGallery(data NftGalleryData) {
 						<div class="flex items-center gap-2">
 							<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
 							<span class="font-mono text-xs text-gray-500">{ data.ContractID }</span>
+							@components.CopyButton(data.ContractID)
 						</div>
 					</div>
+				</div>
+				<div class="flex items-center gap-2">
+					@components.ActionButtons([]components.ActionButton{
+						{Label: "Website", Href: "#", Icon: "external"},
+						{Label: "Save", Href: "#", Icon: "star"},
+					})
 				</div>
 			</div>
 
@@ -234,8 +242,28 @@ templ NftGallery(data NftGalleryData) {
 			<!-- Gallery Grid -->
 			<div class="anim d5 border-t border-gray-100 pt-8 mb-10">
 				<div class="mb-4 flex items-center justify-between">
-					<h3 class="text-sm font-semibold text-gray-900">All Items</h3>
-					<span class="text-xs text-gray-400">{ data.ItemCount } items</span>
+					<div class="flex items-center gap-3">
+						<h3 class="text-sm font-semibold text-gray-900">All Items</h3>
+						<span class="text-xs text-gray-400">{ data.ItemCount } items</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+							<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+							Filter
+						</button>
+						<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm outline-none">
+							<option>Sort: Price low → high</option>
+							<option>Sort: Price high → low</option>
+							<option>Sort: Recently listed</option>
+							<option>Sort: Token ID</option>
+						</select>
+						<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm outline-none">
+							<option>All traits</option>
+							<option>Background: Cosmic</option>
+							<option>Shape: Diamond</option>
+							<option>Rarity: Legendary</option>
+						</select>
+					</div>
 				</div>
 				<div class="grid grid-cols-4 gap-4">
 					for i, nft := range data.Items {
@@ -257,10 +285,14 @@ templ NftGallery(data NftGalleryData) {
 										<span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">Owned</span>
 									}
 								</div>
+								if !nft.IsOwned && nft.OwnerAddr != "" {
+									<div class="mt-1 font-mono text-[10px] text-gray-400 truncate">{ nft.OwnerAddr }</div>
+								}
 							</div>
 						</div>
 					}
 				</div>
+				@components.Pagination(1, 25, "/nft/stellar-geometric-v1")
 			</div>
 		</main>
 	}

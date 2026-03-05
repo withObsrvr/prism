@@ -23,23 +23,41 @@ type ContractDetailData struct {
 	StorageItems   []ContractStorageItem
 	CodePreview    string
 	WASMHash       string
+	// Phase 1A additions
+	Creator         string
+	CreatorHref     string
+	WASMSize        string
+	FunctionsCount  string
+	IsSourceVerified bool
+	ActivityPoints  []float64
+	AvgInvocations  string
+	PeakInvocations string
+	SuccessRate     string
+	ExportedFunctions []string
 }
 
 type ContractFunction struct {
-	Name       string
-	Calls      string
-	Pct        string
-	AvgCPU     string
-	LastCalled string
+	Name        string
+	Calls       string
+	Pct         string
+	AvgCPU      string
+	LastCalled  string
+	Calls24h    string
+	Calls7d     string
+	Calls30d    string
+	SuccessRate string
 }
 
 type ContractInvocation struct {
-	TxHash    string
-	ShortHash string
-	Function  string
-	Caller    string
-	Status    string
-	Age       string
+	TxHash      string
+	ShortHash   string
+	Function    string
+	Caller      string
+	Status      string
+	StatusColor string
+	Summary     string
+	CPUUsed     string
+	Age         string
 }
 
 type ContractStorageItem struct {
@@ -73,10 +91,15 @@ templ ContractDetail(data ContractDetailData) {
 							</div>
 							<div class="flex items-center gap-2 mt-1">
 								<span class="font-mono text-[12px] text-gray-500">{ data.Address }</span>
+								@components.CopyButton(data.Address)
 								<span class="text-[10px] text-gray-400">Deployed { data.DeployedAt } · Ledger { data.DeployLedger }</span>
 							</div>
 						</div>
 					</div>
+					@components.ActionButtons([]components.ActionButton{
+						{Label: "Stellar.expert", Href: "#", Icon: "external"},
+						{Label: "Share", Href: "#", Icon: "share"},
+					})
 				</div>
 			</div>
 
@@ -104,8 +127,63 @@ templ ContractDetail(data ContractDetailData) {
 				</div>
 			</div>
 
+			<!-- Activity Chart + Contract Info Sidebar -->
+			<div class="anim d2 mb-8 grid grid-cols-3 gap-6">
+				<!-- Activity sparkline chart -->
+				<div class="col-span-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+					<div class="flex items-center justify-between mb-4">
+						<span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Invocation Activity (30d)</span>
+						<div class="flex items-center gap-3 text-[10px]">
+							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-violet-500"></span>Invocations</span>
+						</div>
+					</div>
+					<div class="h-32">
+						@components.MiniSparkline(data.ActivityPoints, 600, 128, "violet")
+					</div>
+					<div class="flex justify-between mt-2 text-[8px] text-gray-400">
+						<span>30d ago</span><span>20d</span><span>10d</span><span>Now</span>
+					</div>
+					<div class="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100">
+						<div><span class="text-[10px] text-gray-400">Avg/day</span><div class="text-sm font-semibold text-gray-900 tabular">{ data.AvgInvocations }</div></div>
+						<div><span class="text-[10px] text-gray-400">Peak</span><div class="text-sm font-semibold text-gray-900 tabular">{ data.PeakInvocations }</div></div>
+						<div><span class="text-[10px] text-gray-400">Success Rate</span><div class="text-sm font-semibold text-emerald-600 tabular">{ data.SuccessRate }</div></div>
+					</div>
+				</div>
+				<!-- Contract Info sidebar -->
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="px-5 py-3 bg-[#FAFAFA] border-b border-gray-100">
+						<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Contract Info</span>
+					</div>
+					@components.DetailRow("Creator") {
+						<a href={ templ.SafeURL(data.CreatorHref) } class="font-mono text-xs text-emerald-700 hover:underline">{ data.Creator }</a>
+					}
+					@components.DetailRow("Deployed") {
+						<span class="text-xs text-gray-900">Ledger { data.DeployLedger }</span>
+					}
+					@components.DetailRow("WASM Hash") {
+						<div class="flex items-center gap-1">
+							<span class="font-mono text-[10px] text-gray-700 truncate max-w-[140px]">{ data.WASMHash }</span>
+							@components.CopyButton(data.WASMHash)
+						</div>
+					}
+					@components.DetailRow("WASM Size") {
+						<span class="text-xs text-gray-900">{ data.WASMSize }</span>
+					}
+					@components.DetailRow("Functions") {
+						<span class="text-xs text-gray-900">{ data.FunctionsCount }</span>
+					}
+					@components.DetailRowLast("Source") {
+						if data.IsSourceVerified {
+							@components.Badge("Verified", "emerald")
+						} else {
+							@components.Badge("Unverified", "gray")
+						}
+					}
+				</div>
+			</div>
+
 			<!-- Tabs -->
-			<div class="anim d2">
+			<div class="anim d3">
 				@components.TabBar([]components.Tab{
 					{ID: "overview", Label: "Overview"},
 					{ID: "invocations", Label: "Invocations"},
@@ -115,22 +193,37 @@ templ ContractDetail(data ContractDetailData) {
 				}, "overview")
 			</div>
 
+			<!-- Exported Functions -->
+			if len(data.ExportedFunctions) > 0 {
+				<div class="anim d4 mb-6">
+					<div class="flex items-center gap-2 flex-wrap">
+						for _, fn := range data.ExportedFunctions {
+							@components.Badge(fn, "violet")
+						}
+					</div>
+				</div>
+			}
+
 			<!-- Top Functions -->
-			<div class="anim d3 mb-10">
+			<div class="anim d4 mb-10">
 				@components.SectionHeader("Top Functions")
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
 					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
-						<div class="w-[200px]">Function</div>
-						<div class="w-24 text-right">Calls</div>
-						<div class="w-20 text-right">%</div>
+						<div class="w-[180px]">Function</div>
+						<div class="w-20 text-right">24h</div>
+						<div class="w-20 text-right">7d</div>
+						<div class="w-20 text-right">30d</div>
+						<div class="w-24 text-right">Success</div>
 						<div class="w-28 text-right">Avg CPU</div>
 						<div class="flex-1 text-right">Last Called</div>
 					</div>
 					for i, fn := range data.Functions {
 						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.Functions)-1) }>
-							<div class="w-[200px]"><span class="font-mono text-sm font-medium text-violet-600">{ fn.Name }</span></div>
-							<div class="w-24 text-right"><span class="font-mono text-sm font-semibold text-gray-900 tabular">{ fn.Calls }</span></div>
-							<div class="w-20 text-right"><span class="text-xs text-gray-500 tabular">{ fn.Pct }</span></div>
+							<div class="w-[180px]"><span class="font-mono text-sm font-medium text-violet-600">{ fn.Name }</span></div>
+							<div class="w-20 text-right"><span class="font-mono text-xs text-gray-900 tabular">{ fn.Calls24h }</span></div>
+							<div class="w-20 text-right"><span class="font-mono text-xs text-gray-700 tabular">{ fn.Calls7d }</span></div>
+							<div class="w-20 text-right"><span class="font-mono text-xs text-gray-500 tabular">{ fn.Calls30d }</span></div>
+							<div class="w-24 text-right"><span class="text-xs font-medium text-emerald-600 tabular">{ fn.SuccessRate }</span></div>
 							<div class="w-28 text-right"><span class="font-mono text-xs text-gray-500 tabular">{ fn.AvgCPU }</span></div>
 							<div class="flex-1 text-right"><span class="text-xs text-gray-500">{ fn.LastCalled }</span></div>
 						</div>
@@ -139,28 +232,51 @@ templ ContractDetail(data ContractDetailData) {
 			</div>
 
 			<!-- Recent Invocations -->
-			<div class="anim d4 mb-10">
-				@components.SectionHeader("Recent Invocations")
+			<div class="anim d5 mb-10">
+				<div class="flex items-center justify-between mb-3">
+					@components.SectionHeader("Recent Invocations")
+					<a href="/events" class="text-xs font-medium text-violet-600 hover:text-violet-700">View all invocations →</a>
+				</div>
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
 					for i, inv := range data.Invocations {
 						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-gray-50", i < len(data.Invocations)-1) }>
+							<div class="flex items-center gap-2 w-5">
+								if inv.StatusColor == "emerald" || inv.StatusColor == "" {
+									<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+								} else if inv.StatusColor == "red" {
+									<span class="h-2 w-2 rounded-full bg-red-500"></span>
+								} else {
+									<span class="h-2 w-2 rounded-full bg-amber-500"></span>
+								}
+							</div>
 							<div class="flex-1">
 								<div class="flex items-center gap-2">
 									<a href={ templ.SafeURL("/tx/" + inv.TxHash) } class="font-mono text-xs text-gray-900 hover:text-violet-600">{ inv.ShortHash }</a>
 									<span class="font-mono text-xs text-violet-600">{ inv.Function }</span>
 									@components.Badge(inv.Status, "emerald")
 								</div>
+								if inv.Summary != "" {
+									<span class="text-[10px] text-gray-500 mt-0.5">{ inv.Summary }</span>
+								}
 								<span class="font-mono text-[10px] text-gray-400 mt-0.5">by { inv.Caller }</span>
 							</div>
-							<span class="text-[10px] text-gray-400">{ inv.Age }</span>
+							<div class="flex items-center gap-4">
+								if inv.CPUUsed != "" {
+									<span class="font-mono text-[10px] text-gray-400 tabular">{ inv.CPUUsed }</span>
+								}
+								<span class="text-[10px] text-gray-400">{ inv.Age }</span>
+							</div>
 						</div>
 					}
 				</div>
 			</div>
 
 			<!-- Storage Preview -->
-			<div class="anim d5 mb-10">
-				@components.SectionHeader("Storage Entries")
+			<div class="anim d6 mb-10">
+				<div class="flex items-center justify-between mb-3">
+					@components.SectionHeader("Storage Entries")
+					<a href="/state" class="text-xs font-medium text-violet-600 hover:text-violet-700">View all entries →</a>
+				</div>
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
 					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="flex-1">Key</div>
@@ -182,21 +298,30 @@ templ ContractDetail(data ContractDetailData) {
 			</div>
 
 			<!-- Code Preview -->
-			<div class="anim d6 mb-10">
+			<div class="anim d7 mb-10">
 				@components.SectionHeader("Code & WASM")
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
 					<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-[#FAFAFA]">
 						<span class="text-xs text-gray-500">WASM Hash: <span class="font-mono text-gray-700">{ data.WASMHash }</span></span>
 						@components.Badge("Rust", "amber")
 					</div>
-					<pre class="p-5 text-xs font-mono text-gray-700 overflow-x-auto bg-gray-50/50 leading-relaxed">{ data.CodePreview }</pre>
+					<pre class="p-5 text-xs font-mono text-gray-300 overflow-x-auto bg-[#1E1E2E] leading-relaxed">{ data.CodePreview }</pre>
 				</div>
 			</div>
 
 			<!-- Context -->
-			<div class="anim d7 mb-10">
+			<div class="anim d8 mb-10">
 				@components.SectionHeader("Context")
 				<div class="flex items-center gap-3 flex-wrap">
+					<a href={ templ.SafeURL(data.CreatorHref) } class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+						<span class="text-xs font-medium text-gray-700">Creator Account</span>
+						<span class="font-mono text-[10px] text-gray-400">{ data.Creator }</span>
+					</a>
+					<a href="#" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
+						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+						<span class="text-xs font-medium text-gray-700">Stellar.expert</span>
+					</a>
 					<a href="/events" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
 						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
 						<span class="text-xs font-medium text-gray-700">Firehose: { data.Name } events</span>
@@ -204,10 +329,6 @@ templ ContractDetail(data ContractDetailData) {
 					<a href="/state" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
 						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 						<span class="text-xs font-medium text-gray-700">State &amp; Rent Tracker</span>
-					</a>
-					<a href="/assets" class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
-						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-						<span class="text-xs font-medium text-gray-700">Asset Directory</span>
 					</a>
 				</div>
 			</div>

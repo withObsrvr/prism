@@ -45,13 +45,13 @@ func (h *Handlers) NftGallery(w http.ResponseWriter, r *http.Request) {
 		},
 		Items: []pages.NftCard{
 			{TokenID: "0042", Name: "Convergence Point", Floor: "1,200 XLM", IsOwned: true, ArtClass: "hero"},
-			{TokenID: "0107", Name: "Radial Drift", Floor: "1,400 XLM", IsOwned: false, ArtClass: "cool"},
-			{TokenID: "0003", Name: "Axiom", Floor: "2,800 XLM", IsOwned: false, ArtClass: "warm"},
-			{TokenID: "0199", Name: "Fracture Line", Floor: "980 XLM", IsOwned: false, ArtClass: "nature"},
+			{TokenID: "0107", Name: "Radial Drift", Floor: "1,400 XLM", IsOwned: false, OwnerAddr: "GXYZ...4R21", ArtClass: "cool"},
+			{TokenID: "0003", Name: "Axiom", Floor: "2,800 XLM", IsOwned: false, OwnerAddr: "GHIJ...2M56", ArtClass: "warm"},
+			{TokenID: "0199", Name: "Fracture Line", Floor: "980 XLM", IsOwned: false, OwnerAddr: "GKLM...1V83", ArtClass: "nature"},
 			{TokenID: "0088", Name: "Nested Echo", Floor: "1,100 XLM", IsOwned: true, ArtClass: "hero"},
-			{TokenID: "0241", Name: "Phase Shift", Floor: "1,500 XLM", IsOwned: false, ArtClass: "cool"},
-			{TokenID: "0156", Name: "Orbital Decay", Floor: "1,300 XLM", IsOwned: false, ArtClass: "warm"},
-			{TokenID: "0012", Name: "Primordial", Floor: "3,200 XLM", IsOwned: false, ArtClass: "nature"},
+			{TokenID: "0241", Name: "Phase Shift", Floor: "1,500 XLM", IsOwned: false, OwnerAddr: "GDEF...9R23", ArtClass: "cool"},
+			{TokenID: "0156", Name: "Orbital Decay", Floor: "1,300 XLM", IsOwned: false, OwnerAddr: "GABC...7X92", ArtClass: "warm"},
+			{TokenID: "0012", Name: "Primordial", Floor: "3,200 XLM", IsOwned: false, OwnerAddr: "GMINT...8K32", ArtClass: "nature"},
 		},
 	}
 	pages.NftGallery(data).Render(r.Context(), w)
