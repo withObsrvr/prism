@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"fmt"
+	"html"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
@@ -238,10 +240,23 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 			Items:    items,
 		})
 	}
+	sort.Slice(resultGroups, func(i, j int) bool {
+		order := map[string]int{"ledger": 0, "transaction": 1, "account": 2, "contract": 3, "asset": 4}
+		oi, ok := order[resultGroups[i].Category]
+		if !ok {
+			oi = 99
+		}
+		oj, ok := order[resultGroups[j].Category]
+		if !ok {
+			oj = 99
+		}
+		return oi < oj
+	})
 
 	// Detect type for the top-of-page hint.
 	detectedType := ""
 	detectedLabel := ""
+	detectedDesc := ""
 	detectedHref := ""
 	if len(results.Results) > 0 {
 		top := results.Results[0]
@@ -250,12 +265,16 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 		switch top.Type {
 		case "account":
 			detectedHref = "/account/" + top.ID
+			detectedDesc = "Starts with G + alphanumeric characters. Redirecting to account view."
 		case "contract":
 			detectedHref = "/contracts/" + top.ID
+			detectedDesc = "Starts with C + alphanumeric characters. Redirecting to contract view."
 		case "transaction":
 			detectedHref = "/tx/" + top.ID
+			detectedDesc = "64-character hex string detected. Redirecting to transaction receipt."
 		case "ledger":
 			detectedHref = "/ledger/" + top.ID
+			detectedDesc = "Numeric sequence detected. Redirecting to ledger detail."
 		}
 	}
 
@@ -263,6 +282,7 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 		Query:         query,
 		DetectedType:  detectedType,
 		DetectedLabel: detectedLabel,
+		DetectedDesc:  detectedDesc,
 		DetectedHref:  detectedHref,
 		Results:       resultGroups,
 	}
@@ -361,7 +381,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		TxFailed:     fmt.Sprintf("%d", l.FailedTxCount),
 		OpCount:      fmt.Sprintf("%d", l.OperationCount),
 		OpsPerTx:     fmt.Sprintf("%.1f", opsPerTx),
-		TotalFees:    gateway.FormatNumber(l.FeePool),
+		TotalFees:    func() string { if l.TotalFeeCharged != nil { return gateway.FormatNumber(*l.TotalFeeCharged) }; return gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount)) }(),
 		// Fields not available from bronze — use defaults
 		SorobanCalls:  "—",
 		SorobanPct:    "—",
@@ -432,7 +452,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 			}
 
 			summary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> · %d op(s)`,
-				gateway.ShortAddress(tx.SourceAccount), tx.OperationCount)
+				html.EscapeString(gateway.ShortAddress(tx.SourceAccount)), tx.OperationCount)
 
 			ledgerTxs = append(ledgerTxs, pages.LedgerTx{
 				Index:     fmt.Sprintf("%d", i+1),
@@ -522,7 +542,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	// Build summary HTML from the summary description.
-	summaryHTML := summary.Description
+	summaryHTML := html.EscapeString(summary.Description)
 
 	// Extract flow diagram info from summary.
 	sourceAddr := "—"
@@ -574,7 +594,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			IsSoroban:   op.IsSorobanOp,
 			IsPrimary:   op.Index == 0,
 			Status:      opStatus,
-			SummaryHTML: fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> %s`, gateway.ShortAddress(op.SourceAccount), op.TypeName),
+			SummaryHTML: fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> %s`, html.EscapeString(gateway.ShortAddress(op.SourceAccount)), html.EscapeString(op.TypeName)),
 			Contract:    gateway.ShortAddress(op.ContractID),
 			Function:    op.FunctionName,
 		})
@@ -594,12 +614,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		}
 		dataHTML := ""
 		if evt.Amount != "" {
-			dataHTML = fmt.Sprintf(`<span class="font-medium">%s %s</span>`, evt.Amount, evt.AssetCode)
+			dataHTML = fmt.Sprintf(`<span class="font-medium">%s %s</span>`, html.EscapeString(evt.Amount), html.EscapeString(evt.AssetCode))
 			if evt.From != "" {
-				dataHTML += fmt.Sprintf(` from <span class="font-mono text-xs">%s</span>`, gateway.ShortAddress(evt.From))
+				dataHTML += fmt.Sprintf(` from <span class="font-mono text-xs">%s</span>`, html.EscapeString(gateway.ShortAddress(evt.From)))
 			}
 			if evt.To != "" {
-				dataHTML += fmt.Sprintf(` to <span class="font-mono text-xs">%s</span>`, gateway.ShortAddress(evt.To))
+				dataHTML += fmt.Sprintf(` to <span class="font-mono text-xs">%s</span>`, html.EscapeString(gateway.ShortAddress(evt.To)))
 			}
 		}
 		evts = append(evts, pages.TxEvent{
@@ -647,7 +667,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 				Action:     sc.Type,
 				Key:        sc.Key,
 				Contract:   sc.EntryType,
-				DetailHTML: fmt.Sprintf(`<span class="text-gray-400">%s</span> → <span class="text-gray-900 font-medium">%s</span>`, sc.Before, sc.After),
+				DetailHTML: fmt.Sprintf(`<span class="text-gray-400">%s</span> → <span class="text-gray-900 font-medium">%s</span>`, html.EscapeString(sc.Before), html.EscapeString(sc.After)),
 			})
 		}
 	}

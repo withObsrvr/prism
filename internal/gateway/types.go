@@ -2,11 +2,32 @@ package gateway
 
 // NetworkStats matches the /silver/stats/network response.
 type NetworkStats struct {
-	GeneratedAt   string         `json:"generated_at"`
-	DataFreshness string         `json:"data_freshness"`
-	Accounts      AccountStats   `json:"accounts"`
-	Ledger        LedgerStats    `json:"ledger"`
-	Operations24H OperationStats `json:"operations_24h"`
+	GeneratedAt    string              `json:"generated_at"`
+	DataFreshness  string              `json:"data_freshness"`
+	Accounts       AccountStats        `json:"accounts"`
+	Ledger         LedgerStats         `json:"ledger"`
+	Operations24H  OperationStats      `json:"operations_24h"`
+	Transactions24H TransactionStats24H `json:"transactions_24h"`
+	Fees24H        FeeStats24H         `json:"fees_24h"`
+	Soroban        SorobanNetStats     `json:"soroban"`
+}
+
+type TransactionStats24H struct {
+	Total       int64   `json:"total"`
+	Failed      int64   `json:"failed"`
+	FailureRate float64 `json:"failure_rate"`
+}
+
+type FeeStats24H struct {
+	MedianStroops    int64 `json:"median_stroops"`
+	P99Stroops       int64 `json:"p99_stroops"`
+	DailyTotalStroops int64 `json:"daily_total_stroops"`
+	SurgeActive      bool  `json:"surge_active"`
+}
+
+type SorobanNetStats struct {
+	ActiveContracts24H int64 `json:"active_contracts_24h"`
+	AvgCPUInsns        int64 `json:"avg_cpu_insns"`
 }
 
 type AccountStats struct {
@@ -18,6 +39,7 @@ type AccountStats struct {
 type LedgerStats struct {
 	CurrentSequence     int64   `json:"current_sequence"`
 	AvgCloseTimeSeconds float64 `json:"avg_close_time_seconds"`
+	ProtocolVersion     int     `json:"protocol_version"`
 }
 
 type OperationStats struct {
@@ -49,6 +71,9 @@ type Ledger struct {
 	MaxTxSetSize          int    `json:"max_tx_set_size"`
 	FeePool               int64  `json:"fee_pool"`
 	SorobanFeeWrite1KB    int64  `json:"soroban_fee_write_1kb"`
+	SorobanOpCount        *int   `json:"soroban_op_count"`
+	TotalFeeCharged       *int64 `json:"total_fee_charged"`
+	ContractEventsCount   *int   `json:"contract_events_count"`
 }
 
 // LedgersResponse is the envelope for /bronze/ledgers.
@@ -138,21 +163,30 @@ type AvailableLedgers struct {
 
 // TxFull matches /silver/tx/{hash}/full response.
 type TxFull struct {
-	Transaction  TxInfo             `json:"transaction"`
-	Summary      TxSummary          `json:"summary"`
-	Operations   []DecodedOperation `json:"operations"`
-	Events       []UnifiedEvent     `json:"events"`
-	CallGraph    any                `json:"call_graph"`
-	Contracts    any                `json:"contracts_involved"`
+	Transaction      TxInfo             `json:"transaction"`
+	Summary          TxSummary          `json:"summary"`
+	Operations       []DecodedOperation `json:"operations"`
+	Events           []UnifiedEvent     `json:"events"`
+	SorobanResources *SorobanResources  `json:"soroban_resources"`
+	CallGraph        any                `json:"call_graph"`
+	Contracts        any                `json:"contracts_involved"`
 }
 
 type TxInfo struct {
-	TxHash         string `json:"tx_hash"`
-	Fee            int64  `json:"fee"`
-	LedgerSequence int64  `json:"ledger_sequence"`
-	OperationCount int    `json:"operation_count"`
-	Successful     bool   `json:"successful"`
-	ClosedAt       string `json:"closed_at"`
+	TxHash          string          `json:"tx_hash"`
+	Fee             int64           `json:"fee"`
+	LedgerSequence  int64           `json:"ledger_sequence"`
+	OperationCount  int             `json:"operation_count"`
+	Successful      bool            `json:"successful"`
+	ClosedAt        string          `json:"closed_at"`
+	SourceAccount   string          `json:"source_account"`
+	AccountSequence int64           `json:"account_sequence"`
+}
+
+type SorobanResources struct {
+	Instructions int64 `json:"instructions"`
+	ReadBytes    int64 `json:"read_bytes"`
+	WriteBytes   int64 `json:"write_bytes"`
 }
 
 type TxSummary struct {
@@ -280,6 +314,7 @@ type AccountInfo struct {
 	NumSubentries      int    `json:"num_subentries"`
 	LastModifiedLedger int64  `json:"last_modified_ledger"`
 	UpdatedAt          string `json:"updated_at"`
+	CreatedAt          string `json:"created_at"`
 }
 
 type EnrichedOp struct {

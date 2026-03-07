@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -40,6 +41,15 @@ func (h *Handlers) buildEventsFirehoseData(r *http.Request, network string) (pag
 		typeColor := "transfer"
 		evtType := "transfer"
 
+		detailObj := map[string]string{
+			"type":   evtType,
+			"from":   gateway.ShortAddress(t.FromAccount),
+			"to":     gateway.ShortAddress(t.ToAccount),
+			"amount": t.Amount,
+			"asset":  t.AssetCode,
+		}
+		detailJSON, _ := json.MarshalIndent(detailObj, "", "  ")
+
 		events = append(events, pages.FirehoseEvent{
 			Time:         t.Timestamp,
 			Type:         evtType,
@@ -48,8 +58,7 @@ func (h *Handlers) buildEventsFirehoseData(r *http.Request, network string) (pag
 			Ledger:       gateway.FormatNumber(t.LedgerSequence),
 			TxShort:      gateway.ShortHash(t.TransactionHash),
 			TxHash:       t.TransactionHash,
-			DetailJSON: fmt.Sprintf("{\n  \"type\": \"%s\",\n  \"from\": \"%s\",\n  \"to\": \"%s\",\n  \"amount\": \"%s\",\n  \"asset\": \"%s\"\n}",
-				evtType, gateway.ShortAddress(t.FromAccount), gateway.ShortAddress(t.ToAccount), t.Amount, t.AssetCode),
+			DetailJSON:   string(detailJSON),
 		})
 	}
 

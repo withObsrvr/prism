@@ -128,12 +128,20 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		}
 	}
 
+	// Count trustlines as non-native balances.
+	trustlineCount := 0
+	for _, b := range balances {
+		if b.Type != "Native" {
+			trustlineCount++
+		}
+	}
+
 	data := pages.AccountData{
 		Address:      accountID,
 		ShortAddress: gateway.ShortAddress(accountID),
 		TotalValue:   "—",
 		XLMBalance:   acct.Balance + " XLM",
-		Trustlines:   fmt.Sprintf("%d", acct.NumSubentries),
+		Trustlines:   fmt.Sprintf("%d", trustlineCount),
 		ActiveOffers: "0",
 		Subentries:   fmt.Sprintf("%d", acct.NumSubentries),
 		IsFunded:     true,
@@ -144,8 +152,13 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		Thresholds:   thresholds,
 	}
 
-	if acct.UpdatedAt != "" {
-		if t, err := time.Parse(time.RFC3339, acct.UpdatedAt); err == nil {
+	// Prefer created_at from gateway; fall back to updated_at.
+	createdAtStr := acct.CreatedAt
+	if createdAtStr == "" {
+		createdAtStr = acct.UpdatedAt
+	}
+	if createdAtStr != "" {
+		if t, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
 			data.CreatedAt = t.Format("Jan 2, 2006")
 		}
 	}

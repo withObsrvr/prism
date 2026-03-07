@@ -45,10 +45,50 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 	ledgers, _ := h.Gateway.GetLedgers(ctx, network, startSeq, latestSeq, 5, "desc")
 
 	tps := float64(stats.Operations24H.Total) / 86400
-	failureRate := float64(0)
 	avgClose := stats.Ledger.AvgCloseTimeSeconds
 	if avgClose == 0 {
 		avgClose = 5.0
+	}
+
+	// Use real transaction stats when available, fall back to operations.
+	tx24h := stats.Transactions24H.Total
+	if tx24h == 0 {
+		tx24h = stats.Operations24H.Total
+	}
+	failureRate := stats.Transactions24H.FailureRate
+
+	// Fee stats from gateway.
+	feeMedian := "—"
+	feeP99 := "—"
+	dailyFees := "—"
+	surgePricing := "Inactive"
+	if stats.Fees24H.MedianStroops > 0 {
+		feeMedian = gateway.FormatNumber(stats.Fees24H.MedianStroops)
+	}
+	if stats.Fees24H.P99Stroops > 0 {
+		feeP99 = gateway.FormatNumber(stats.Fees24H.P99Stroops)
+	}
+	if stats.Fees24H.DailyTotalStroops > 0 {
+		dailyFees = gateway.FormatNumber(stats.Fees24H.DailyTotalStroops)
+	}
+	if stats.Fees24H.SurgeActive {
+		surgePricing = "Active"
+	}
+
+	// Protocol version.
+	protocolVer := "25"
+	if stats.Ledger.ProtocolVersion > 0 {
+		protocolVer = fmt.Sprintf("%d", stats.Ledger.ProtocolVersion)
+	}
+
+	// Soroban stats.
+	activeContracts := "—"
+	avgCPU := "—"
+	if stats.Soroban.ActiveContracts24H > 0 {
+		activeContracts = gateway.FormatNumber(stats.Soroban.ActiveContracts24H)
+	}
+	if stats.Soroban.AvgCPUInsns > 0 {
+		avgCPU = gateway.FormatNumber(stats.Soroban.AvgCPUInsns)
 	}
 
 	data := pages.NetworkHealthData{
@@ -58,7 +98,7 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 		AvgCloseTime:       fmt.Sprintf("%.1fs", avgClose),
 		CurrentTPS:         fmt.Sprintf("%.0f", tps),
 		PeakTPS:            fmt.Sprintf("%.0f", tps*3),
-		Tx24h:              gateway.FormatAbbrev(stats.Operations24H.Total),
+		Tx24h:              gateway.FormatAbbrev(tx24h),
 		TxChange:           "",
 		Ops24h:             gateway.FormatAbbrev(stats.Operations24H.Total),
 		OpsPerTx:           "—",
@@ -66,16 +106,16 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 		LedgerCapacity:     "—",
 		CapacityStatus:     "—",
 		FeeBase:            "100",
-		FeeMedian:          "—",
-		FeeP99:             "—",
-		DailyFees:          "—",
-		SurgePricing:       "Inactive",
+		FeeMedian:          feeMedian,
+		FeeP99:             feeP99,
+		DailyFees:          dailyFees,
+		SurgePricing:       surgePricing,
 		SorobanInvocations: gateway.FormatNumber(stats.Operations24H.ContractInvoke),
-		ActiveContracts:    "—",
+		ActiveContracts:    activeContracts,
 		TotalState:         "—",
 		RentBurned:         "—",
-		AvgCPU:             "—",
-		ProtocolVer:        "25",
+		AvgCPU:             avgCPU,
+		ProtocolVer:        protocolVer,
 		ProtocolSubtitle:   "Soroban Smart Contracts enabled",
 		CoreVersion:        "—",
 		NextUpgrade:        "No upgrade scheduled",
@@ -107,15 +147,26 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 			if t, err := time.Parse(time.RFC3339, l.ClosedAt); err == nil {
 				age = gateway.FormatAge(t)
 			}
+			sorobanCalls := "—"
 			sorobanPct := "—"
+			if l.SorobanOpCount != nil {
+				sorobanCalls = fmt.Sprintf("%d", *l.SorobanOpCount)
+				if l.OperationCount > 0 {
+					sorobanPct = fmt.Sprintf("%d%%", *l.SorobanOpCount*100/l.OperationCount)
+				}
+			}
+			fees := gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount))
+			if l.TotalFeeCharged != nil {
+				fees = gateway.FormatNumber(*l.TotalFeeCharged)
+			}
 			recentLedgers = append(recentLedgers, pages.NetworkLedger{
 				Sequence:    gateway.FormatNumber(l.Sequence),
 				Age:         age,
 				TxCount:     fmt.Sprintf("%d", l.SuccessfulTxCount),
 				OpsCount:    fmt.Sprintf("%d", l.OperationCount),
-				SorobanCalls: "—",
+				SorobanCalls: sorobanCalls,
 				SorobanPct:  sorobanPct,
-				Fees:        gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount)),
+				Fees:        fees,
 				CloseTime:   fmt.Sprintf("%.1fs", avgClose),
 				IsLatest:    i == 0,
 			})
