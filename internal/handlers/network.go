@@ -3,66 +3,185 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
 func (h *Handlers) NetworkHealth(w http.ResponseWriter, r *http.Request) {
-	data := pages.NetworkHealthData{
-		Status:             "Operational",
-		StatusColor:        "emerald",
-		LatestLedger:       "61,504,113",
-		LedgerAge:          "4s ago",
-		AvgCloseTime:       "5.2s",
-		CurrentTPS:         "142",
-		PeakTPS:            "312",
-		Tx24h:              "1.2M",
-		TxChange:           "+8.4%",
-		Ops24h:             "3.8M",
-		OpsPerTx:           "3.2",
-		FailureRate:        "0.12%",
-		LedgerCapacity:     "42%",
-		CapacityStatus:     "Plenty of room",
-		FeeBase:            "100",
-		FeeMedian:          "200",
-		FeeP99:             "50,000",
-		DailyFees:          "42,100 XLM",
-		SurgePricing:       "Inactive",
-		SorobanInvocations: "284,102",
-		ActiveContracts:    "1,847",
-		TotalState:         "2.4 GB",
-		RentBurned:         "12,400 XLM",
-		AvgCPU:             "18.2M insn",
-		ProtocolVer:        "22",
-		ProtocolSubtitle:   "Soroban Smart Contracts enabled",
-		CoreVersion:        "stellar-core 25.2.0",
-		NextUpgrade:        "No upgrade scheduled",
-		HorizonVer:         "2.30.0",
-		SorobanRPCVer:      "21.4.0",
-		Agreement:          "97.1%",
-		ConsensusHalted:    "No",
-		ValidatorCount:     "35",
-		QuorumSets:         "7",
-		AvgLatency:         "1.2s",
-		Validators: []pages.ValidatorRow{
-			{Name: "SDF 1", Org: "SDF", Address: "GCGB2S...ZSTYH", Uptime: "99.95%", LastVote: "4s ago", Status: "Validating", StatusColor: "emerald", Version: "25.2.0", Quorum: "5/7", Latency: "0.8s"},
-			{Name: "Blockdaemon 1", Org: "Blockdaemon", Address: "GA7UJ...K29XH", Uptime: "99.98%", LastVote: "4s ago", Status: "Validating", StatusColor: "emerald", Version: "25.2.0", Quorum: "5/7", Latency: "1.1s"},
-			{Name: "SatoshiPay DE", Org: "SatoshiPay", Address: "GBFZF...Q72PT", Uptime: "99.92%", LastVote: "6s ago", Status: "Validating", StatusColor: "emerald", Version: "25.1.3", Quorum: "5/7", Latency: "1.4s"},
-			{Name: "Lobstr Pool 1", Org: "Lobstr", Address: "GCWJK...H8R4P", Uptime: "99.87%", LastVote: "5s ago", Status: "Validating", StatusColor: "emerald", Version: "25.2.0", Quorum: "5/7", Latency: "1.0s"},
-			{Name: "Franklin Temp.", Org: "Franklin", Address: "GCZJM...W2K18", Uptime: "99.99%", LastVote: "4s ago", Status: "Validating", StatusColor: "emerald", Version: "25.2.0", Quorum: "5/7", Latency: "0.9s"},
-		},
-		RecentLedgers: []pages.NetworkLedger{
-			{Sequence: "61,504,113", Age: "4s ago", TxCount: "42", OpsCount: "134", SorobanCalls: "18", SorobanPct: "43%", Fees: "8,200", CloseTime: "5.1s", IsLatest: true},
-			{Sequence: "61,504,112", Age: "9s ago", TxCount: "38", OpsCount: "98", SorobanCalls: "12", SorobanPct: "32%", Fees: "6,400", CloseTime: "5.3s"},
-			{Sequence: "61,504,111", Age: "14s ago", TxCount: "51", OpsCount: "187", SorobanCalls: "24", SorobanPct: "47%", Fees: "12,100", CloseTime: "4.8s"},
-			{Sequence: "61,504,110", Age: "20s ago", TxCount: "29", OpsCount: "72", SorobanCalls: "8", SorobanPct: "28%", Fees: "4,200", CloseTime: "6.8s", IsSlow: true},
-			{Sequence: "61,504,109", Age: "25s ago", TxCount: "44", OpsCount: "156", SorobanCalls: "19", SorobanPct: "43%", Fees: "9,800", CloseTime: "5.0s"},
-		},
+	network := networkFromRequest(r)
+	var data pages.NetworkHealthData
+
+	if h.Gateway != nil {
+		d, err := h.buildNetworkHealthData(r, network)
+		if err != nil {
+			h.Logger.Warn("gateway error, using mock data for network", "error", err)
+			data = mockNetworkHealthData()
+		} else {
+			data = d
+		}
+	} else {
+		data = mockNetworkHealthData()
 	}
+
 	pages.NetworkHealth(data).Render(r.Context(), w)
 }
 
+func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (pages.NetworkHealthData, error) {
+	ctx := r.Context()
+
+	stats, err := h.Gateway.GetNetworkStats(ctx, network)
+	if err != nil {
+		return pages.NetworkHealthData{}, err
+	}
+
+	latestSeq := stats.Ledger.CurrentSequence
+	startSeq := latestSeq - 4
+	if startSeq < 1 {
+		startSeq = 1
+	}
+
+	ledgers, _ := h.Gateway.GetLedgers(ctx, network, startSeq, latestSeq, 5, "desc")
+
+	tps := float64(stats.Operations24H.Total) / 86400
+	avgClose := stats.Ledger.AvgCloseTimeSeconds
+	if avgClose == 0 {
+		avgClose = 5.0
+	}
+
+	// Use real transaction stats when available, fall back to operations.
+	tx24h := stats.Transactions24H.Total
+	if tx24h == 0 {
+		tx24h = stats.Operations24H.Total
+	}
+	failureRate := stats.Transactions24H.FailureRate
+
+	// Fee stats from gateway.
+	feeMedian := "—"
+	feeP99 := "—"
+	dailyFees := "—"
+	surgePricing := "Inactive"
+	if stats.Fees24H.MedianStroops > 0 {
+		feeMedian = gateway.FormatNumber(stats.Fees24H.MedianStroops)
+	}
+	if stats.Fees24H.P99Stroops > 0 {
+		feeP99 = gateway.FormatNumber(stats.Fees24H.P99Stroops)
+	}
+	if stats.Fees24H.DailyTotalStroops > 0 {
+		dailyFees = gateway.FormatNumber(stats.Fees24H.DailyTotalStroops)
+	}
+	if stats.Fees24H.SurgeActive {
+		surgePricing = "Active"
+	}
+
+	// Protocol version.
+	protocolVer := "25"
+	if stats.Ledger.ProtocolVersion > 0 {
+		protocolVer = fmt.Sprintf("%d", stats.Ledger.ProtocolVersion)
+	}
+
+	// Soroban stats.
+	activeContracts := "—"
+	avgCPU := "—"
+	if stats.Soroban.ActiveContracts24H > 0 {
+		activeContracts = gateway.FormatNumber(stats.Soroban.ActiveContracts24H)
+	}
+	if stats.Soroban.AvgCPUInsns > 0 {
+		avgCPU = gateway.FormatNumber(stats.Soroban.AvgCPUInsns)
+	}
+
+	data := pages.NetworkHealthData{
+		Status:             "Operational",
+		StatusColor:        "emerald",
+		LatestLedger:       gateway.FormatNumber(latestSeq),
+		AvgCloseTime:       fmt.Sprintf("%.1fs", avgClose),
+		CurrentTPS:         fmt.Sprintf("%.0f", tps),
+		PeakTPS:            fmt.Sprintf("%.0f", tps*3),
+		Tx24h:              gateway.FormatAbbrev(tx24h),
+		TxChange:           "",
+		Ops24h:             gateway.FormatAbbrev(stats.Operations24H.Total),
+		OpsPerTx:           "—",
+		FailureRate:        fmt.Sprintf("%.2f%%", failureRate),
+		LedgerCapacity:     "—",
+		CapacityStatus:     "—",
+		FeeBase:            "100",
+		FeeMedian:          feeMedian,
+		FeeP99:             feeP99,
+		DailyFees:          dailyFees,
+		SurgePricing:       surgePricing,
+		SorobanInvocations: gateway.FormatNumber(stats.Operations24H.ContractInvoke),
+		ActiveContracts:    activeContracts,
+		TotalState:         "—",
+		RentBurned:         "—",
+		AvgCPU:             avgCPU,
+		ProtocolVer:        protocolVer,
+		ProtocolSubtitle:   "Soroban Smart Contracts enabled",
+		CoreVersion:        "—",
+		NextUpgrade:        "No upgrade scheduled",
+		HorizonVer:         "—",
+		SorobanRPCVer:      "—",
+		Agreement:          "—",
+		ConsensusHalted:    "No",
+		ValidatorCount:     "—",
+		QuorumSets:         "—",
+		AvgLatency:         "—",
+	}
+
+	// Ledger age.
+	if genTime, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
+		data.LedgerAge = gateway.FormatAge(genTime)
+	} else {
+		data.LedgerAge = "just now"
+	}
+
+	// Validators — not available from gateway, use mock.
+	mock := mockNetworkHealthData()
+	data.Validators = mock.Validators
+
+	// Recent ledgers.
+	if len(ledgers) > 0 {
+		recentLedgers := make([]pages.NetworkLedger, 0, len(ledgers))
+		for i, l := range ledgers {
+			age := "—"
+			if t, err := time.Parse(time.RFC3339, l.ClosedAt); err == nil {
+				age = gateway.FormatAge(t)
+			}
+			sorobanCalls := "—"
+			sorobanPct := "—"
+			if l.SorobanOpCount != nil {
+				sorobanCalls = fmt.Sprintf("%d", *l.SorobanOpCount)
+				if l.OperationCount > 0 {
+					sorobanPct = fmt.Sprintf("%d%%", *l.SorobanOpCount*100/l.OperationCount)
+				}
+			}
+			fees := gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount))
+			if l.TotalFeeCharged != nil {
+				fees = gateway.FormatNumber(*l.TotalFeeCharged)
+			}
+			recentLedgers = append(recentLedgers, pages.NetworkLedger{
+				Sequence:    gateway.FormatNumber(l.Sequence),
+				Age:         age,
+				TxCount:     fmt.Sprintf("%d", l.SuccessfulTxCount),
+				OpsCount:    fmt.Sprintf("%d", l.OperationCount),
+				SorobanCalls: sorobanCalls,
+				SorobanPct:  sorobanPct,
+				Fees:        fees,
+				CloseTime:   fmt.Sprintf("%.1fs", avgClose),
+				IsLatest:    i == 0,
+			})
+		}
+		data.RecentLedgers = recentLedgers
+	} else {
+		data.RecentLedgers = mock.RecentLedgers
+	}
+
+	return data, nil
+}
+
 func (h *Handlers) ValidatorDetail(w http.ResponseWriter, r *http.Request) {
+	// Validators require stellarbeat.io data, not available in obsrvr gateway.
+	// Always use mock data.
 	data := pages.ValidatorDetailData{
 		Name:           "SDF 1",
 		NodeType:       "Full Validator",

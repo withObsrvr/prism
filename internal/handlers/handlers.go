@@ -3,6 +3,8 @@ package handlers
 import (
 	"log/slog"
 	"net/http"
+
+	"github.com/withObsrvr/prism/internal/gateway"
 )
 
 // Handlers holds shared dependencies for all HTTP handlers.
@@ -10,15 +12,49 @@ import (
 // via the receiver rather than closures or globals.
 type Handlers struct {
 	Logger  *slog.Logger
-	Network string // "mainnet" or "testnet"
+	Gateway *gateway.Client
 }
 
 // New creates a Handlers instance with all shared dependencies.
-func New(logger *slog.Logger, network string) *Handlers {
+func New(logger *slog.Logger, gw *gateway.Client) *Handlers {
 	return &Handlers{
 		Logger:  logger,
-		Network: network,
+		Gateway: gw,
 	}
+}
+
+// networkFromRequest reads the prism_network cookie and returns a validated network name.
+// Defaults to "mainnet" if the cookie is missing or invalid.
+func networkFromRequest(r *http.Request) string {
+	cookie, err := r.Cookie("prism_network")
+	if err != nil {
+		return "mainnet"
+	}
+	switch cookie.Value {
+	case "mainnet", "testnet", "futurenet":
+		return cookie.Value
+	default:
+		return "mainnet"
+	}
+}
+
+// SetNetwork sets the prism_network cookie.
+func (h *Handlers) SetNetwork(w http.ResponseWriter, r *http.Request) {
+	network := r.FormValue("network")
+	switch network {
+	case "mainnet", "testnet", "futurenet":
+	default:
+		http.Error(w, "invalid network", http.StatusBadRequest)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "prism_network",
+		Value:    network,
+		Path:     "/",
+		MaxAge:   365 * 24 * 60 * 60,
+		SameSite: http.SameSiteLaxMode,
+	})
+	w.WriteHeader(http.StatusOK)
 }
 
 // isHTMX checks whether a request was triggered by htmx.
