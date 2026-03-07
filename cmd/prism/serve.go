@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/server"
 )
 
@@ -22,7 +23,7 @@ var serveCmd = &cobra.Command{
 
   prism serve
   prism serve --port 8080
-  prism serve --network testnet`,
+  PRISM_DATA_SOURCE=mock prism serve`,
 	RunE: runServe,
 }
 
@@ -31,16 +32,18 @@ func init() {
 
 	serveCmd.Flags().Int("port", 3000, "port to listen on")
 	serveCmd.Flags().String("host", "0.0.0.0", "host to bind to")
-	serveCmd.Flags().String("network", "mainnet", "stellar network (mainnet, testnet)")
 
 	viper.BindPFlag("port", serveCmd.Flags().Lookup("port"))
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
-	viper.BindPFlag("network", serveCmd.Flags().Lookup("network"))
 
 	// Defaults.
 	viper.SetDefault("port", 3000)
 	viper.SetDefault("host", "0.0.0.0")
-	viper.SetDefault("network", "mainnet")
+	viper.SetDefault("data_source", "auto")
+
+	// Gateway defaults.
+	viper.SetDefault("gateway.base_url", "https://gateway.withobsrvr.com")
+	viper.SetDefault("gateway.timeout", "30s")
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
@@ -49,15 +52,31 @@ func runServe(cmd *cobra.Command, args []string) error {
 		Level: parseLogLevel(viper.GetString("log_level")),
 	}))
 
+	// Parse gateway timeout.
+	gwTimeout, err := time.ParseDuration(viper.GetString("gateway.timeout"))
+	if err != nil {
+		gwTimeout = 30 * time.Second
+	}
+
+	// Application-wide context for background goroutines.
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
 	// Build the application (dependency injection via struct).
 	app, err := server.New(logger, server.Config{
-		Host:    viper.GetString("host"),
-		Port:    viper.GetInt("port"),
-		Network: viper.GetString("network"),
-	})
+		Host:       viper.GetString("host"),
+		Port:       viper.GetInt("port"),
+		DataSource: viper.GetString("data_source"),
+		Gateway: gateway.Config{
+			BaseURL: viper.GetString("gateway.base_url"),
+			APIKey:  viper.GetString("gateway.api_key"),
+			Timeout: gwTimeout,
+		},
+	}, appCtx)
 	if err != nil {
 		return fmt.Errorf("initializing server: %w", err)
 	}
+	defer app.Shutdown()
 
 	// Configure the HTTP server with sensible timeouts
 	// (from Let's Go Further, Chapter 3).
@@ -79,6 +98,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 		s := <-quit
 
 		logger.Info("shutting down server", "signal", s.String())
+		appCancel()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -88,7 +108,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	logger.Info("starting server",
 		"addr", srv.Addr,
-		"network", app.Config.Network,
+		"data_source", app.Config.DataSource,
 	)
 
 	err = srv.ListenAndServe()

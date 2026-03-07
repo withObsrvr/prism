@@ -3,6 +3,7 @@ package prism
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -48,8 +49,9 @@ func initConfig() {
 	}
 
 	// Environment variables override config file.
-	// PRISM_PORT=4000 overrides port, etc.
+	// PRISM_PORT=4000 overrides port, PRISM_GATEWAY_API_KEY overrides gateway.api_key, etc.
 	viper.SetEnvPrefix("PRISM")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {

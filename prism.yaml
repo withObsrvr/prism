@@ -6,16 +6,14 @@
 host: "0.0.0.0"
 port: 3000
 
-# Stellar network: "mainnet" or "testnet"
-network: mainnet
+# Data source: "mock" (force mocks), "gateway" (require gateway), "auto" (gateway if key exists, else mock)
+data_source: auto
 
 # Logging: debug, info, warn, error
 log_level: info
 
-# Obsrvr Lake connection (future)
-# database:
-#   hot:  "postgres://prism:secret@localhost:5432/obsrvr?sslmode=disable"
-#   cold: "ducklake://catalog@localhost:5432/obsrvr_cold"
-
-# Cache (future)
-# redis: "redis://localhost:6379/0"
+# Obsrvr Gateway
+gateway:
+  base_url: "https://gateway.withobsrvr.com"
+  api_key: ""  # Set via PRISM_GATEWAY_API_KEY env var
+  timeout: 30s

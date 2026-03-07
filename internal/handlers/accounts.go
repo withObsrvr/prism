@@ -1,58 +1,161 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
-	data := pages.AccountData{
-		Address:      "GABC7DEF8GHI9JKL0MNO1PQR2STU3VWX4YZ567890ABCDEFGHIJKLMNOP",
-		ShortAddress: "GABC...MNOP",
-		TotalValue:   "$58,247",
-		TotalCents:   ".82",
-		XLMBalance:   "124,500.00 XLM",
-		Trustlines:   "12",
-		ActiveOffers: "1",
-		Subentries:   "14",
-		CreatedAt:    "Jan 15, 2024",
-		HomeDomain:   "stellar.org",
-		IsFunded:     true,
-		SignerCount:  "1",
-		Balances: []pages.AccountBalance{
-			{Code: "XLM", Name: "Stellar Lumens", BgColor: "bg-gray-900", Type: "Native", TypeColor: "gray", Balance: "124,500.00", ValueUSD: "$12,078.50"},
-			{Code: "USDC", Name: "USD Coin", Issuer: "Centre", BgColor: "bg-blue-600", Type: "Classic", TypeColor: "gray", Balance: "25,000.00", ValueUSD: "$25,000.00"},
-			{Code: "yUSDC", Name: "Blend USDC", Issuer: "Blend", BgColor: "bg-emerald-600", Type: "SEP-41", TypeColor: "violet", Balance: "18,200.00", ValueUSD: "$18,247.32"},
-			{Code: "AQUA", Name: "Aquarius", Issuer: "Aquarius", BgColor: "bg-cyan-600", Type: "Classic", TypeColor: "gray", Balance: "500,000.00", ValueUSD: "$2,450.00"},
-			{Code: "BLND", Name: "Blend Token", Issuer: "Blend", BgColor: "bg-violet-600", Type: "SEP-41", TypeColor: "violet", Balance: "12,000.00", ValueUSD: "$471.00"},
-		},
-		Activities: []pages.AccountActivity{
-			{IconBg: "bg-emerald-50", IconColor: "text-emerald-600", Summary: "Swap: 12,400 XLM → 1,202.80 USDC via Soroswap", Badge: "Swap", BadgeColor: "violet", TxHash: "8f2a1b4c5d6e7f8a", ShortHash: "8f2a...1b4c", Time: "2 min ago", DateGroup: "Today"},
-			{IconBg: "bg-violet-50", IconColor: "text-violet-600", Summary: "Blend Protocol: supply(USDC, 5,000)", Badge: "Contract", BadgeColor: "violet", TxHash: "c4e93d7f2a1b8e5a", ShortHash: "c4e9...3d7f", Time: "1 hour ago", DateGroup: "Today"},
-			{IconBg: "bg-blue-50", IconColor: "text-blue-600", Summary: "Sent 500 USDC to GDEF...9R23", Badge: "Payment", BadgeColor: "blue", TxHash: "a1b28e5a9f7d2c4e", ShortHash: "a1b2...8e5a", Time: "18 hours ago", DateGroup: "Yesterday"},
-			{IconBg: "bg-gray-50", IconColor: "text-gray-600", Summary: "Added trustline: BLND (Blend Token)", Badge: "Trustline", BadgeColor: "gray", TxHash: "f7d24c9b3a8e1f2d", ShortHash: "f7d2...4c9b", Time: "22 hours ago", DateGroup: "Yesterday"},
-		},
-		Contracts: []pages.AccountContract{
-			{Name: "Soroswap Router", Badge: "DEX", BadgeColor: "violet", Address: "CAXY...Z10P", TopFn: "swap", Calls: "142", Fees: "2,847 XLM", LastCall: "2 min ago"},
-			{Name: "Blend Protocol", Badge: "Lending", BadgeColor: "emerald", Address: "CBLND...P2R8", TopFn: "supply", Calls: "38", Fees: "412 XLM", LastCall: "1 hour ago"},
-		},
-		Offers: []pages.AccountOffer{
-			{Side: "Buy", SideColor: "emerald", Pair: "USDC/XLM", Price: "0.097", PriceUnit: "XLM", Amount: "10,000 USDC", OfferID: "892341"},
-		},
-		Signers: []pages.AccountSigner{
-			{Address: "GABC...MNOP", Type: "ed25519", IsSelf: true, Weight: "1"},
-		},
-		Thresholds: []pages.AccountThreshold{
-			{Label: "Low", Value: "1", Pct: "100%", Color: "emerald"},
-			{Label: "Medium", Value: "1", Pct: "100%", Color: "emerald"},
-			{Label: "High", Value: "1", Pct: "100%", Color: "emerald"},
-		},
+	accountID := r.PathValue("id")
+	if accountID == "" {
+		http.NotFound(w, r)
+		return
 	}
+
+	network := networkFromRequest(r)
+	var data pages.AccountData
+
+	if h.Gateway != nil {
+		d, err := h.buildAccountData(r, network, accountID)
+		if err != nil {
+			h.Logger.Warn("gateway error, using mock data for account", "error", err, "account", accountID)
+			data = mockAccountData()
+		} else {
+			data = d
+		}
+	} else {
+		data = mockAccountData()
+	}
+
 	pages.AccountPortfolio(data).Render(r.Context(), w)
 }
 
+func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) (pages.AccountData, error) {
+	ctx := r.Context()
+
+	overview, err := h.Gateway.GetAccountOverview(ctx, network, accountID)
+	if err != nil {
+		return pages.AccountData{}, fmt.Errorf("fetching account overview: %w", err)
+	}
+
+	acct := overview.Account
+
+	// Build balances from the overview (try dedicated endpoint too).
+	var balances []pages.AccountBalance
+	balResp, balErr := h.Gateway.GetAccountBalances(ctx, network, accountID)
+	if balErr == nil && balResp != nil {
+		for _, b := range balResp.Balances {
+			assetType := "Classic"
+			typeColor := "gray"
+			code := b.AssetCode
+			if b.AssetType == "native" {
+				code = "XLM"
+				assetType = "Native"
+			}
+			balances = append(balances, pages.AccountBalance{
+				Code:      code,
+				Name:      code,
+				BgColor:   "bg-gray-600",
+				Type:      assetType,
+				TypeColor: typeColor,
+				Balance:   b.Balance,
+				ValueUSD:  "—",
+			})
+		}
+	}
+
+	// Build activities from recent operations.
+	var activities []pages.AccountActivity
+	for _, op := range overview.RecentOperations {
+		badge := op.TypeName
+		badgeColor := "gray"
+		if op.IsSorobanOp {
+			badge = "Contract"
+			badgeColor = "violet"
+		} else if op.IsPaymentOp {
+			badge = "Payment"
+			badgeColor = "blue"
+		}
+
+		age := "—"
+		if t, err := time.Parse(time.RFC3339, op.LedgerClosedAt); err == nil {
+			d := time.Since(t)
+			if d.Hours() > 24 {
+				age = fmt.Sprintf("%.0fd ago", d.Hours()/24)
+			} else if d.Hours() > 1 {
+				age = fmt.Sprintf("%.0fh ago", d.Hours())
+			} else {
+				age = fmt.Sprintf("%.0fm ago", d.Minutes())
+			}
+		}
+
+		summary := fmt.Sprintf("%s %s", gateway.ShortAddress(op.SourceAccount), op.TypeName)
+		if op.Amount != "" {
+			summary += fmt.Sprintf(" %s", op.Amount)
+		}
+
+		activities = append(activities, pages.AccountActivity{
+			Summary:    summary,
+			Badge:      badge,
+			BadgeColor: badgeColor,
+			TxHash:     op.TransactionHash,
+			ShortHash:  gateway.ShortHash(op.TransactionHash),
+			Time:       age,
+		})
+	}
+
+	// Build signers.
+	var signers []pages.AccountSigner
+	var thresholds []pages.AccountThreshold
+	sigResp, sigErr := h.Gateway.GetAccountSigners(ctx, network, accountID)
+	if sigErr == nil && sigResp != nil {
+		for _, s := range sigResp.Signers {
+			signers = append(signers, pages.AccountSigner{
+				Address: gateway.ShortAddress(s.Key),
+				Type:    s.Type,
+				IsSelf:  s.Key == accountID,
+				Weight:  fmt.Sprintf("%d", s.Weight),
+			})
+		}
+		thresholds = []pages.AccountThreshold{
+			{Label: "Low", Value: fmt.Sprintf("%d", sigResp.Thresholds.Low), Color: "emerald"},
+			{Label: "Medium", Value: fmt.Sprintf("%d", sigResp.Thresholds.Medium), Color: "emerald"},
+			{Label: "High", Value: fmt.Sprintf("%d", sigResp.Thresholds.High), Color: "emerald"},
+		}
+	}
+
+	data := pages.AccountData{
+		Address:      accountID,
+		ShortAddress: gateway.ShortAddress(accountID),
+		TotalValue:   "—",
+		XLMBalance:   acct.Balance + " XLM",
+		Trustlines:   fmt.Sprintf("%d", acct.NumSubentries),
+		ActiveOffers: "0",
+		Subentries:   fmt.Sprintf("%d", acct.NumSubentries),
+		IsFunded:     true,
+		SignerCount:  fmt.Sprintf("%d", len(signers)),
+		Balances:     balances,
+		Activities:   activities,
+		Signers:      signers,
+		Thresholds:   thresholds,
+	}
+
+	if acct.UpdatedAt != "" {
+		if t, err := time.Parse(time.RFC3339, acct.UpdatedAt); err == nil {
+			data.CreatedAt = t.Format("Jan 2, 2006")
+		}
+	}
+
+	return data, nil
+}
+
 func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request) {
+	// Smart account requires Soroban-specific contract introspection.
+	// Always uses mock data.
 	data := pages.SmartAccountData{
 		Name:         "Treasury Multisig",
 		ContractID:   "CDLZ...Q8M4",

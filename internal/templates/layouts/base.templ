@@ -195,6 +195,13 @@ templ Base(title string, activeNav string) {
 				document.querySelectorAll('[id^="check-"]').forEach(function(el) { el.classList.add('hidden'); });
 				document.getElementById('check-' + id).classList.remove('hidden');
 				document.getElementById('network-dropdown').classList.add('hidden');
+				// Set cookie and swap main content via htmx
+				document.cookie = 'prism_network=' + id + ';path=/;max-age=31536000';
+				htmx.ajax('GET', window.location.pathname + window.location.search, {
+					target: 'main',
+					swap: 'outerHTML',
+					select: 'main'
+				});
 			}
 			document.addEventListener('click', function(e) {
 				var dropdown = document.getElementById('network-dropdown');
@@ -202,6 +209,18 @@ templ Base(title string, activeNav string) {
 					dropdown.classList.add('hidden');
 				}
 			});
+			// Initialize network selector from cookie on page load
+			(function() {
+				var match = document.cookie.match(/prism_network=(\w+)/);
+				var net = match ? match[1] : 'mainnet';
+				var labels = {mainnet: 'Mainnet', testnet: 'Testnet', futurenet: 'Futurenet'};
+				var dots = {mainnet: 'bg-emerald-500', testnet: 'bg-amber-500', futurenet: 'bg-violet-500'};
+				document.getElementById('network-label').textContent = labels[net] || 'Mainnet';
+				document.getElementById('network-dot').className = 'h-2 w-2 rounded-full flex-shrink-0 ' + (dots[net] || 'bg-emerald-500');
+				document.querySelectorAll('[id^="check-"]').forEach(function(el) { el.classList.add('hidden'); });
+				var check = document.getElementById('check-' + net);
+				if (check) check.classList.remove('hidden');
+			})();
 		</script>
 
 		<!-- Slide-out panel container (htmx swaps content here) -->

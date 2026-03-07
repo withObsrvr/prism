@@ -17,7 +17,7 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
 	// Create handlers with shared dependencies.
-	h := handlers.New(app.Logger, app.Config.Network)
+	h := handlers.New(app.Logger, app.Gateway)
 
 	// ─────────────────────────────────────────────
 	// Explorer routes
@@ -86,6 +86,12 @@ func (app *Application) Routes() http.Handler {
 
 	mux.HandleFunc("GET /partials/search-results", h.SearchResults)
 	mux.HandleFunc("GET /partials/live-feed", h.LiveFeed)
+
+	// ─────────────────────────────────────────────
+	// API endpoints
+	// ─────────────────────────────────────────────
+
+	mux.HandleFunc("PUT /api/network", h.SetNetwork)
 
 	// ─────────────────────────────────────────────
 	// Health check (for load balancers / Nomad)
