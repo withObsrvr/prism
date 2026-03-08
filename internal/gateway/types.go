@@ -53,6 +53,36 @@ type OperationStats struct {
 	Other          int64 `json:"other"`
 }
 
+// BronzeNetworkStats matches the /bronze/stats/network response.
+type BronzeNetworkStats struct {
+	GeneratedAt     string            `json:"generated_at"`
+	DataFreshness   string            `json:"data_freshness"`
+	Ledger          BronzeLedgerStats `json:"ledger"`
+	Transactions24H BronzeTxStats24H  `json:"transactions_24h"`
+	Operations24H   BronzeOpStats24H  `json:"operations_24h"`
+}
+
+type BronzeLedgerStats struct {
+	LatestSequence      int64   `json:"latest_sequence"`
+	LatestHash          string  `json:"latest_hash"`
+	ClosedAt            string  `json:"closed_at"`
+	ProtocolVersion     int     `json:"protocol_version"`
+	AvgCloseTimeSeconds float64 `json:"avg_close_time_seconds"`
+}
+
+type BronzeTxStats24H struct {
+	Total            int64 `json:"total"`
+	Successful       int64 `json:"successful"`
+	Failed           int64 `json:"failed"`
+	SorobanCount     int64 `json:"soroban_count"`
+	TotalFeesCharged int64 `json:"total_fees_charged"`
+}
+
+type BronzeOpStats24H struct {
+	Total          int64 `json:"total"`
+	SorobanOpCount int64 `json:"soroban_op_count"`
+}
+
 // Ledger matches the /bronze/ledgers response items.
 type Ledger struct {
 	Sequence              int64  `json:"sequence"`

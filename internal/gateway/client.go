@@ -13,11 +13,12 @@ import (
 
 // Cache TTLs per data type.
 const (
-	TTLNetworkStats = 10 * time.Second
-	TTLRecentList   = 5 * time.Second
-	TTLImmutable    = 5 * time.Minute
-	TTLAccount      = 30 * time.Second
-	TTLContracts    = 2 * time.Minute
+	TTLNetworkStats      = 10 * time.Second
+	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
+	TTLRecentList        = 5 * time.Second
+	TTLImmutable         = 5 * time.Minute
+	TTLAccount           = 30 * time.Second
+	TTLContracts         = 2 * time.Minute
 )
 
 // Config holds gateway connection settings.
@@ -126,6 +127,27 @@ func (c *Client) GetNetworkStats(ctx context.Context, network string) (*NetworkS
 	}
 
 	c.cache.Set(cacheKey, &stats, TTLNetworkStats)
+	return &stats, nil
+}
+
+// GetBronzeNetworkStats returns network stats from the bronze endpoint (accurate latest ledger).
+func (c *Client) GetBronzeNetworkStats(ctx context.Context, network string) (*BronzeNetworkStats, error) {
+	cacheKey := network + ":bronze_network_stats"
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*BronzeNetworkStats), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/bronze/stats/network"))
+	if err != nil {
+		return nil, err
+	}
+
+	var stats BronzeNetworkStats
+	if err := json.Unmarshal(body, &stats); err != nil {
+		return nil, fmt.Errorf("gateway: parsing bronze network stats: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &stats, TTLBronzeNetworkStats)
 	return &stats, nil
 }
 
@@ -291,11 +313,11 @@ func (c *Client) GetOperations(ctx context.Context, network string, start, end i
 	}
 
 	params := url.Values{
-		"start": {fmt.Sprintf("%d", start)},
-		"end":   {fmt.Sprintf("%d", end)},
-		"limit": {fmt.Sprintf("%d", limit)},
+		"start_ledger": {fmt.Sprintf("%d", start)},
+		"end_ledger":   {fmt.Sprintf("%d", end)},
+		"limit":        {fmt.Sprintf("%d", limit)},
 	}
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/bronze/operations")+"?"+params.Encode())
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/operations/enriched")+"?"+params.Encode())
 	if err != nil {
 		return nil, err
 	}

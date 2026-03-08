@@ -43,31 +43,49 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeData, error) {
 	ctx := r.Context()
 
-	// Fetch network stats (includes latest ledger, 24h ops, account counts).
+	// Fetch silver network stats (accounts, fees, soroban details).
 	stats, err := h.Gateway.GetNetworkStats(ctx, network)
 	if err != nil {
 		return pages.HomeData{}, fmt.Errorf("fetching network stats: %w", err)
 	}
 
-	// Compute ledger range for recent ledgers (latest 8).
+	// Try bronze stats for accurate latest ledger and 24h tx counts.
+	bronze, bronzeErr := h.Gateway.GetBronzeNetworkStats(ctx, network)
+	if bronzeErr != nil {
+		h.Logger.Warn("bronze stats unavailable, using silver", "error", bronzeErr)
+	}
+
+	// Prefer bronze for latest sequence; fall back to silver.
 	latestSeq := stats.Ledger.CurrentSequence
+	if bronze != nil {
+		latestSeq = bronze.Ledger.LatestSequence
+	}
+
+	// Compute ledger range for recent ledgers (latest 8).
 	startSeq := latestSeq - 7
 	if startSeq < 1 {
 		startSeq = 1
 	}
 
-	// Fetch recent ledgers and top contracts concurrently using simple sequential calls.
-	// For Phase 1, sequential is fine — the cache will keep subsequent calls fast.
+	// Fetch recent ledgers and top contracts.
 	ledgers, ledgerErr := h.Gateway.GetLedgers(ctx, network, startSeq, latestSeq, 8, "desc")
 	contracts, contractErr := h.Gateway.GetTopContracts(ctx, network, 5)
+
+	// Use bronze tx/soroban counts when available, fall back to silver ops.
+	txCount24H := stats.Operations24H.Total
+	sorobanCalls := stats.Operations24H.ContractInvoke
+	if bronze != nil {
+		txCount24H = bronze.Transactions24H.Total
+		sorobanCalls = bronze.Transactions24H.SorobanCount
+	}
 
 	// Build the HomeData from real data.
 	data := pages.HomeData{
 		Network:      network,
 		LatestLedger: gateway.FormatNumber(latestSeq),
-		TxCount24H:   gateway.FormatNumber(stats.Operations24H.Total),
-		TPSAvg:       fmt.Sprintf("%.1f", float64(stats.Operations24H.Total)/86400),
-		SorobanCalls: gateway.FormatNumber(stats.Operations24H.ContractInvoke),
+		TxCount24H:   gateway.FormatNumber(txCount24H),
+		TPSAvg:       fmt.Sprintf("%.1f", float64(txCount24H)/86400),
+		SorobanCalls: gateway.FormatNumber(sorobanCalls),
 		FeeEconomy:   "100",
 		FeeStandard:  "1,200",
 		FeePriority:  "34,000",
@@ -76,17 +94,26 @@ func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeDat
 		Validators:   35, // Not available from gateway — static for now
 	}
 
-	// Compute ledger age from stats generation time.
-	if genTime, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
+	// Ledger age: prefer bronze closed_at (actual ledger close), fall back to silver generated_at.
+	if bronze != nil {
+		if closeTime, err := time.Parse(time.RFC3339, bronze.Ledger.ClosedAt); err == nil {
+			data.LedgerAge = gateway.FormatAge(closeTime)
+		} else {
+			data.LedgerAge = "just now"
+		}
+	} else if genTime, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
 		data.LedgerAge = gateway.FormatAge(genTime)
 	} else {
 		data.LedgerAge = "just now"
 	}
 
-	// TPS peak — not available from gateway, estimate from avg close time.
+	// TPS peak — estimate from avg close time.
 	avgClose := stats.Ledger.AvgCloseTimeSeconds
+	if bronze != nil && bronze.Ledger.AvgCloseTimeSeconds > 0 {
+		avgClose = bronze.Ledger.AvgCloseTimeSeconds
+	}
 	if avgClose > 0 {
-		data.TPSPeak = fmt.Sprintf("%.0f", float64(stats.Operations24H.Total)/86400*3)
+		data.TPSPeak = fmt.Sprintf("%.0f", float64(txCount24H)/86400*3)
 	} else {
 		data.TPSPeak = "—"
 	}
@@ -147,6 +174,39 @@ func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeDat
 	data.Assets = mockData.Assets
 
 	return data, nil
+}
+
+// LatestLedgerPartial returns an HTML fragment with the current latest ledger + age.
+// Used by htmx polling on the home page.
+func (h *Handlers) LatestLedgerPartial(w http.ResponseWriter, r *http.Request) {
+	network := networkFromRequest(r)
+
+	ledgerNum := "—"
+	age := "just now"
+
+	if h.Gateway != nil {
+		ctx := r.Context()
+		// Prefer bronze for accurate sequence + close time.
+		if bronze, err := h.Gateway.GetBronzeNetworkStats(ctx, network); err == nil {
+			ledgerNum = gateway.FormatNumber(bronze.Ledger.LatestSequence)
+			if t, err := time.Parse(time.RFC3339, bronze.Ledger.ClosedAt); err == nil {
+				age = gateway.FormatAge(t)
+			}
+		} else if stats, err := h.Gateway.GetNetworkStats(ctx, network); err == nil {
+			ledgerNum = gateway.FormatNumber(stats.Ledger.CurrentSequence)
+			if t, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
+				age = gateway.FormatAge(t)
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Latest Ledger</div>`+
+		`<div class="text-lg font-bold text-gray-900 tabular font-mono mt-0.5">%s</div>`+
+		`<div class="flex items-center justify-center gap-1 mt-0.5">`+
+		`<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>`+
+		`<span class="text-[10px] text-emerald-600 font-medium">%s</span>`+
+		`</div>`, ledgerNum, age)
 }
 
 // Search renders the full search results page.
