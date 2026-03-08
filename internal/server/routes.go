@@ -86,6 +86,7 @@ func (app *Application) Routes() http.Handler {
 
 	mux.HandleFunc("GET /partials/search-results", h.SearchResults)
 	mux.HandleFunc("GET /partials/live-feed", h.LiveFeed)
+	mux.HandleFunc("GET /partials/latest-ledger", h.LatestLedgerPartial)
 
 	// ─────────────────────────────────────────────
 	// API endpoints

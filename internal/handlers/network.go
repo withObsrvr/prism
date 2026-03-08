@@ -36,7 +36,18 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 		return pages.NetworkHealthData{}, err
 	}
 
+	// Try bronze stats for accurate latest ledger and 24h tx counts.
+	bronze, bronzeErr := h.Gateway.GetBronzeNetworkStats(ctx, network)
+	if bronzeErr != nil {
+		h.Logger.Debug("bronze stats unavailable for network health, using silver", "error", bronzeErr)
+	}
+
+	// Prefer bronze for latest sequence.
 	latestSeq := stats.Ledger.CurrentSequence
+	if bronze != nil {
+		latestSeq = bronze.Ledger.LatestSequence
+	}
+
 	startSeq := latestSeq - 4
 	if startSeq < 1 {
 		startSeq = 1
@@ -44,17 +55,23 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 
 	ledgers, _ := h.Gateway.GetLedgers(ctx, network, startSeq, latestSeq, 5, "desc")
 
-	tps := float64(stats.Operations24H.Total) / 86400
+	// Use bronze tx counts when available.
+	tx24h := stats.Transactions24H.Total
+	if bronze != nil {
+		tx24h = bronze.Transactions24H.Total
+	} else if tx24h == 0 {
+		tx24h = stats.Operations24H.Total
+	}
+
+	tps := float64(tx24h) / 86400
 	avgClose := stats.Ledger.AvgCloseTimeSeconds
+	if bronze != nil && bronze.Ledger.AvgCloseTimeSeconds > 0 {
+		avgClose = bronze.Ledger.AvgCloseTimeSeconds
+	}
 	if avgClose == 0 {
 		avgClose = 5.0
 	}
 
-	// Use real transaction stats when available, fall back to operations.
-	tx24h := stats.Transactions24H.Total
-	if tx24h == 0 {
-		tx24h = stats.Operations24H.Total
-	}
 	failureRate := stats.Transactions24H.FailureRate
 
 	// Fee stats from gateway.
@@ -110,7 +127,12 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 		FeeP99:             feeP99,
 		DailyFees:          dailyFees,
 		SurgePricing:       surgePricing,
-		SorobanInvocations: gateway.FormatNumber(stats.Operations24H.ContractInvoke),
+		SorobanInvocations: func() string {
+			if bronze != nil {
+				return gateway.FormatNumber(bronze.Transactions24H.SorobanCount)
+			}
+			return gateway.FormatNumber(stats.Operations24H.ContractInvoke)
+		}(),
 		ActiveContracts:    activeContracts,
 		TotalState:         "—",
 		RentBurned:         "—",
@@ -128,8 +150,14 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 		AvgLatency:         "—",
 	}
 
-	// Ledger age.
-	if genTime, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
+	// Ledger age: prefer bronze closed_at (actual ledger close), fall back to silver generated_at.
+	if bronze != nil {
+		if closeTime, err := time.Parse(time.RFC3339, bronze.Ledger.ClosedAt); err == nil {
+			data.LedgerAge = gateway.FormatAge(closeTime)
+		} else {
+			data.LedgerAge = "just now"
+		}
+	} else if genTime, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
 		data.LedgerAge = gateway.FormatAge(genTime)
 	} else {
 		data.LedgerAge = "just now"
