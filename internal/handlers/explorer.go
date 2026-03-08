@@ -52,7 +52,7 @@ func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeDat
 	// Try bronze stats for accurate latest ledger and 24h tx counts.
 	bronze, bronzeErr := h.Gateway.GetBronzeNetworkStats(ctx, network)
 	if bronzeErr != nil {
-		h.Logger.Warn("bronze stats unavailable, using silver", "error", bronzeErr)
+		h.Logger.Debug("bronze stats unavailable, using silver", "error", bronzeErr)
 	}
 
 	// Prefer bronze for latest sequence; fall back to silver.
@@ -71,11 +71,16 @@ func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeDat
 	ledgers, ledgerErr := h.Gateway.GetLedgers(ctx, network, startSeq, latestSeq, 8, "desc")
 	contracts, contractErr := h.Gateway.GetTopContracts(ctx, network, 5)
 
-	// Use bronze tx/soroban counts when available, fall back to silver ops.
+	// Use bronze tx/soroban counts when available; prefer silver tx counts over ops as fallback.
 	txCount24H := stats.Operations24H.Total
+	if stats.Transactions24H.Total > 0 {
+		txCount24H = stats.Transactions24H.Total
+	}
 	sorobanCalls := stats.Operations24H.ContractInvoke
 	if bronze != nil {
-		txCount24H = bronze.Transactions24H.Total
+		if bronze.Transactions24H.Total > 0 {
+			txCount24H = bronze.Transactions24H.Total
+		}
 		sorobanCalls = bronze.Transactions24H.SorobanCount
 	}
 
@@ -206,7 +211,7 @@ func (h *Handlers) LatestLedgerPartial(w http.ResponseWriter, r *http.Request) {
 		`<div class="flex items-center justify-center gap-1 mt-0.5">`+
 		`<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>`+
 		`<span class="text-[10px] text-emerald-600 font-medium">%s</span>`+
-		`</div>`, ledgerNum, age)
+		`</div>`, html.EscapeString(ledgerNum), html.EscapeString(age))
 }
 
 // Search renders the full search results page.

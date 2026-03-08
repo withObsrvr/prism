@@ -130,21 +130,31 @@ func (c *Client) GetNetworkStats(ctx context.Context, network string) (*NetworkS
 	return &stats, nil
 }
 
+// bronzeNegativeEntry is a sentinel cached on bronze fetch failure to avoid stampedes.
+type bronzeNegativeEntry struct{ err error }
+
 // GetBronzeNetworkStats returns network stats from the bronze endpoint (accurate latest ledger).
+// Caches both successes and failures to prevent thundering herd during outages.
 func (c *Client) GetBronzeNetworkStats(ctx context.Context, network string) (*BronzeNetworkStats, error) {
 	cacheKey := network + ":bronze_network_stats"
 	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*bronzeNegativeEntry); isNeg {
+			return nil, neg.err
+		}
 		return v.(*BronzeNetworkStats), nil
 	}
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/bronze/stats/network"))
 	if err != nil {
+		c.cache.Set(cacheKey, &bronzeNegativeEntry{err: err}, TTLBronzeNetworkStats)
 		return nil, err
 	}
 
 	var stats BronzeNetworkStats
 	if err := json.Unmarshal(body, &stats); err != nil {
-		return nil, fmt.Errorf("gateway: parsing bronze network stats: %w", err)
+		wrapped := fmt.Errorf("gateway: parsing bronze network stats: %w", err)
+		c.cache.Set(cacheKey, &bronzeNegativeEntry{err: wrapped}, TTLBronzeNetworkStats)
+		return nil, wrapped
 	}
 
 	c.cache.Set(cacheKey, &stats, TTLBronzeNetworkStats)

@@ -39,7 +39,7 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 	// Try bronze stats for accurate latest ledger and 24h tx counts.
 	bronze, bronzeErr := h.Gateway.GetBronzeNetworkStats(ctx, network)
 	if bronzeErr != nil {
-		h.Logger.Warn("bronze stats unavailable for network health, using silver", "error", bronzeErr)
+		h.Logger.Debug("bronze stats unavailable for network health, using silver", "error", bronzeErr)
 	}
 
 	// Prefer bronze for latest sequence.
