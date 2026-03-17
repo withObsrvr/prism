@@ -10,27 +10,7 @@ import (
 )
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
-	accountID := r.PathValue("id")
-	if accountID == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	network := networkFromRequest(r)
-	var data pages.AccountData
-
-	if h.Gateway != nil {
-		d, err := h.buildAccountData(r, network, accountID)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for account", "error", err, "account", accountID)
-			data = mockAccountData()
-		} else {
-			data = d
-		}
-	} else {
-		data = mockAccountData()
-	}
-
+	data := mockAccountData()
 	pages.AccountPortfolio(data).Render(r.Context(), w)
 }
 

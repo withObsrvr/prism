@@ -49,20 +49,20 @@ templ EventsFirehose(data EventsFirehoseData) {
 						</div>
 						<div class="flex items-center gap-1.5">
 							for _, f := range data.Filters {
-								<span class={ "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium ring-1", templ.KV("bg-violet-50 text-violet-700 ring-violet-200", f.Color == "violet"), templ.KV("bg-cyan-50 text-cyan-700 ring-cyan-200", f.Color == "cyan") }>
+								<span class={ "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ring-1", templ.KV("bg-violet-50 text-violet-700 ring-violet-200", f.Color == "violet"), templ.KV("bg-cyan-50 text-cyan-700 ring-cyan-200", f.Color == "cyan") }>
 									{ f.Label }
 									<button class="ml-0.5 text-current opacity-50 hover:opacity-100">&times;</button>
 								</span>
 							}
-							<button class="rounded-lg border border-dashed border-gray-300 px-2.5 py-1 text-[11px] font-medium text-gray-400 hover:border-gray-400 hover:text-gray-600">+ Add filter</button>
+							<button class="rounded-lg border border-dashed border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-400 hover:border-gray-400 hover:text-gray-600">+ Add filter</button>
 						</div>
 					</div>
 					<div class="flex items-center gap-3 flex-shrink-0">
-						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50">
 							<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
 							Export
 						</button>
-						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50">
 							<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
 							Save filter
 						</button>
@@ -74,11 +74,11 @@ templ EventsFirehose(data EventsFirehoseData) {
 							</div>
 							<div class="flex flex-col">
 								<span class="text-xs font-semibold text-gray-900 tabular">~{ data.EventsPerSec }</span>
-								<span class="text-[9px] text-gray-400">events/s</span>
+								<span class="text-2xs text-gray-400">events/s</span>
 							</div>
 						</div>
 						<div class="h-6 w-px bg-gray-200"></div>
-						<button class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm">
+						<button class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
 							<span class="relative flex h-2 w-2">
 								<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
 								<span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
@@ -91,7 +91,7 @@ templ EventsFirehose(data EventsFirehoseData) {
 
 			<!-- Stats bar -->
 			<div class="anim d1 border-b border-gray-100 bg-[#FAFAFA] rounded-lg px-5 py-2.5 mb-4">
-				<div class="flex items-center gap-6 text-[10px] font-medium text-gray-500">
+				<div class="flex items-center gap-6 text-2xs font-medium text-gray-500">
 					<span class="flex items-center gap-1.5">
 						<span class="h-1.5 w-1.5 rounded-full bg-gray-900"></span>
 						Matched: <span class="font-semibold text-gray-900 tabular">{ data.MatchedEvents }</span> events
@@ -104,7 +104,7 @@ templ EventsFirehose(data EventsFirehoseData) {
 
 			<!-- Event table -->
 			<div class="anim d2">
-				<div class="flex items-center border-b border-gray-200 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+				<div class="flex items-center border-b border-gray-200 py-2.5 text-2xs font-semibold uppercase tracking-wider text-gray-400">
 					<div class="w-[72px]">Time</div>
 					<div class="w-20">Type</div>
 					<div class="hidden md:block w-[140px]">Contract</div>
@@ -117,7 +117,7 @@ templ EventsFirehose(data EventsFirehoseData) {
 					<details class="group">
 						<summary class={ "flex items-center border-b border-gray-50 py-2.5 cursor-pointer list-none hover:bg-gray-50/50", templ.KV("bg-emerald-50/30", ev.IsNew) }>
 							<div class="w-[72px]">
-								<span class="font-mono text-[11px] text-gray-500 tabular">{ ev.Time }</span>
+								<span class="font-mono text-xs text-gray-500 tabular">{ ev.Time }</span>
 							</div>
 							<div class="w-20">
 								@eventTypeBadge(ev.Type, ev.TypeColor)
@@ -125,22 +125,22 @@ templ EventsFirehose(data EventsFirehoseData) {
 							<div class="hidden md:block w-[140px]">
 								<div class="flex flex-col">
 									<span class="text-xs font-medium text-gray-900 truncate">{ ev.ContractName }</span>
-									<span class="font-mono text-[10px] text-gray-400 truncate">{ ev.ContractAddr }</span>
+									<span class="font-mono text-2xs text-gray-400 truncate">{ ev.ContractAddr }</span>
 								</div>
 							</div>
 							<div class="flex-1 min-w-[200px]">
 								<div class="flex items-center gap-1.5">
 									@templ.Raw(ev.TopicsHTML)
 									if ev.AlertBadge != "" {
-										<span class={ "rounded px-1 py-0.5 text-[8px] font-bold uppercase", templ.KV("bg-red-100 text-red-700", ev.AlertColor == "red"), templ.KV("bg-amber-100 text-amber-700", ev.AlertColor == "amber") }>{ ev.AlertBadge }</span>
+										<span class={ "rounded px-1 py-0.5 text-2xs font-bold uppercase", templ.KV("bg-red-100 text-red-700", ev.AlertColor == "red"), templ.KV("bg-amber-100 text-amber-700", ev.AlertColor == "amber") }>{ ev.AlertBadge }</span>
 									}
 								</div>
 							</div>
 							<div class="hidden md:block w-24 text-right">
-								<span class="font-mono text-[11px] text-gray-700 tabular">{ ev.Ledger }</span>
+								<span class="font-mono text-xs text-gray-700 tabular">{ ev.Ledger }</span>
 							</div>
 							<div class="hidden md:block w-16 text-right pr-1">
-								<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-[10px] text-gray-400 hover:text-gray-900">{ ev.TxShort }</a>
+								<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-2xs text-gray-400 hover:text-gray-900">{ ev.TxShort }</a>
 							</div>
 						</summary>
 						if ev.DetailJSON != "" {
@@ -148,13 +148,13 @@ templ EventsFirehose(data EventsFirehoseData) {
 								<div class="grid grid-cols-2 gap-4">
 									<div>
 										<div class="flex items-center justify-between mb-2">
-											<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Raw Event Data</span>
+											<span class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Raw Event Data</span>
 											@components.CopyButton(ev.DetailJSON)
 										</div>
-										<pre class="rounded-lg bg-[#1E1E2E] p-3 text-[10px] font-mono text-gray-300 overflow-x-auto leading-relaxed">{ ev.DetailJSON }</pre>
+										<pre class="rounded-lg bg-[#1E1E2E] p-3 text-2xs font-mono text-gray-300 overflow-x-auto leading-relaxed">{ ev.DetailJSON }</pre>
 									</div>
 									<div>
-										<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2 block">Context</span>
+										<span class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2 block">Context</span>
 										<div class="text-xs text-gray-600 leading-relaxed">{ ev.DetailMeta }</div>
 									</div>
 								</div>
@@ -173,7 +173,7 @@ templ EventsFirehose(data EventsFirehoseData) {
 }
 
 templ eventTypeBadge(label, color string) {
-	<span class={ "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold",
+	<span class={ "inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-bold",
 		templ.KV("bg-cyan-50 text-cyan-700", color == "transfer"),
 		templ.KV("bg-violet-50 text-violet-700", color == "contract"),
 		templ.KV("bg-emerald-50 text-emerald-700", color == "mint"),

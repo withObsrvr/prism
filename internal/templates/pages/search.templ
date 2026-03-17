@@ -51,7 +51,7 @@ templ Search(data SearchData) {
 						hx-trigger="keyup changed delay:300ms"
 						hx-target="#search-live-results"
 					/>
-					<a href="/" class="rounded-lg border border-gray-200 bg-[#FAFAFA] px-2.5 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-100">Clear</a>
+					<a href="/" class="rounded-lg border border-gray-200 bg-[#FAFAFA] px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100">Clear</a>
 				</div>
 				<div id="search-live-results"></div>
 			</div>
@@ -86,7 +86,7 @@ templ Search(data SearchData) {
 						</div>
 						<div>
 							<div class="text-xs font-semibold text-gray-900">Transaction Hash</div>
-							<div class="text-[10px] text-gray-400">Search as tx hash</div>
+							<div class="text-2xs text-gray-400">Search as tx hash</div>
 						</div>
 					</a>
 					<a href={ templ.SafeURL("/search?q=" + data.Query + "&type=contract") } class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm hover:bg-gray-50 group">
@@ -95,7 +95,7 @@ templ Search(data SearchData) {
 						</div>
 						<div>
 							<div class="text-xs font-semibold text-gray-900">Contract Address</div>
-							<div class="text-[10px] text-gray-400">Search as contract</div>
+							<div class="text-2xs text-gray-400">Search as contract</div>
 						</div>
 					</a>
 					<a href={ templ.SafeURL("/search?q=" + data.Query + "&type=asset") } class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm hover:bg-gray-50 group">
@@ -104,7 +104,7 @@ templ Search(data SearchData) {
 						</div>
 						<div>
 							<div class="text-xs font-semibold text-gray-900">Asset Code</div>
-							<div class="text-[10px] text-gray-400">Search assets by code</div>
+							<div class="text-2xs text-gray-400">Search assets by code</div>
 						</div>
 					</a>
 				</div>
@@ -145,7 +145,7 @@ templ Search(data SearchData) {
 												}
 											</div>
 											if item.Subtitle != "" {
-												<span class="text-[10px] text-gray-400">{ item.Subtitle }</span>
+												<span class="text-2xs text-gray-400">{ item.Subtitle }</span>
 											}
 										</div>
 										<svg class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>

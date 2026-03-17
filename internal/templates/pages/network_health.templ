@@ -87,19 +87,19 @@ templ NetworkHealth(data NetworkHealthData) {
 					</div>
 					<div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200">
 						<span class="h-2 w-2 rounded-full bg-emerald-500 pulse-dot"></span>
-						<span class="text-[11px] font-semibold text-emerald-700">{ data.Status }</span>
+						<span class="text-xs font-semibold text-emerald-700">{ data.Status }</span>
 					</div>
 				</div>
 				<div class="flex items-center gap-4">
-					<div class="flex items-center gap-1.5 text-[10px] text-gray-400">
+					<div class="flex items-center gap-1.5 text-2xs text-gray-400">
 						<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
 						<span>Auto-refresh: 5s</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-[11px] font-semibold text-white">Live</button>
-						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">1h</button>
-						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">24h</button>
-						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600">7d</button>
+						<button class="rounded-lg border border-gray-900 bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white">Live</button>
+						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600">1h</button>
+						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600">24h</button>
+						<button class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600">7d</button>
 					</div>
 				</div>
 			</div>
@@ -117,10 +117,10 @@ templ NetworkHealth(data NetworkHealthData) {
 			<!-- Chart + Consensus -->
 			<div class="anim d2 mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
 				<!-- Throughput chart -->
-				<div class="col-span-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+				<div class="col-span-2 rounded-xl border border-gray-200 border-t-2 border-t-emerald-500 bg-white p-5 shadow-sm">
 					<div class="flex items-center justify-between mb-4">
-						<span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Transaction Throughput (24h)</span>
-						<div class="flex items-center gap-3 text-[10px]">
+						<span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Transaction Throughput (24h)</span>
+						<div class="flex items-center gap-3 text-2xs">
 							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-900"></span>Total</span>
 							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-violet-500"></span>Soroban</span>
 							<span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Classic</span>
@@ -137,15 +137,15 @@ templ NetworkHealth(data NetworkHealthData) {
 							<path d="M0,145 C20,140 40,135 60,130 C80,128 100,120 120,115 C140,110 160,100 180,95 C200,90 220,85 240,80 C260,82 280,78 300,70 C320,65 340,60 360,55 C380,58 400,52 400,52" fill="none" stroke="#8B5CF6" stroke-width="1.5"></path>
 						</svg>
 					</div>
-					<div class="flex justify-between mt-2 text-[8px] text-gray-400">
+					<div class="flex justify-between mt-2 text-2xs text-gray-400">
 						<span>24h ago</span><span>18h</span><span>12h</span><span>6h</span><span>Now</span>
 					</div>
 				</div>
 
 				<!-- Consensus -->
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Consensus</div>
-					<div class="text-[10px] text-gray-400 mb-4">Stellar Consensus Protocol (SCP)</div>
+					<div class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Consensus</div>
+					<div class="text-2xs text-gray-400 mb-4">Stellar Consensus Protocol (SCP)</div>
 					<!-- Ring visualization -->
 					<div class="flex justify-center mb-4">
 						<div class="relative h-24 w-24">
@@ -160,19 +160,19 @@ templ NetworkHealth(data NetworkHealthData) {
 					</div>
 					<div class="grid grid-cols-2 gap-3 text-center">
 						<div>
-							<div class="text-[10px] text-gray-400">Validators</div>
+							<div class="text-2xs text-gray-400">Validators</div>
 							<div class="text-sm font-semibold text-gray-900">{ data.ValidatorCount }</div>
 						</div>
 						<div>
-							<div class="text-[10px] text-gray-400">Quorum Sets</div>
+							<div class="text-2xs text-gray-400">Quorum Sets</div>
 							<div class="text-sm font-semibold text-gray-900">{ data.QuorumSets }</div>
 						</div>
 						<div>
-							<div class="text-[10px] text-gray-400">Avg Latency</div>
+							<div class="text-2xs text-gray-400">Avg Latency</div>
 							<div class="text-sm font-semibold text-gray-900">{ data.AvgLatency }</div>
 						</div>
 						<div>
-							<div class="text-[10px] text-gray-400">Halted</div>
+							<div class="text-2xs text-gray-400">Halted</div>
 							<div class="text-sm font-semibold text-emerald-600">{ data.ConsensusHalted }</div>
 						</div>
 					</div>
@@ -182,7 +182,7 @@ templ NetworkHealth(data NetworkHealthData) {
 			<!-- Fee Market + Soroban + Protocol -->
 			<div class="anim d3 mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Fee Market</div>
+					<div class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Fee Market</div>
 					<div class="space-y-3">
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Base</span><span class="font-mono text-xs font-medium text-gray-900">{ data.FeeBase } stroops</span></div>
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Median</span><span class="font-mono text-xs font-medium text-gray-900">{ data.FeeMedian } stroops</span></div>
@@ -191,8 +191,8 @@ templ NetworkHealth(data NetworkHealthData) {
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Surge Pricing</span><span class="text-xs font-medium text-gray-900">{ data.SurgePricing }</span></div>
 					</div>
 				</div>
-				<div class="rounded-xl border border-violet-200 bg-violet-50/20 p-5 shadow-sm">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-violet-500 mb-3">Soroban Metrics</div>
+				<div class="rounded-xl border border-violet-200 border-t-2 border-t-violet-500 bg-violet-50/20 p-5 shadow-sm">
+					<div class="text-xs font-semibold uppercase tracking-wider text-violet-500 mb-3">Soroban Metrics</div>
 					<div class="space-y-3">
 						<div class="flex justify-between"><span class="text-xs text-violet-600">Invocations (24h)</span><span class="font-mono text-xs font-medium text-violet-900">{ data.SorobanInvocations }</span></div>
 						<div class="flex justify-between"><span class="text-xs text-violet-600">Active Contracts</span><span class="font-mono text-xs font-medium text-violet-900">{ data.ActiveContracts }</span></div>
@@ -202,7 +202,7 @@ templ NetworkHealth(data NetworkHealthData) {
 					</div>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Protocol Info</div>
+					<div class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Protocol Info</div>
 					<div class="space-y-3">
 						<div class="flex justify-between items-center"><span class="text-xs text-gray-500">Protocol Version</span><div class="flex items-center gap-1"><span class="font-mono text-xs font-medium text-gray-900">v{ data.ProtocolVer }</span>@components.Badge("Latest", "emerald")</div></div>
 						<div class="flex justify-between"><span class="text-xs text-gray-500">Horizon</span><span class="font-mono text-xs font-medium text-gray-900">{ data.HorizonVer }</span></div>
@@ -217,7 +217,7 @@ templ NetworkHealth(data NetworkHealthData) {
 			<div class="anim d4 mb-8">
 				@components.SectionHeader("Validators")
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
-					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+					<div class="flex items-center px-5 py-2.5 text-2xs font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="flex-1">Validator</div>
 						<div class="hidden md:block w-28">Organization</div>
 						<div class="w-20 text-right">Uptime</div>
@@ -226,17 +226,17 @@ templ NetworkHealth(data NetworkHealthData) {
 						<div class="w-20 text-right">Status</div>
 					</div>
 					for i, v := range data.Validators {
-						<a href={ templ.SafeURL("/network/validators/" + v.Address) } class={ "detail-row flex items-center px-5 py-3 hover:bg-gray-50/50 cursor-pointer", templ.KV("border-b border-gray-50", i < len(data.Validators)-1) }>
+						<a href={ templ.SafeURL("/network/validators/" + v.Address) } class={ "detail-row flex items-center px-5 py-3 hover:bg-gray-50/50 cursor-pointer", templ.KV("bg-gray-50/30", i%2 == 1) }>
 							<div class="flex-1">
 								<div class="flex items-center gap-1.5">
 									<span class={ "h-2 w-2 rounded-full", "bg-" + v.StatusColor + "-500" }></span>
 									<span class="text-sm font-medium text-gray-900">{ v.Name }</span>
 								</div>
-								<span class="font-mono text-[10px] text-gray-400 ml-3.5">{ v.Address }</span>
+								<span class="font-mono text-2xs text-gray-400 ml-3.5">{ v.Address }</span>
 							</div>
 							<div class="hidden md:block w-28"><span class="text-xs text-gray-700">{ v.Org }</span></div>
 							<div class="w-20 text-right"><span class="text-xs text-gray-700 tabular">{ v.Uptime }</span></div>
-							<div class="hidden md:block w-20 text-right"><span class="font-mono text-[10px] text-gray-500">{ v.Version }</span></div>
+							<div class="hidden md:block w-20 text-right"><span class="font-mono text-2xs text-gray-500">{ v.Version }</span></div>
 							<div class="hidden md:block w-20 text-right"><span class="text-xs text-gray-500 tabular">{ v.Latency }</span></div>
 							<div class="w-20 text-right">
 								@components.Badge(v.Status, v.StatusColor)
@@ -253,7 +253,7 @@ templ NetworkHealth(data NetworkHealthData) {
 			<div class="anim d5 mb-10">
 				@components.SectionHeader("Recent Ledgers")
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
-					<div class="flex items-center px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+					<div class="flex items-center px-5 py-2.5 text-2xs font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="w-28">Ledger</div>
 						<div class="w-20">Age</div>
 						<div class="w-16 text-right">Txs</div>
@@ -263,7 +263,7 @@ templ NetworkHealth(data NetworkHealthData) {
 						<div class="hidden md:block flex-1 text-right">Close Time</div>
 					</div>
 					for i, l := range data.RecentLedgers {
-						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("border-b border-gray-50", i < len(data.RecentLedgers)-1), templ.KV("glow", l.IsLatest), templ.KV("bg-amber-50/40", l.IsSlow) }>
+						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("bg-gray-50/30", i%2 == 1 && !l.IsSlow), templ.KV("glow", l.IsLatest), templ.KV("bg-amber-50/40", l.IsSlow) }>
 							<div class="w-28">
 								<div class="flex items-center gap-1.5">
 									<a href={ templ.SafeURL("/ledger/" + l.Sequence) } class="font-mono text-xs font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ l.Sequence }</a>
@@ -272,18 +272,18 @@ templ NetworkHealth(data NetworkHealthData) {
 									}
 								</div>
 							</div>
-							<div class="w-20"><span class="text-[10px] text-gray-400">{ l.Age }</span></div>
+							<div class="w-20"><span class="text-2xs text-gray-400">{ l.Age }</span></div>
 							<div class="w-16 text-right"><span class="text-xs text-gray-900 tabular">{ l.TxCount }</span></div>
 							<div class="hidden md:block w-16 text-right"><span class="text-xs text-gray-700 tabular">{ l.OpsCount }</span></div>
 							<div class="w-24 text-right">
 								<span class="text-xs text-violet-600 tabular">{ l.SorobanCalls }</span>
 								if l.SorobanPct != "" {
-									<span class="ml-1 rounded bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-600">{ l.SorobanPct }</span>
+									<span class="ml-1 rounded bg-violet-50 px-1 py-0.5 text-2xs font-medium text-violet-600">{ l.SorobanPct }</span>
 								}
 							</div>
-							<div class="hidden md:block w-24 text-right"><span class="font-mono text-[10px] text-gray-500 tabular">{ l.Fees }</span></div>
+							<div class="hidden md:block w-24 text-right"><span class="font-mono text-2xs text-gray-500 tabular">{ l.Fees }</span></div>
 							<div class="flex-1 text-right">
-								<span class={ "text-[10px] tabular", templ.KV("text-amber-600 font-medium", l.IsSlow), templ.KV("text-gray-400", !l.IsSlow) }>{ l.CloseTime }</span>
+								<span class={ "text-2xs tabular", templ.KV("text-amber-600 font-medium", l.IsSlow), templ.KV("text-gray-400", !l.IsSlow) }>{ l.CloseTime }</span>
 							</div>
 						</div>
 					}

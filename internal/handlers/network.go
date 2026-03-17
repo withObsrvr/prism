@@ -10,21 +10,7 @@ import (
 )
 
 func (h *Handlers) NetworkHealth(w http.ResponseWriter, r *http.Request) {
-	network := networkFromRequest(r)
-	var data pages.NetworkHealthData
-
-	if h.Gateway != nil {
-		d, err := h.buildNetworkHealthData(r, network)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for network", "error", err)
-			data = mockNetworkHealthData()
-		} else {
-			data = d
-		}
-	} else {
-		data = mockNetworkHealthData()
-	}
-
+	data := mockNetworkHealthData()
 	pages.NetworkHealth(data).Render(r.Context(), w)
 }
 

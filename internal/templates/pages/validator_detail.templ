@@ -123,7 +123,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 							<span class="text-sm text-gray-400">{ data.NodeType }</span>
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
-							<span class="font-mono text-[12px] text-gray-500">{ data.NodeID }</span>
+							<span class="font-mono text-xs text-gray-500">{ data.NodeID }</span>
 							@components.CopyButton(data.NodeID)
 						</div>
 						<div class="flex items-center gap-1.5 mt-2">
@@ -145,34 +145,34 @@ templ ValidatorDetail(data ValidatorDetailData) {
 			<!-- Stats -->
 			<div class="anim d2 mb-7 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Node Index</div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Node Index</div>
 					<div class="text-2xl font-bold text-gray-900 tabular">{ data.NodeIndex }</div>
 					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style={ "width:" + data.IndexWidth }></div></div>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">24H Validating</div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">24H Validating</div>
 					<div class="text-2xl font-bold text-emerald-600 tabular">{ data.Validating24H }</div>
 					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style={ "width:" + data.Val24HWidth }></div></div>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">30D Validating</div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">30D Validating</div>
 					<div class="text-2xl font-bold text-emerald-600 tabular">{ data.Validating30D }</div>
 					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style={ "width:" + data.Val30DWidth }></div></div>
 				</div>
 				<div class="rounded-xl border border-amber-200/60 bg-amber-50/20 px-4 py-3">
-					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">30D Crawler Rejected</div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">30D Crawler Rejected</div>
 					<div class="text-2xl font-bold text-amber-600 tabular">{ data.CrawlerReject }</div>
 					<div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-amber-400" style={ "width:" + data.CrawlerWidth }></div></div>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusts</div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusts</div>
 					<div class="text-xl font-bold text-gray-900 tabular">{ data.TrustsCount } <span class="text-sm font-normal text-gray-400">nodes</span></div>
-					<div class="text-[10px] text-gray-500 mt-0.5">across { data.TrustsOrgs } organizations</div>
+					<div class="text-2xs text-gray-500 mt-0.5">across { data.TrustsOrgs } organizations</div>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-					<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusted By</div>
+					<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusted By</div>
 					<div class="text-xl font-bold text-gray-900 tabular">{ data.TrustedByCount } <span class="text-sm font-normal text-gray-400">nodes</span></div>
-					<div class="text-[10px] text-gray-500 mt-0.5">Externalize lag: { data.ExtLag }</div>
+					<div class="text-2xs text-gray-500 mt-0.5">Externalize lag: { data.ExtLag }</div>
 				</div>
 			</div>
 
@@ -198,19 +198,19 @@ templ ValidatorDetail(data ValidatorDetailData) {
 			<div class="anim d4 mb-7 grid grid-cols-2 md:grid-cols-4 gap-4">
 				<div class="col-span-3 rounded-xl border border-gray-200 bg-white overflow-hidden">
 					<div class="px-5 py-2.5 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
-						<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Node Details</span>
-						<span class="text-[10px] text-gray-400">Discovered { data.Discovered }</span>
+						<span class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Node Details</span>
+						<span class="text-2xs text-gray-400">Discovered { data.Discovered }</span>
 					</div>
 					<div class="grid grid-cols-3">
 						<div class="border-r border-gray-100">
 							@components.DetailRow("Public Key") {
-								<span class="font-mono text-[11px] text-gray-900">{ data.ShortNodeID }</span>
+								<span class="font-mono text-xs text-gray-900">{ data.ShortNodeID }</span>
 							}
 							@components.DetailRow("Host") {
-								<span class="font-mono text-[11px] text-gray-900">{ data.Host }</span>
+								<span class="font-mono text-xs text-gray-900">{ data.Host }</span>
 							}
 							@components.DetailRow("IP Address") {
-								<span class="font-mono text-[11px] text-gray-900">{ data.IP }</span>
+								<span class="font-mono text-xs text-gray-900">{ data.IP }</span>
 							}
 							@components.DetailRowLast("ISP") {
 								<span class="text-xs text-gray-900">{ data.ISP }</span>
@@ -241,7 +241,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 								<span class="text-xs font-medium text-emerald-600">{ data.ExtLag }</span>
 							}
 							@components.DetailRowLast("History") {
-								<span class="font-mono text-[10px] text-emerald-700 truncate max-w-[180px]">{ data.HistoryURL }</span>
+								<span class="font-mono text-2xs text-emerald-700 truncate max-w-[180px]">{ data.HistoryURL }</span>
 							}
 						</div>
 					</div>
@@ -249,22 +249,22 @@ templ ValidatorDetail(data ValidatorDetailData) {
 
 				<!-- Org card -->
 				<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-					<div class="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100"><span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{ data.OrgName } Organization</span></div>
+					<div class="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100"><span class="text-2xs font-semibold uppercase tracking-wider text-gray-400">{ data.OrgName } Organization</span></div>
 					for _, n := range data.OrgNodes {
 						<div class={ "px-4 py-2.5 border-b border-gray-100", templ.KV("bg-emerald-50/20", n.IsViewing) }>
 							<div class="flex items-center gap-2 mb-0.5">
 								<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-								<span class="text-[13px] font-semibold text-gray-900">{ n.Name }</span>
+								<span class="text-sm font-semibold text-gray-900">{ n.Name }</span>
 								if n.IsViewing {
 									<span class="rounded bg-emerald-100 px-1 py-0.5 text-[7px] font-bold text-emerald-700">VIEWING</span>
 								}
 							</div>
-							<div class="font-mono text-[10px] text-gray-400 ml-4">{ n.ShortID } · <span class="text-emerald-600 font-medium">{ n.Uptime }</span></div>
+							<div class="font-mono text-2xs text-gray-400 ml-4">{ n.ShortID } · <span class="text-emerald-600 font-medium">{ n.Uptime }</span></div>
 						</div>
 					}
 					<div class="px-4 py-2.5 bg-gray-50/80 grid grid-cols-2 gap-2 text-center">
-						<div><div class="text-[9px] text-gray-400">Org Uptime</div><div class="text-sm font-bold text-emerald-600">{ data.OrgUptime }</div></div>
-						<div><div class="text-[9px] text-gray-400">Validators</div><div class="text-sm font-bold text-gray-900">{ data.OrgValidators }</div></div>
+						<div><div class="text-2xs text-gray-400">Org Uptime</div><div class="text-sm font-bold text-emerald-600">{ data.OrgUptime }</div></div>
+						<div><div class="text-2xs text-gray-400">Validators</div><div class="text-sm font-bold text-gray-900">{ data.OrgValidators }</div></div>
 					</div>
 				</div>
 			</div>
@@ -279,13 +279,13 @@ templ ValidatorDetail(data ValidatorDetailData) {
 					<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3">
 						for _, qs := range data.QuorumSets {
 							<div class={ "rounded-lg border p-3", templ.KV("border-emerald-200 bg-emerald-50/30", qs.IsSelf), templ.KV("border-gray-200 bg-white", !qs.IsSelf) }>
-								<div class="flex items-center mb-2"><span class={ "text-[9px] font-bold uppercase tracking-wider", templ.KV("text-emerald-700", qs.IsSelf), templ.KV("text-gray-700", !qs.IsSelf) }>{ qs.Name }</span></div>
-								<div class="rounded bg-gray-100/80 px-1.5 py-0.5 text-[8px] font-bold text-gray-500 mb-2 inline-block">{ qs.Threshold }</div>
+								<div class="flex items-center mb-2"><span class={ "text-2xs font-bold uppercase tracking-wider", templ.KV("text-emerald-700", qs.IsSelf), templ.KV("text-gray-700", !qs.IsSelf) }>{ qs.Name }</span></div>
+								<div class="rounded bg-gray-100/80 px-1.5 py-0.5 text-2xs font-bold text-gray-500 mb-2 inline-block">{ qs.Threshold }</div>
 								<div class="flex flex-col gap-1.5">
 									for _, n := range qs.Nodes {
 										<div class="flex items-center gap-1.5">
 											<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-											<span class="font-mono text-[10px] text-gray-600">{ n.Name }</span>
+											<span class="font-mono text-2xs text-gray-600">{ n.Name }</span>
 											if n.IsSelf {
 												<span class="ml-auto text-[7px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">YOU</span>
 											}
@@ -305,16 +305,16 @@ templ ValidatorDetail(data ValidatorDetailData) {
 			<!-- Trusts Table -->
 			<div class="anim d6 mb-7">
 				<div class="flex items-center justify-between mb-3">
-					<h3 class="text-sm font-semibold text-gray-900">Trusts <span class="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">{ data.TrustsCount }</span></h3>
+					<h3 class="text-sm font-semibold text-gray-900">Trusts <span class="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-2xs font-bold text-gray-600">{ data.TrustsCount }</span></h3>
 					<div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5">
 						<svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-						<span class="text-[11px] text-gray-400">Filter...</span>
+						<span class="text-xs text-gray-400">Filter...</span>
 					</div>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
 					<table class="w-full">
 						<thead>
-							<tr class="bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+							<tr class="bg-gray-50/80 text-2xs font-semibold uppercase tracking-wider text-gray-400">
 								<th class="text-left px-4 py-2.5 w-[22%]">Quorumset Validator</th>
 								<th class="hidden md:table-cell text-center px-3 py-2.5">Index</th>
 								<th class="hidden md:table-cell text-left px-3 py-2.5">Trust</th>
@@ -336,7 +336,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 											<span class="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
 											<span class="font-medium text-emerald-700">{ t.Name }</span>
 											if t.Badge != "" {
-												<span class={ "ml-1.5 rounded px-1 py-0.5 text-[8px] font-bold", templ.KV("bg-amber-100 text-amber-700", t.BadgeColor == "amber") }>{ t.Badge }</span>
+												<span class={ "ml-1.5 rounded px-1 py-0.5 text-2xs font-bold", templ.KV("bg-amber-100 text-amber-700", t.BadgeColor == "amber") }>{ t.Badge }</span>
 											}
 										</div>
 									</td>
@@ -351,7 +351,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 									</td>
 									<td class={ "px-3 py-2.5 text-right tabular", "text-" + t.Color24H }>{ t.Valid24H }</td>
 									<td class={ "px-3 py-2.5 text-right tabular font-medium", "text-" + t.Color30D }>{ t.Valid30D }</td>
-									<td class="hidden md:table-cell px-3 py-2.5 font-mono text-[10px] text-gray-500">{ t.Version }</td>
+									<td class="hidden md:table-cell px-3 py-2.5 font-mono text-2xs text-gray-500">{ t.Version }</td>
 									<td class="hidden md:table-cell px-3 py-2.5 text-gray-500">{ t.Country }</td>
 									<td class="hidden md:table-cell px-3 py-2.5 text-gray-500">{ t.ISP }</td>
 								</tr>
@@ -359,12 +359,12 @@ templ ValidatorDetail(data ValidatorDetailData) {
 						</tbody>
 					</table>
 					<div class="px-4 py-2.5 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between">
-						<span class="text-[10px] text-gray-400">Showing { fmt.Sprintf("%d", len(data.Trusts)) } of { data.TrustsCount } &bull; Click a row to preview</span>
+						<span class="text-2xs text-gray-400">Showing { fmt.Sprintf("%d", len(data.Trusts)) } of { data.TrustsCount } &bull; Click a row to preview</span>
 						<div class="flex items-center gap-1">
-							<button class="rounded bg-gray-900 px-2.5 py-1 text-[10px] font-bold text-white">1</button>
-							<button class="rounded bg-gray-100 px-2.5 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-200">2</button>
-							<button class="rounded bg-gray-100 px-2.5 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-200">3</button>
-							<button class="rounded bg-gray-100 px-2.5 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-200">&rsaquo;</button>
+							<button class="rounded bg-gray-900 px-2.5 py-1 text-2xs font-bold text-white">1</button>
+							<button class="rounded bg-gray-100 px-2.5 py-1 text-2xs font-medium text-gray-500 hover:bg-gray-200">2</button>
+							<button class="rounded bg-gray-100 px-2.5 py-1 text-2xs font-medium text-gray-500 hover:bg-gray-200">3</button>
+							<button class="rounded bg-gray-100 px-2.5 py-1 text-2xs font-medium text-gray-500 hover:bg-gray-200">&rsaquo;</button>
 						</div>
 					</div>
 				</div>
@@ -388,7 +388,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 								}
 							</div>
 							<div class="flex-1">
-								<div class="text-[10px] text-gray-400 mb-0.5">{ u.Date }</div>
+								<div class="text-2xs text-gray-400 mb-0.5">{ u.Date }</div>
 								<div class="text-xs text-gray-700">{ u.Detail }</div>
 							</div>
 						</div>
@@ -404,9 +404,9 @@ templ validatorChart(title, color string) {
 		<div class="flex items-center justify-between mb-3">
 			<span class="text-xs font-semibold text-gray-900">{ title }</span>
 			<div class="flex gap-1">
-				<button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
-				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
-				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">1H</button>
+				<button class="rounded bg-gray-900 px-2 py-0.5 text-2xs font-bold text-white">30D</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-2xs font-medium text-gray-500">24H</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-2xs font-medium text-gray-500">1H</button>
 			</div>
 		</div>
 		<div class="flex items-end gap-[3px] h-20">
@@ -414,7 +414,7 @@ templ validatorChart(title, color string) {
 				<div class={ "flex-1 rounded-t-sm", templ.KV("bg-emerald-500", h == "100%"), templ.KV("bg-amber-400", h != "100%") } style={ "height:" + h }></div>
 			}
 		</div>
-		<div class="flex justify-between mt-2 text-[9px] text-gray-400"><span>Feb 1</span><span>Feb 15</span><span>Mar 2</span></div>
+		<div class="flex justify-between mt-2 text-2xs text-gray-400"><span>Feb 1</span><span>Feb 15</span><span>Mar 2</span></div>
 	</div>
 }
 
@@ -423,9 +423,9 @@ templ validatorChartAmber(title string) {
 		<div class="flex items-center justify-between mb-3">
 			<span class="text-xs font-semibold text-gray-900">{ title }</span>
 			<div class="flex gap-1">
-				<button class="rounded bg-gray-900 px-2 py-0.5 text-[9px] font-bold text-white">30D</button>
-				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">24H</button>
-				<button class="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-medium text-gray-500">1H</button>
+				<button class="rounded bg-gray-900 px-2 py-0.5 text-2xs font-bold text-white">30D</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-2xs font-medium text-gray-500">24H</button>
+				<button class="rounded bg-gray-100 px-2 py-0.5 text-2xs font-medium text-gray-500">1H</button>
 			</div>
 		</div>
 		<div class="flex items-end gap-[3px] h-20">
@@ -433,6 +433,6 @@ templ validatorChartAmber(title string) {
 				<div class="flex-1 rounded-t-sm bg-red-400" style={ "height:" + h }></div>
 			}
 		</div>
-		<div class="flex justify-between mt-2 text-[9px] text-gray-400"><span>Feb 1</span><span>Feb 15</span><span>Mar 2</span></div>
+		<div class="flex justify-between mt-2 text-2xs text-gray-400"><span>Feb 1</span><span>Feb 15</span><span>Mar 2</span></div>
 	</div>
 }
