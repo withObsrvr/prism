@@ -256,7 +256,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 								<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
 								<span class="text-sm font-semibold text-gray-900">{ n.Name }</span>
 								if n.IsViewing {
-									<span class="rounded bg-emerald-100 px-1 py-0.5 text-[7px] font-bold text-emerald-700">VIEWING</span>
+									<span class="rounded bg-emerald-100 px-1 py-0.5 text-2xs font-bold text-emerald-700">VIEWING</span>
 								}
 							</div>
 							<div class="font-mono text-2xs text-gray-400 ml-4">{ n.ShortID } · <span class="text-emerald-600 font-medium">{ n.Uptime }</span></div>
@@ -287,7 +287,7 @@ templ ValidatorDetail(data ValidatorDetailData) {
 											<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
 											<span class="font-mono text-2xs text-gray-600">{ n.Name }</span>
 											if n.IsSelf {
-												<span class="ml-auto text-[7px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">YOU</span>
+												<span class="ml-auto text-2xs text-emerald-600 font-bold bg-emerald-50 px-1 rounded">YOU</span>
 											}
 										</div>
 									}

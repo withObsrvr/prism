@@ -231,7 +231,7 @@ templ AccountPortfolio(data AccountData) {
 										@templ.Raw(act.Summary)
 									</p>
 									<div class="flex items-center gap-2 mt-0.5">
-										@ledgerTxBadge(act.Badge, act.BadgeColor)
+										@components.TypeBadge(act.Badge, act.BadgeColor)
 										<a href={ templ.SafeURL("/tx/" + act.TxHash) } class="font-mono text-2xs text-gray-400 hover:text-violet-600">{ act.ShortHash }</a>
 									</div>
 								</div>

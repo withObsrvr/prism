@@ -73,7 +73,16 @@ func truncate(addr string) string {
 func copyToClipboard(text string) templ.ComponentScript {
 	return templ.ComponentScript{
 		Name: "copyAddr",
-		Function: fmt.Sprintf(`function copyAddr(){navigator.clipboard.writeText("%s")}`, text),
+		Function: fmt.Sprintf(`function copyAddr(){
+			var btn=event.currentTarget;
+			navigator.clipboard.writeText("%s");
+			var svg=btn.querySelector("svg");
+			var orig=svg.innerHTML;
+			svg.innerHTML='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+			svg.classList.add("text-emerald-500");
+			svg.classList.remove("text-gray-300");
+			setTimeout(function(){svg.innerHTML=orig;svg.classList.remove("text-emerald-500");svg.classList.add("text-gray-300");},1500);
+		}`, text),
 	}
 }
 
@@ -135,6 +144,39 @@ func badgeClasses(color string) string {
 	default:
 		return base + "text-gray-600 bg-gray-100 ring-gray-200"
 	}
+}
+
+// TypeBadge renders a smaller inline badge for operation/entity types.
+// Use Badge for status labels (Validating, Success, Failed).
+// Use TypeBadge for type labels inside table rows (Contract Call, Payment, DEX).
+// color: "emerald", "violet", "amber", "red", "cyan", "blue", "gray"
+templ TypeBadge(label string, color string) {
+	<span class={ typeBadgeClasses(color) }>{ label }</span>
+}
+
+func typeBadgeClasses(color string) string {
+	base := "rounded px-1.5 py-0.5 text-2xs font-bold ring-1 "
+	switch color {
+	case "emerald":
+		return base + "text-emerald-600 bg-emerald-50 ring-emerald-200/60"
+	case "violet":
+		return base + "text-violet-600 bg-violet-50 ring-violet-200/60"
+	case "amber":
+		return base + "text-amber-600 bg-amber-50 ring-amber-200/60"
+	case "red":
+		return base + "text-red-600 bg-red-50 ring-red-200/60"
+	case "cyan":
+		return base + "text-cyan-600 bg-cyan-50 ring-cyan-200/60"
+	case "blue":
+		return base + "text-blue-600 bg-blue-50 ring-blue-200/60"
+	default:
+		return base + "text-gray-500 bg-gray-100 ring-gray-200"
+	}
+}
+
+// MetaBadge renders a neutral metadata badge (Tier 1, Archive Publisher, SEP-41).
+templ MetaBadge(label string) {
+	<span class="rounded px-1.5 py-0.5 text-2xs font-semibold text-gray-600 bg-gray-100 ring-1 ring-gray-200">{ label }</span>
 }
 
 // Tab represents a single tab in a TabBar.
@@ -206,19 +248,22 @@ templ Breadcrumb(items []BreadcrumbItem) {
 	</nav>
 }
 
-// Pagination renders prev/next + page numbers.
+// Pagination renders prev/next + windowed page numbers with ellipsis.
+// Shows: 1 ... (current-1) [current] (current+1) ... total
 templ Pagination(current int, total int, baseURL string) {
-	<div class="flex items-center justify-center gap-2 mt-6">
+	<div class="flex items-center justify-center gap-1.5 mt-6">
 		if current > 1 {
 			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current-1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50">
 				<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
 			</a>
 		}
-		for i := 1; i <= total; i++ {
-			if i == current {
-				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-semibold">{ fmt.Sprintf("%d", i) }</span>
+		for _, p := range paginationPages(current, total) {
+			if p == -1 {
+				<span class="flex h-8 w-8 items-center justify-center text-xs text-gray-400">…</span>
+			} else if p == current {
+				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-semibold tabular">{ fmt.Sprintf("%d", p) }</span>
 			} else {
-				<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, i)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50">{ fmt.Sprintf("%d", i) }</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, p)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 tabular">{ fmt.Sprintf("%d", p) }</a>
 			}
 		}
 		if current < total {
@@ -227,6 +272,44 @@ templ Pagination(current int, total int, baseURL string) {
 			</a>
 		}
 	</div>
+}
+
+// paginationPages returns the page numbers to display with -1 as ellipsis.
+// For total <= 7: all pages. Otherwise: 1 ... window ... total.
+func paginationPages(current, total int) []int {
+	if total <= 7 {
+		pages := make([]int, total)
+		for i := range pages {
+			pages[i] = i + 1
+		}
+		return pages
+	}
+
+	var pages []int
+	// Always show first page
+	pages = append(pages, 1)
+
+	// Left ellipsis
+	if current > 3 {
+		pages = append(pages, -1)
+	}
+
+	// Window around current
+	for i := current - 1; i <= current+1; i++ {
+		if i > 1 && i < total {
+			pages = append(pages, i)
+		}
+	}
+
+	// Right ellipsis
+	if current < total-2 {
+		pages = append(pages, -1)
+	}
+
+	// Always show last page
+	pages = append(pages, total)
+
+	return pages
 }
 
 // ProgressBar renders a horizontal progress bar.

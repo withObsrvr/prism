@@ -295,7 +295,7 @@ templ TransactionReceipt(data TxReceiptData) {
 						<div class="detail-row flex items-center px-4 py-3 border-b border-gray-50 cursor-pointer">
 							<div class="hidden md:block w-8"><span class="text-2xs font-mono text-gray-400">{ evt.Index }</span></div>
 							<div class="w-20">
-								@ledgerTxBadge(evt.Type, evt.TypeColor)
+								@components.TypeBadge(evt.Type, evt.TypeColor)
 							</div>
 							<div class="w-[130px]"><span class="text-xs text-gray-700">{ evt.Contract }</span></div>
 							<div class="flex-1">

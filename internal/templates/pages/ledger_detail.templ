@@ -258,7 +258,7 @@ templ LedgerDetail(data LedgerDetailData) {
 								<div class="flex flex-col">
 									<a href={ templ.SafeURL("/tx/" + tx.Hash) } class="font-mono text-xs text-gray-900 hover:text-violet-600">{ tx.ShortHash }</a>
 									<div class="mt-0.5">
-										@ledgerTxBadge(tx.OpType, tx.OpColor)
+										@components.TypeBadge(tx.OpType, tx.OpColor)
 									</div>
 								</div>
 							</div>
@@ -336,15 +336,3 @@ templ LedgerDetail(data LedgerDetailData) {
 	}
 }
 
-templ ledgerTxBadge(opType string, color string) {
-	switch color {
-		case "violet":
-			<span class="rounded px-1.5 py-0.5 text-2xs font-bold text-violet-600 bg-violet-50">{ opType }</span>
-		case "cyan":
-			<span class="rounded px-1.5 py-0.5 text-2xs font-bold text-cyan-700 bg-cyan-50">{ opType }</span>
-		case "emerald":
-			<span class="rounded px-1.5 py-0.5 text-2xs font-bold text-emerald-700 bg-emerald-50">{ opType }</span>
-		default:
-			<span class="rounded px-1.5 py-0.5 text-2xs font-bold text-gray-600 bg-gray-100">{ opType }</span>
-	}
-}
