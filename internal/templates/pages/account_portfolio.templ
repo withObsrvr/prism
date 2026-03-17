@@ -111,8 +111,8 @@ templ AccountPortfolio(data AccountData) {
 								if data.IsSmartWallet {
 									@components.Badge("Smart Wallet", "violet")
 								}
-								<span class="rounded-full bg-gray-100 px-2.5 py-0.5 ring-1 ring-gray-200 text-[10px] font-semibold text-gray-600">Signer on { data.SignerCount } accounts</span>
-								<span class="text-[10px] text-gray-400">Created { data.CreatedAt }</span>
+								<span class="rounded-full bg-gray-100 px-2.5 py-0.5 ring-1 ring-gray-200 text-2xs font-semibold text-gray-600">Signer on { data.SignerCount } accounts</span>
+								<span class="text-2xs text-gray-400">Created { data.CreatedAt }</span>
 							</div>
 						</div>
 					</div>
@@ -133,7 +133,7 @@ templ AccountPortfolio(data AccountData) {
 				<div class="rounded-xl border border-gray-200 bg-gradient-to-b from-[#FAFAFA] to-white p-6 shadow-sm">
 					<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 						<div>
-							<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Estimated Value</div>
+							<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Estimated Value</div>
 							<div class="flex items-baseline">
 								<span class="text-2xl md:text-[40px] font-semibold leading-none text-gray-900 tabular">{ data.TotalValue }</span>
 								<span class="text-xl font-medium text-gray-400 ml-1">{ data.TotalCents }</span>
@@ -141,19 +141,19 @@ templ AccountPortfolio(data AccountData) {
 						</div>
 						<div class="flex flex-wrap items-center gap-4 md:gap-6 text-sm">
 							<div class="text-right">
-								<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">XLM Balance</div>
+								<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400">XLM Balance</div>
 								<div class="font-mono font-semibold text-gray-900 tabular">{ data.XLMBalance }</div>
 							</div>
 							<div class="text-right">
-								<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Trustlines</div>
+								<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Trustlines</div>
 								<div class="font-semibold text-gray-900">{ data.Trustlines }</div>
 							</div>
 							<div class="text-right">
-								<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Active Offers</div>
+								<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Active Offers</div>
 								<div class="font-semibold text-gray-900">{ data.ActiveOffers }</div>
 							</div>
 							<div class="text-right">
-								<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Subentries</div>
+								<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Subentries</div>
 								<div class="font-semibold text-gray-900">{ data.Subentries }</div>
 							</div>
 						</div>
@@ -176,7 +176,7 @@ templ AccountPortfolio(data AccountData) {
 			<div class="anim d2 mb-10">
 				@components.SectionHeader("Balances")
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
-					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+					<div class="flex items-center px-5 py-2 text-2xs font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="w-[200px]">Asset</div>
 						<div class="hidden md:block w-28">Type</div>
 						<div class="flex-1 text-right">Balance</div>
@@ -186,10 +186,10 @@ templ AccountPortfolio(data AccountData) {
 						<div class={ "detail-row flex items-center px-5 py-3.5", templ.KV("border-b border-gray-50", i < len(data.Balances)-1) }>
 							<div class="w-[200px]">
 								<div class="flex items-center gap-2.5">
-									<div class={ "flex h-8 w-8 items-center justify-center rounded-full text-white text-[10px] font-bold shadow-sm", b.BgColor }>{ b.Code }</div>
+									<div class={ "flex h-8 w-8 items-center justify-center rounded-full text-white text-2xs font-bold shadow-sm", b.BgColor }>{ b.Code }</div>
 									<div>
 										<div class="text-sm font-semibold text-gray-900">{ b.Code }</div>
-										<div class="text-[10px] text-gray-400">{ b.Name }</div>
+										<div class="text-2xs text-gray-400">{ b.Name }</div>
 									</div>
 								</div>
 							</div>
@@ -199,7 +199,7 @@ templ AccountPortfolio(data AccountData) {
 							<div class="flex-1 text-right">
 								<div class="font-mono text-sm font-medium text-gray-900 tabular">{ b.Balance }</div>
 								if b.Extra != "" {
-									<div class="text-[10px] text-gray-400">{ b.Extra }</div>
+									<div class="text-2xs text-gray-400">{ b.Extra }</div>
 								}
 							</div>
 							<div class="w-32 text-right text-sm font-semibold text-gray-900 tabular">{ b.ValueUSD }</div>
@@ -218,7 +218,7 @@ templ AccountPortfolio(data AccountData) {
 					for i, act := range data.Activities {
 						if i == 0 || act.DateGroup != data.Activities[i-1].DateGroup {
 							<div class="px-5 py-1.5 bg-[#FAFAFA] border-b border-gray-100">
-								<span class="text-[10px] font-semibold text-gray-400">{ act.DateGroup }</span>
+								<span class="text-2xs font-semibold text-gray-400">{ act.DateGroup }</span>
 							</div>
 						}
 						<div class="detail-row flex items-center justify-between px-5 py-3 border-b border-gray-50">
@@ -231,12 +231,12 @@ templ AccountPortfolio(data AccountData) {
 										@templ.Raw(act.Summary)
 									</p>
 									<div class="flex items-center gap-2 mt-0.5">
-										@ledgerTxBadge(act.Badge, act.BadgeColor)
-										<a href={ templ.SafeURL("/tx/" + act.TxHash) } class="font-mono text-[10px] text-gray-400 hover:text-violet-600">{ act.ShortHash }</a>
+										@components.TypeBadge(act.Badge, act.BadgeColor)
+										<a href={ templ.SafeURL("/tx/" + act.TxHash) } class="font-mono text-2xs text-gray-400 hover:text-violet-600">{ act.ShortHash }</a>
 									</div>
 								</div>
 							</div>
-							<span class="text-[10px] text-gray-400 flex-shrink-0">{ act.Time }</span>
+							<span class="text-2xs text-gray-400 flex-shrink-0">{ act.Time }</span>
 						</div>
 					}
 				</div>
@@ -249,7 +249,7 @@ templ AccountPortfolio(data AccountData) {
 					<a href="#" class="text-xs font-medium text-gray-500 hover:text-gray-900">View Soroban tab →</a>
 				</div>
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
-					<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+					<div class="flex items-center px-5 py-2 text-2xs font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 						<div class="flex-1">Contract</div>
 						<div class="hidden md:block w-28">Top Function</div>
 						<div class="w-20 text-right">Calls</div>
@@ -263,7 +263,7 @@ templ AccountPortfolio(data AccountData) {
 									<a href="#" class="text-sm font-medium text-gray-900 hover:text-violet-600">{ c.Name }</a>
 									@components.Badge(c.Badge, c.BadgeColor)
 								</div>
-								<span class="font-mono text-[10px] text-gray-400">{ c.Address }</span>
+								<span class="font-mono text-2xs text-gray-400">{ c.Address }</span>
 							</div>
 							<div class="hidden md:block w-28"><span class="font-mono text-xs text-violet-600">{ c.TopFn }</span></div>
 							<div class="w-20 text-right"><span class="font-mono text-sm font-semibold text-gray-900 tabular">{ c.Calls }</span></div>
@@ -279,7 +279,7 @@ templ AccountPortfolio(data AccountData) {
 				<div class="anim d5 mb-10">
 					@components.SectionHeader(fmt.Sprintf("Active Offers (%d)", len(data.Offers)))
 					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
-						<div class="flex items-center px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
+						<div class="flex items-center px-5 py-2 text-2xs font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200 bg-[#FAFAFA]">
 							<div class="w-16">Side</div>
 							<div class="w-32">Pair</div>
 							<div class="flex-1">Price</div>
@@ -310,7 +310,7 @@ templ AccountPortfolio(data AccountData) {
 				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<div>
-							<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Thresholds</div>
+							<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Thresholds</div>
 							<div class="space-y-3">
 								for _, t := range data.Thresholds {
 									<div>
@@ -324,7 +324,7 @@ templ AccountPortfolio(data AccountData) {
 							</div>
 						</div>
 						<div>
-							<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Signers ({ fmt.Sprintf("%d", len(data.Signers)) })</div>
+							<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Signers ({ fmt.Sprintf("%d", len(data.Signers)) })</div>
 							<div class="space-y-2">
 								for _, s := range data.Signers {
 									<div class="flex items-center justify-between rounded-lg bg-[#FAFAFA] px-3 py-2">

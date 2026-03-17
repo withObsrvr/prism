@@ -96,16 +96,16 @@ templ SmartAccount(data SmartAccountData) {
 			<!-- Header -->
 			<div class="anim mb-8 flex items-center justify-between">
 				<div class="flex flex-col">
-					<span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">My Portfolio</span>
+					<span class="text-xs font-semibold uppercase tracking-wider text-gray-400">My Portfolio</span>
 					<div class="mt-1 flex items-center gap-3">
 						<h1 class="text-2xl font-semibold tracking-tight text-gray-900">{ data.Name }</h1>
-						<div class="flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-violet-700 ring-1 ring-violet-100">
+						<div class="flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-violet-700 ring-1 ring-violet-100">
 							<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
 							Smart Account
 						</div>
 					</div>
 					<div class="mt-1 flex items-center gap-2">
-						<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
+						<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-400">Contract</span>
 						<span class="font-mono text-sm text-gray-500">{ data.ContractID }</span>
 					</div>
 				</div>
@@ -139,7 +139,7 @@ templ SmartAccount(data SmartAccountData) {
 						<div class="mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<h3 class="text-sm font-semibold text-gray-900">Active Signers</h3>
-								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d registered", len(data.Signers)) }</span>
+								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-2xs font-bold text-gray-600">{ fmt.Sprintf("%d registered", len(data.Signers)) }</span>
 							</div>
 							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">Manage signers &rarr;</span>
 						</div>
@@ -165,12 +165,12 @@ templ SmartAccount(data SmartAccountData) {
 											</div>
 											<div class="flex items-center gap-2 mt-0.5">
 												<span class="font-mono text-xs text-gray-500">{ s.Address }</span>
-												<span class="text-[10px] text-gray-400">&middot; { s.KeyType }</span>
+												<span class="text-2xs text-gray-400">&middot; { s.KeyType }</span>
 											</div>
 										</div>
 									</div>
 									<div class="text-right">
-										<div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Weight</div>
+										<div class="text-xs font-semibold uppercase tracking-wider text-gray-400">Weight</div>
 										<div class="text-lg font-semibold text-gray-900">{ s.Weight }</div>
 									</div>
 								</div>
@@ -183,7 +183,7 @@ templ SmartAccount(data SmartAccountData) {
 						<div class="mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<h3 class="text-sm font-semibold text-gray-900">Authorization Policies</h3>
-								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{ fmt.Sprintf("%d active", len(data.Policies)) }</span>
+								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-2xs font-bold text-gray-600">{ fmt.Sprintf("%d active", len(data.Policies)) }</span>
 							</div>
 							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">View policy log &rarr;</span>
 						</div>
@@ -205,7 +205,7 @@ templ SmartAccount(data SmartAccountData) {
 											</div>
 										</div>
 										if p.IsActive {
-											<div class="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+											<div class="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
 												<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
 												Active
 											</div>
@@ -214,28 +214,28 @@ templ SmartAccount(data SmartAccountData) {
 									if p.Limit != "" {
 										<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
 											<div>
-												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Limit</div>
+												<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Limit</div>
 												<div class="flex items-baseline">
 													<span class="text-lg font-semibold text-gray-900">{ p.Limit }</span>
 													<span class="ml-1 text-xs font-medium text-gray-500">XLM</span>
 												</div>
 											</div>
 											<div>
-												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spent Today</div>
+												<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spent Today</div>
 												<div class="flex items-baseline">
 													<span class="text-lg font-semibold text-gray-900">{ p.Spent }</span>
 													<span class="ml-1 text-xs font-medium text-gray-500">XLM</span>
 												</div>
 											</div>
 											<div>
-												<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Resets In</div>
+												<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Resets In</div>
 												<div class="text-lg font-semibold text-gray-900">{ p.ResetsIn }</div>
 											</div>
 										</div>
 										<div class="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
 											<div class="h-full rounded-full bg-gray-900" style={ "width:" + p.SpentPct }></div>
 										</div>
-										<div class="mt-1 flex justify-between text-[10px] font-medium text-gray-400">
+										<div class="mt-1 flex justify-between text-2xs font-medium text-gray-400">
 											<span>{ p.SpentPct } used</span>
 											<span>{ p.Remaining } XLM remaining</span>
 										</div>
@@ -245,11 +245,11 @@ templ SmartAccount(data SmartAccountData) {
 											for _, c := range p.Contracts {
 												<div class="flex items-center justify-between rounded-lg bg-white p-3 ring-1 ring-gray-100">
 													<div class="flex items-center gap-2">
-														<div class={ "flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold", c.InitialBg }>{ c.Initial }</div>
+														<div class={ "flex h-6 w-6 items-center justify-center rounded-full text-2xs font-bold", c.InitialBg }>{ c.Initial }</div>
 														<span class="text-sm font-medium text-gray-900">{ c.Name }</span>
-														<span class="font-mono text-[10px] text-gray-400">{ c.Address }</span>
+														<span class="font-mono text-2xs text-gray-400">{ c.Address }</span>
 													</div>
-													<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500">{ c.Methods }</span>
+													<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-2xs text-gray-500">{ c.Methods }</span>
 												</div>
 											}
 										</div>
@@ -264,7 +264,7 @@ templ SmartAccount(data SmartAccountData) {
 						<div class="mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<h3 class="text-sm font-semibold text-gray-900">Session Keys</h3>
-								<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-800">{ fmt.Sprintf("%d active", len(data.SessionKeys)) }</span>
+								<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-2xs font-bold text-yellow-800">{ fmt.Sprintf("%d active", len(data.SessionKeys)) }</span>
 							</div>
 							<span class="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer">Revoke all &rarr;</span>
 						</div>
@@ -284,32 +284,32 @@ templ SmartAccount(data SmartAccountData) {
 								</div>
 								<div class="grid grid-cols-2 md:grid-cols-4 gap-4 rounded-lg bg-white p-3 ring-1 ring-gray-100">
 									<div>
-										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Key</div>
+										<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Key</div>
 										<span class="font-mono text-xs text-gray-700">{ sk.Key }</span>
 									</div>
 									<div>
-										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spend Limit</div>
+										<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Spend Limit</div>
 										<div class="flex items-baseline">
 											<span class="text-sm font-semibold text-gray-900">{ sk.SpendLimit }</span>
-											<span class="ml-1 text-[10px] font-medium text-gray-500">XLM</span>
+											<span class="ml-1 text-2xs font-medium text-gray-500">XLM</span>
 										</div>
 									</div>
 									<div>
-										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Used</div>
+										<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Used</div>
 										<div class="flex items-baseline">
 											<span class="text-sm font-semibold text-gray-900">{ sk.Used }</span>
-											<span class="ml-1 text-[10px] font-medium text-gray-500">XLM</span>
+											<span class="ml-1 text-2xs font-medium text-gray-500">XLM</span>
 										</div>
 									</div>
 									<div>
-										<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Expires</div>
+										<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Expires</div>
 										<div class="text-sm font-semibold text-gray-900">{ sk.Expires }</div>
 									</div>
 								</div>
 								<div class="mt-3 h-1.5 w-full rounded-full bg-yellow-100 overflow-hidden">
 									<div class="h-full rounded-full bg-yellow-500" style={ "width:" + sk.UsedPct }></div>
 								</div>
-								<div class="mt-1 flex justify-between text-[10px] font-medium text-gray-400">
+								<div class="mt-1 flex justify-between text-2xs font-medium text-gray-400">
 									<span>{ sk.UsedPct } of session budget used</span>
 									<span>Scoped to: { sk.Scope }</span>
 								</div>
@@ -393,7 +393,7 @@ templ SmartAccount(data SmartAccountData) {
 								<span class="text-xs text-gray-500">OZ Framework</span>
 								<div class="flex items-center gap-1.5">
 									<span class="text-sm font-semibold text-gray-900">{ data.Health.OZVersion }</span>
-									<div class="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+									<div class="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-2xs font-bold text-emerald-700 ring-1 ring-emerald-100">
 										<svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
 										Audited
 									</div>
@@ -431,7 +431,7 @@ templ SmartAccount(data SmartAccountData) {
 									</div>
 									<div class="flex flex-col">
 										<span class="text-xs font-medium text-gray-900">{ ev.Action }</span>
-										<span class="text-[10px] text-gray-500">{ ev.Detail }</span>
+										<span class="text-2xs text-gray-500">{ ev.Detail }</span>
 									</div>
 								</div>
 							}

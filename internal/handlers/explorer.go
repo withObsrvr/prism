@@ -12,6 +12,8 @@ import (
 )
 
 // Home renders the search-first landing page.
+// Uses mock data for everything except the latest ledger number, which is
+// fetched live from the gateway when available (currently testnet only).
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -19,18 +21,22 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	network := networkFromRequest(r)
-	var data pages.HomeData
+	data := mockHomeData(network)
 
+	// Overlay live latest ledger if gateway is available.
 	if h.Gateway != nil {
-		d, err := h.buildHomeData(r, network)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for home", "error", err)
-			data = mockHomeData(network)
-		} else {
-			data = d
+		ctx := r.Context()
+		if bronze, err := h.Gateway.GetBronzeNetworkStats(ctx, network); err == nil {
+			data.LatestLedger = gateway.FormatNumber(bronze.Ledger.LatestSequence)
+			if t, err := time.Parse(time.RFC3339, bronze.Ledger.ClosedAt); err == nil {
+				data.LedgerAge = gateway.FormatAge(t)
+			}
+		} else if stats, err := h.Gateway.GetNetworkStats(ctx, network); err == nil {
+			data.LatestLedger = gateway.FormatNumber(stats.Ledger.CurrentSequence)
+			if t, err := time.Parse(time.RFC3339, stats.GeneratedAt); err == nil {
+				data.LedgerAge = gateway.FormatAge(t)
+			}
 		}
-	} else {
-		data = mockHomeData(network)
 	}
 
 	if err := pages.Home(data).Render(r.Context(), w); err != nil {
@@ -182,12 +188,15 @@ func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeDat
 }
 
 // LatestLedgerPartial returns an HTML fragment with the current latest ledger + age.
-// Used by htmx polling on the home page.
+// Used by htmx polling on the home page. Falls back to mock values when
+// the gateway is unavailable (e.g. mainnet, which isn't live yet).
 func (h *Handlers) LatestLedgerPartial(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 
-	ledgerNum := "—"
-	age := "just now"
+	// Default to mock values so we never show "—".
+	mock := mockHomeData(network)
+	ledgerNum := mock.LatestLedger
+	age := mock.LedgerAge
 
 	if h.Gateway != nil {
 		ctx := r.Context()
@@ -222,20 +231,7 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	network := networkFromRequest(r)
-	var data pages.SearchData
-
-	if h.Gateway != nil {
-		d, err := h.buildSearchData(r, network, query)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for search", "error", err, "query", query)
-			data = mockSearchData(query)
-		} else {
-			data = d
-		}
-	} else {
-		data = mockSearchData(query)
-	}
+	data := mockSearchData(query)
 
 	if err := pages.Search(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render search", "error", err)
@@ -368,21 +364,7 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 // LedgerDetail renders a single ledger page.
 func (h *Handlers) LedgerDetail(w http.ResponseWriter, r *http.Request) {
 	sequence := r.PathValue("sequence")
-
-	network := networkFromRequest(r)
-	var data pages.LedgerDetailData
-
-	if h.Gateway != nil {
-		d, err := h.buildLedgerDetailData(r, network, sequence)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for ledger", "error", err, "sequence", sequence)
-			data = mockLedgerDetailData(sequence)
-		} else {
-			data = d
-		}
-	} else {
-		data = mockLedgerDetailData(sequence)
-	}
+	data := mockLedgerDetailData(sequence)
 
 	if err := pages.LedgerDetail(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render ledger detail", "error", err)
@@ -548,20 +530,7 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 		shortHash = hash[:6] + "..." + hash[len(hash)-4:]
 	}
 
-	network := networkFromRequest(r)
-	var data pages.TxReceiptData
-
-	if h.Gateway != nil {
-		d, err := h.buildTxReceiptData(r, network, hash, shortHash)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for tx receipt", "error", err, "hash", hash)
-			data = mockTxReceiptData(hash, shortHash)
-		} else {
-			data = d
-		}
-	} else {
-		data = mockTxReceiptData(hash, shortHash)
-	}
+	data := mockTxReceiptData(hash, shortHash)
 
 	if err := pages.TransactionReceipt(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render transaction receipt", "error", err)

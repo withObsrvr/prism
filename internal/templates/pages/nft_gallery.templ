@@ -89,7 +89,7 @@ templ NftGallery(data NftGalleryData) {
 						</div>
 						<p class="text-sm text-gray-500 mb-1.5 max-w-md">{ data.Description }</p>
 						<div class="flex items-center gap-2">
-							<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">Contract</span>
+							<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-400">Contract</span>
 							<span class="font-mono text-xs text-gray-500">{ data.ContractID }</span>
 							@components.CopyButton(data.ContractID)
 						</div>
@@ -106,33 +106,33 @@ templ NftGallery(data NftGalleryData) {
 			<!-- Stats -->
 			<div class="anim d2 mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
-					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Floor Price</span>
+					<span class="mb-0.5 text-2xs font-semibold uppercase tracking-wider text-gray-400">Floor Price</span>
 					<div class="flex items-baseline">
 						<span class="text-xl font-semibold text-gray-900">{ data.FloorPrice }</span>
 						<span class="ml-1 text-sm font-medium text-gray-400">XLM</span>
 					</div>
-					<span class="mt-0.5 text-[10px] text-gray-400">~{ data.FloorUSD }</span>
+					<span class="mt-0.5 text-2xs text-gray-400">~{ data.FloorUSD }</span>
 				</div>
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
-					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Volume</span>
+					<span class="mb-0.5 text-2xs font-semibold uppercase tracking-wider text-gray-400">Total Volume</span>
 					<div class="flex items-baseline">
 						<span class="text-xl font-semibold text-gray-900">{ data.TotalVolume }</span>
 						<span class="ml-1 text-sm font-medium text-gray-400">XLM</span>
 					</div>
-					<span class="mt-0.5 text-[10px] text-gray-400">~{ data.VolumeUSD }</span>
+					<span class="mt-0.5 text-2xs text-gray-400">~{ data.VolumeUSD }</span>
 				</div>
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
-					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Items</span>
+					<span class="mb-0.5 text-2xs font-semibold uppercase tracking-wider text-gray-400">Items</span>
 					<span class="text-xl font-semibold text-gray-900">{ data.ItemCount }</span>
-					<span class="mt-0.5 text-[10px] text-gray-400">Max supply</span>
+					<span class="mt-0.5 text-2xs text-gray-400">Max supply</span>
 				</div>
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
-					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Holders</span>
+					<span class="mb-0.5 text-2xs font-semibold uppercase tracking-wider text-gray-400">Holders</span>
 					<span class="text-xl font-semibold text-gray-900">{ data.HolderCount }</span>
-					<span class="mt-0.5 text-[10px] text-gray-400">{ data.HolderPct } unique</span>
+					<span class="mt-0.5 text-2xs text-gray-400">{ data.HolderPct } unique</span>
 				</div>
 				<div class="flex flex-col rounded-xl border border-gray-100 bg-[#FAFAFA] p-4 shadow-sm">
-					<span class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Rent Status</span>
+					<span class="mb-0.5 text-2xs font-semibold uppercase tracking-wider text-gray-400">Rent Status</span>
 					<div class="flex items-center gap-1.5 mt-0.5">
 						<span class="relative flex h-2.5 w-2.5">
 							<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -140,7 +140,7 @@ templ NftGallery(data NftGalleryData) {
 						</span>
 						<span class="text-sm font-semibold text-gray-900">{ data.RentStatus }</span>
 					</div>
-					<span class="mt-0.5 text-[10px] text-gray-400">TTL: ~{ data.RentTTL }</span>
+					<span class="mt-0.5 text-2xs text-gray-400">TTL: ~{ data.RentTTL }</span>
 				</div>
 			</div>
 
@@ -215,9 +215,9 @@ templ NftGallery(data NftGalleryData) {
 						<div class="flex flex-wrap gap-2">
 							for _, t := range data.Featured.Traits {
 								<div class="rounded-lg border border-gray-100 bg-[#FAFAFA] px-3 py-2">
-									<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{ t.Name }</div>
+									<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400">{ t.Name }</div>
 									<div class="text-sm font-semibold text-gray-900">{ t.Value }</div>
-									<div class="text-[10px] text-gray-400 mt-0.5">{ t.Rarity } have this</div>
+									<div class="text-2xs text-gray-400 mt-0.5">{ t.Rarity } have this</div>
 								</div>
 							}
 						</div>
@@ -230,9 +230,9 @@ templ NftGallery(data NftGalleryData) {
 							<div class="flex items-center justify-between border-b border-gray-100 py-2.5">
 								<div class="flex flex-col">
 									<span class="text-xs font-medium text-gray-900">{ p.Action }</span>
-									<span class="text-[10px] text-gray-500">{ p.Date }</span>
+									<span class="text-2xs text-gray-500">{ p.Date }</span>
 								</div>
-								<span class="font-mono text-[10px] text-gray-400">{ p.Detail }</span>
+								<span class="font-mono text-2xs text-gray-400">{ p.Detail }</span>
 							</div>
 						}
 					</div>
@@ -247,17 +247,17 @@ templ NftGallery(data NftGalleryData) {
 						<span class="text-xs text-gray-400">{ data.ItemCount } items</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+						<button class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50">
 							<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
 							Filter
 						</button>
-						<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm outline-none">
+						<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none">
 							<option>Sort: Price low → high</option>
 							<option>Sort: Price high → low</option>
 							<option>Sort: Recently listed</option>
 							<option>Sort: Token ID</option>
 						</select>
-						<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm outline-none">
+						<select class="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none">
 							<option>All traits</option>
 							<option>Background: Cosmic</option>
 							<option>Shape: Diamond</option>
@@ -274,7 +274,7 @@ templ NftGallery(data NftGalleryData) {
 									<circle cx="100" cy="100" r={ fmt.Sprintf("%d", 30+i*5) } stroke="rgba(255,255,255,0.15)" stroke-width="1"></circle>
 								</svg>
 								<div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
-									<span class="font-mono text-[11px] text-white/90">#{ nft.TokenID }</span>
+									<span class="font-mono text-xs text-white/90">#{ nft.TokenID }</span>
 								</div>
 							</div>
 							<div class="px-3 py-3">
@@ -282,11 +282,11 @@ templ NftGallery(data NftGalleryData) {
 								<div class="mt-1 flex items-center justify-between">
 									<span class="text-xs text-gray-500">Floor: { nft.Floor }</span>
 									if nft.IsOwned {
-										<span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">Owned</span>
+										<span class="rounded bg-gray-100 px-1.5 py-0.5 text-2xs font-bold text-gray-500">Owned</span>
 									}
 								</div>
 								if !nft.IsOwned && nft.OwnerAddr != "" {
-									<div class="mt-1 font-mono text-[10px] text-gray-400 truncate">{ nft.OwnerAddr }</div>
+									<div class="mt-1 font-mono text-2xs text-gray-400 truncate">{ nft.OwnerAddr }</div>
 								}
 							</div>
 						</div>

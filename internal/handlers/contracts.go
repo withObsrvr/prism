@@ -10,55 +10,12 @@ import (
 )
 
 func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
-	network := networkFromRequest(r)
-	var data pages.ContractListData
-
-	if h.Gateway != nil {
-		contracts, err := h.Gateway.GetTopContracts(r.Context(), network, 20)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for contracts", "error", err)
-			data = mockContractListData()
-		} else {
-			items := make([]pages.ContractListItem, 0, len(contracts))
-			for i, c := range contracts {
-				items = append(items, pages.ContractListItem{
-					Rank:        i + 1,
-					Name:        gateway.ShortAddress(c.ContractID),
-					Address:     gateway.ShortAddress(c.ContractID),
-					Tag:         "Contract",
-					TagColor:    "violet",
-					Invocations: gateway.FormatNumber(c.TotalCalls),
-					Change:      "",
-					IsPositive:  true,
-				})
-			}
-			data = pages.ContractListData{Contracts: items}
-		}
-	} else {
-		data = mockContractListData()
-	}
-
+	data := mockContractListData()
 	pages.ContractList(data).Render(r.Context(), w)
 }
 
 func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
-	network := networkFromRequest(r)
-	contractID := r.PathValue("id")
-
-	var data pages.ContractDetailData
-
-	if h.Gateway != nil {
-		d, err := h.buildContractDetailData(r, network, contractID)
-		if err != nil {
-			h.Logger.Warn("gateway error, using mock data for contract detail", "error", err, "contract", contractID)
-			data = mockContractDetailData()
-		} else {
-			data = d
-		}
-	} else {
-		data = mockContractDetailData()
-	}
-
+	data := mockContractDetailData()
 	pages.ContractDetail(data).Render(r.Context(), w)
 }
 
