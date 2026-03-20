@@ -16,7 +16,7 @@ func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 	data := mockContractDetailData()
-	pages.ContractDetail(data).Render(r.Context(), w)
+	pages.ContractDetailV2(data).Render(r.Context(), w)
 }
 
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {

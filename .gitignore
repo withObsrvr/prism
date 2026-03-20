@@ -15,6 +15,7 @@ node_modules/
 *.swp
 *.swo
 .go/
+/docs/inspiration/
 
 # OS
 .DS_Store

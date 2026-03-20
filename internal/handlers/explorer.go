@@ -532,10 +532,20 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 
 	data := mockTxReceiptData(hash, shortHash)
 
-	if err := pages.TransactionReceipt(data).Render(r.Context(), w); err != nil {
+	if err := pages.TransactionReceiptV2(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render transaction receipt", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+func (h *Handlers) TransactionReceiptV1(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	shortHash := hash
+	if len(hash) > 12 {
+		shortHash = hash[:6] + "..." + hash[len(hash)-4:]
+	}
+	data := mockTxReceiptData(hash, shortHash)
+	pages.TransactionReceipt(data).Render(r.Context(), w)
 }
 
 // buildTxReceiptData fetches real transaction data from the gateway.

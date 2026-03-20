@@ -1,0 +1,184 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+templ ContractDetailV2(data ContractDetailData) {
+	@layouts.Base(data.Name + " — Prism", "contracts") {
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
+
+			<!-- Header -->
+			<div class="anim mt-4 mb-5">
+				@components.BackNav("Back to Contracts", "/contracts")
+				<div class="flex items-center gap-3 mb-2">
+					<span class="text-2xl font-bold text-gray-900">{ data.Name }</span>
+					if data.IsVerified {
+						<svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+					}
+					for _, tag := range data.Tags {
+						@components.Badge(tag, "violet")
+					}
+				</div>
+				<div class="flex items-center gap-1.5 mb-3">
+					<span class="font-mono text-xs text-gray-400">{ data.Address }</span>
+					@components.CopyButton(data.Address)
+				</div>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
+					<span>Invocations <span class="font-semibold text-gray-900 tabular">{ data.TotalInvocations }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Last called <span class="font-semibold text-gray-900">{ data.LastInvoked }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Deployed <span class="font-semibold text-gray-900">{ data.DeployedAt }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Functions <span class="font-semibold text-gray-900">{ data.FunctionsCount }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>State <span class="font-semibold text-gray-900">{ data.StateSize }</span></span>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
+				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Overview</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Invocations</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Storage</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Code</button>
+			</div>
+
+			<!-- Contract Info -->
+			<div class="anim d1 mb-8">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
+						<span class="w-32 text-gray-400 flex-shrink-0">Creator</span>
+						<a href={ templ.SafeURL(data.CreatorHref) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800 ml-4">{ data.Creator }</a>
+					</div>
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
+						<span class="w-32 text-gray-400 flex-shrink-0">WASM</span>
+						<div class="flex items-center gap-2 ml-4">
+							<span class="font-mono text-xs text-gray-500">{ data.WASMHash }</span>
+							@components.CopyButton(data.WASMHash)
+							<span class="text-gray-300">&middot;</span>
+							<span class="text-gray-500">{ data.WASMSize }</span>
+						</div>
+					</div>
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
+						<span class="w-32 text-gray-400 flex-shrink-0">Storage</span>
+						<span class="ml-4">{ data.StorageEntries } entries</span>
+						<span class="text-gray-400 ml-2">&middot;</span>
+						<span class="text-gray-500 ml-2">{ data.StateSize }</span>
+						<span class="text-gray-400 ml-2">&middot;</span>
+						<span class="text-gray-500 ml-2">{ data.MonthlyRent }/mo rent</span>
+					</div>
+					<div class="detail-row flex items-center px-5 py-2.5">
+						<span class="w-32 text-gray-400 flex-shrink-0">Success Rate</span>
+						<span class="font-semibold text-emerald-600 ml-4">{ data.SuccessRate }</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Functions -->
+			if len(data.Functions) > 0 {
+				<div class="anim d2 mb-8">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Top Functions</h3>
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+						<table class="w-full text-left">
+							<thead>
+								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+									<th class="px-5 py-3 font-medium">Function</th>
+									<th class="px-4 py-3 font-medium text-right">24h</th>
+									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">7d</th>
+									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">30d</th>
+									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Success</th>
+									<th class="px-4 py-3 font-medium text-right hidden lg:table-cell">Avg CPU</th>
+									<th class="px-4 py-3 font-medium text-right hidden lg:table-cell">Last Called</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-gray-100">
+								for _, f := range data.Functions {
+									<tr class="hover:bg-gray-50/50 transition-colors">
+										<td class="px-5 py-3"><span class="font-mono text-sm font-medium text-violet-600">{ f.Name }()</span></td>
+										<td class="px-4 py-3 text-right font-mono text-sm text-gray-900 tabular">{ f.Calls24h }</td>
+										<td class="px-4 py-3 text-right font-mono text-sm text-gray-700 tabular hidden md:table-cell">{ f.Calls7d }</td>
+										<td class="px-4 py-3 text-right font-mono text-sm text-gray-700 tabular hidden md:table-cell">{ f.Calls30d }</td>
+										<td class="px-4 py-3 text-right text-sm text-emerald-600 tabular hidden md:table-cell">{ f.SuccessRate }</td>
+										<td class="px-4 py-3 text-right font-mono text-xs text-gray-500 hidden lg:table-cell">{ f.AvgCPU }</td>
+										<td class="px-4 py-3 text-right text-xs text-gray-500 hidden lg:table-cell">{ f.LastCalled }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+
+			<!-- Recent Invocations -->
+			if len(data.Invocations) > 0 {
+				<div class="anim d2 mb-8">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Recent Invocations</h3>
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+						<table class="w-full text-left">
+							<thead>
+								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+									<th class="px-5 py-3 font-medium">Tx</th>
+									<th class="px-4 py-3 font-medium">Function</th>
+									<th class="px-4 py-3 font-medium hidden md:table-cell">Caller</th>
+									<th class="px-4 py-3 font-medium text-right">Status</th>
+									<th class="px-4 py-3 font-medium text-right">Age</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-gray-100">
+								for _, inv := range data.Invocations {
+									<tr class="hover:bg-gray-50/50 transition-colors">
+										<td class="px-5 py-3">
+											<a href={ templ.SafeURL("/tx/" + inv.TxHash) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ inv.ShortHash }</a>
+										</td>
+										<td class="px-4 py-3"><span class="font-mono text-xs text-violet-600">{ inv.Function }()</span></td>
+										<td class="px-4 py-3 hidden md:table-cell"><span class="font-mono text-xs text-gray-500">{ inv.Caller }</span></td>
+										<td class="px-4 py-3 text-right">
+											@components.Badge(inv.Status, inv.StatusColor)
+										</td>
+										<td class="px-4 py-3 text-right text-xs text-gray-500">{ inv.Age }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+
+			<!-- Storage -->
+			if len(data.StorageItems) > 0 {
+				<div class="anim d3 mb-8">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Storage Entries ({ fmt.Sprintf("%s", data.StorageEntries) })</h3>
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+						<table class="w-full text-left">
+							<thead>
+								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+									<th class="px-5 py-3 font-medium">Key</th>
+									<th class="px-4 py-3 font-medium">Type</th>
+									<th class="px-4 py-3 font-medium text-right">Size</th>
+									<th class="px-4 py-3 font-medium text-right">TTL</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-gray-100">
+								for _, s := range data.StorageItems {
+									<tr>
+										<td class="px-5 py-3"><span class="font-mono text-xs text-gray-900">{ s.Key }</span></td>
+										<td class="px-4 py-3">
+											@components.TypeBadge(s.Type, s.TypeColor)
+										</td>
+										<td class="px-4 py-3 text-right text-xs text-gray-700">{ s.Size }</td>
+										<td class="px-4 py-3 text-right text-xs text-gray-700">{ s.TTL }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+
+		</main>
+	}
+}

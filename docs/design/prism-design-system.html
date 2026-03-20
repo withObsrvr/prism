@@ -44,7 +44,7 @@
     </div>
     <div>
       <div class="text-[14px] font-bold">Prism</div>
-      <div class="text-[10px] text-gray-400 -mt-0.5">Design System v1.1</div>
+      <div class="text-[10px] text-gray-400 -mt-0.5">Design System v2.0</div>
     </div>
   </div>
   <div class="space-y-1 text-[12px]">
@@ -62,6 +62,7 @@
     <a href="#tabs" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Tabs</a>
     <a href="#charts" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Charts</a>
     <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">Patterns</div>
+    <a href="#page-headers" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Page Headers</a>
     <a href="#data-display" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Data Display</a>
     <a href="#slideout" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Slide-out Panels</a>
     <a href="#animations" class="block px-2.5 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">Animation</a>
@@ -84,7 +85,7 @@
       </div>
       <div>
         <div class="text-2xl font-bold">Prism Design System</div>
-        <div class="text-[13px] text-gray-400">v1.1 — March 2026</div>
+        <div class="text-[13px] text-gray-400">v2.0 — March 2026</div>
       </div>
     </div>
     <p class="text-[15px] text-gray-500 leading-relaxed max-w-[600px] mb-6">
@@ -516,40 +517,22 @@
 <section id="cards" class="ds-section px-12 py-12 border-b border-gray-100">
   <div class="max-w-[900px]">
     <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Components</div>
-    <h2 class="text-xl font-bold text-gray-900 mb-6">Cards & Stat Cards</h2>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Cards</h2>
 
-    <!-- Stat cards -->
-    <div class="text-[11px] font-semibold text-gray-600 mb-2">Stat cards (6-col grid)</div>
-    <div class="grid grid-cols-6 gap-3 mb-8">
-      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Node Index</div>
-        <div class="text-2xl font-bold text-gray-900 tabular">0.83</div>
-        <div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style="width:83%"></div></div>
+    <!-- Hero number pattern (replaces stat card grids) -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Hero number (primary metric per page)</div>
+    <div class="rounded-xl border border-gray-200 bg-white p-6 mb-4" style="max-width:500px">
+      <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">24h Network Volume</div>
+      <div class="text-4xl font-bold text-gray-900 tabular mb-3">$24.8M</div>
+      <div class="flex items-center gap-5 text-[13px] text-gray-500">
+        <span><strong class="text-gray-900">12,847</strong> assets</span>
+        <span class="text-gray-300">&middot;</span>
+        <span>Trustlines <strong class="text-gray-900">8.2M</strong></span>
       </div>
-      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">24H Validating</div>
-        <div class="text-2xl font-bold text-emerald-600 tabular">100%</div>
-        <div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-emerald-500" style="width:100%"></div></div>
-      </div>
-      <div class="rounded-xl border border-amber-200/60 bg-amber-50/20 px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Crawler Rejected</div>
-        <div class="text-2xl font-bold text-amber-600 tabular">57.3%</div>
-        <div class="mt-1.5 h-1 rounded-full bg-gray-100"><div class="h-1 rounded-full bg-amber-400" style="width:57.3%"></div></div>
-      </div>
-      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Trusts</div>
-        <div class="text-xl font-bold text-gray-900 tabular">21 <span class="text-sm font-normal text-gray-400">nodes</span></div>
-        <div class="text-[10px] text-gray-500 mt-0.5">across 7 organizations</div>
-      </div>
-      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">TPS (avg)</div>
-        <div class="text-2xl font-bold text-gray-900 tabular">14.8</div>
-        <div class="text-[10px] text-gray-500 mt-0.5">peak: 142</div>
-      </div>
-      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Soroban Calls</div>
-        <div class="text-2xl font-bold text-gray-900 tabular">847K</div>
-        <div class="text-[10px] text-emerald-600 font-medium mt-0.5">↑ 28.7%</div>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5 mb-8">
+      <div class="text-[12px] text-gray-500 leading-relaxed">
+        <strong class="text-gray-700">Hero numbers replace stat card grids.</strong> Every page has one primary metric displayed at text-4xl (36px) font-bold. The pattern is: <code class="mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">small uppercase label → big number → inline secondary stats</code>. Inspired by Ramp's balance display. Examples: Account → total value ($58,247), Assets → 24h volume ($24.8M), Network → latest ledger (61,504,113), Events → matched count (2,847), Smart Account → balance ($87,204). Secondary stats sit below in text-sm with dot separators. Never use 6-column stat card grids — they fragment attention across equal-weight metrics.
       </div>
     </div>
 
@@ -834,6 +817,81 @@ makeChart('chart-warning', 'warning');
 </script>
 
 <!-- ═══════════════════════════════════════════════ -->
+<!-- PAGE HEADERS                                     -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="page-headers" class="ds-section px-12 py-12 border-b border-gray-100">
+  <div class="max-w-[900px]">
+    <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Patterns</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-6">Page Headers</h2>
+
+    <p class="text-[13px] text-gray-500 mb-6 max-w-[520px]">Every page follows a consistent header structure inspired by Ramp's financial interfaces. The header answers three questions in order: <strong class="text-gray-700">What am I looking at?</strong> <strong class="text-gray-700">What's the key number?</strong> <strong class="text-gray-700">What's the context?</strong></p>
+
+    <!-- Example: Account page -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Account page header (live specimen)</div>
+    <div class="rounded-xl border border-gray-200 bg-white p-6 mb-6">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="mono text-[18px] font-semibold text-gray-500">GABC...MNOP</span>
+        <svg class="h-3.5 w-3.5 text-gray-300 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">Funded</span>
+      </div>
+      <div class="flex items-baseline mb-3">
+        <span class="text-4xl font-bold text-gray-900 tabular">$58,247</span>
+        <span class="text-2xl font-medium text-gray-400 ml-0.5">.82</span>
+      </div>
+      <div class="flex items-center gap-5 text-[13px] text-gray-500">
+        <span>XLM <strong class="mono text-gray-900 tabular">124,500.00 XLM</strong></span>
+        <span class="text-gray-300">&middot;</span>
+        <span>Trustlines <strong class="text-gray-900">12</strong></span>
+        <span class="text-gray-300">&middot;</span>
+        <span>Signers <strong class="text-gray-900">1</strong></span>
+        <span class="text-gray-300">&middot;</span>
+        <span class="font-medium text-emerald-700">stellar.org</span>
+      </div>
+    </div>
+
+    <!-- Anatomy -->
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5 mb-6">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Header anatomy (top → bottom)</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Line 1: Identity</strong> — Page title or entity name (text-2xl font-bold) + badges (status, type). For detail pages: truncated address/hash + copy button. For list pages: section name ("Assets", "Network").</div>
+        <div><strong class="text-gray-700">Line 2: Hero number</strong> — The single most important metric at text-4xl font-bold tabular. Preceded by a small uppercase label (text-2xs text-gray-400 uppercase tracking-wider). This is the Ramp pattern: "Current balance / $1,011,235.28 USD".</div>
+        <div><strong class="text-gray-700">Line 3: Inline stats</strong> — Secondary metrics as label-value pairs separated by dot separators (· in text-gray-300). Font: text-sm text-gray-500 with values in font-semibold text-gray-900. Never more than 6 items per line.</div>
+        <div><strong class="text-gray-700">Then: Tabs</strong> — Underline-style tabs immediately below the header. The header + tabs constitute the "chrome zone" — everything below is content. Maximum 5 tabs.</div>
+      </div>
+    </div>
+
+    <!-- Hero numbers per page -->
+    <div class="text-[11px] font-semibold text-gray-600 mb-2">Hero number per page</div>
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6">
+      <table class="w-full text-left text-[12px]">
+        <thead><tr class="bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <th class="px-4 py-2.5">Page</th><th class="px-4 py-2.5">Hero Number</th><th class="px-4 py-2.5">What It Answers</th>
+        </tr></thead>
+        <tbody>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Account</td><td class="px-4 py-2.5 mono text-gray-900">$58,247.82</td><td class="px-4 py-2.5 text-gray-500">"How much is in this account?"</td></tr>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Assets</td><td class="px-4 py-2.5 mono text-gray-900">$24.8M</td><td class="px-4 py-2.5 text-gray-500">"How much volume is moving?"</td></tr>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Network</td><td class="px-4 py-2.5 mono text-gray-900">61,504,113</td><td class="px-4 py-2.5 text-gray-500">"What ledger are we on?"</td></tr>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Events</td><td class="px-4 py-2.5 mono text-gray-900">2,847</td><td class="px-4 py-2.5 text-gray-500">"How many events matched?"</td></tr>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Smart Account</td><td class="px-4 py-2.5 mono text-gray-900">$87,204.51</td><td class="px-4 py-2.5 text-gray-500">"What's the treasury balance?"</td></tr>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Ledger Detail</td><td class="px-4 py-2.5 mono text-gray-900">5,104,938</td><td class="px-4 py-2.5 text-gray-500">"Which ledger am I inspecting?" (with Etherscan-style key-value overview below)</td></tr>
+          <tr class="border-t border-gray-50"><td class="px-4 py-2.5 text-gray-700">Tx Receipt</td><td class="px-4 py-2.5 text-gray-500 italic">Summary text</td><td class="px-4 py-2.5 text-gray-500">"What happened?" (human-readable summary as hero, not a number)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Rules</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">No stat card grids</strong> — The v1 pattern of 6-column stat card grids is deprecated. They fragment attention across equal-weight metrics. Instead, elevate one metric as the hero and push the rest to inline stats.</div>
+        <div><strong class="text-gray-700">Key-value overview for detail pages</strong> — Ledger and transaction detail pages use an Etherscan-inspired key-value card below the hero: fixed-width label column (w-32), gap-6 to value, dot separators for secondary context. Each row is a single scan line.</div>
+        <div><strong class="text-gray-700">Two visual zones only</strong> — Header (identity + hero + stats + tabs) → Content (tables/data). No intermediate dashboard layers, bento grids, or stat card sections between header and content.</div>
+        <div><strong class="text-gray-700">Consistent inline stat format</strong> — <code class="mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">Label &lt;strong&gt;Value&lt;/strong&gt; · Label &lt;strong&gt;Value&lt;/strong&gt;</code>. Labels in text-gray-500, values in font-semibold text-gray-900. Dot separator in text-gray-300.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
 <!-- DATA DISPLAY PATTERNS                           -->
 <!-- ═══════════════════════════════════════════════ -->
 <section id="data-display" class="ds-section px-12 py-12 border-b border-gray-100">
@@ -1024,13 +1082,21 @@ makeChart('chart-warning', 'warning');
       </div>
     </div>
 
-    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5 mb-6">
       <h3 class="text-[13px] font-semibold text-gray-900 mb-2">Slide-out specs</h3>
       <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
-        <div><strong class="text-gray-700">Width: 480px</strong> in production (340px shown here for fit). Slides from right with a spring easing (300ms). Backdrop: bg-black/8 with 1px blur.</div>
-        <div><strong class="text-gray-700">Ramp pattern</strong> — Inspired by Ramp's contextual panels. Shows entity preview without navigating away. Always includes "Open Full Page" CTA at the bottom.</div>
+        <div><strong class="text-gray-700">Width: 480px</strong> (340px shown here for fit). Slides from right with spring easing (300ms). Backdrop: bg-black/8 with 1px blur.</div>
         <div><strong class="text-gray-700">Sticky header</strong> — Back button + close button stay pinned. Content scrolls beneath with bg-white/95 backdrop-blur.</div>
-        <div><strong class="text-gray-700">htmx integration</strong> — Triggered via <code class="mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">hx-get="/validators/{id}/preview" hx-target="#slideout"</code>. Panel content is a server-rendered partial.</div>
+        <div><strong class="text-gray-700">htmx integration</strong> — Triggered via <code class="mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">hx-get="/assets/{code}/preview" hx-target="#slideout"</code>. Panel content is a server-rendered templ partial. The <code class="mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">#slideout</code> container and backdrop live in base.templ on every page.</div>
+        <div><strong class="text-gray-700">"View Full Details" CTA</strong> — Every slide-out ends with a full-width dark button linking to the entity's detail page. The slide-out is a preview, not a replacement.</div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-5">
+      <h3 class="text-[13px] font-semibold text-gray-900 mb-2">When to use slide-out vs. full page</h3>
+      <div class="grid grid-cols-2 gap-4 text-[12px] text-gray-500 leading-relaxed">
+        <div><strong class="text-gray-700">Slide-out (browsing from a list)</strong> — Asset rows, validator rows in trust tables, search results. The user's primary context is the list. The slide-out shows data the table CAN'T show: issuer trust info, Soroban integration, holder distribution, DEX pairs, recent activity. If the panel would just repeat the table data, don't build one.</div>
+        <div><strong class="text-gray-700">Full page (committed inspection)</strong> — Ledger detail, transaction receipt, account portfolio. The user navigated here intentionally. The primary content (transactions, operations, balance changes) needs full page width. These pages use the hero header + tabs + tables pattern.</div>
       </div>
     </div>
   </div>

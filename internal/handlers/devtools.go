@@ -25,6 +25,11 @@ func (h *Handlers) EventsFirehose(w http.ResponseWriter, r *http.Request) {
 		data = mockEventsFirehoseData()
 	}
 
+	pages.EventsFirehoseV2(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) EventsFirehoseV1(w http.ResponseWriter, r *http.Request) {
+	data := mockEventsFirehoseData()
 	pages.EventsFirehose(data).Render(r.Context(), w)
 }
 
@@ -103,7 +108,7 @@ func (h *Handlers) StateRentTracker(w http.ResponseWriter, r *http.Request) {
 			{Type: "Instance", TypeColor: "blue", Key: "Admin", KeyDesc: "Contract admin config", Size: "64 B", TTLDays: "42 days", TTLLedgers: "604K", HealthPct: "58%", HealthColor: "emerald", RentPerMonth: "8 XLM"},
 		},
 	}
-	pages.RentTracker(data).Render(r.Context(), w)
+	pages.RentTrackerV2(data).Render(r.Context(), w)
 }
 
 func (h *Handlers) LiveFeed(w http.ResponseWriter, r *http.Request) {

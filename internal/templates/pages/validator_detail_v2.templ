@@ -1,0 +1,256 @@
+package pages
+
+import (
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+templ ValidatorDetailV2(data ValidatorDetailData) {
+	@layouts.Base(data.Name + " — Prism", "network") {
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
+
+			<!-- Header -->
+			<div class="anim mt-4 mb-5">
+				@components.Breadcrumb([]components.BreadcrumbItem{
+					{Label: "Network", Href: "/network"},
+					{Label: data.OrgName, Href: "/network"},
+					{Label: data.Name, Href: ""},
+				})
+				<div class="flex items-center gap-3 mb-2">
+					<span class="text-2xl font-bold text-gray-900">{ data.Name }</span>
+					@components.Badge(data.StatusBadge, "emerald")
+					for _, b := range data.Badges {
+						@components.Badge(b, "gray")
+					}
+				</div>
+				<div class="flex items-center gap-1.5 mb-3">
+					<span class="font-mono text-xs text-gray-400">{ data.ShortNodeID }</span>
+					@components.CopyButton(data.NodeID)
+					<span class="text-xs text-gray-400 ml-2">{ data.NodeType }</span>
+				</div>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
+					<span>Index <span class="font-semibold text-gray-900 tabular">{ data.NodeIndex }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>24H <span class="font-semibold text-emerald-600 tabular">{ data.Validating24H }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>30D <span class="font-semibold text-emerald-600 tabular">{ data.Validating30D }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Trusts <span class="font-semibold text-gray-900">{ data.TrustsCount }</span> nodes</span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Trusted by <span class="font-semibold text-gray-900">{ data.TrustedByCount }</span></span>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
+				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Overview</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Quorum Set</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Trusts ({ data.TrustsCount })</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Trusted By ({ data.TrustedByCount })</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Updates</button>
+			</div>
+
+			<!-- 30D Charts -->
+			<div class="anim d1 grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+				@validatorBarChart("Validating", data.Validating30D, validatingBars(), "emerald")
+				@validatorBarChart("History Archive", "99.97%", historyBars(), "emerald")
+				@validatorBarChart("Crawler Rejected", data.CrawlerReject, crawlerBars(), "red")
+			</div>
+
+			<!-- Two-column: Node Info + Organization -->
+			<div class="anim d1 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+				<!-- Node Info -->
+				<div>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Node Details</h3>
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">Host</span>
+							<span class="font-mono text-xs text-gray-700">{ data.Host }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">IP</span>
+							<span class="font-mono text-xs text-gray-700">{ data.IP }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">Version</span>
+							<span class="text-gray-900">{ data.Version }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">Organization</span>
+							<span class="font-medium text-gray-900">{ data.Organization }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">Country</span>
+							<span class="text-gray-900">{ data.Country }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">ISP</span>
+							<span class="text-gray-700">{ data.ISP }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5">
+							<span class="text-gray-400">Discovered</span>
+							<span class="text-gray-700">{ data.Discovered }</span>
+						</div>
+					</div>
+				</div>
+				<!-- Organization -->
+				<div>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Organization: { data.OrgName }</h3>
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+						for _, n := range data.OrgNodes {
+							<div class={ "detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100", templ.KV("bg-emerald-50/30", n.IsViewing) }>
+								<div class="flex items-center gap-2">
+									<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+									<span class="font-medium text-gray-900">{ n.Name }</span>
+									if n.IsViewing {
+										@components.Badge("Viewing", "emerald")
+									}
+								</div>
+								<span class="text-emerald-600 tabular">{ n.Uptime }</span>
+							</div>
+						}
+						<div class="flex items-center justify-between px-5 py-2.5 bg-gray-50/80">
+							<span class="text-gray-400">Org Uptime</span>
+							<span class="font-semibold text-emerald-600">{ data.OrgUptime }</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Quorum Set -->
+			<div class="anim d2 mb-8">
+				<div class="flex items-center gap-3 mb-2">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Quorum Set</h3>
+					@components.Badge(data.QuorumThreshold, "amber")
+				</div>
+				<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+					<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3">
+						for _, qs := range data.QuorumSets {
+							<div class={ "rounded-lg border p-3", templ.KV("border-emerald-200 bg-emerald-50/30", qs.IsSelf), templ.KV("border-gray-200", !qs.IsSelf) }>
+								<div class={ "text-2xs font-bold uppercase tracking-wider mb-2", templ.KV("text-emerald-700", qs.IsSelf), templ.KV("text-gray-700", !qs.IsSelf) }>{ qs.Name }</div>
+								<div class="text-2xs text-gray-500 mb-2">{ qs.Threshold }</div>
+								<div class="flex flex-col gap-1">
+									for _, n := range qs.Nodes {
+										<div class="flex items-center gap-1.5">
+											<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+											<span class="font-mono text-2xs text-gray-600">{ n.Name }</span>
+										</div>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+
+			<!-- Trusts Table -->
+			<div class="anim d3 mb-8">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Trusts ({ data.TrustsCount })</h3>
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<table class="w-full text-left">
+						<thead>
+							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+								<th class="px-5 py-3 font-medium">Validator</th>
+								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">24H</th>
+								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">30D</th>
+								<th class="px-4 py-3 font-medium text-right hidden lg:table-cell">Version</th>
+								<th class="px-4 py-3 font-medium text-right hidden lg:table-cell">Country</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-100">
+							for _, t := range data.Trusts {
+								<tr class="hover:bg-gray-50/50 transition-colors cursor-pointer"
+									hx-get={ "/network/validators/" + t.Name + "/preview" }
+									hx-target="#slideout"
+									hx-swap="innerHTML">
+									<td class="px-5 py-3">
+										<div class="flex items-center gap-2">
+											<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+											<span class="font-medium text-gray-900">{ t.Name }</span>
+											if t.Badge != "" {
+												@components.Badge(t.Badge, t.BadgeColor)
+											}
+										</div>
+									</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell text-sm tabular">{ t.Valid24H }</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell">
+										<span class={ "text-sm tabular", templ.KV("text-emerald-600", t.Color30D == "emerald-600"), templ.KV("text-amber-600", t.Color30D == "amber-600") }>{ t.Valid30D }</span>
+									</td>
+									<td class="px-4 py-3 text-right hidden lg:table-cell font-mono text-xs text-gray-500">{ t.Version }</td>
+									<td class="px-4 py-3 text-right hidden lg:table-cell text-xs text-gray-700">{ t.Country }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Updates -->
+			if len(data.Updates) > 0 {
+				<div class="anim d4 mb-8">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Recent Updates</h3>
+					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+						for _, u := range data.Updates {
+							<div class="detail-row flex items-center gap-3 px-5 py-3 border-b border-gray-100">
+								<span class="text-xs text-gray-400 w-40 flex-shrink-0">{ u.Date }</span>
+								<span class="text-sm text-gray-700">{ u.Detail }</span>
+							</div>
+						}
+					</div>
+				</div>
+			}
+
+		</main>
+	}
+}
+
+// Single parameterized chart component — replaces validatorChart + validatorChartAmber.
+templ validatorBarChart(title string, value string, bars []barEntry, color string) {
+	<div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+		<div class="flex items-center justify-between mb-1">
+			<span class="text-sm font-semibold text-gray-900">{ title }</span>
+			<span class={ "text-sm font-bold tabular", templ.KV("text-emerald-600", color == "emerald"), templ.KV("text-red-500", color == "red"), templ.KV("text-amber-600", color == "amber") }>{ value }</span>
+		</div>
+		<div class="flex items-end gap-[3px] h-16 mb-2">
+			for _, b := range bars {
+				<div class={ "flex-1 rounded-t-sm", b.Color } style={ "height:" + b.Height }></div>
+			}
+		</div>
+		<div class="flex justify-between text-2xs text-gray-400"><span>30d ago</span><span>15d</span><span>Today</span></div>
+	</div>
+}
+
+type barEntry struct {
+	Height string
+	Color  string
+}
+
+func validatingBars() []barEntry {
+	heights := []string{"100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","85%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%","100%"}
+	bars := make([]barEntry, len(heights))
+	for i, h := range heights {
+		c := "bg-emerald-500"
+		if h != "100%" {
+			c = "bg-amber-400"
+		}
+		bars[i] = barEntry{Height: h, Color: c}
+	}
+	return bars
+}
+
+func historyBars() []barEntry {
+	bars := make([]barEntry, 30)
+	for i := range bars {
+		bars[i] = barEntry{Height: "100%", Color: "bg-emerald-500"}
+	}
+	return bars
+}
+
+func crawlerBars() []barEntry {
+	heights := []string{"65%","44%","73%","50%","79%","79%","33%","44%","32%","50%","55%","47%","34%","43%","66%","75%","50%","43%","71%","61%","55%","71%","59%","39%","46%","38%","45%","77%","65%","64%"}
+	bars := make([]barEntry, len(heights))
+	for i, h := range heights {
+		bars[i] = barEntry{Height: h, Color: "bg-red-400"}
+	}
+	return bars
+}

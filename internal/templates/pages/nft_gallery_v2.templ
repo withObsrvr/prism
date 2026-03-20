@@ -1,0 +1,158 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
+)
+
+templ NftGalleryV2(data NftGalleryData) {
+	@layouts.Base(data.CollectionName + " — Prism", "explorer") {
+		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
+
+			<!-- Header -->
+			<div class="anim mt-4 mb-5">
+				@components.BackNav("Back to Explorer", "/")
+				<div class="flex items-center gap-3 mb-2">
+					<span class="text-2xl font-bold text-gray-900">{ data.CollectionName }</span>
+					if data.IsVerified {
+						<svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+					}
+					@components.Badge(data.Standard, "violet")
+				</div>
+				<div class="flex items-center gap-1.5 mb-3">
+					<span class="font-mono text-xs text-gray-400">{ data.ContractID }</span>
+					@components.CopyButton(data.ContractID)
+				</div>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
+					<span>Floor <span class="font-semibold text-gray-900 tabular">{ data.FloorPrice }</span> <span class="text-gray-400">{ data.FloorUSD }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Volume <span class="font-semibold text-gray-900 tabular">{ data.TotalVolume }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Items <span class="font-semibold text-gray-900 tabular">{ data.ItemCount }</span></span>
+					<span class="text-gray-300">&middot;</span>
+					<span>Holders <span class="font-semibold text-gray-900 tabular">{ data.HolderCount }</span> <span class="text-gray-400">{ data.HolderPct } unique</span></span>
+				</div>
+			</div>
+
+			<!-- Tabs -->
+			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
+				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Collection</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Activity</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Holders</button>
+				<button class="pb-3.5 hover:text-gray-900 transition-colors">Contract</button>
+			</div>
+
+			<!-- Featured Item -->
+			<div class="anim d1 mb-8">
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="grid grid-cols-1 md:grid-cols-2">
+						<!-- Generated SVG art -->
+						<div class="aspect-square w-full overflow-hidden bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] relative">
+							<svg class="absolute inset-0 h-full w-full" viewBox="0 0 400 400" fill="none">
+								<rect x="50" y="50" width="120" height="120" stroke="rgba(255,255,255,0.15)" stroke-width="1" transform="rotate(15 110 110)"></rect>
+								<circle cx="200" cy="200" r="100" stroke="rgba(255,255,255,0.12)" stroke-width="1"></circle>
+								<circle cx="200" cy="200" r="60" stroke="rgba(233,69,96,0.3)" stroke-width="2"></circle>
+								<circle cx="200" cy="200" r="20" fill="rgba(233,69,96,0.15)"></circle>
+								<polygon points="200,80 280,240 120,240" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" fill="none"></polygon>
+							</svg>
+							<div class="absolute bottom-4 left-4 rounded-lg bg-black/40 px-3 py-1.5 backdrop-blur-sm">
+								<span class="font-mono text-sm font-medium text-white/90">#{ data.Featured.TokenID }</span>
+							</div>
+						</div>
+						<!-- Metadata -->
+						<div class="p-6">
+							<h3 class="text-lg font-bold text-gray-900 mb-1">{ data.Featured.Name }</h3>
+							<p class="text-sm text-gray-500 mb-4">{ data.Featured.Description }</p>
+
+							<div class="rounded-xl border border-gray-200 overflow-hidden text-sm mb-4">
+								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+									<span class="text-gray-400">Owner</span>
+									<span class="font-mono text-xs text-emerald-700">{ data.Featured.Owner }</span>
+								</div>
+								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+									<span class="text-gray-400">Standard</span>
+									<span class="text-gray-900">{ data.Featured.TokenStandard }</span>
+								</div>
+								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+									<span class="text-gray-400">Last Transfer</span>
+									<span class="text-gray-700">{ data.Featured.LastTransfer }</span>
+								</div>
+								<div class="detail-row flex items-center justify-between px-4 py-2.5">
+									<span class="text-gray-400">Storage</span>
+									<span class="text-gray-700">{ data.Featured.MetadataStorage }</span>
+								</div>
+							</div>
+
+							<!-- Traits -->
+							if len(data.Featured.Traits) > 0 {
+								<div class="flex flex-wrap gap-2">
+									for _, t := range data.Featured.Traits {
+										<div class="rounded-lg bg-gray-50 px-3 py-1.5 text-xs">
+											<span class="text-gray-400">{ t.Name }</span>
+											<span class="font-medium text-gray-900 ml-1">{ t.Value }</span>
+											<span class="text-gray-400 ml-1">{ t.Rarity }</span>
+										</div>
+									}
+								</div>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Gallery Grid -->
+			<div class="anim d2 mb-8">
+				<div class="flex items-center justify-between mb-3">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400">All Items ({ data.ItemCount })</h3>
+				</div>
+				<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+					for i, item := range data.Items {
+						<div class={ "rounded-xl bg-white shadow-sm overflow-hidden cursor-pointer transition-shadow hover:shadow-md", templ.KV("border-2 border-gray-900", i == 0), templ.KV("border border-gray-200", i != 0) }>
+							<div class={ "aspect-square w-full relative", nftBgClass(item.ArtClass) }>
+								<!-- Generated SVG art -->
+								<svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
+									<polygon points={ fmt.Sprintf("100,30 %d,140 %d,140", 130+i*10, 70-i*5) } stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"></polygon>
+									<circle cx="100" cy="100" r={ fmt.Sprintf("%d", 30+i*5) } stroke="rgba(255,255,255,0.15)" stroke-width="1"></circle>
+								</svg>
+								<div class="absolute bottom-2 left-2 rounded bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+									<span class="font-mono text-xs text-white/90">#{ item.TokenID }</span>
+								</div>
+							</div>
+							<div class="px-3 py-3">
+								<div class="text-sm font-semibold text-gray-900 truncate">{ item.Name }</div>
+								<div class="mt-1 flex items-center justify-between">
+									<span class="text-xs text-gray-500 tabular">Floor: { item.Floor }</span>
+									if item.IsOwned {
+										<span class="rounded bg-gray-100 px-1.5 py-0.5 text-2xs font-bold text-gray-500">Owned</span>
+									}
+								</div>
+								if !item.IsOwned && item.OwnerAddr != "" {
+									<div class="mt-1 font-mono text-2xs text-gray-400 truncate">{ item.OwnerAddr }</div>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			</div>
+
+			@components.Pagination(1, 4, "/nft")
+
+		</main>
+	}
+}
+
+func nftBgClass(artClass string) string {
+	switch artClass {
+	case "hero":
+		return "bg-gradient-to-br from-violet-600 to-cyan-500"
+	case "cool":
+		return "bg-gradient-to-br from-blue-500 to-emerald-400"
+	case "warm":
+		return "bg-gradient-to-br from-amber-500 to-rose-500"
+	case "nature":
+		return "bg-gradient-to-br from-emerald-500 to-teal-400"
+	default:
+		return "bg-gradient-to-br from-gray-400 to-gray-500"
+	}
+}

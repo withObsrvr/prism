@@ -1,0 +1,250 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+)
+
+// AssetPreviewData holds everything the asset slide-out needs.
+// Extends beyond the table row — this is the data you CAN'T see in the list.
+type AssetPreviewData struct {
+	// Identity (from table row)
+	Code       string
+	Name       string
+	Initial    string
+	BgColor    string
+	IsVerified bool
+	TypeBadge  string
+	TypeColor  string
+	Price      string
+	Change     string
+	IsUp       bool
+
+	// Trust & Issuer (not in table)
+	HomeDomain   string
+	IssuerAddr   string
+	AuthRequired bool
+	AuthRevocable bool
+	TomlVerified bool
+
+	// Soroban integration (not in table)
+	HasSAC           bool
+	SACContractID    string
+	SorobanPools     int
+	SorobanTransfers string
+
+	// Distribution (not in table)
+	Top10Pct    string
+	Top100Pct   string
+	GiniLabel   string
+
+	// DEX pairs (not in table)
+	Pairs []AssetPair
+
+	// Recent activity (not in table)
+	RecentTxs []AssetRecentTx
+}
+
+type AssetPair struct {
+	CounterCode string
+	Pool        string
+	Liquidity   string
+	Volume24h   string
+}
+
+type AssetRecentTx struct {
+	Type    string
+	Amount  string
+	Account string
+	Age     string
+}
+
+// AssetPreview renders a slide-out panel with data you can't see in the table.
+templ AssetPreview(data AssetPreviewData) {
+	<div class="bg-white border-l border-gray-200 shadow-2xl h-full overflow-y-auto">
+		<!-- Header -->
+		<div class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100">
+			<button class="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+					onclick="document.getElementById('slideout').innerHTML=''; document.getElementById('slideout-backdrop').classList.add('hidden')">
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+				Back
+			</button>
+			<button class="text-gray-400 hover:text-gray-900 transition-colors"
+					onclick="document.getElementById('slideout').innerHTML=''; document.getElementById('slideout-backdrop').classList.add('hidden')">
+				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+			</button>
+		</div>
+
+		<div class="px-6 py-5">
+			<!-- Identity + Price (brief recap) -->
+			<div class="flex items-center gap-3 mb-1">
+				<div class={ "flex h-11 w-11 items-center justify-center rounded-full text-white font-bold", data.BgColor }>{ data.Initial }</div>
+				<div>
+					<div class="flex items-center gap-2">
+						<span class="text-lg font-bold text-gray-900">{ data.Code }</span>
+						if data.IsVerified {
+							<svg class="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+						}
+						@components.TypeBadge(data.TypeBadge, data.TypeColor)
+					</div>
+					<div class="flex items-center gap-2 text-sm">
+						<span class="font-semibold text-gray-900 tabular">{ data.Price }</span>
+						if data.IsUp {
+							<span class="text-emerald-600 font-medium tabular">{ data.Change }</span>
+						} else {
+							<span class="text-red-500 font-medium tabular">{ data.Change }</span>
+						}
+					</div>
+				</div>
+			</div>
+
+			<!-- ─── ISSUER TRUST ─── -->
+			<div class="mt-6 mb-5">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Issuer Trust</h3>
+				<div class="rounded-xl border border-gray-200 overflow-hidden text-sm">
+					<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+						<span class="text-gray-400">Home Domain</span>
+						if data.HomeDomain != "" {
+							<span class="text-emerald-700 font-medium">{ data.HomeDomain }</span>
+						} else {
+							<span class="text-gray-300">Not set</span>
+						}
+					</div>
+					<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+						<span class="text-gray-400">Issuer</span>
+						<div class="flex items-center gap-1.5">
+							<span class="font-mono text-xs text-gray-500">{ data.IssuerAddr }</span>
+							@components.CopyButton(data.IssuerAddr)
+						</div>
+					</div>
+					<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+						<span class="text-gray-400">stellar.toml</span>
+						if data.TomlVerified {
+							<span class="flex items-center gap-1 text-emerald-600 font-medium">
+								<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+								Verified
+							</span>
+						} else {
+							<span class="text-amber-600 font-medium">Unverified</span>
+						}
+					</div>
+					<div class="detail-row flex items-center justify-between px-4 py-2.5">
+						<span class="text-gray-400">Auth Flags</span>
+						<div class="flex items-center gap-2">
+							if data.AuthRequired {
+								@components.TypeBadge("AUTH_REQUIRED", "amber")
+							}
+							if data.AuthRevocable {
+								@components.TypeBadge("REVOCABLE", "red")
+							}
+							if !data.AuthRequired && !data.AuthRevocable {
+								<span class="text-gray-300">None</span>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ─── SOROBAN ─── -->
+			if data.HasSAC {
+				<div class="mb-5">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Soroban Integration</h3>
+					<div class="rounded-xl border border-gray-200 overflow-hidden text-sm">
+						<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">SAC Contract</span>
+							<div class="flex items-center gap-1.5">
+								<span class="font-mono text-xs text-violet-600">{ data.SACContractID }</span>
+								@components.CopyButton(data.SACContractID)
+							</div>
+						</div>
+						<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+							<span class="text-gray-400">Soroban Pools</span>
+							<span class="font-semibold text-violet-700 tabular">{ fmt.Sprintf("%d", data.SorobanPools) }</span>
+						</div>
+						<div class="detail-row flex items-center justify-between px-4 py-2.5">
+							<span class="text-gray-400">24h SAC Transfers</span>
+							<span class="font-semibold text-gray-900 tabular">{ data.SorobanTransfers }</span>
+						</div>
+					</div>
+				</div>
+			}
+
+			<!-- ─── DISTRIBUTION ─── -->
+			<div class="mb-5">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Distribution</h3>
+				<div class="rounded-xl border border-gray-200 overflow-hidden text-sm">
+					<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+						<span class="text-gray-400">Top 10 Holders</span>
+						<span class="font-semibold text-gray-900 tabular">{ data.Top10Pct }</span>
+					</div>
+					<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+						<span class="text-gray-400">Top 100 Holders</span>
+						<span class="font-semibold text-gray-900 tabular">{ data.Top100Pct }</span>
+					</div>
+					<div class="detail-row flex items-center justify-between px-4 py-2.5">
+						<span class="text-gray-400">Concentration</span>
+						@components.Badge(data.GiniLabel, giniColor(data.GiniLabel))
+					</div>
+				</div>
+			</div>
+
+			<!-- ─── DEX PAIRS ─── -->
+			if len(data.Pairs) > 0 {
+				<div class="mb-5">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">DEX Pairs</h3>
+					<div class="rounded-xl border border-gray-200 overflow-hidden text-sm">
+						for i, p := range data.Pairs {
+							<div class={ "detail-row flex items-center justify-between px-4 py-2.5", templ.KV("border-b border-gray-100", i < len(data.Pairs)-1) }>
+								<div>
+									<span class="font-semibold text-gray-900">{ data.Code }/{ p.CounterCode }</span>
+									<span class="text-gray-400 ml-1.5 text-xs">{ p.Pool }</span>
+								</div>
+								<div class="text-right">
+									<div class="text-xs font-semibold text-gray-900 tabular">{ p.Liquidity }</div>
+									<div class="text-2xs text-gray-400 tabular">{ p.Volume24h } 24h</div>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			}
+
+			<!-- ─── RECENT ACTIVITY ─── -->
+			if len(data.RecentTxs) > 0 {
+				<div class="mb-6">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Recent Activity</h3>
+					<div class="space-y-2">
+						for _, tx := range data.RecentTxs {
+							<div class="flex items-center gap-3 text-sm">
+								<span class={ "w-14 text-2xs font-bold uppercase", templ.KV("text-emerald-600", tx.Type == "buy"), templ.KV("text-red-500", tx.Type == "sell"), templ.KV("text-gray-500", tx.Type != "buy" && tx.Type != "sell") }>{ tx.Type }</span>
+								<span class="font-mono text-xs text-gray-900 tabular">{ tx.Amount }</span>
+								<span class="text-gray-300">&middot;</span>
+								<span class="font-mono text-xs text-gray-400">{ tx.Account }</span>
+								<span class="text-2xs text-gray-400 ml-auto">{ tx.Age }</span>
+							</div>
+						}
+					</div>
+				</div>
+			}
+
+			<!-- CTA -->
+			<a href="/assets" class="flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
+				View Full Asset Details
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+			</a>
+		</div>
+	</div>
+}
+
+func giniColor(label string) string {
+	switch label {
+	case "Low":
+		return "emerald"
+	case "Moderate":
+		return "amber"
+	case "High":
+		return "red"
+	default:
+		return "gray"
+	}
+}
