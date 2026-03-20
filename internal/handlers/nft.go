@@ -54,5 +54,5 @@ func (h *Handlers) NftGallery(w http.ResponseWriter, r *http.Request) {
 			{TokenID: "0012", Name: "Primordial", Floor: "3,200 XLM", IsOwned: false, OwnerAddr: "GMINT...8K32", ArtClass: "nature"},
 		},
 	}
-	pages.NftGallery(data).Render(r.Context(), w)
+	pages.NftGalleryV2(data).Render(r.Context(), w)
 }

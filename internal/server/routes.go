@@ -32,12 +32,14 @@ func (app *Application) Routes() http.Handler {
 
 	// Transactions
 	mux.HandleFunc("GET /tx/{hash}", h.TransactionReceipt)
+	mux.HandleFunc("GET /tx/v1/{hash}", h.TransactionReceiptV1)
 
 	// ─────────────────────────────────────────────
 	// Network routes
 	// ─────────────────────────────────────────────
 
 	mux.HandleFunc("GET /network", h.NetworkHealth)
+	mux.HandleFunc("GET /network/v1", h.NetworkHealthV1)
 	mux.HandleFunc("GET /network/validators/{id}", h.ValidatorDetail)
 
 	// htmx partial: slide-out panel preview
@@ -47,7 +49,9 @@ func (app *Application) Routes() http.Handler {
 	// Assets routes
 	// ─────────────────────────────────────────────
 
-	mux.HandleFunc("GET /assets", h.AssetDirectory)
+	mux.HandleFunc("GET /assets", h.AssetDirectoryV2)
+	mux.HandleFunc("GET /assets/v1", h.AssetDirectory)
+	mux.HandleFunc("GET /assets/{slug}/preview", h.AssetPreview)
 	mux.HandleFunc("GET /assets/{slug}", h.AssetDetail)
 
 	// ─────────────────────────────────────────────
@@ -70,6 +74,7 @@ func (app *Application) Routes() http.Handler {
 	// ─────────────────────────────────────────────
 
 	mux.HandleFunc("GET /events", h.EventsFirehose)
+	mux.HandleFunc("GET /events/v1", h.EventsFirehoseV1)
 	mux.HandleFunc("GET /state", h.StateRentTracker)
 
 	// ─────────────────────────────────────────────

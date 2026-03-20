@@ -11,6 +11,11 @@ import (
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
 	data := mockAccountData()
+	pages.AccountPortfolioV2(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) AccountPortfolioV1(w http.ResponseWriter, r *http.Request) {
+	data := mockAccountData()
 	pages.AccountPortfolio(data).Render(r.Context(), w)
 }
 
@@ -197,5 +202,5 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 			{Action: "Threshold updated to 2-of-3", Detail: "Oct 2, 2026 · at deployment", Time: "5d ago", Status: "OK", StatusColor: "amber", IconSVG: "key", IconBg: "bg-amber-50 text-amber-600"},
 		},
 	}
-	pages.SmartAccount(data).Render(r.Context(), w)
+	pages.SmartAccountV2(data).Render(r.Context(), w)
 }

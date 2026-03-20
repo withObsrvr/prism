@@ -11,6 +11,11 @@ import (
 
 func (h *Handlers) NetworkHealth(w http.ResponseWriter, r *http.Request) {
 	data := mockNetworkHealthData()
+	pages.NetworkHealthV2(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) NetworkHealthV1(w http.ResponseWriter, r *http.Request) {
+	data := mockNetworkHealthData()
 	pages.NetworkHealth(data).Render(r.Context(), w)
 }
 
@@ -260,7 +265,7 @@ func (h *Handlers) ValidatorDetail(w http.ResponseWriter, r *http.Request) {
 			{IconBg: "bg-violet-100", IconColor: "text-violet-600", IconSVG: "bolt", Date: "1/23/2026, 7:06 PM", Detail: "Stellar core updated to version 25.1.0"},
 		},
 	}
-	pages.ValidatorDetail(data).Render(r.Context(), w)
+	pages.ValidatorDetailV2(data).Render(r.Context(), w)
 }
 
 func (h *Handlers) ValidatorPreview(w http.ResponseWriter, r *http.Request) {

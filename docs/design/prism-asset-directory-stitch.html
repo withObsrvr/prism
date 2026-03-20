@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Prism | Assets Explorer</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-container": "#8a4cfc",
+              "inverse-primary": "#4edea3",
+              "on-error": "#ffffff",
+              "inverse-surface": "#2f3131",
+              "error": "#ba1a1a",
+              "on-surface-variant": "#3c4a42",
+              "on-secondary-fixed-variant": "#5a00c6",
+              "surface": "#f9f9f9",
+              "on-surface": "#1a1c1c",
+              "tertiary-container": "#fc7c78",
+              "surface-container": "#eeeeee",
+              "outline": "#6c7a71",
+              "on-primary-container": "#00422b",
+              "on-tertiary": "#ffffff",
+              "on-error-container": "#93000a",
+              "secondary-fixed-dim": "#d2bbff",
+              "on-secondary": "#ffffff",
+              "on-secondary-container": "#fffbff",
+              "surface-container-highest": "#e2e2e2",
+              "on-background": "#1a1c1c",
+              "tertiary-fixed-dim": "#ffb3af",
+              "on-primary-fixed": "#002113",
+              "on-primary-fixed-variant": "#005236",
+              "secondary": "#712ae2",
+              "tertiary-fixed": "#ffdad7",
+              "surface-container-high": "#e8e8e8",
+              "on-tertiary-fixed-variant": "#842225",
+              "primary-fixed-dim": "#4edea3",
+              "surface-tint": "#006c49",
+              "primary": "#006c49",
+              "inverse-on-surface": "#f0f1f1",
+              "primary-container": "#10b981",
+              "tertiary": "#a43a3a",
+              "error-container": "#ffdad6",
+              "surface-container-low": "#f3f3f3",
+              "on-primary": "#ffffff",
+              "background": "#f9f9f9",
+              "surface-dim": "#dadada",
+              "on-tertiary-fixed": "#410005",
+              "outline-variant": "#bbcabf",
+              "surface-bright": "#f9f9f9",
+              "on-tertiary-container": "#711419",
+              "secondary-fixed": "#eaddff",
+              "on-secondary-fixed": "#25005a",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#6ffbbe",
+              "surface-variant": "#e2e2e2"
+            },
+            fontFamily: {
+              "headline": ["Instrument Sans", "sans-serif"],
+              "body": ["Instrument Sans", "sans-serif"],
+              "label": ["Instrument Sans", "sans-serif"],
+              "mono": ["JetBrains Mono", "monospace"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full h-[56px] z-50 bg-[#f9f9f9]/80 dark:bg-[#1a1c1c]/80 backdrop-blur-xl">
+<div class="flex items-center justify-between px-6 max-w-[1440px] mx-auto w-full h-full relative">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-[#1a1c1c] dark:text-[#f9f9f9]">Prism</span>
+<nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+<a class="text-[#1a1c1c]/60 dark:text-[#f9f9f9]/60 hover:text-[#10B981] transition-colors" href="#">Explorer</a>
+<a class="text-[#1a1c1c]/60 dark:text-[#f9f9f9]/60 hover:text-[#10B981] transition-colors" href="#">Network</a>
+<a class="text-[#10B981] font-semibold border-b-2 border-[#10B981] pb-1" href="#">Assets</a>
+<a class="text-[#1a1c1c]/60 dark:text-[#f9f9f9]/60 hover:text-[#10B981] transition-colors" href="#">Contracts</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-xs font-mono px-2 py-1 rounded bg-primary-container/10 text-primary-container font-medium uppercase tracking-wider">Mainnet</span>
+<button class="p-2 hover:bg-[#f3f3f3] dark:hover:bg-[#2d2d2d] rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+</div>
+<div class="bg-[#f3f3f3] dark:bg-[#2d2d2d] h-[1px] w-full absolute bottom-0 left-0"></div>
+</div>
+</header>
+<main class="pt-[56px] min-h-screen max-w-[1440px] mx-auto px-6 pb-12">
+<!-- Header Section -->
+<div class="mt-12 mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h1 class="text-4xl font-bold tracking-tight mb-2">Assets Explorer</h1>
+<p class="text-on-surface-variant max-w-2xl">A comprehensive ledger of Stellar Classic (SEP-39) and Soroban Smart Assets (SEP-41). Analyze liquidity, distribution, and contract integration across the network.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex flex-col items-end">
+<span class="text-[0.6875rem] font-mono text-on-surface-variant uppercase tracking-widest">Network Liquidity</span>
+<span class="text-xl font-bold tabular-nums">$2.48B</span>
+</div>
+<div class="h-10 w-[1px] bg-surface-container-highest mx-2"></div>
+<div class="flex flex-col items-end">
+<span class="text-[0.6875rem] font-mono text-secondary uppercase tracking-widest">Soroban Adoption</span>
+<span class="text-xl font-bold tabular-nums">142 <span class="text-sm font-medium text-on-surface-variant">SEP-41</span></span>
+</div>
+</div>
+</div>
+<!-- Stats Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+<div class="md:col-span-2 bg-surface-container-low p-6 rounded-xl flex flex-col justify-between min-h-[140px]">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary text-3xl">account_balance_wallet</span>
+<span class="text-[0.6875rem] font-mono bg-white px-2 py-1 rounded shadow-sm">LIVE FEED</span>
+</div>
+<div>
+<div class="text-2xl font-bold tabular-nums">$842.1M</div>
+<div class="text-sm text-on-surface-variant">24h Total Volume Across All Assets</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between">
+<span class="material-symbols-outlined text-secondary">terminal</span>
+<div>
+<div class="text-2xl font-bold tabular-nums">412k</div>
+<div class="text-sm text-on-surface-variant">Daily Trustline Changes</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between">
+<span class="material-symbols-outlined text-primary">verified</span>
+<div>
+<div class="text-2xl font-bold tabular-nums">1,204</div>
+<div class="text-sm text-on-surface-variant">Verified Issuers</div>
+</div>
+</div>
+</div>
+<!-- Controls Bar -->
+<div class="bg-surface-container-low rounded-xl p-2 mb-4 flex flex-col lg:flex-row gap-4">
+<!-- Tabs -->
+<div class="flex bg-surface-container-highest p-1 rounded-lg">
+<button class="px-6 py-2 text-sm font-semibold bg-white text-on-surface rounded-md shadow-sm">All Assets</button>
+<button class="px-6 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Classic (SEP-39)</button>
+<button class="px-6 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Soroban (SEP-41)</button>
+</div>
+<!-- Search & Filters -->
+<div class="flex-1 flex flex-col md:flex-row gap-3">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="w-full h-full pl-10 pr-4 py-2 bg-white border-none rounded-lg text-sm focus:ring-2 focus:ring-primary-container outline-none transition-shadow placeholder:text-on-surface-variant/50" placeholder="Filter by name, code, or issuer address..." type="text"/>
+</div>
+<div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border-none">
+<span class="text-sm font-medium">Verified Only</span>
+<button class="w-10 h-5 rounded-full bg-primary-container relative flex items-center px-1">
+<div class="w-3.5 h-3.5 bg-white rounded-full translate-x-4.5"></div>
+</button>
+</div>
+<div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border-none min-w-[180px]">
+<span class="text-sm text-on-surface-variant">Sort:</span>
+<select class="text-sm font-semibold bg-transparent border-none focus:ring-0 p-0 cursor-pointer">
+<option>24h Volume</option>
+<option>Holders</option>
+<option>Market Cap</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Asset Table -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="text-[0.6875rem] font-mono text-on-surface-variant uppercase tracking-widest bg-surface-container-low/50">
+<th class="px-6 py-4 font-medium">Asset</th>
+<th class="px-4 py-4 font-medium">Type</th>
+<th class="px-4 py-4 font-medium">Issuer Address</th>
+<th class="px-4 py-4 font-medium text-right">Circulating Supply</th>
+<th class="px-4 py-4 font-medium text-right">Holders</th>
+<th class="px-4 py-4 font-medium text-right">24h Volume</th>
+<th class="px-6 py-4 w-10"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<!-- Row 1: XLM -->
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">X</div>
+<div>
+<div class="font-bold">XLM</div>
+<div class="text-xs text-on-surface-variant">Lumen</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-5">
+<span class="px-2 py-1 text-[10px] font-bold bg-primary-container/10 text-primary-container rounded uppercase tracking-tighter">Native</span>
+</td>
+<td class="px-4 py-5">
+<span class="font-mono text-xs text-on-surface-variant">Stellar.org</span>
+</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">29,482,104,212</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">7,421,048</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm text-[#10B981] font-bold">$142.4M</td>
+<td class="px-6 py-5 text-right">
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 2: USDC -->
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-[#2775ca] flex items-center justify-center text-white font-bold">U</div>
+<div>
+<div class="font-bold">USDC</div>
+<div class="text-xs text-on-surface-variant">USD Coin (Circle)</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-5">
+<div class="flex flex-col gap-1">
+<span class="w-fit px-2 py-0.5 text-[10px] font-bold bg-surface-container-highest text-on-surface-variant rounded uppercase tracking-tighter">Classic</span>
+<span class="w-fit px-2 py-0.5 text-[10px] font-bold bg-secondary/10 text-secondary rounded uppercase tracking-tighter">Soroban Ready</span>
+</div>
+</td>
+<td class="px-4 py-5">
+<span class="font-mono text-xs text-on-surface-variant">GA5Z...SUL4</span>
+</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">1,240,841,200</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">184,204</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm text-[#10B981] font-bold">$84.2M</td>
+<td class="px-6 py-5 text-right">
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 3: AQUA -->
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-[#00e1ff] flex items-center justify-center text-white font-bold">A</div>
+<div>
+<div class="font-bold">AQUA</div>
+<div class="text-xs text-on-surface-variant">Aquarius</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-5">
+<span class="px-2 py-1 text-[10px] font-bold bg-surface-container-highest text-on-surface-variant rounded uppercase tracking-tighter">Classic</span>
+</td>
+<td class="px-4 py-5">
+<span class="font-mono text-xs text-on-surface-variant">GBBZ...P6U4</span>
+</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">12,500,000,000</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">45,122</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm text-[#10B981] font-bold">$12.8M</td>
+<td class="px-6 py-5 text-right">
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 4: YXLM -->
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-on-surface flex items-center justify-center text-white font-bold">Y</div>
+<div>
+<div class="font-bold">yXLM</div>
+<div class="text-xs text-on-surface-variant">Yield Blox XLM</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-5">
+<span class="px-2 py-1 text-[10px] font-bold bg-secondary/10 text-secondary rounded uppercase tracking-tighter">SAC (SEP-41)</span>
+</td>
+<td class="px-4 py-5">
+<span class="font-mono text-xs text-on-surface-variant">GDBE...KJ3L</span>
+</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">412,000,000</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm">12,044</td>
+<td class="px-4 py-5 text-right tabular-nums font-mono text-sm text-[#10B981] font-bold">$4.1M</td>
+<td class="px-6 py-5 text-right">
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination / Footer -->
+<div class="mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="text-sm text-on-surface-variant">
+                Showing <span class="font-bold text-on-surface">1-25</span> of <span class="font-bold text-on-surface">1,412</span> assets found
+            </div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-primary-container text-white font-bold">1</button>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-all">2</button>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-all">3</button>
+<span class="px-2 text-on-surface-variant">...</span>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-all">57</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Slide-out Detail Panel (Visual placeholder) -->
+<div class="hidden lg:block fixed right-0 top-[56px] bottom-0 w-[480px] glass-panel border-l border-surface-container translate-x-full group-hover:translate-x-0 transition-transform shadow-2xl z-40 p-8">
+<div class="flex justify-between items-start mb-8">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">X</div>
+<div>
+<h2 class="text-2xl font-bold tracking-tight">XLM</h2>
+<p class="text-on-surface-variant font-mono text-sm">Native Stellar Asset</p>
+</div>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="space-y-6">
+<section>
+<h3 class="text-[0.6875rem] font-mono text-on-surface-variant uppercase tracking-widest mb-3">Market Performance</h3>
+<div class="bg-white rounded-xl p-4 space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-sm text-on-surface-variant">Current Price</span>
+<span class="text-lg font-bold tabular-nums">$0.1424</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-on-surface-variant">Market Cap</span>
+<span class="text-sm font-bold tabular-nums">$4,198,241,048</span>
+</div>
+</div>
+</section>
+<section>
+<h3 class="text-[0.6875rem] font-mono text-on-surface-variant uppercase tracking-widest mb-3">Asset Statistics</h3>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface-container-low p-4 rounded-xl">
+<div class="text-[10px] text-on-surface-variant uppercase mb-1">Total Holders</div>
+<div class="text-lg font-bold tabular-nums">7.4M</div>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl">
+<div class="text-[10px] text-on-surface-variant uppercase mb-1">Daily Txns</div>
+<div class="text-lg font-bold tabular-nums">1.2M</div>
+</div>
+</div>
+</section>
+<button class="w-full py-4 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98]">
+                View Asset Details
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>
