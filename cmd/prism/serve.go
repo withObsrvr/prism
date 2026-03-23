@@ -30,14 +30,14 @@ var serveCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serveCmd)
 
-	serveCmd.Flags().Int("port", 3000, "port to listen on")
+	serveCmd.Flags().Int("port", 3002, "port to listen on")
 	serveCmd.Flags().String("host", "0.0.0.0", "host to bind to")
 
 	viper.BindPFlag("port", serveCmd.Flags().Lookup("port"))
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
 
 	// Defaults.
-	viper.SetDefault("port", 3000)
+	viper.SetDefault("port", 3002)
 	viper.SetDefault("host", "0.0.0.0")
 	viper.SetDefault("data_source", "auto")
 

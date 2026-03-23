@@ -15,14 +15,14 @@ templ TransactionReceiptV2(data TxReceiptData) {
 				@components.BackNav("Back to Explorer", "/")
 				<div class="flex items-center gap-3 mb-2">
 					if data.Status == "success" {
-						<div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-emerald-200">
-							<svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-							<span class="text-xs font-semibold text-emerald-700">Success</span>
+						<div class="flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 ring-1 ring-emerald-200 dark:ring-emerald-800">
+							<svg class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+							<span class="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Success</span>
 						</div>
 					} else {
-						<div class="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 ring-1 ring-red-200">
-							<svg class="h-3.5 w-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
-							<span class="text-xs font-semibold text-red-600">Failed</span>
+						<div class="flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-950/30 px-3 py-1 ring-1 ring-red-200 dark:ring-red-800">
+							<svg class="h-3.5 w-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+							<span class="text-xs font-semibold text-red-600 dark:text-red-400">Failed</span>
 						</div>
 					}
 					if data.IsSoroban {
@@ -33,78 +33,78 @@ templ TransactionReceiptV2(data TxReceiptData) {
 					}
 				</div>
 				<!-- Summary as the hero text -->
-				<p class="text-lg text-gray-900 leading-relaxed mb-2">
+				<p class="text-lg text-text-primary leading-relaxed mb-2">
 					@templ.Raw(data.SummaryHTML)
 				</p>
 				<!-- Hash + inline meta -->
-				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-body">
 					<div class="flex items-center gap-1.5">
-						<span class="font-mono text-xs text-gray-400">{ data.ShortHash }</span>
+						<span class="font-mono text-xs text-text-muted">{ data.ShortHash }</span>
 						@components.CopyButton(data.Hash)
 					</div>
-					<span class="text-gray-300">&middot;</span>
+					<span class="text-text-muted">&middot;</span>
 					<span>{ data.Timestamp }</span>
-					<span class="text-gray-300">&middot;</span>
+					<span class="text-text-muted">&middot;</span>
 					<span>Ledger <a href={ templ.SafeURL("/ledger/" + data.Ledger) } class="font-mono text-emerald-700 hover:text-emerald-800">{ data.Ledger }</a></span>
-					<span class="text-gray-300">&middot;</span>
+					<span class="text-text-muted">&middot;</span>
 					<span>{ data.OpsCount } ops</span>
-					<span class="text-gray-300">&middot;</span>
+					<span class="text-text-muted">&middot;</span>
 					<span>{ data.EventsCount } events</span>
 				</div>
 			</div>
 
 			<!-- Key-value overview -->
 			<div class="anim d1 mb-6">
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
-						<span class="w-32 text-gray-400 flex-shrink-0">Source</span>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+						<span class="w-32 text-text-muted flex-shrink-0">Source</span>
 						<div class="flex items-center gap-1.5 ml-4">
 							<a href={ templ.SafeURL("/account/" + data.SourceAddr) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.SourceAddr }</a>
 							@components.CopyButton(data.SourceAddr)
 						</div>
 					</div>
 					if data.ContractAddr != "—" {
-						<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
-							<span class="w-32 text-gray-400 flex-shrink-0">Contract</span>
+						<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+							<span class="w-32 text-text-muted flex-shrink-0">Contract</span>
 							<div class="flex items-center gap-2 ml-4">
-								<span class="text-gray-900 font-medium">{ data.ContractName }</span>
-								<span class="font-mono text-xs text-gray-400">{ data.ContractAddr }</span>
-								<span class="text-gray-300">&middot;</span>
+								<span class="text-text-primary font-medium">{ data.ContractName }</span>
+								<span class="font-mono text-xs text-text-muted">{ data.ContractAddr }</span>
+								<span class="text-text-muted">&middot;</span>
 								<span class="font-mono text-xs text-violet-600">{ data.ContractFn }</span>
 							</div>
 						</div>
 					}
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
-						<span class="w-32 text-gray-400 flex-shrink-0">Fee</span>
-						<span class="font-mono font-medium text-gray-900 ml-4">{ data.FeePaid } stroops</span>
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+						<span class="w-32 text-text-muted flex-shrink-0">Fee</span>
+						<span class="font-mono font-medium text-text-primary ml-4">{ data.FeePaid } stroops</span>
 						if data.FeeUSD != "—" {
-							<span class="text-gray-400 ml-2">·</span>
-							<span class="text-gray-400 ml-2">~{ data.FeeUSD }</span>
+							<span class="text-text-muted ml-2">·</span>
+							<span class="text-text-muted ml-2">~{ data.FeeUSD }</span>
 						}
 					</div>
 					if data.IsSoroban {
-						<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
-							<span class="w-32 text-gray-400 flex-shrink-0">Resources</span>
+						<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+							<span class="w-32 text-text-muted flex-shrink-0">Resources</span>
 							<div class="flex items-center gap-3 ml-4 text-xs">
-								<span class="text-gray-700">CPU <span class="font-mono font-medium text-violet-700">{ data.SorobanCPU }</span></span>
-								<span class="text-gray-300">&middot;</span>
-								<span class="text-gray-700">Mem <span class="font-mono font-medium">{ data.SorobanMem }</span></span>
-								<span class="text-gray-300">&middot;</span>
-								<span class="text-gray-700">Read <span class="font-mono font-medium">{ data.SorobanReads }</span></span>
-								<span class="text-gray-300">&middot;</span>
-								<span class="text-gray-700">Write <span class="font-mono font-medium">{ data.SorobanWrites }</span></span>
+								<span class="text-text-strong">CPU <span class="font-mono font-medium text-violet-700">{ data.SorobanCPU }</span></span>
+								<span class="text-text-muted">&middot;</span>
+								<span class="text-text-strong">Mem <span class="font-mono font-medium">{ data.SorobanMem }</span></span>
+								<span class="text-text-muted">&middot;</span>
+								<span class="text-text-strong">Read <span class="font-mono font-medium">{ data.SorobanReads }</span></span>
+								<span class="text-text-muted">&middot;</span>
+								<span class="text-text-strong">Write <span class="font-mono font-medium">{ data.SorobanWrites }</span></span>
 							</div>
 						</div>
 					}
 					if data.EffectiveRate != "—" {
 						<div class="detail-row flex items-center px-5 py-2.5">
-							<span class="w-32 text-gray-400 flex-shrink-0">Swap</span>
+							<span class="w-32 text-text-muted flex-shrink-0">Swap</span>
 							<div class="flex items-center gap-3 ml-4 text-xs">
-								<span class="text-gray-700">Rate <span class="font-medium text-gray-900">{ data.EffectiveRate }</span></span>
-								<span class="text-gray-300">&middot;</span>
-								<span class="text-gray-700">Slippage <span class="font-medium text-gray-900">{ data.Slippage }</span></span>
-								<span class="text-gray-300">&middot;</span>
-								<span class="text-gray-700">Route <span class="font-medium text-gray-900">{ data.Route }</span></span>
+								<span class="text-text-strong">Rate <span class="font-medium text-text-primary">{ data.EffectiveRate }</span></span>
+								<span class="text-text-muted">&middot;</span>
+								<span class="text-text-strong">Slippage <span class="font-medium text-text-primary">{ data.Slippage }</span></span>
+								<span class="text-text-muted">&middot;</span>
+								<span class="text-text-strong">Route <span class="font-medium text-text-primary">{ data.Route }</span></span>
 							</div>
 						</div>
 					}
@@ -112,55 +112,55 @@ templ TransactionReceiptV2(data TxReceiptData) {
 			</div>
 
 			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Operations ({ data.OpsCount })</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Events ({ data.EventsCount })</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Balance Changes</button>
+			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Operations ({ data.OpsCount })</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Events ({ data.EventsCount })</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Balance Changes</button>
 				if len(data.StateChanges) > 0 {
-					<button class="pb-3.5 hover:text-gray-900 transition-colors">State Changes</button>
+					<button class="pb-3.5 hover:text-text-primary transition-colors">State Changes</button>
 				}
 			</div>
 
 			<!-- Operations -->
 			<div class="anim d2 mb-8">
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium w-8">#</th>
 								<th class="px-4 py-3 font-medium w-40">Type</th>
 								<th class="px-4 py-3 font-medium">Summary</th>
 								<th class="px-4 py-3 font-medium text-right hidden md:table-cell w-24">Status</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, op := range data.Operations {
-								<tr class={ templ.KV("bg-violet-50/30", op.IsPrimary) }>
+								<tr class={ templ.KV("bg-violet-50/30 dark:bg-violet-950/20", op.IsPrimary) }>
 									<td class="px-5 py-3">
-										<span class={ "flex h-6 w-6 items-center justify-center rounded-full text-2xs font-bold", templ.KV("bg-violet-100 text-violet-700", op.IsPrimary), templ.KV("bg-gray-100 text-gray-600", !op.IsPrimary) }>{ op.Index }</span>
+										<span class={ "flex h-6 w-6 items-center justify-center rounded-full text-2xs font-bold", templ.KV("bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400", op.IsPrimary), templ.KV("bg-surface-subtle text-text-body", !op.IsPrimary) }>{ op.Index }</span>
 									</td>
 									<td class="px-4 py-3">
 										<div class="flex items-center gap-2">
-											<span class="text-sm font-medium text-gray-900">{ op.Type }</span>
+											<span class="text-sm font-medium text-text-primary">{ op.Type }</span>
 											if op.IsSoroban {
 												@components.TypeBadge("Soroban", "violet")
 											}
 										</div>
 										if op.Contract != "" {
 											<div class="flex items-center gap-1.5 mt-0.5 text-xs">
-												<span class="font-mono text-gray-400">{ op.Contract }</span>
+												<span class="font-mono text-text-muted">{ op.Contract }</span>
 												if op.Function != "" {
-													<span class="text-gray-300">&middot;</span>
+													<span class="text-text-muted">&middot;</span>
 													<span class="font-mono text-violet-600">{ op.Function }</span>
 												}
 											</div>
 										}
 									</td>
-									<td class="px-4 py-3 text-sm text-gray-700">
+									<td class="px-4 py-3 text-sm text-text-strong">
 										@templ.Raw(op.SummaryHTML)
 									</td>
 									<td class="px-4 py-3 text-right hidden md:table-cell">
-										<span class="rounded bg-emerald-50 px-1.5 py-0.5 text-2xs font-bold text-emerald-700">{ op.Status }</span>
+										<span class="rounded bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 text-2xs font-bold text-emerald-700 dark:text-emerald-400">{ op.Status }</span>
 									</td>
 								</tr>
 							}
@@ -171,28 +171,28 @@ templ TransactionReceiptV2(data TxReceiptData) {
 
 			<!-- Events -->
 			<div class="anim d2 mb-8">
-				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Events</h3>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Events</h3>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium w-8 hidden md:table-cell">#</th>
 								<th class="px-4 py-3 font-medium w-20">Type</th>
 								<th class="px-4 py-3 font-medium w-[130px] hidden md:table-cell">Contract</th>
 								<th class="px-4 py-3 font-medium">Data</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, evt := range data.Events {
 								<tr>
 									<td class="px-5 py-3 hidden md:table-cell">
-										<span class="text-2xs font-mono text-gray-400">{ evt.Index }</span>
+										<span class="text-2xs font-mono text-text-muted">{ evt.Index }</span>
 									</td>
 									<td class="px-4 py-3">
 										@components.TypeBadge(evt.Type, evt.TypeColor)
 									</td>
 									<td class="px-4 py-3 hidden md:table-cell">
-										<span class="text-xs text-gray-700">{ evt.Contract }</span>
+										<span class="text-xs text-text-strong">{ evt.Contract }</span>
 									</td>
 									<td class="px-4 py-3 text-sm">
 										@templ.Raw(evt.DataHTML)
@@ -206,25 +206,25 @@ templ TransactionReceiptV2(data TxReceiptData) {
 
 			<!-- Balance Changes -->
 			<div class="anim d3 mb-8">
-				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Net Balance Changes</h3>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Net Balance Changes</h3>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium">Account</th>
 								<th class="px-4 py-3 font-medium text-right">Asset</th>
 								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Type</th>
 								<th class="px-4 py-3 font-medium text-right">Change</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, bc := range data.BalanceChanges {
 								<tr class={ templ.KV("opacity-60", bc.IsFee || bc.IsPool) }>
 									<td class="px-5 py-2.5">
-										<span class="font-mono text-xs text-gray-900">{ bc.Account }</span>
+										<span class="font-mono text-xs text-text-primary">{ bc.Account }</span>
 									</td>
 									<td class="px-4 py-2.5 text-right">
-										<span class="text-sm font-medium text-gray-900">{ bc.Asset }</span>
+										<span class="text-sm font-medium text-text-primary">{ bc.Asset }</span>
 									</td>
 									<td class="px-4 py-2.5 text-right hidden md:table-cell">
 										@components.Badge(bc.AssetType, bc.TypeColor)
@@ -246,30 +246,30 @@ templ TransactionReceiptV2(data TxReceiptData) {
 			<!-- State Changes -->
 			if len(data.StateChanges) > 0 {
 				<div class="anim d3 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Soroban State Changes</h3>
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Soroban State Changes</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 						<table class="w-full text-left">
 							<thead>
-								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 									<th class="px-5 py-3 font-medium w-20">Action</th>
 									<th class="px-4 py-3 font-medium">Key</th>
 									<th class="px-4 py-3 font-medium hidden md:table-cell">Contract</th>
 									<th class="px-4 py-3 font-medium">Detail</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-100">
+							<tbody class="divide-y divide-border-subtle">
 								for _, sc := range data.StateChanges {
 									<tr>
 										<td class="px-5 py-3">
 											@components.Badge(sc.Action, "amber")
 										</td>
 										<td class="px-4 py-3">
-											<span class="font-mono text-xs text-gray-900">{ sc.Key }</span>
+											<span class="font-mono text-xs text-text-primary">{ sc.Key }</span>
 										</td>
 										<td class="px-4 py-3 hidden md:table-cell">
-											<span class="text-xs text-gray-700">{ sc.Contract }</span>
+											<span class="text-xs text-text-strong">{ sc.Contract }</span>
 										</td>
-										<td class="px-4 py-3 font-mono text-xs text-gray-500">
+										<td class="px-4 py-3 font-mono text-xs text-text-body">
 											@templ.Raw(sc.DetailHTML)
 										</td>
 									</tr>
@@ -283,17 +283,17 @@ templ TransactionReceiptV2(data TxReceiptData) {
 			<!-- Context links -->
 			<div class="anim d4 mb-10">
 				<div class="flex items-center gap-3 flex-wrap">
-					<a href={ templ.SafeURL("/contracts/" + data.ContractAddr) } class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
-						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-						<span class="text-xs font-medium text-gray-700">Contract</span>
+					<a href={ templ.SafeURL("/contracts/" + data.ContractAddr) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
+						<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+						<span class="text-xs font-medium text-text-strong">Contract</span>
 					</a>
-					<a href={ templ.SafeURL("/account/" + data.SourceAddr) } class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
-						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-						<span class="text-xs font-medium text-gray-700">Account</span>
+					<a href={ templ.SafeURL("/account/" + data.SourceAddr) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
+						<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+						<span class="text-xs font-medium text-text-strong">Account</span>
 					</a>
-					<a href={ templ.SafeURL("/ledger/" + data.Ledger) } class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm hover:bg-gray-50">
-						<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-						<span class="text-xs font-medium text-gray-700">Ledger { data.Ledger }</span>
+					<a href={ templ.SafeURL("/ledger/" + data.Ledger) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
+						<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+						<span class="text-xs font-medium text-text-strong">Ledger { data.Ledger }</span>
 					</a>
 				</div>
 			</div>

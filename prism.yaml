@@ -4,7 +4,7 @@
 
 # Server
 host: "0.0.0.0"
-port: 3000
+port: 3002
 
 # Data source: "mock" (force mocks), "gateway" (require gateway), "auto" (gateway if key exists, else mock)
 data_source: auto

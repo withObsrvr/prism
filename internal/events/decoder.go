@@ -138,8 +138,8 @@ func decodeSwap(e RawEvent) *DecodedEvent {
 
 func (d *DecodedEvent) transferHTML() string {
 	return fmt.Sprintf(`<div class="flex items-center gap-1.5 flex-wrap">`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">Sent %s %s</span>`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">→ <span class="text-violet-600">%s</span></span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">Sent %s %s</span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">→ <span class="text-violet-600 dark:text-violet-400">%s</span></span>`+
 		`</div>`,
 		html.EscapeString(d.Amount), html.EscapeString(d.Asset),
 		html.EscapeString(d.Participants[1]))
@@ -147,8 +147,8 @@ func (d *DecodedEvent) transferHTML() string {
 
 func (d *DecodedEvent) approveHTML() string {
 	return fmt.Sprintf(`<div class="flex items-center gap-1.5 flex-wrap">`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">Approved <span class="text-violet-600">%s</span></span>`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">to spend %s %s</span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">Approved <span class="text-violet-600 dark:text-violet-400">%s</span></span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">to spend %s %s</span>`+
 		`</div>`,
 		html.EscapeString(d.Participants[1]),
 		html.EscapeString(d.Amount), html.EscapeString(d.Asset))
@@ -156,8 +156,8 @@ func (d *DecodedEvent) approveHTML() string {
 
 func (d *DecodedEvent) mintHTML() string {
 	return fmt.Sprintf(`<div class="flex items-center gap-1.5 flex-wrap">`+
-		`<span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">Minted +%s %s</span>`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">→ <span class="text-violet-600">%s</span></span>`+
+		`<span class="rounded bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">Minted +%s %s</span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">→ <span class="text-violet-600 dark:text-violet-400">%s</span></span>`+
 		`</div>`,
 		html.EscapeString(d.Amount), html.EscapeString(d.Asset),
 		html.EscapeString(d.Participants[0]))
@@ -165,8 +165,8 @@ func (d *DecodedEvent) mintHTML() string {
 
 func (d *DecodedEvent) burnHTML() string {
 	return fmt.Sprintf(`<div class="flex items-center gap-1.5 flex-wrap">`+
-		`<span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-600">Burned %s %s</span>`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">from <span class="text-violet-600">%s</span></span>`+
+		`<span class="rounded bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-600 dark:text-red-400">Burned %s %s</span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">from <span class="text-violet-600 dark:text-violet-400">%s</span></span>`+
 		`</div>`,
 		html.EscapeString(d.Amount), html.EscapeString(d.Asset),
 		html.EscapeString(d.Participants[0]))
@@ -174,9 +174,9 @@ func (d *DecodedEvent) burnHTML() string {
 
 func (d *DecodedEvent) swapHTML() string {
 	return fmt.Sprintf(`<div class="flex items-center gap-1.5 flex-wrap">`+
-		`<span class="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[10px] text-red-600">−%s</span>`+
-		`<span class="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">+%s</span>`+
-		`<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">via %s</span>`+
+		`<span class="rounded bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 font-mono text-[10px] text-red-600 dark:text-red-400">−%s</span>`+
+		`<span class="rounded bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">+%s</span>`+
+		`<span class="rounded bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-body">via %s</span>`+
 		`</div>`,
 		html.EscapeString(d.PairIn),
 		html.EscapeString(d.PairOut),

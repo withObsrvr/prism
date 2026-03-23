@@ -7,17 +7,17 @@ import (
 
 // NetworkPulse shows the latest ledger and TPS in the home page.
 templ NetworkPulse(latestLedger uint64, tps float64) {
-	<div class="flex items-center justify-center gap-8 text-xs text-gray-500">
+	<div class="flex items-center justify-center gap-8 text-xs text-text-body">
 		<div class="flex items-center gap-2">
-			<span class="text-gray-400">Latest Ledger</span>
+			<span class="text-text-muted">Latest Ledger</span>
 			<a href={ templ.SafeURL(fmt.Sprintf("/ledger/%d", latestLedger)) }
-			   class="mono text-emerald-700 font-medium tabular">
+			   class="mono text-emerald-700 dark:text-emerald-400 font-medium tabular">
 				{ fmt.Sprintf("%d", latestLedger) }
 			</a>
 		</div>
-		<div class="h-3 w-px bg-gray-200"></div>
+		<div class="h-3 w-px bg-border-default"></div>
 		<div class="flex items-center gap-2">
-			<span class="text-gray-400">TPS</span>
+			<span class="text-text-muted">TPS</span>
 			<span class="mono font-medium tabular">{ fmt.Sprintf("%.1f", tps) }</span>
 		</div>
 	</div>
@@ -28,14 +28,14 @@ templ NetworkPulse(latestLedger uint64, tps float64) {
 // status: "normal", "warning", "critical" — controls border/bg color.
 templ StatCard(label string, value string, status string, progress float64) {
 	<div class={ statCardClasses(status) }>
-		<div class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+		<div class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-1">
 			{ label }
 		</div>
 		<div class={ "text-2xl font-bold tabular", statValueColor(status) }>
 			{ value }
 		</div>
 		if progress >= 0 {
-			<div class="mt-1.5 h-1 rounded-full bg-gray-100">
+			<div class="mt-1.5 h-1 rounded-full bg-surface-subtle">
 				<div class={ "h-1 rounded-full", statBarColor(status) }
 					 style={ fmt.Sprintf("width:%.1f%%", progress) }></div>
 			</div>
@@ -47,11 +47,11 @@ templ StatCard(label string, value string, status string, progress float64) {
 templ TruncatedAddress(full string, href string) {
 	<span class="inline-flex items-center gap-1">
 		<a href={ templ.SafeURL(href) }
-		   class="mono text-xs text-emerald-700 font-medium hover:underline">
+		   class="mono text-xs text-emerald-700 dark:text-emerald-400 font-medium hover:underline">
 			{ truncate(full) }
 		</a>
 		<button onclick={ copyToClipboard(full) }
-				class="text-gray-300 hover:text-gray-600 transition-colors"
+				class="text-text-muted hover:text-text-body transition-colors"
 				title="Copy full address">
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -80,8 +80,8 @@ func copyToClipboard(text string) templ.ComponentScript {
 			var orig=svg.innerHTML;
 			svg.innerHTML='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
 			svg.classList.add("text-emerald-500");
-			svg.classList.remove("text-gray-300");
-			setTimeout(function(){svg.innerHTML=orig;svg.classList.remove("text-emerald-500");svg.classList.add("text-gray-300");},1500);
+			svg.classList.remove("text-text-muted");
+			setTimeout(function(){svg.innerHTML=orig;svg.classList.remove("text-emerald-500");svg.classList.add("text-text-muted");},1500);
 		}`, text),
 	}
 }
@@ -90,22 +90,22 @@ func statCardClasses(status string) string {
 	base := "rounded-xl px-4 py-3 "
 	switch status {
 	case "warning":
-		return base + "border border-amber-200/60 bg-amber-50/20"
+		return base + "border border-amber-200/60 bg-amber-50/20 dark:border-amber-800/60 dark:bg-amber-950/20"
 	case "critical":
-		return base + "border border-red-200/60 bg-red-50/20"
+		return base + "border border-red-200/60 bg-red-50/20 dark:border-red-800/60 dark:bg-red-950/20"
 	default:
-		return base + "border border-gray-200 bg-white"
+		return base + "border border-border-default bg-surface-card"
 	}
 }
 
 func statValueColor(status string) string {
 	switch status {
 	case "warning":
-		return "text-amber-600"
+		return "text-amber-600 dark:text-amber-400"
 	case "critical":
-		return "text-red-600"
+		return "text-red-600 dark:text-red-400"
 	default:
-		return "text-gray-900"
+		return "text-text-primary"
 	}
 }
 
@@ -130,19 +130,19 @@ func badgeClasses(color string) string {
 	base := "rounded-full px-2 py-0.5 text-2xs font-semibold ring-1 "
 	switch color {
 	case "emerald":
-		return base + "text-emerald-700 bg-emerald-50 ring-emerald-200"
+		return base + "text-emerald-700 bg-emerald-50 ring-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/30 dark:ring-emerald-800"
 	case "violet":
-		return base + "text-violet-700 bg-violet-50 ring-violet-200"
+		return base + "text-violet-700 bg-violet-50 ring-violet-200 dark:text-violet-400 dark:bg-violet-950/30 dark:ring-violet-800"
 	case "amber":
-		return base + "text-amber-700 bg-amber-50 ring-amber-200"
+		return base + "text-amber-700 bg-amber-50 ring-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:ring-amber-800"
 	case "red":
-		return base + "text-red-600 bg-red-50 ring-red-200"
+		return base + "text-red-600 bg-red-50 ring-red-200 dark:text-red-400 dark:bg-red-950/30 dark:ring-red-800"
 	case "cyan":
-		return base + "text-cyan-700 bg-cyan-50 ring-cyan-200"
+		return base + "text-cyan-700 bg-cyan-50 ring-cyan-200 dark:text-cyan-400 dark:bg-cyan-950/30 dark:ring-cyan-800"
 	case "blue":
-		return base + "text-blue-700 bg-blue-50 ring-blue-200"
+		return base + "text-blue-700 bg-blue-50 ring-blue-200 dark:text-blue-400 dark:bg-blue-950/30 dark:ring-blue-800"
 	default:
-		return base + "text-gray-600 bg-gray-100 ring-gray-200"
+		return base + "text-text-body bg-surface-subtle ring-border-default"
 	}
 }
 
@@ -158,25 +158,25 @@ func typeBadgeClasses(color string) string {
 	base := "rounded px-1.5 py-0.5 text-2xs font-bold ring-1 "
 	switch color {
 	case "emerald":
-		return base + "text-emerald-600 bg-emerald-50 ring-emerald-200/60"
+		return base + "text-emerald-600 bg-emerald-50 ring-emerald-200/60 dark:text-emerald-400 dark:bg-emerald-950/30 dark:ring-emerald-800/60"
 	case "violet":
-		return base + "text-violet-600 bg-violet-50 ring-violet-200/60"
+		return base + "text-violet-600 bg-violet-50 ring-violet-200/60 dark:text-violet-400 dark:bg-violet-950/30 dark:ring-violet-800/60"
 	case "amber":
-		return base + "text-amber-600 bg-amber-50 ring-amber-200/60"
+		return base + "text-amber-600 bg-amber-50 ring-amber-200/60 dark:text-amber-400 dark:bg-amber-950/30 dark:ring-amber-800/60"
 	case "red":
-		return base + "text-red-600 bg-red-50 ring-red-200/60"
+		return base + "text-red-600 bg-red-50 ring-red-200/60 dark:text-red-400 dark:bg-red-950/30 dark:ring-red-800/60"
 	case "cyan":
-		return base + "text-cyan-600 bg-cyan-50 ring-cyan-200/60"
+		return base + "text-cyan-600 bg-cyan-50 ring-cyan-200/60 dark:text-cyan-400 dark:bg-cyan-950/30 dark:ring-cyan-800/60"
 	case "blue":
-		return base + "text-blue-600 bg-blue-50 ring-blue-200/60"
+		return base + "text-blue-600 bg-blue-50 ring-blue-200/60 dark:text-blue-400 dark:bg-blue-950/30 dark:ring-blue-800/60"
 	default:
-		return base + "text-gray-500 bg-gray-100 ring-gray-200"
+		return base + "text-text-body bg-surface-subtle ring-border-default"
 	}
 }
 
 // MetaBadge renders a neutral metadata badge (Tier 1, Archive Publisher, SEP-41).
 templ MetaBadge(label string) {
-	<span class="rounded px-1.5 py-0.5 text-2xs font-semibold text-gray-600 bg-gray-100 ring-1 ring-gray-200">{ label }</span>
+	<span class="rounded px-1.5 py-0.5 text-2xs font-semibold text-text-body bg-surface-subtle ring-1 ring-border-default">{ label }</span>
 }
 
 // Tab represents a single tab in a TabBar.
@@ -187,12 +187,12 @@ type Tab struct {
 
 // TabBar renders a horizontal tab strip with an underline active state.
 templ TabBar(tabs []Tab, activeID string) {
-	<div class="mb-8 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 overflow-x-auto flex-nowrap whitespace-nowrap">
+	<div class="mb-8 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted overflow-x-auto flex-nowrap whitespace-nowrap">
 		for _, tab := range tabs {
 			if tab.ID == activeID {
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900">{ tab.Label }</button>
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary">{ tab.Label }</button>
 			} else {
-				<button class="pb-3.5 cursor-pointer hover:text-gray-900">{ tab.Label }</button>
+				<button class="pb-3.5 cursor-pointer hover:text-text-primary">{ tab.Label }</button>
 			}
 		}
 	</div>
@@ -200,8 +200,8 @@ templ TabBar(tabs []Tab, activeID string) {
 
 // DetailRow renders a key-value row with hover effect.
 templ DetailRow(label string) {
-	<div class="detail-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-5 py-3 border-b border-gray-100">
-		<span class="text-sm text-gray-500 flex-shrink-0">{ label }</span>
+	<div class="detail-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-5 py-3 border-b border-border-subtle">
+		<span class="text-sm text-text-body flex-shrink-0">{ label }</span>
 		<div class="min-w-0 break-all sm:break-normal sm:text-right">
 			{ children... }
 		</div>
@@ -211,7 +211,7 @@ templ DetailRow(label string) {
 // DetailRowLast renders a key-value row without bottom border.
 templ DetailRowLast(label string) {
 	<div class="detail-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-5 py-3">
-		<span class="text-sm text-gray-500 flex-shrink-0">{ label }</span>
+		<span class="text-sm text-text-body flex-shrink-0">{ label }</span>
 		<div class="min-w-0 break-all sm:break-normal sm:text-right">
 			{ children... }
 		</div>
@@ -220,7 +220,7 @@ templ DetailRowLast(label string) {
 
 // BackNav renders a back arrow + label link.
 templ BackNav(label string, href string) {
-	<a href={ templ.SafeURL(href) } class="group mb-5 flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-900">
+	<a href={ templ.SafeURL(href) } class="group mb-5 flex items-center gap-1.5 text-sm font-medium text-text-muted hover:text-text-primary">
 		<svg class="h-4 w-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
 		{ label }
 	</a>
@@ -237,12 +237,12 @@ templ Breadcrumb(items []BreadcrumbItem) {
 	<nav class="flex items-center gap-1.5 text-sm mb-5">
 		for i, item := range items {
 			if i > 0 {
-				<svg class="h-3.5 w-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+				<svg class="h-3.5 w-3.5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 			}
 			if i == len(items)-1 {
-				<span class="font-medium text-gray-900">{ item.Label }</span>
+				<span class="font-medium text-text-primary">{ item.Label }</span>
 			} else {
-				<a href={ templ.SafeURL(item.Href) } class="text-gray-400 hover:text-gray-900">{ item.Label }</a>
+				<a href={ templ.SafeURL(item.Href) } class="text-text-muted hover:text-text-primary">{ item.Label }</a>
 			}
 		}
 	</nav>
@@ -253,22 +253,22 @@ templ Breadcrumb(items []BreadcrumbItem) {
 templ Pagination(current int, total int, baseURL string) {
 	<div class="flex items-center justify-center gap-1.5 mt-6">
 		if current > 1 {
-			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current-1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50">
-				<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current-1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card shadow-sm hover:bg-surface-subtle">
+				<svg class="h-4 w-4 text-text-body" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
 			</a>
 		}
 		for _, p := range paginationPages(current, total) {
 			if p == -1 {
-				<span class="flex h-8 w-8 items-center justify-center text-xs text-gray-400">…</span>
+				<span class="flex h-8 w-8 items-center justify-center text-xs text-text-muted">…</span>
 			} else if p == current {
-				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-semibold tabular">{ fmt.Sprintf("%d", p) }</span>
+				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold tabular">{ fmt.Sprintf("%d", p) }</span>
 			} else {
-				<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, p)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 tabular">{ fmt.Sprintf("%d", p) }</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, p)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-xs font-medium text-text-body shadow-sm hover:bg-surface-subtle tabular">{ fmt.Sprintf("%d", p) }</a>
 			}
 		}
 		if current < total {
-			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current+1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50">
-				<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+			<a href={ templ.SafeURL(fmt.Sprintf("%s?page=%d", baseURL, current+1)) } class="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card shadow-sm hover:bg-surface-subtle">
+				<svg class="h-4 w-4 text-text-body" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 			</a>
 		}
 	</div>
@@ -314,7 +314,7 @@ func paginationPages(current, total int) []int {
 
 // ProgressBar renders a horizontal progress bar.
 templ ProgressBar(value float64, max float64, color string) {
-	<div class="h-1.5 w-full rounded-full bg-gray-100">
+	<div class="h-1.5 w-full rounded-full bg-surface-subtle">
 		<div class={ "h-1.5 rounded-full", progressBarColor(color) } style={ fmt.Sprintf("width:%.1f%%", (value/max)*100) }></div>
 	</div>
 }
@@ -346,7 +346,7 @@ type ActionButton struct {
 // CopyButton renders a clipboard icon that copies text on click.
 templ CopyButton(text string) {
 	<button onclick={ copyToClipboard(text) }
-			class="text-gray-300 hover:text-gray-600 transition-colors"
+			class="text-text-muted hover:text-text-body transition-colors"
 			title="Copy to clipboard">
 		<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -359,7 +359,7 @@ templ CopyButton(text string) {
 templ ActionButtons(buttons []ActionButton) {
 	<div class="flex items-center gap-2">
 		for _, btn := range buttons {
-			<a href={ templ.SafeURL(btn.Href) } class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+			<a href={ templ.SafeURL(btn.Href) } class="flex items-center gap-1 rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs font-medium text-text-body shadow-sm hover:bg-surface-subtle">
 				if btn.Icon == "external" {
 					<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
 				}
@@ -446,7 +446,7 @@ func sparklineStroke(color string) string {
 
 // SectionHeader renders a section title.
 templ SectionHeader(title string) {
-	<h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">{ title }</h3>
+	<h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">{ title }</h3>
 }
 
 // EmptyState renders a centered placeholder for zero-result views.
@@ -454,13 +454,13 @@ templ SectionHeader(title string) {
 // ctaLabel/ctaHref: optional call-to-action button (pass "" to omit).
 templ EmptyState(icon string, title string, description string, ctaLabel string, ctaHref string) {
 	<div class="flex flex-col items-center justify-center py-16 px-6 text-center">
-		<div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+		<div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-subtle">
 			@emptyStateIcon(icon)
 		</div>
-		<h3 class="text-sm font-semibold text-gray-900 mb-1">{ title }</h3>
-		<p class="text-xs text-gray-500 max-w-xs mb-5">{ description }</p>
+		<h3 class="text-sm font-semibold text-text-primary mb-1">{ title }</h3>
+		<p class="text-xs text-text-body max-w-xs mb-5">{ description }</p>
 		if ctaLabel != "" {
-			<a href={ templ.SafeURL(ctaHref) } class="rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors">
+			<a href={ templ.SafeURL(ctaHref) } class="rounded-lg bg-gray-900 dark:bg-gray-100 px-4 py-2 text-xs font-semibold text-white dark:text-gray-900 shadow-sm hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
 				{ ctaLabel }
 			</a>
 		}
@@ -470,16 +470,16 @@ templ EmptyState(icon string, title string, description string, ctaLabel string,
 templ emptyStateIcon(icon string) {
 	switch icon {
 		case "search":
-			<svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+			<svg class="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
 		case "list":
-			<svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+			<svg class="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
 		case "contract":
-			<svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+			<svg class="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
 		case "event":
-			<svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+			<svg class="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
 		case "tx":
-			<svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+			<svg class="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
 		default:
-			<svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+			<svg class="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
 	}
 }

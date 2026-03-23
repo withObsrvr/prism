@@ -14,47 +14,47 @@ templ AssetDirectoryV2(data AssetDirectoryData) {
 
 			<!-- Header -->
 			<div class="anim mt-4 mb-6">
-				<h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-1">Assets</h1>
-				<div class="text-2xs text-gray-400 uppercase tracking-wider mb-1">24h Network Volume</div>
-				<div class="text-4xl font-bold text-gray-900 tabular mb-3">{ data.NetworkVolume }</div>
-				<div class="flex items-center gap-5 text-sm text-gray-500">
-					<span><span class="font-semibold text-gray-900 tabular">{ data.TotalAssets }</span> assets</span>
-					<span class="text-gray-300">&middot;</span>
+				<h1 class="text-2xl font-bold tracking-tight text-text-primary mb-1">Assets</h1>
+				<div class="text-2xs text-text-muted uppercase tracking-wider mb-1">24h Network Volume</div>
+				<div class="text-4xl font-bold text-text-primary tabular mb-3">{ data.NetworkVolume }</div>
+				<div class="flex items-center gap-5 text-sm text-text-body">
+					<span><span class="font-semibold text-text-primary tabular">{ data.TotalAssets }</span> assets</span>
+					<span class="text-text-muted">&middot;</span>
 					<span>{ data.ClassicCount } Classic + { data.SEP41Count } SEP-41</span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Trustlines <span class="font-semibold text-gray-900 tabular">{ data.Trustlines }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Trustlines <span class="font-semibold text-text-primary tabular">{ data.Trustlines }</span></span>
 				</div>
 			</div>
 
 			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-4">
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">All</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Classic</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Soroban (SEP-41)</button>
+			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-4">
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">All</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Classic</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Soroban (SEP-41)</button>
 			</div>
 
 			<!-- Search + Sort -->
 			<div class="anim d1 flex flex-col md:flex-row gap-3 mb-4">
 				<div class="relative flex-1">
-					<svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+					<svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
 					<input
 						type="text"
 						placeholder="Filter by name, code, or issuer…"
-						class="w-full pl-10 pr-4 py-2.5 bg-white rounded-lg text-sm outline-none border border-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+						class="w-full pl-10 pr-4 py-2.5 bg-surface-card rounded-lg text-sm outline-none border border-border-default placeholder-text-muted focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
 					/>
 				</div>
-				<div class="flex items-center gap-2 border border-gray-200 bg-white px-4 py-2.5 rounded-lg flex-shrink-0">
-					<span class="text-sm text-gray-400">Sort:</span>
-					<span class="text-sm font-semibold text-gray-900">24h Volume</span>
-					<svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+				<div class="flex items-center gap-2 border border-border-default bg-surface-card px-4 py-2.5 rounded-lg flex-shrink-0">
+					<span class="text-sm text-text-muted">Sort:</span>
+					<span class="text-sm font-semibold text-text-primary">24h Volume</span>
+					<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
 				</div>
 			</div>
 
 			<!-- Asset Table -->
-			<div class="anim d2 bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
+			<div class="anim d2 bg-surface-card rounded-xl overflow-hidden shadow-sm border border-border-default">
 				<table class="w-full text-left">
 					<thead>
-						<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+						<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 							<th class="px-6 py-3.5 font-medium">Asset</th>
 							<th class="px-4 py-3.5 font-medium hidden md:table-cell">Type</th>
 							<th class="px-4 py-3.5 font-medium hidden lg:table-cell">Issuer</th>
@@ -65,9 +65,9 @@ templ AssetDirectoryV2(data AssetDirectoryData) {
 							<th class="px-6 py-3.5 w-8"></th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-100">
+					<tbody class="divide-y divide-border-subtle">
 						for _, a := range data.Assets {
-							<tr class="group hover:bg-gray-50/50 transition-colors cursor-pointer"
+							<tr class="group hover:bg-surface-subtle transition-colors cursor-pointer"
 								hx-get={ "/assets/" + a.Code + "/preview" }
 								hx-target="#slideout"
 								hx-swap="innerHTML">
@@ -76,12 +76,12 @@ templ AssetDirectoryV2(data AssetDirectoryData) {
 										<div class={ "flex h-10 w-10 items-center justify-center rounded-full text-white text-sm font-bold flex-shrink-0", a.BgColor }>{ a.Initial }</div>
 										<div>
 											<div class="flex items-center gap-1.5">
-												<span class="font-bold text-gray-900">{ a.Code }</span>
+												<span class="font-bold text-text-primary">{ a.Code }</span>
 												if a.IsVerified {
 													<svg class="h-4 w-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
 												}
 											</div>
-											<div class="text-2xs text-gray-400">{ a.Name }</div>
+											<div class="text-2xs text-text-muted">{ a.Name }</div>
 										</div>
 									</div>
 								</td>
@@ -89,13 +89,13 @@ templ AssetDirectoryV2(data AssetDirectoryData) {
 									@components.TypeBadge(a.TypeBadge, a.TypeColor)
 								</td>
 								<td class="px-4 py-4 hidden lg:table-cell">
-									<span class="font-mono text-xs text-gray-400">{ a.Issuer }</span>
+									<span class="font-mono text-xs text-text-muted">{ a.Issuer }</span>
 								</td>
 								<td class="px-4 py-4 text-right hidden lg:table-cell">
-									<span class="font-mono text-sm text-gray-700 tabular">{ a.Supply }</span>
+									<span class="font-mono text-sm text-text-strong tabular">{ a.Supply }</span>
 								</td>
 								<td class="px-4 py-4 text-right hidden md:table-cell">
-									<span class="font-mono text-sm text-gray-700 tabular">{ a.Holders }</span>
+									<span class="font-mono text-sm text-text-strong tabular">{ a.Holders }</span>
 								</td>
 								<td class="px-4 py-4 text-right">
 									<span class="font-mono text-sm font-semibold text-emerald-600 tabular">{ a.Volume }</span>
@@ -108,7 +108,7 @@ templ AssetDirectoryV2(data AssetDirectoryData) {
 									}
 								</td>
 								<td class="px-6 py-4 text-right">
-									<svg class="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+									<svg class="h-4 w-4 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 								</td>
 							</tr>
 						}
@@ -118,8 +118,8 @@ templ AssetDirectoryV2(data AssetDirectoryData) {
 
 			<!-- Pagination -->
 			<div class="anim d3 mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-				<div class="text-sm text-gray-500">
-					Showing <span class="font-semibold text-gray-900">1–{ fmt.Sprintf("%d", len(data.Assets)) }</span> of <span class="font-semibold text-gray-900">{ data.TotalAssets }</span> assets
+				<div class="text-sm text-text-body">
+					Showing <span class="font-semibold text-text-primary">1–{ fmt.Sprintf("%d", len(data.Assets)) }</span> of <span class="font-semibold text-text-primary">{ data.TotalAssets }</span> assets
 				</div>
 				@components.Pagination(data.CurrentPage, data.TotalPages, "/assets")
 			</div>

@@ -19,16 +19,23 @@ The guiding principle is **functional density**: every pixel must answer a quest
 
 Color conveys meaning, never decoration. Every color token has a defined semantic role.
 
-### Neutrals
-| Token | Hex | Role |
-|-------|-----|------|
-| White | `#FFFFFF` | Card backgrounds, surfaces |
-| FAFAFA | `#FAFAFA` | Page background |
-| gray-100 | `#F3F4F6` | Subtle backgrounds (table headers, hover states) |
-| gray-200 | `#E5E7EB` | Borders, dividers |
-| gray-400 | `#9CA3AF` | Muted labels, secondary text |
-| gray-500 | `#6B7280` | Body text (secondary) |
-| gray-900 | `#111111` | Primary text, logo, active nav |
+### Neutrals (Semantic Tokens)
+
+Neutral colors are defined as CSS custom properties and mapped to Tailwind utilities via `@theme`. They automatically adapt in dark mode.
+
+| Token | Tailwind Class | Light | Dark | Role |
+|-------|---------------|-------|------|------|
+| Page background | `bg-surface-page` | `#FAFAFA` | `#09090B` | Page-level background |
+| Card background | `bg-surface-card` | `#FFFFFF` | `#141414` | Cards, panels, nav |
+| Subtle background | `bg-surface-subtle` | `#F3F4F6` | `#1E1E1E` | Table headers, hover states |
+| Default border | `border-border-default` | `#E5E7EB` | `#2A2A2A` | Card borders, dividers |
+| Subtle border | `border-border-subtle` | `#F3F4F6` | `#1E1E1E` | Inner dividers |
+| Primary text | `text-text-primary` | `#111111` | `#F3F4F6` | Headings, primary content |
+| Strong text | `text-text-strong` | `#374151` | `#D1D5DB` | Secondary headings, labels |
+| Body text | `text-text-body` | `#6B7280` | `#9CA3AF` | Body copy, descriptions |
+| Muted text | `text-text-muted` | `#9CA3AF` | `#6B7280` | Labels, placeholders, separators |
+
+**Migration**: Do not use hardcoded `bg-white`, `bg-gray-50`, `border-gray-200`, `text-gray-900`, etc. Always use the semantic tokens above.
 
 ### Semantic Colors
 | Color | Token | Role |
@@ -45,11 +52,24 @@ Color conveys meaning, never decoration. Every color token has a defined semanti
 - **No decorative color** — Color always conveys meaning (status, type, interaction).
 - **Amber threshold** — Amber for concerning-but-not-critical. Red only for failures and errors.
 
-### Dark Variant (Marketing Only)
-The explorer is always light. Dark variant is used exclusively for marketing/landing pages:
-- Background: `#09090B`, Surface: `#12131A`, Border: `#1E2030`
-- Accent: `#7C6CF0` → `#A78BFA` (purple gradient)
-- No dark mode toggle in the explorer product.
+### Dark Mode
+
+The explorer supports a three-way theme toggle: **System → Light → Dark**, persisted in `localStorage('prism_theme')`.
+
+**Toggle behavior**:
+- **System**: Follows OS `prefers-color-scheme` preference
+- **Light**: Forces light mode regardless of OS
+- **Dark**: Forces dark mode regardless of OS
+- Toggle button appears in the top nav between search and network selector
+- Icons: monitor (system), sun (light), moon (dark)
+
+**Implementation**: A synchronous `<script>` in `<head>` reads `localStorage` and applies `.dark` class to `<html>` before first paint, preventing FOUC.
+
+**Semantic colors in dark mode**: Emerald, violet, amber, red, cyan stay at their standard Tailwind values. Badge tinted backgrounds use `dark:bg-{color}-950/30` and `dark:ring-{color}-800` variants.
+
+**Inverted elements**: Buttons and pagination that use `bg-gray-900 text-white` in light mode flip to `dark:bg-gray-100 dark:text-gray-900`.
+
+**Code blocks**: `bg-[#1E1E2E]` backgrounds are already dark — no change needed.
 
 ---
 
@@ -300,6 +320,6 @@ Three semantic states with consistent surface treatment:
 - **Don't** use `cursor-pointer` on `<div>` elements — use `<a>` tags for navigable rows
 - **Don't** create page-local badge helpers — use shared `Badge`, `TypeBadge`, `MetaBadge`
 - **Don't** use blue for links — use Emerald to maintain brand signature
-- **Don't** use pure black (`#000000`) for text — use `#111111` (`text-gray-900`)
-- **Don't** add a dark mode toggle — the explorer is always light
+- **Don't** use pure black (`#000000`) for text — use `text-text-primary`
+- **Don't** use hardcoded neutral grays (`bg-white`, `text-gray-900`, `border-gray-200`) — use semantic tokens (`bg-surface-card`, `text-text-primary`, `border-border-default`)
 - **Don't** build a slide-out that repeats table data — it must reveal new information

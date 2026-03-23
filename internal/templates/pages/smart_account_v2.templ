@@ -14,60 +14,60 @@ templ SmartAccountV2(data SmartAccountData) {
 			<div class="anim mt-4 mb-5">
 				@components.BackNav("Back to Account", "/")
 				<div class="flex items-center gap-3 mb-1">
-					<span class="text-2xl font-bold text-gray-900">{ data.Name }</span>
+					<span class="text-2xl font-bold text-text-primary">{ data.Name }</span>
 					@components.Badge("Smart Wallet", "violet")
 				</div>
 				<div class="flex items-center gap-1.5 mb-2">
-					<span class="font-mono text-xs text-gray-400">{ data.ContractID }</span>
+					<span class="font-mono text-xs text-text-muted">{ data.ContractID }</span>
 					@components.CopyButton(data.ContractID)
 				</div>
 				<!-- Hero number: total balance -->
-				<div class="text-2xs text-gray-400 uppercase tracking-wider mb-1">Total Balance</div>
+				<div class="text-2xs text-text-muted uppercase tracking-wider mb-1">Total Balance</div>
 				<div class="flex items-baseline mb-3">
-					<span class="text-4xl font-bold text-gray-900 tabular">{ data.TotalBalance }</span>
-					<span class="text-2xl font-medium text-gray-400 ml-0.5">{ data.BalanceCents }</span>
+					<span class="text-4xl font-bold text-text-primary tabular">{ data.TotalBalance }</span>
+					<span class="text-2xl font-medium text-text-muted ml-0.5">{ data.BalanceCents }</span>
 				</div>
-				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
-					<span>Signers <span class="font-semibold text-gray-900">{ fmt.Sprintf("%d", len(data.Signers)) }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Required <span class="font-semibold text-gray-900">{ data.MinSigners }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>TTL <span class="font-semibold text-gray-900">{ data.Health.TTLRemaining }</span></span>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-text-body">
+					<span>Signers <span class="font-semibold text-text-primary">{ fmt.Sprintf("%d", len(data.Signers)) }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Required <span class="font-semibold text-text-primary">{ data.MinSigners }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>TTL <span class="font-semibold text-text-primary">{ data.Health.TTLRemaining }</span></span>
 				</div>
 			</div>
 
 			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Overview</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Security</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Activity</button>
+			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Overview</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Security</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Activity</button>
 			</div>
 
 			<!-- Signers -->
 			<div class="anim d1 mb-8">
-				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Signers</h3>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Signers</h3>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium">Signer</th>
 								<th class="px-4 py-3 font-medium">Role</th>
 								<th class="px-4 py-3 font-medium hidden md:table-cell">Key Type</th>
 								<th class="px-4 py-3 font-medium text-right">Weight</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, s := range data.Signers {
 								<tr>
 									<td class="px-5 py-3">
-										<div class="text-sm font-medium text-gray-900">{ s.Name }</div>
-										<span class="font-mono text-2xs text-gray-400">{ s.Address }</span>
+										<div class="text-sm font-medium text-text-primary">{ s.Name }</div>
+										<span class="font-mono text-2xs text-text-muted">{ s.Address }</span>
 									</td>
 									<td class="px-4 py-3">
 										@components.Badge(s.Role, s.RoleColor)
 									</td>
-									<td class="px-4 py-3 hidden md:table-cell text-xs text-gray-500">{ s.KeyType }</td>
-									<td class="px-4 py-3 text-right font-mono text-sm font-semibold text-gray-900">{ s.Weight }</td>
+									<td class="px-4 py-3 hidden md:table-cell text-xs text-text-body">{ s.KeyType }</td>
+									<td class="px-4 py-3 text-right font-mono text-sm font-semibold text-text-primary">{ s.Weight }</td>
 								</tr>
 							}
 						</tbody>
@@ -78,14 +78,14 @@ templ SmartAccountV2(data SmartAccountData) {
 			<!-- Policies -->
 			if len(data.Policies) > 0 {
 				<div class="anim d2 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Authorization Policies</h3>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Authorization Policies</h3>
 					<div class="space-y-3">
 						for _, p := range data.Policies {
-							<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
-								<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+							<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+								<div class="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
 									<div>
-										<span class="font-medium text-gray-900">{ p.Name }</span>
-										<span class="text-gray-400 ml-2">{ p.Description }</span>
+										<span class="font-medium text-text-primary">{ p.Name }</span>
+										<span class="text-text-muted ml-2">{ p.Description }</span>
 									</div>
 									if p.IsActive {
 										@components.Badge("Active", "emerald")
@@ -94,21 +94,21 @@ templ SmartAccountV2(data SmartAccountData) {
 								if p.Limit != "" {
 									<div class="px-5 py-3">
 										<div class="flex items-center justify-between text-xs mb-1.5">
-											<span class="text-gray-400">{ p.Spent } / { p.Limit } used</span>
-											<span class="text-gray-400">Resets in { p.ResetsIn }</span>
+											<span class="text-text-muted">{ p.Spent } / { p.Limit } used</span>
+											<span class="text-text-muted">Resets in { p.ResetsIn }</span>
 										</div>
-										<div class="h-1.5 rounded-full bg-gray-100">
+										<div class="h-1.5 rounded-full bg-surface-subtle">
 											<div class="h-1.5 rounded-full bg-emerald-500" style={ "width:" + p.SpentPct }></div>
 										</div>
 									</div>
 								}
 								if len(p.Contracts) > 0 {
-									<div class="px-5 py-3 border-t border-gray-100">
+									<div class="px-5 py-3 border-t border-border-subtle">
 										<div class="flex flex-wrap gap-2">
 											for _, c := range p.Contracts {
-												<span class="rounded-lg bg-gray-50 px-3 py-1.5 text-xs">
-													<span class="font-medium text-gray-900">{ c.Name }</span>
-													<span class="text-gray-400 ml-1">{ c.Methods }</span>
+												<span class="rounded-lg bg-surface-subtle px-3 py-1.5 text-xs">
+													<span class="font-medium text-text-primary">{ c.Name }</span>
+													<span class="text-text-muted ml-1">{ c.Methods }</span>
 												</span>
 											}
 										</div>
@@ -123,29 +123,29 @@ templ SmartAccountV2(data SmartAccountData) {
 			<!-- Session Keys -->
 			if len(data.SessionKeys) > 0 {
 				<div class="anim d2 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Session Keys</h3>
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Session Keys</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 						<table class="w-full text-left">
 							<thead>
-								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 									<th class="px-5 py-3 font-medium">Session</th>
 									<th class="px-4 py-3 font-medium hidden md:table-cell">Scope</th>
 									<th class="px-4 py-3 font-medium text-right">Spend Limit</th>
 									<th class="px-4 py-3 font-medium text-right">Expires</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-100">
+							<tbody class="divide-y divide-border-subtle">
 								for _, sk := range data.SessionKeys {
 									<tr>
 										<td class="px-5 py-3">
-											<div class="text-sm font-medium text-gray-900">{ sk.Name }</div>
-											<div class="font-mono text-2xs text-gray-400">{ sk.Key }</div>
+											<div class="text-sm font-medium text-text-primary">{ sk.Name }</div>
+											<div class="font-mono text-2xs text-text-muted">{ sk.Key }</div>
 										</td>
-										<td class="px-4 py-3 hidden md:table-cell text-xs text-gray-500">{ sk.Scope }</td>
+										<td class="px-4 py-3 hidden md:table-cell text-xs text-text-body">{ sk.Scope }</td>
 										<td class="px-4 py-3 text-right">
-											<span class="font-mono text-sm text-gray-900 tabular">{ sk.Used }/{ sk.SpendLimit }</span>
+											<span class="font-mono text-sm text-text-primary tabular">{ sk.Used }/{ sk.SpendLimit }</span>
 										</td>
-										<td class="px-4 py-3 text-right text-xs text-gray-500">{ sk.Expires }</td>
+										<td class="px-4 py-3 text-right text-xs text-text-body">{ sk.Expires }</td>
 									</tr>
 								}
 							</tbody>
@@ -157,37 +157,37 @@ templ SmartAccountV2(data SmartAccountData) {
 			<!-- Contract Health + Security Log side by side -->
 			<div class="anim d3 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
 				<div>
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Contract Health</h3>
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
-						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
-							<span class="text-gray-400">Rent Status</span>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Contract Health</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+							<span class="text-text-muted">Rent Status</span>
 							<span class="font-medium text-emerald-600">{ data.Health.RentStatus }</span>
 						</div>
-						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
-							<span class="text-gray-400">TTL Remaining</span>
-							<span class="font-medium text-gray-900">{ data.Health.TTLRemaining }</span>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+							<span class="text-text-muted">TTL Remaining</span>
+							<span class="font-medium text-text-primary">{ data.Health.TTLRemaining }</span>
 						</div>
-						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
-							<span class="text-gray-400">WASM Hash</span>
-							<span class="font-mono text-xs text-gray-500">{ data.Health.WASMHash }</span>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+							<span class="text-text-muted">WASM Hash</span>
+							<span class="font-mono text-xs text-text-body">{ data.Health.WASMHash }</span>
 						</div>
-						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
-							<span class="text-gray-400">Framework</span>
-							<span class="text-gray-900">{ data.Health.OZVersion }</span>
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+							<span class="text-text-muted">Framework</span>
+							<span class="text-text-primary">{ data.Health.OZVersion }</span>
 						</div>
 						<div class="detail-row flex items-center justify-between px-5 py-2.5">
-							<span class="text-gray-400">Deployed</span>
-							<span class="text-gray-700">{ data.Health.Deployed }</span>
+							<span class="text-text-muted">Deployed</span>
+							<span class="text-text-strong">{ data.Health.Deployed }</span>
 						</div>
 					</div>
 				</div>
 				<div>
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Security Log</h3>
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Security Log</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
 						for _, ev := range data.SecurityLog {
-							<div class="detail-row flex items-center gap-3 px-5 py-2.5 border-b border-gray-100">
-								<span class="text-xs text-gray-400 w-12 flex-shrink-0">{ ev.Time }</span>
-								<span class="text-gray-700 flex-1">{ ev.Action }</span>
+							<div class="detail-row flex items-center gap-3 px-5 py-2.5 border-b border-border-subtle">
+								<span class="text-xs text-text-muted w-12 flex-shrink-0">{ ev.Time }</span>
+								<span class="text-text-strong flex-1">{ ev.Action }</span>
 								@components.Badge(ev.Status, ev.StatusColor)
 							</div>
 						}
