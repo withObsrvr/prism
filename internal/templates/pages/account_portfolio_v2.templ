@@ -15,7 +15,7 @@ templ AccountPortfolioV2(data AccountData) {
 			<div class="anim mt-4 mb-5">
 				@components.BackNav("Back to Explorer", "/")
 				<div class="flex items-center gap-3 mb-1">
-					<span class="font-mono text-lg font-semibold text-gray-500">{ data.ShortAddress }</span>
+					<span class="font-mono text-lg font-semibold text-text-body">{ data.ShortAddress }</span>
 					@components.CopyButton(data.Address)
 					if data.IsFunded {
 						@components.Badge("Funded", "emerald")
@@ -26,55 +26,55 @@ templ AccountPortfolioV2(data AccountData) {
 				</div>
 				<!-- Hero number: total value -->
 				<div class="flex items-baseline mb-3">
-					<span class="text-4xl font-bold text-gray-900 tabular">{ data.TotalValue }</span>
-					<span class="text-2xl font-medium text-gray-400 ml-0.5">{ data.TotalCents }</span>
+					<span class="text-4xl font-bold text-text-primary tabular">{ data.TotalValue }</span>
+					<span class="text-2xl font-medium text-text-muted ml-0.5">{ data.TotalCents }</span>
 				</div>
-				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
-					<span>XLM <span class="font-mono font-semibold text-gray-900 tabular">{ data.XLMBalance }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Trustlines <span class="font-semibold text-gray-900">{ data.Trustlines }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Signers <span class="font-semibold text-gray-900">{ data.SignerCount }</span></span>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-text-body">
+					<span>XLM <span class="font-mono font-semibold text-text-primary tabular">{ data.XLMBalance }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Trustlines <span class="font-semibold text-text-primary">{ data.Trustlines }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Signers <span class="font-semibold text-text-primary">{ data.SignerCount }</span></span>
 					if data.HomeDomain != "" {
-						<span class="text-gray-300">&middot;</span>
+						<span class="text-text-muted">&middot;</span>
 						<span class="font-medium text-emerald-700">{ data.HomeDomain }</span>
 					}
 					if data.CreatedAt != "" {
-						<span class="text-gray-300">&middot;</span>
+						<span class="text-text-muted">&middot;</span>
 						<span>Created { data.CreatedAt }</span>
 					}
 				</div>
 			</div>
 
 			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Portfolio</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Activity</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Soroban</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Signers</button>
+			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Portfolio</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Activity</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Soroban</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Signers</button>
 			</div>
 
 			<!-- Balances -->
 			<div class="anim d2 mb-8">
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium">Asset</th>
 								<th class="px-4 py-3 font-medium hidden md:table-cell">Type</th>
 								<th class="px-4 py-3 font-medium text-right">Balance</th>
 								<th class="px-4 py-3 font-medium text-right">Value (USD)</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, b := range data.Balances {
-								<tr class="hover:bg-gray-50/50 transition-colors">
+								<tr class="hover:bg-surface-subtle transition-colors">
 									<td class="px-5 py-3">
 										<div class="flex items-center gap-2.5">
 											<div class={ "flex h-8 w-8 items-center justify-center rounded-full text-white text-2xs font-bold", b.BgColor }>{ b.Code }</div>
 											<div>
-												<div class="text-sm font-semibold text-gray-900">{ b.Code }</div>
-												<div class="text-2xs text-gray-400">{ b.Name }</div>
+												<div class="text-sm font-semibold text-text-primary">{ b.Code }</div>
+												<div class="text-2xs text-text-muted">{ b.Name }</div>
 											</div>
 										</div>
 									</td>
@@ -82,10 +82,10 @@ templ AccountPortfolioV2(data AccountData) {
 										@components.Badge(b.Type, b.TypeColor)
 									</td>
 									<td class="px-4 py-3 text-right">
-										<span class="font-mono text-sm font-medium text-gray-900 tabular">{ b.Balance }</span>
+										<span class="font-mono text-sm font-medium text-text-primary tabular">{ b.Balance }</span>
 									</td>
 									<td class="px-4 py-3 text-right">
-										<span class="text-sm font-semibold text-gray-900 tabular">{ b.ValueUSD }</span>
+										<span class="text-sm font-semibold text-text-primary tabular">{ b.ValueUSD }</span>
 									</td>
 								</tr>
 							}
@@ -97,33 +97,33 @@ templ AccountPortfolioV2(data AccountData) {
 			<!-- Activity -->
 			<div class="anim d2 mb-8">
 				<div class="flex items-center justify-between mb-2">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400">Recent Activity</h3>
-					<a href="#" class="text-xs font-medium text-gray-500 hover:text-gray-900">View all →</a>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted">Recent Activity</h3>
+					<a href="#" class="text-xs font-medium text-text-body hover:text-text-primary">View all →</a>
 				</div>
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium">Summary</th>
 								<th class="px-4 py-3 font-medium hidden md:table-cell">Type</th>
 								<th class="px-4 py-3 font-medium hidden md:table-cell">Tx</th>
 								<th class="px-4 py-3 font-medium text-right">Time</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, act := range data.Activities {
-								<tr class="hover:bg-gray-50/50 transition-colors">
+								<tr class="hover:bg-surface-subtle transition-colors">
 									<td class="px-5 py-3">
-										<span class="text-sm text-gray-700">{ act.Summary }</span>
+										<span class="text-sm text-text-strong">{ act.Summary }</span>
 									</td>
 									<td class="px-4 py-3 hidden md:table-cell">
 										@components.TypeBadge(act.Badge, act.BadgeColor)
 									</td>
 									<td class="px-4 py-3 hidden md:table-cell">
-										<a href={ templ.SafeURL("/tx/" + act.TxHash) } class="font-mono text-2xs text-gray-400 hover:text-gray-900">{ act.ShortHash }</a>
+										<a href={ templ.SafeURL("/tx/" + act.TxHash) } class="font-mono text-2xs text-text-muted hover:text-text-primary">{ act.ShortHash }</a>
 									</td>
 									<td class="px-4 py-3 text-right">
-										<span class="text-2xs text-gray-400">{ act.Time }</span>
+										<span class="text-2xs text-text-muted">{ act.Time }</span>
 									</td>
 								</tr>
 							}
@@ -135,11 +135,11 @@ templ AccountPortfolioV2(data AccountData) {
 			<!-- Contract Interactions -->
 			if len(data.Contracts) > 0 {
 				<div class="anim d3 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Contract Interactions</h3>
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Contract Interactions</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 						<table class="w-full text-left">
 							<thead>
-								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 									<th class="px-5 py-3 font-medium">Contract</th>
 									<th class="px-4 py-3 font-medium hidden md:table-cell">Top Function</th>
 									<th class="px-4 py-3 font-medium text-right">Calls</th>
@@ -147,27 +147,27 @@ templ AccountPortfolioV2(data AccountData) {
 									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Last Called</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-100">
+							<tbody class="divide-y divide-border-subtle">
 								for _, c := range data.Contracts {
-									<tr class="hover:bg-gray-50/50 transition-colors">
+									<tr class="hover:bg-surface-subtle transition-colors">
 										<td class="px-5 py-3">
 											<div class="flex items-center gap-2">
-												<span class="text-sm font-medium text-gray-900">{ c.Name }</span>
+												<span class="text-sm font-medium text-text-primary">{ c.Name }</span>
 												@components.Badge(c.Badge, c.BadgeColor)
 											</div>
-											<span class="font-mono text-2xs text-gray-400">{ c.Address }</span>
+											<span class="font-mono text-2xs text-text-muted">{ c.Address }</span>
 										</td>
 										<td class="px-4 py-3 hidden md:table-cell">
 											<span class="font-mono text-xs text-violet-600">{ c.TopFn }</span>
 										</td>
 										<td class="px-4 py-3 text-right">
-											<span class="font-mono text-sm font-semibold text-gray-900 tabular">{ c.Calls }</span>
+											<span class="font-mono text-sm font-semibold text-text-primary tabular">{ c.Calls }</span>
 										</td>
 										<td class="px-4 py-3 text-right hidden md:table-cell">
-											<span class="font-mono text-xs text-gray-700 tabular">{ c.Fees }</span>
+											<span class="font-mono text-xs text-text-strong tabular">{ c.Fees }</span>
 										</td>
 										<td class="px-4 py-3 text-right hidden md:table-cell">
-											<span class="text-xs text-gray-500">{ c.LastCall }</span>
+											<span class="text-xs text-text-body">{ c.LastCall }</span>
 										</td>
 									</tr>
 								}
@@ -180,11 +180,11 @@ templ AccountPortfolioV2(data AccountData) {
 			<!-- Offers -->
 			if len(data.Offers) > 0 {
 				<div class="anim d3 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Active Offers ({ fmt.Sprintf("%d", len(data.Offers)) })</h3>
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Active Offers ({ fmt.Sprintf("%d", len(data.Offers)) })</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 						<table class="w-full text-left">
 							<thead>
-								<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 									<th class="px-5 py-3 font-medium w-16">Side</th>
 									<th class="px-4 py-3 font-medium">Pair</th>
 									<th class="px-4 py-3 font-medium">Price</th>
@@ -192,16 +192,16 @@ templ AccountPortfolioV2(data AccountData) {
 									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Offer ID</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-100">
+							<tbody class="divide-y divide-border-subtle">
 								for _, o := range data.Offers {
 									<tr>
 										<td class="px-5 py-3">
 											@components.Badge(o.Side, o.SideColor)
 										</td>
-										<td class="px-4 py-3 text-sm text-gray-900">{ o.Pair }</td>
-										<td class="px-4 py-3 font-mono text-sm text-gray-900">{ o.Price } <span class="text-xs text-gray-400">{ o.PriceUnit }</span></td>
-										<td class="px-4 py-3 text-right font-mono text-sm text-gray-900 tabular">{ o.Amount }</td>
-										<td class="px-4 py-3 text-right hidden md:table-cell font-mono text-xs text-gray-500">{ o.OfferID }</td>
+										<td class="px-4 py-3 text-sm text-text-primary">{ o.Pair }</td>
+										<td class="px-4 py-3 font-mono text-sm text-text-primary">{ o.Price } <span class="text-xs text-text-muted">{ o.PriceUnit }</span></td>
+										<td class="px-4 py-3 text-right font-mono text-sm text-text-primary tabular">{ o.Amount }</td>
+										<td class="px-4 py-3 text-right hidden md:table-cell font-mono text-xs text-text-body">{ o.OfferID }</td>
 									</tr>
 								}
 							</tbody>
@@ -212,29 +212,29 @@ templ AccountPortfolioV2(data AccountData) {
 
 			<!-- Signers & Thresholds -->
 			<div class="anim d4 mb-8">
-				<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Signers &amp; Thresholds</h3>
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Signers &amp; Thresholds</h3>
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 					<!-- Thresholds -->
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
 						for _, t := range data.Thresholds {
-							<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
-								<span class="text-gray-400">{ t.Label }</span>
-								<span class="font-semibold text-gray-900">{ t.Value }</span>
+							<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+								<span class="text-text-muted">{ t.Label }</span>
+								<span class="font-semibold text-text-primary">{ t.Value }</span>
 							</div>
 						}
 					</div>
 					<!-- Signers -->
-					<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
 						for _, s := range data.Signers {
-							<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-gray-100">
+							<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
 								<div class="flex items-center gap-2">
-									<span class="font-mono text-xs text-gray-900">{ s.Address }</span>
+									<span class="font-mono text-xs text-text-primary">{ s.Address }</span>
 									@components.Badge(s.Type, "gray")
 									if s.IsSelf {
 										@components.Badge("Self", "violet")
 									}
 								</div>
-								<span class="font-mono text-xs font-semibold text-gray-900">{ s.Weight }</span>
+								<span class="font-mono text-xs font-semibold text-text-primary">{ s.Weight }</span>
 							</div>
 						}
 					</div>

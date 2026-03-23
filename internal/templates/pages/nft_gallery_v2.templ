@@ -14,38 +14,38 @@ templ NftGalleryV2(data NftGalleryData) {
 			<div class="anim mt-4 mb-5">
 				@components.BackNav("Back to Explorer", "/")
 				<div class="flex items-center gap-3 mb-2">
-					<span class="text-2xl font-bold text-gray-900">{ data.CollectionName }</span>
+					<span class="text-2xl font-bold text-text-primary">{ data.CollectionName }</span>
 					if data.IsVerified {
 						<svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
 					}
 					@components.Badge(data.Standard, "violet")
 				</div>
 				<div class="flex items-center gap-1.5 mb-3">
-					<span class="font-mono text-xs text-gray-400">{ data.ContractID }</span>
+					<span class="font-mono text-xs text-text-muted">{ data.ContractID }</span>
 					@components.CopyButton(data.ContractID)
 				</div>
-				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
-					<span>Floor <span class="font-semibold text-gray-900 tabular">{ data.FloorPrice }</span> <span class="text-gray-400">{ data.FloorUSD }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Volume <span class="font-semibold text-gray-900 tabular">{ data.TotalVolume }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Items <span class="font-semibold text-gray-900 tabular">{ data.ItemCount }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Holders <span class="font-semibold text-gray-900 tabular">{ data.HolderCount }</span> <span class="text-gray-400">{ data.HolderPct } unique</span></span>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-text-body">
+					<span>Floor <span class="font-semibold text-text-primary tabular">{ data.FloorPrice }</span> <span class="text-text-muted">{ data.FloorUSD }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Volume <span class="font-semibold text-text-primary tabular">{ data.TotalVolume }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Items <span class="font-semibold text-text-primary tabular">{ data.ItemCount }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Holders <span class="font-semibold text-text-primary tabular">{ data.HolderCount }</span> <span class="text-text-muted">{ data.HolderPct } unique</span></span>
 				</div>
 			</div>
 
 			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">Collection</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Activity</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Holders</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Contract</button>
+			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Collection</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Activity</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Holders</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Contract</button>
 			</div>
 
 			<!-- Featured Item -->
 			<div class="anim d1 mb-8">
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<div class="grid grid-cols-1 md:grid-cols-2">
 						<!-- Generated SVG art -->
 						<div class="aspect-square w-full overflow-hidden bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] relative">
@@ -62,25 +62,25 @@ templ NftGalleryV2(data NftGalleryData) {
 						</div>
 						<!-- Metadata -->
 						<div class="p-6">
-							<h3 class="text-lg font-bold text-gray-900 mb-1">{ data.Featured.Name }</h3>
-							<p class="text-sm text-gray-500 mb-4">{ data.Featured.Description }</p>
+							<h3 class="text-lg font-bold text-text-primary mb-1">{ data.Featured.Name }</h3>
+							<p class="text-sm text-text-body mb-4">{ data.Featured.Description }</p>
 
-							<div class="rounded-xl border border-gray-200 overflow-hidden text-sm mb-4">
-								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-									<span class="text-gray-400">Owner</span>
+							<div class="rounded-xl border border-border-default overflow-hidden text-sm mb-4">
+								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-border-subtle">
+									<span class="text-text-muted">Owner</span>
 									<span class="font-mono text-xs text-emerald-700">{ data.Featured.Owner }</span>
 								</div>
-								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-									<span class="text-gray-400">Standard</span>
-									<span class="text-gray-900">{ data.Featured.TokenStandard }</span>
+								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-border-subtle">
+									<span class="text-text-muted">Standard</span>
+									<span class="text-text-primary">{ data.Featured.TokenStandard }</span>
 								</div>
-								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-									<span class="text-gray-400">Last Transfer</span>
-									<span class="text-gray-700">{ data.Featured.LastTransfer }</span>
+								<div class="detail-row flex items-center justify-between px-4 py-2.5 border-b border-border-subtle">
+									<span class="text-text-muted">Last Transfer</span>
+									<span class="text-text-strong">{ data.Featured.LastTransfer }</span>
 								</div>
 								<div class="detail-row flex items-center justify-between px-4 py-2.5">
-									<span class="text-gray-400">Storage</span>
-									<span class="text-gray-700">{ data.Featured.MetadataStorage }</span>
+									<span class="text-text-muted">Storage</span>
+									<span class="text-text-strong">{ data.Featured.MetadataStorage }</span>
 								</div>
 							</div>
 
@@ -88,10 +88,10 @@ templ NftGalleryV2(data NftGalleryData) {
 							if len(data.Featured.Traits) > 0 {
 								<div class="flex flex-wrap gap-2">
 									for _, t := range data.Featured.Traits {
-										<div class="rounded-lg bg-gray-50 px-3 py-1.5 text-xs">
-											<span class="text-gray-400">{ t.Name }</span>
-											<span class="font-medium text-gray-900 ml-1">{ t.Value }</span>
-											<span class="text-gray-400 ml-1">{ t.Rarity }</span>
+										<div class="rounded-lg bg-surface-subtle px-3 py-1.5 text-xs">
+											<span class="text-text-muted">{ t.Name }</span>
+											<span class="font-medium text-text-primary ml-1">{ t.Value }</span>
+											<span class="text-text-muted ml-1">{ t.Rarity }</span>
 										</div>
 									}
 								</div>
@@ -104,11 +104,11 @@ templ NftGalleryV2(data NftGalleryData) {
 			<!-- Gallery Grid -->
 			<div class="anim d2 mb-8">
 				<div class="flex items-center justify-between mb-3">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-gray-400">All Items ({ data.ItemCount })</h3>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted">All Items ({ data.ItemCount })</h3>
 				</div>
 				<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
 					for i, item := range data.Items {
-						<div class={ "rounded-xl bg-white shadow-sm overflow-hidden cursor-pointer transition-shadow hover:shadow-md", templ.KV("border-2 border-gray-900", i == 0), templ.KV("border border-gray-200", i != 0) }>
+						<div class={ "rounded-xl bg-surface-card shadow-sm overflow-hidden cursor-pointer transition-shadow hover:shadow-md", templ.KV("border-2 border-text-primary", i == 0), templ.KV("border border-border-default", i != 0) }>
 							<div class={ "aspect-square w-full relative", nftBgClass(item.ArtClass) }>
 								<!-- Generated SVG art -->
 								<svg class="absolute inset-0 h-full w-full" viewBox="0 0 200 200" fill="none">
@@ -120,15 +120,15 @@ templ NftGalleryV2(data NftGalleryData) {
 								</div>
 							</div>
 							<div class="px-3 py-3">
-								<div class="text-sm font-semibold text-gray-900 truncate">{ item.Name }</div>
+								<div class="text-sm font-semibold text-text-primary truncate">{ item.Name }</div>
 								<div class="mt-1 flex items-center justify-between">
-									<span class="text-xs text-gray-500 tabular">Floor: { item.Floor }</span>
+									<span class="text-xs text-text-body tabular">Floor: { item.Floor }</span>
 									if item.IsOwned {
-										<span class="rounded bg-gray-100 px-1.5 py-0.5 text-2xs font-bold text-gray-500">Owned</span>
+										<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-2xs font-bold text-text-body">Owned</span>
 									}
 								</div>
 								if !item.IsOwned && item.OwnerAddr != "" {
-									<div class="mt-1 font-mono text-2xs text-gray-400 truncate">{ item.OwnerAddr }</div>
+									<div class="mt-1 font-mono text-2xs text-text-muted truncate">{ item.OwnerAddr }</div>
 								}
 							</div>
 						</div>

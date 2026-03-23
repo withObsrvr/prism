@@ -160,9 +160,9 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 		TotalBalance: "$87,204",
 		BalanceCents: ".51",
 		Signers: []pages.SmartSigner{
-			{Name: "Owner Key", Role: "Admin", RoleColor: "amber", Address: "GBXC...4K71", KeyType: "Ed25519", Weight: "10", IconSVG: "key", IconBg: "bg-amber-50 text-amber-600 ring-1 ring-amber-100"},
-			{Name: "Operations Signer", Role: "Signer", RoleColor: "blue", Address: "GDEF...9R23", KeyType: "Ed25519", Weight: "10", IconSVG: "user", IconBg: "bg-blue-50 text-blue-600 ring-1 ring-blue-100"},
-			{Name: "Recovery Signer", Role: "Recovery", RoleColor: "emerald", Address: "GHIJ...2M56", KeyType: "Ed25519", Weight: "10", IconSVG: "recovery", IconBg: "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100"},
+			{Name: "Owner Key", Role: "Admin", RoleColor: "amber", Address: "GBXC...4K71", KeyType: "Ed25519", Weight: "10", IconSVG: "key", IconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-800"},
+			{Name: "Operations Signer", Role: "Signer", RoleColor: "blue", Address: "GDEF...9R23", KeyType: "Ed25519", Weight: "10", IconSVG: "user", IconBg: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-100 dark:ring-blue-800"},
+			{Name: "Recovery Signer", Role: "Recovery", RoleColor: "emerald", Address: "GHIJ...2M56", KeyType: "Ed25519", Weight: "10", IconSVG: "recovery", IconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-800"},
 		},
 		Policies: []pages.SmartPolicy{
 			{
@@ -196,10 +196,10 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 			Deployed:     "Oct 2, 2026",
 		},
 		SecurityLog: []pages.SecurityEvent{
-			{Action: "Session key created", Detail: "Today, 11:02 AM · by Owner Key", Time: "2h ago", Status: "OK", StatusColor: "emerald", IconSVG: "check", IconBg: "bg-emerald-50 text-emerald-600"},
-			{Action: "Blend Protocol added to allowlist", Detail: "Yesterday, 3:18 PM · 2-of-3 approval", Time: "1d ago", Status: "OK", StatusColor: "blue", IconSVG: "plus", IconBg: "bg-blue-50 text-blue-600"},
-			{Action: "Session key expired", Detail: "Oct 23, 2026 · auto-revoked", Time: "3d ago", Status: "Expired", StatusColor: "red", IconSVG: "x", IconBg: "bg-red-50 text-red-600"},
-			{Action: "Threshold updated to 2-of-3", Detail: "Oct 2, 2026 · at deployment", Time: "5d ago", Status: "OK", StatusColor: "amber", IconSVG: "key", IconBg: "bg-amber-50 text-amber-600"},
+			{Action: "Session key created", Detail: "Today, 11:02 AM · by Owner Key", Time: "2h ago", Status: "OK", StatusColor: "emerald", IconSVG: "check", IconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"},
+			{Action: "Blend Protocol added to allowlist", Detail: "Yesterday, 3:18 PM · 2-of-3 approval", Time: "1d ago", Status: "OK", StatusColor: "blue", IconSVG: "plus", IconBg: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"},
+			{Action: "Session key expired", Detail: "Oct 23, 2026 · auto-revoked", Time: "3d ago", Status: "Expired", StatusColor: "red", IconSVG: "x", IconBg: "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"},
+			{Action: "Threshold updated to 2-of-3", Detail: "Oct 2, 2026 · at deployment", Time: "5d ago", Status: "OK", StatusColor: "amber", IconSVG: "key", IconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400"},
 		},
 	}
 	pages.SmartAccountV2(data).Render(r.Context(), w)

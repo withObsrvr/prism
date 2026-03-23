@@ -13,71 +13,71 @@ templ RentTrackerV2(data RentTrackerData) {
 			<div class="anim mt-4 mb-5">
 				@components.BackNav("Back to Dev Tools", "/events")
 				<div class="flex items-center gap-3 mb-2">
-					<span class="text-2xl font-bold text-gray-900">State &amp; Rent</span>
+					<span class="text-2xl font-bold text-text-primary">State &amp; Rent</span>
 				</div>
 				<div class="flex items-center gap-1.5 mb-3">
-					<span class="text-sm text-gray-500">Contract:</span>
+					<span class="text-sm text-text-body">Contract:</span>
 					<span class="font-mono text-xs text-violet-600 font-medium">{ data.ContractName }</span>
-					<span class="font-mono text-xs text-gray-400">{ data.ContractAddr }</span>
+					<span class="font-mono text-xs text-text-muted">{ data.ContractAddr }</span>
 					@components.CopyButton(data.ContractAddr)
 				</div>
-				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-500">
-					<span>Entries <span class="font-semibold text-gray-900 tabular">{ data.TotalEntries }</span></span>
-					<span class="text-gray-300">&middot;</span>
-					<span>Monthly rent <span class="font-semibold text-gray-900 tabular">{ data.EstMonthlyRent }</span> <span class="text-gray-400">~{ data.RentUSD }</span></span>
-					<span class="text-gray-300">&middot;</span>
+				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-text-body">
+					<span>Entries <span class="font-semibold text-text-primary tabular">{ data.TotalEntries }</span></span>
+					<span class="text-text-muted">&middot;</span>
+					<span>Monthly rent <span class="font-semibold text-text-primary tabular">{ data.EstMonthlyRent }</span> <span class="text-text-muted">~{ data.RentUSD }</span></span>
+					<span class="text-text-muted">&middot;</span>
 					<span class="text-emerald-600"><span class="font-semibold">{ data.HealthyCount }</span> healthy</span>
-					<span class="text-gray-300">&middot;</span>
+					<span class="text-text-muted">&middot;</span>
 					<span class="text-amber-600"><span class="font-semibold">{ data.AtRiskCount }</span> at risk</span>
-					<span class="text-gray-300">&middot;</span>
+					<span class="text-text-muted">&middot;</span>
 					<span class="text-red-500"><span class="font-semibold">{ data.CriticalCount }</span> critical</span>
 				</div>
 			</div>
 
 			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-gray-200 text-sm font-medium text-gray-400 mb-6">
-				<button class="border-b-2 border-gray-900 pb-3 text-gray-900 font-semibold">All Entries</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Healthy</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">At Risk</button>
-				<button class="pb-3.5 hover:text-gray-900 transition-colors">Critical</button>
+			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">All Entries</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Healthy</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">At Risk</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Critical</button>
 			</div>
 
 			<!-- Storage Breakdown -->
 			<div class="anim d1 mb-6">
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
-						<span class="w-32 text-gray-400 flex-shrink-0">Instance</span>
-						<span class="font-semibold text-gray-900 tabular ml-4">{ data.InstanceEntries } entries</span>
-						<span class="text-gray-400 ml-2">&middot;</span>
-						<span class="text-gray-500 ml-2">{ data.InstanceSize }</span>
-						<span class="text-gray-400 ml-2">&middot;</span>
-						<span class="text-gray-500 ml-2">Min TTL { data.InstanceMinTTL }</span>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+						<span class="w-32 text-text-muted flex-shrink-0">Instance</span>
+						<span class="font-semibold text-text-primary tabular ml-4">{ data.InstanceEntries } entries</span>
+						<span class="text-text-muted ml-2">&middot;</span>
+						<span class="text-text-body ml-2">{ data.InstanceSize }</span>
+						<span class="text-text-muted ml-2">&middot;</span>
+						<span class="text-text-body ml-2">Min TTL { data.InstanceMinTTL }</span>
 					</div>
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-gray-100">
-						<span class="w-32 text-gray-400 flex-shrink-0">Persistent</span>
-						<span class="font-semibold text-gray-900 tabular ml-4">{ data.PersistentEntries } entries</span>
-						<span class="text-gray-400 ml-2">&middot;</span>
-						<span class="text-gray-500 ml-2">{ data.PersistentSize }</span>
-						<span class="text-gray-400 ml-2">&middot;</span>
-						<span class="text-gray-500 ml-2">Min TTL { data.PersistentMinTTL }</span>
+					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+						<span class="w-32 text-text-muted flex-shrink-0">Persistent</span>
+						<span class="font-semibold text-text-primary tabular ml-4">{ data.PersistentEntries } entries</span>
+						<span class="text-text-muted ml-2">&middot;</span>
+						<span class="text-text-body ml-2">{ data.PersistentSize }</span>
+						<span class="text-text-muted ml-2">&middot;</span>
+						<span class="text-text-body ml-2">Min TTL { data.PersistentMinTTL }</span>
 					</div>
 					<div class="detail-row flex items-center px-5 py-2.5">
-						<span class="w-32 text-gray-400 flex-shrink-0">Temporary</span>
-						<span class="font-semibold text-gray-900 tabular ml-4">{ data.TemporaryEntries } entries</span>
-						<span class="text-gray-400 ml-2">&middot;</span>
-						<span class="text-gray-500 ml-2">{ data.TemporarySize }</span>
-						<span class="text-gray-400 ml-2">&middot;</span>
-						<span class="text-gray-500 ml-2">Min TTL { data.TemporaryMinTTL }</span>
+						<span class="w-32 text-text-muted flex-shrink-0">Temporary</span>
+						<span class="font-semibold text-text-primary tabular ml-4">{ data.TemporaryEntries } entries</span>
+						<span class="text-text-muted ml-2">&middot;</span>
+						<span class="text-text-body ml-2">{ data.TemporarySize }</span>
+						<span class="text-text-muted ml-2">&middot;</span>
+						<span class="text-text-body ml-2">Min TTL { data.TemporaryMinTTL }</span>
 					</div>
 				</div>
 			</div>
 
 			<!-- Storage Entries Table -->
 			<div class="anim d2 mb-8">
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 					<table class="w-full text-left">
 						<thead>
-							<tr class="text-2xs font-mono text-gray-400 uppercase tracking-widest bg-gray-50/80">
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
 								<th class="px-5 py-3 font-medium">Key</th>
 								<th class="px-4 py-3 font-medium">Type</th>
 								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Size</th>
@@ -86,32 +86,32 @@ templ RentTrackerV2(data RentTrackerData) {
 								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Rent/mo</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							for _, e := range data.StorageEntries {
-								<tr class={ templ.KV("bg-red-50/30", e.IsEvicted) }>
+								<tr class={ templ.KV("bg-red-50/30 dark:bg-red-950/20", e.IsEvicted) }>
 									<td class="px-5 py-3">
-										<div class="font-mono text-xs text-gray-900">{ e.Key }</div>
+										<div class="font-mono text-xs text-text-primary">{ e.Key }</div>
 										if e.KeyDesc != "" {
-											<div class="text-2xs text-gray-400">{ e.KeyDesc }</div>
+											<div class="text-2xs text-text-muted">{ e.KeyDesc }</div>
 										}
 									</td>
 									<td class="px-4 py-3">
 										@components.TypeBadge(e.Type, e.TypeColor)
 									</td>
-									<td class="px-4 py-3 text-right hidden md:table-cell text-xs text-gray-700">{ e.Size }</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell text-xs text-text-strong">{ e.Size }</td>
 									<td class="px-4 py-3 text-right">
-										<div class="text-xs text-gray-900 tabular">{ e.TTLDays }</div>
-										<div class="text-2xs text-gray-400 tabular">{ e.TTLLedgers } ledgers</div>
+										<div class="text-xs text-text-primary tabular">{ e.TTLDays }</div>
+										<div class="text-2xs text-text-muted tabular">{ e.TTLLedgers } ledgers</div>
 									</td>
 									<td class="px-4 py-3 text-right hidden md:table-cell">
 										<div class="flex items-center justify-end gap-2">
-											<div class="w-16 h-1.5 rounded-full bg-gray-100">
+											<div class="w-16 h-1.5 rounded-full bg-surface-subtle">
 												<div class={ "h-1.5 rounded-full", "bg-" + e.HealthColor + "-500" } style={ "width:" + e.HealthPct }></div>
 											</div>
 											<span class={ "text-2xs font-medium tabular", "text-" + e.HealthColor + "-600" }>{ e.HealthPct }</span>
 										</div>
 									</td>
-									<td class="px-4 py-3 text-right hidden md:table-cell font-mono text-xs text-gray-700 tabular">{ e.RentPerMonth }</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell font-mono text-xs text-text-strong tabular">{ e.RentPerMonth }</td>
 								</tr>
 							}
 						</tbody>
