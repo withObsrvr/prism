@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"github.com/withObsrvr/prism/internal/templates/components"
 	"github.com/withObsrvr/prism/internal/templates/layouts"
 )
 
@@ -63,102 +62,27 @@ templ EventsFirehoseV2(data EventsFirehoseData) {
 				</div>
 			</div>
 
-			<!-- Events table -->
-			<div class="anim d2 bg-surface-card rounded-xl overflow-hidden shadow-sm border border-border-default">
-				<table class="w-full text-left">
-					<thead>
-						<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
-							<th class="px-5 py-3 font-medium w-[72px]">Time</th>
-							<th class="px-4 py-3 font-medium w-20">Type</th>
-							<th class="px-4 py-3 font-medium hidden md:table-cell w-[140px]">Contract</th>
-							<th class="px-4 py-3 font-medium">Topics &amp; Data</th>
-							<th class="px-4 py-3 font-medium text-right hidden md:table-cell w-24">Ledger</th>
-							<th class="px-4 py-3 font-medium text-right hidden md:table-cell w-16">Tx</th>
-							<th class="px-5 py-3 w-8"></th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-border-subtle">
-						for _, ev := range data.Events {
-							<tr class={ "group hover:bg-surface-subtle transition-colors", templ.KV("bg-emerald-50/30 dark:bg-transparent", ev.IsNew) }
-								onclick="var d=this.nextElementSibling;d.classList.toggle('hidden')">
-								<td class="px-5 py-3">
-									<span class="font-mono text-xs text-text-body tabular">{ ev.Time }</span>
-								</td>
-								<td class="px-4 py-3">
-									@components.TypeBadge(ev.Type, eventColor(ev.TypeColor))
-								</td>
-								<td class="px-4 py-3 hidden md:table-cell">
-									<div class="text-xs font-medium text-text-primary truncate max-w-[130px]">{ ev.ContractName }</div>
-									<div class="font-mono text-2xs text-text-muted truncate max-w-[130px]">{ ev.ContractAddr }</div>
-								</td>
-								<td class="px-4 py-3">
-									<div class="flex items-center gap-1.5">
-										@templ.Raw(ev.TopicsHTML)
-										if ev.AlertBadge != "" {
-											<span class={ "rounded px-1 py-0.5 text-2xs font-bold uppercase", templ.KV("bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400", ev.AlertColor == "red"), templ.KV("bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400", ev.AlertColor == "amber") }>{ ev.AlertBadge }</span>
-										}
-									</div>
-								</td>
-								<td class="px-4 py-3 text-right hidden md:table-cell">
-									<span class="font-mono text-xs text-text-strong tabular">{ ev.Ledger }</span>
-								</td>
-								<td class="px-4 py-3 text-right hidden md:table-cell">
-									<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-2xs text-text-muted hover:text-text-primary" onclick="event.stopPropagation()">{ ev.TxShort }</a>
-								</td>
-								<td class="px-5 py-3 text-right">
-									<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-								</td>
-							</tr>
-							<!-- Expandable detail row -->
-							if ev.DetailJSON != "" {
-								<tr class="hidden">
-									<td colspan="7" class="bg-surface-subtle px-5 py-4 border-b border-border-subtle">
-										<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-											<div>
-												<div class="flex items-center justify-between mb-2">
-													<span class="text-2xs font-semibold uppercase tracking-wider text-text-muted">Raw Event Data</span>
-													@components.CopyButton(ev.DetailJSON)
-												</div>
-												<pre class="rounded-lg bg-[#1E1E2E] p-3 text-2xs font-mono text-gray-300 overflow-x-auto leading-relaxed">{ ev.DetailJSON }</pre>
-											</div>
-											<div>
-												<span class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2 block">Context</span>
-												<div class="text-xs text-text-body leading-relaxed">{ ev.DetailMeta }</div>
-											</div>
-										</div>
-									</td>
-								</tr>
-							}
-						}
-					</tbody>
-				</table>
-
-				<!-- Load more -->
-				<div class="border-t border-border-subtle py-3.5 text-center bg-surface-subtle">
-					<button class="text-xs font-medium text-text-body hover:text-text-primary transition-colors">Load older events</button>
-				</div>
+			<!-- Events table: loaded via htmx fragment -->
+			<div hx-get="/fragments/events/stream" hx-trigger="load" hx-swap="outerHTML">
+				@eventsTableSkeleton(8)
 			</div>
 
 		</main>
 	}
 }
 
-// eventColor maps the firehose TypeColor strings to shared TypeBadge colors.
-func eventColor(tc string) string {
-	switch tc {
-	case "transfer":
-		return "cyan"
-	case "contract":
-		return "violet"
-	case "mint":
-		return "emerald"
-	case "approve":
-		return "blue"
-	case "burn":
-		return "red"
-	case "system":
-		return "amber"
-	default:
-		return "gray"
-	}
+templ eventsTableSkeleton(n int) {
+	<div class="bg-surface-card rounded-xl overflow-hidden shadow-sm border border-border-default">
+		for i := 0; i < n; i++ {
+			<div class={ "flex items-center gap-4 px-5 py-3", templ.KV("bg-surface-subtle", i%2 == 1) }>
+				<div class="h-3 w-12 rounded bg-surface-subtle animate-pulse flex-shrink-0"></div>
+				<div class="h-5 w-16 rounded bg-surface-subtle animate-pulse flex-shrink-0"></div>
+				<div class="flex-1 space-y-1.5">
+					<div class="h-3.5 w-40 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3 w-28 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+				<div class="h-3 w-16 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+		}
+	</div>
 }

@@ -47,106 +47,20 @@ templ ContractDetailV2(data ContractDetailData) {
 				<button class="pb-3.5 hover:text-text-primary transition-colors">Code</button>
 			</div>
 
-			<!-- Contract Info -->
-			<div class="anim d1 mb-8">
-				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
-						<span class="w-32 text-text-muted flex-shrink-0">Creator</span>
-						<a href={ templ.SafeURL(data.CreatorHref) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800 ml-4">{ data.Creator }</a>
-					</div>
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
-						<span class="w-32 text-text-muted flex-shrink-0">WASM</span>
-						<div class="flex items-center gap-2 ml-4">
-							<span class="font-mono text-xs text-text-body">{ data.WASMHash }</span>
-							@components.CopyButton(data.WASMHash)
-							<span class="text-text-muted">&middot;</span>
-							<span class="text-text-body">{ data.WASMSize }</span>
-						</div>
-					</div>
-					<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
-						<span class="w-32 text-text-muted flex-shrink-0">Storage</span>
-						<span class="ml-4">{ data.StorageEntries } entries</span>
-						<span class="text-text-muted ml-2">&middot;</span>
-						<span class="text-text-body ml-2">{ data.StateSize }</span>
-						<span class="text-text-muted ml-2">&middot;</span>
-						<span class="text-text-body ml-2">{ data.MonthlyRent }/mo rent</span>
-					</div>
-					<div class="detail-row flex items-center px-5 py-2.5">
-						<span class="w-32 text-text-muted flex-shrink-0">Success Rate</span>
-						<span class="font-semibold text-emerald-600 ml-4">{ data.SuccessRate }</span>
-					</div>
-				</div>
+			<!-- Contract Info: loaded via htmx fragment -->
+			<div hx-get={ "/fragments/contract/" + data.Address + "/info" } hx-trigger="load" hx-swap="outerHTML">
+				@contractDetailSkeleton(4)
 			</div>
 
-			<!-- Functions -->
-			if len(data.Functions) > 0 {
-				<div class="anim d2 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Top Functions</h3>
-					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
-						<table class="w-full text-left">
-							<thead>
-								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
-									<th class="px-5 py-3 font-medium">Function</th>
-									<th class="px-4 py-3 font-medium text-right">24h</th>
-									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">7d</th>
-									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">30d</th>
-									<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Success</th>
-									<th class="px-4 py-3 font-medium text-right hidden lg:table-cell">Avg CPU</th>
-									<th class="px-4 py-3 font-medium text-right hidden lg:table-cell">Last Called</th>
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-border-subtle">
-								for _, f := range data.Functions {
-									<tr class="hover:bg-surface-subtle transition-colors">
-										<td class="px-5 py-3"><span class="font-mono text-sm font-medium text-violet-600">{ f.Name }()</span></td>
-										<td class="px-4 py-3 text-right font-mono text-sm text-text-primary tabular">{ f.Calls24h }</td>
-										<td class="px-4 py-3 text-right font-mono text-sm text-text-strong tabular hidden md:table-cell">{ f.Calls7d }</td>
-										<td class="px-4 py-3 text-right font-mono text-sm text-text-strong tabular hidden md:table-cell">{ f.Calls30d }</td>
-										<td class="px-4 py-3 text-right text-sm text-emerald-600 tabular hidden md:table-cell">{ f.SuccessRate }</td>
-										<td class="px-4 py-3 text-right font-mono text-xs text-text-body hidden lg:table-cell">{ f.AvgCPU }</td>
-										<td class="px-4 py-3 text-right text-xs text-text-body hidden lg:table-cell">{ f.LastCalled }</td>
-									</tr>
-								}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			}
+			<!-- Functions: loaded via htmx fragment -->
+			<div hx-get={ "/fragments/contract/" + data.Address + "/functions" } hx-trigger="load" hx-swap="outerHTML">
+				@contractTableSkeleton(5)
+			</div>
 
-			<!-- Recent Invocations -->
-			if len(data.Invocations) > 0 {
-				<div class="anim d2 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Recent Invocations</h3>
-					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
-						<table class="w-full text-left">
-							<thead>
-								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
-									<th class="px-5 py-3 font-medium">Tx</th>
-									<th class="px-4 py-3 font-medium">Function</th>
-									<th class="px-4 py-3 font-medium hidden md:table-cell">Caller</th>
-									<th class="px-4 py-3 font-medium text-right">Status</th>
-									<th class="px-4 py-3 font-medium text-right">Age</th>
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-border-subtle">
-								for _, inv := range data.Invocations {
-									<tr class="hover:bg-surface-subtle transition-colors">
-										<td class="px-5 py-3">
-											<a href={ templ.SafeURL("/tx/" + inv.TxHash) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ inv.ShortHash }</a>
-										</td>
-										<td class="px-4 py-3"><span class="font-mono text-xs text-violet-600">{ inv.Function }()</span></td>
-										<td class="px-4 py-3 hidden md:table-cell"><span class="font-mono text-xs text-text-body">{ inv.Caller }</span></td>
-										<td class="px-4 py-3 text-right">
-											@components.Badge(inv.Status, inv.StatusColor)
-										</td>
-										<td class="px-4 py-3 text-right text-xs text-text-body">{ inv.Age }</td>
-									</tr>
-								}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			}
+			<!-- Recent Invocations: loaded via htmx fragment -->
+			<div hx-get={ "/fragments/contract/" + data.Address + "/invocations" } hx-trigger="load" hx-swap="outerHTML">
+				@contractTableSkeleton(5)
+			</div>
 
 			<!-- Storage -->
 			if len(data.StorageItems) > 0 {
@@ -181,4 +95,34 @@ templ ContractDetailV2(data ContractDetailData) {
 
 		</main>
 	}
+}
+
+templ contractDetailSkeleton(n int) {
+	<div class="mb-8">
+		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+			for i := 0; i < n; i++ {
+				<div class="flex items-center px-5 py-2.5 border-b border-border-subtle">
+					<div class="h-3.5 w-24 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3.5 w-48 rounded bg-surface-subtle animate-pulse ml-4"></div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ contractTableSkeleton(n int) {
+	<div class="mb-8">
+		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+			for i := 0; i < n; i++ {
+				<div class={ "flex items-center gap-4 px-5 py-3", templ.KV("bg-surface-subtle", i%2 == 1) }>
+					<div class="flex-1 space-y-1.5">
+						<div class="h-3.5 w-32 rounded bg-surface-subtle animate-pulse"></div>
+						<div class="h-3 w-24 rounded bg-surface-subtle animate-pulse"></div>
+					</div>
+					<div class="h-3.5 w-14 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3.5 w-14 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+			}
+		</div>
+	</div>
 }

@@ -157,6 +157,17 @@ dialog[open] {
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* htmx swap transitions — smooth content area fade */
+  #page-content {
+    transition: opacity 150ms ease-out;
+  }
+  #page-content.htmx-swapping {
+    opacity: 0;
+  }
+  #page-content.htmx-settling {
+    opacity: 1;
+  }
+
   /* Staggered fade-up animation */
   .anim {
     animation: fade-up 0.4s ease-out forwards;
