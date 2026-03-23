@@ -1,0 +1,266 @@
+package fragments
+
+import (
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/pages"
+)
+
+// NetworkStatsGrid renders the throughput chart + two-column consensus/soroban/fees/protocol.
+templ NetworkStatsGrid(data pages.NetworkHealthData) {
+	<div id="network-stats-grid">
+		<!-- Throughput Chart -->
+		<div class="anim d1 mb-8">
+			<div class="rounded-xl border border-border-default bg-surface-card p-5 shadow-sm">
+				<div class="flex items-center justify-between mb-4">
+					<span class="text-sm font-semibold text-text-primary">Transaction Throughput</span>
+					<div class="flex items-center gap-4 text-2xs">
+						<span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-gray-900 dark:bg-gray-100"></span>Total</span>
+						<span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-violet-500"></span>Soroban</span>
+					</div>
+				</div>
+				<div class="h-40">
+					<svg class="h-full w-full" viewBox="0 0 400 160" preserveAspectRatio="none">
+						<path d="M0,120 C20,110 40,100 60,95 C80,90 100,80 120,70 C140,65 160,55 180,50 C200,45 220,40 240,35 C260,38 280,42 300,30 C320,25 340,20 360,15 C380,18 400,12 400,12 L400,160 L0,160 Z" fill="rgba(17,24,39,0.06)"></path>
+						<path d="M0,120 C20,110 40,100 60,95 C80,90 100,80 120,70 C140,65 160,55 180,50 C200,45 220,40 240,35 C260,38 280,42 300,30 C320,25 340,20 360,15 C380,18 400,12 400,12" fill="none" stroke="#111827" stroke-width="2"></path>
+						<path d="M0,145 C20,140 40,135 60,130 C80,128 100,120 120,115 C140,110 160,100 180,95 C200,90 220,85 240,80 C260,82 280,78 300,70 C320,65 340,60 360,55 C380,58 400,52 400,52 L400,160 L0,160 Z" fill="rgba(139,92,246,0.06)"></path>
+						<path d="M0,145 C20,140 40,135 60,130 C80,128 100,120 120,115 C140,110 160,100 180,95 C200,90 220,85 240,80 C260,82 280,78 300,70 C320,65 340,60 360,55 C380,58 400,52 400,52" fill="none" stroke="#8B5CF6" stroke-width="1.5"></path>
+					</svg>
+				</div>
+				<div class="flex justify-between mt-2 text-2xs text-text-muted">
+					<span>24h ago</span><span>18h</span><span>12h</span><span>6h</span><span>Now</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Two-column: Consensus + Fee Market / Soroban + Protocol -->
+		<div class="anim d2 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+			<!-- Left: Consensus + Fee Market -->
+			<div class="space-y-6">
+				<div>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Consensus</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+						@networkDetailRow("Agreement", data.Agreement, true)
+						@networkDetailRow("Validators", data.ValidatorCount, false)
+						@networkDetailRow("Quorum Sets", data.QuorumSets, false)
+						@networkDetailRow("Avg Latency", data.AvgLatency, false)
+						@networkDetailRowLast("Halted", data.ConsensusHalted, true)
+					</div>
+				</div>
+				<div>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Fee Market</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+						@networkMonoRow("Base Fee", data.FeeBase + " stroops")
+						@networkMonoRow("Median", data.FeeMedian + " stroops")
+						@networkMonoRowAmber("P99", data.FeeP99 + " stroops")
+						@networkDetailRow("Daily Fees", data.DailyFees, false)
+						@networkDetailRowLast("Surge Pricing", data.SurgePricing, false)
+					</div>
+				</div>
+			</div>
+
+			<!-- Right: Soroban + Protocol -->
+			<div class="space-y-6">
+				<div>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Soroban</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+						@networkVioletRow("Invocations (24h)", data.SorobanInvocations)
+						@networkVioletRow("Active Contracts", data.ActiveContracts)
+						@networkDetailRow("Total State", data.TotalState, false)
+						@networkDetailRow("Rent Burned (24h)", data.RentBurned, false)
+						@networkMonoRowLast("Avg CPU / Invocation", data.AvgCPU)
+					</div>
+				</div>
+				<div>
+					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Protocol</h3>
+					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+						<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+							<span class="text-text-muted">Version</span>
+							<div class="flex items-center gap-2">
+								<span class="font-semibold text-text-primary">v{ data.ProtocolVer }</span>
+								@components.Badge("Latest", "emerald")
+							</div>
+						</div>
+						@networkMonoSmallRow("Core", data.CoreVersion)
+						@networkMonoSmallRow("Horizon", data.HorizonVer)
+						@networkMonoSmallRow("Soroban RPC", data.SorobanRPCVer)
+						@networkDetailRowLast("Next Upgrade", data.NextUpgrade, false)
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// Helper templates for network detail rows
+templ networkDetailRow(label, value string, isGreen bool) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+		<span class="text-text-muted">{ label }</span>
+		if isGreen {
+			<span class="font-semibold text-emerald-600 tabular">{ value }</span>
+		} else {
+			<span class="font-semibold text-text-primary tabular">{ value }</span>
+		}
+	</div>
+}
+
+templ networkDetailRowLast(label, value string, isGreen bool) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5">
+		<span class="text-text-muted">{ label }</span>
+		if isGreen {
+			<span class="font-semibold text-emerald-600">{ value }</span>
+		} else {
+			<span class="font-medium text-text-primary">{ value }</span>
+		}
+	</div>
+}
+
+templ networkMonoRow(label, value string) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+		<span class="text-text-muted">{ label }</span>
+		<span class="font-mono font-medium text-text-primary">{ value }</span>
+	</div>
+}
+
+templ networkMonoRowAmber(label, value string) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+		<span class="text-text-muted">{ label }</span>
+		<span class="font-mono font-medium text-amber-600">{ value }</span>
+	</div>
+}
+
+templ networkMonoRowLast(label, value string) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5">
+		<span class="text-text-muted">{ label }</span>
+		<span class="font-mono font-medium text-text-primary">{ value }</span>
+	</div>
+}
+
+templ networkVioletRow(label, value string) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+		<span class="text-text-muted">{ label }</span>
+		<span class="font-semibold text-violet-700 tabular">{ value }</span>
+	</div>
+}
+
+templ networkMonoSmallRow(label, value string) {
+	<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+		<span class="text-text-muted">{ label }</span>
+		<span class="font-mono text-xs text-text-strong">{ value }</span>
+	</div>
+}
+
+// NetworkValidators renders the validators table.
+templ NetworkValidators(data pages.NetworkHealthData) {
+	<div id="network-validators" class="anim d3 mb-8">
+		<div class="flex items-center justify-between mb-2">
+			<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted">Top Validators</h3>
+			<a href="/network/validators" class="text-xs font-medium text-text-body hover:text-text-primary transition-colors">View all { data.ValidatorCount } →</a>
+		</div>
+		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+			<table class="w-full text-left">
+				<thead>
+					<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
+						<th class="px-5 py-3 font-medium">Validator</th>
+						<th class="px-4 py-3 font-medium hidden md:table-cell">Organization</th>
+						<th class="px-4 py-3 font-medium text-right">Uptime</th>
+						<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Version</th>
+						<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Latency</th>
+						<th class="px-4 py-3 font-medium text-right">Status</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-border-subtle">
+					for _, v := range data.Validators {
+						<tr class="group hover:bg-surface-subtle transition-colors cursor-pointer"
+							hx-get={ "/network/validators/" + v.Name + "/preview" }
+							hx-target="#slideout"
+							hx-swap="innerHTML">
+							<td class="px-5 py-3">
+								<div class="flex items-center gap-2">
+									<span class={ "h-2 w-2 rounded-full flex-shrink-0", "bg-" + v.StatusColor + "-500" }></span>
+									<div>
+										<span class="text-sm font-medium text-text-primary">{ v.Name }</span>
+										<div class="font-mono text-2xs text-text-muted">{ v.Address }</div>
+									</div>
+								</div>
+							</td>
+							<td class="px-4 py-3 hidden md:table-cell">
+								<span class="text-xs text-text-strong">{ v.Org }</span>
+							</td>
+							<td class="px-4 py-3 text-right">
+								<span class="text-xs text-text-strong tabular">{ v.Uptime }</span>
+							</td>
+							<td class="px-4 py-3 text-right hidden md:table-cell">
+								<span class="font-mono text-2xs text-text-body">{ v.Version }</span>
+							</td>
+							<td class="px-4 py-3 text-right hidden md:table-cell">
+								<span class="text-xs text-text-body tabular">{ v.Latency }</span>
+							</td>
+							<td class="px-4 py-3 text-right">
+								@components.Badge(v.Status, v.StatusColor)
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+// NetworkRecentLedgers renders the recent ledgers table.
+templ NetworkRecentLedgers(data pages.NetworkHealthData) {
+	<div id="network-recent-ledgers" class="anim d4 mb-10">
+		<div class="flex items-center justify-between mb-2">
+			<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted">Recent Ledgers</h3>
+		</div>
+		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+			<table class="w-full text-left">
+				<thead>
+					<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
+						<th class="px-5 py-3 font-medium">Ledger</th>
+						<th class="px-4 py-3 font-medium">Age</th>
+						<th class="px-4 py-3 font-medium text-right">Txns</th>
+						<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Ops</th>
+						<th class="px-4 py-3 font-medium text-right">Soroban</th>
+						<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Fees</th>
+						<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Close</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-border-subtle">
+					for _, l := range data.RecentLedgers {
+						<tr class={ "hover:bg-surface-subtle transition-colors", templ.KV("bg-amber-50/40 dark:bg-amber-950/20", l.IsSlow) }>
+							<td class="px-5 py-2.5">
+								<div class="flex items-center gap-1.5">
+									<a href={ templ.SafeURL("/ledger/" + l.Sequence) } class="font-mono text-xs font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ l.Sequence }</a>
+									if l.IsLatest {
+										<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+									}
+								</div>
+							</td>
+							<td class="px-4 py-2.5">
+								<span class="text-2xs text-text-muted">{ l.Age }</span>
+							</td>
+							<td class="px-4 py-2.5 text-right">
+								<span class="text-xs text-text-primary tabular">{ l.TxCount }</span>
+							</td>
+							<td class="px-4 py-2.5 text-right hidden md:table-cell">
+								<span class="text-xs text-text-strong tabular">{ l.OpsCount }</span>
+							</td>
+							<td class="px-4 py-2.5 text-right">
+								<span class="text-xs text-violet-600 tabular">{ l.SorobanCalls }</span>
+								if l.SorobanPct != "" {
+									<span class="ml-1 rounded bg-violet-50 dark:bg-violet-950/30 px-1 py-0.5 text-2xs font-medium text-violet-600 dark:text-violet-400">{ l.SorobanPct }</span>
+								}
+							</td>
+							<td class="px-4 py-2.5 text-right hidden md:table-cell">
+								<span class="font-mono text-2xs text-text-body tabular">{ l.Fees }</span>
+							</td>
+							<td class="px-4 py-2.5 text-right hidden md:table-cell">
+								<span class={ "text-2xs tabular", templ.KV("text-amber-600 font-medium", l.IsSlow), templ.KV("text-text-muted", !l.IsSlow) }>{ l.CloseTime }</span>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}

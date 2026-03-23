@@ -1,0 +1,203 @@
+package fragments
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/pages"
+)
+
+// AccountBalances renders the portfolio balances table.
+templ AccountBalances(balances []pages.AccountBalance) {
+	<div id="account-balances" class="anim d2 mb-8">
+		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+			<table class="w-full text-left">
+				<thead>
+					<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
+						<th class="px-5 py-3 font-medium">Asset</th>
+						<th class="px-4 py-3 font-medium hidden md:table-cell">Type</th>
+						<th class="px-4 py-3 font-medium text-right">Balance</th>
+						<th class="px-4 py-3 font-medium text-right">Value (USD)</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-border-subtle">
+					for _, b := range balances {
+						<tr class="hover:bg-surface-subtle transition-colors">
+							<td class="px-5 py-3">
+								<div class="flex items-center gap-2.5">
+									<div class={ "flex h-8 w-8 items-center justify-center rounded-full text-white text-2xs font-bold", b.BgColor }>{ b.Code }</div>
+									<div>
+										<div class="text-sm font-semibold text-text-primary">{ b.Code }</div>
+										<div class="text-2xs text-text-muted">{ b.Name }</div>
+									</div>
+								</div>
+							</td>
+							<td class="px-4 py-3 hidden md:table-cell">
+								@components.Badge(b.Type, b.TypeColor)
+							</td>
+							<td class="px-4 py-3 text-right">
+								<span class="font-mono text-sm font-medium text-text-primary tabular">{ b.Balance }</span>
+							</td>
+							<td class="px-4 py-3 text-right">
+								<span class="text-sm font-semibold text-text-primary tabular">{ b.ValueUSD }</span>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+// AccountActivity renders the recent activity + contract interactions.
+templ AccountActivity(data pages.AccountData) {
+	<div id="account-activity">
+		<!-- Recent Activity -->
+		<div class="anim d2 mb-8">
+			<div class="flex items-center justify-between mb-2">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted">Recent Activity</h3>
+				<a href="#" class="text-xs font-medium text-text-body hover:text-text-primary">View all →</a>
+			</div>
+			<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+				<table class="w-full text-left">
+					<thead>
+						<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
+							<th class="px-5 py-3 font-medium">Summary</th>
+							<th class="px-4 py-3 font-medium hidden md:table-cell">Type</th>
+							<th class="px-4 py-3 font-medium hidden md:table-cell">Tx</th>
+							<th class="px-4 py-3 font-medium text-right">Time</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-border-subtle">
+						for _, act := range data.Activities {
+							<tr class="hover:bg-surface-subtle transition-colors">
+								<td class="px-5 py-3">
+									<span class="text-sm text-text-strong">{ act.Summary }</span>
+								</td>
+								<td class="px-4 py-3 hidden md:table-cell">
+									@components.TypeBadge(act.Badge, act.BadgeColor)
+								</td>
+								<td class="px-4 py-3 hidden md:table-cell">
+									<a href={ templ.SafeURL("/tx/" + act.TxHash) } class="font-mono text-2xs text-text-muted hover:text-text-primary">{ act.ShortHash }</a>
+								</td>
+								<td class="px-4 py-3 text-right">
+									<span class="text-2xs text-text-muted">{ act.Time }</span>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- Contract Interactions -->
+		if len(data.Contracts) > 0 {
+			<div class="anim d3 mb-8">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Contract Interactions</h3>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+					<table class="w-full text-left">
+						<thead>
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
+								<th class="px-5 py-3 font-medium">Contract</th>
+								<th class="px-4 py-3 font-medium hidden md:table-cell">Top Function</th>
+								<th class="px-4 py-3 font-medium text-right">Calls</th>
+								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Fees</th>
+								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Last Called</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-border-subtle">
+							for _, c := range data.Contracts {
+								<tr class="hover:bg-surface-subtle transition-colors">
+									<td class="px-5 py-3">
+										<div class="flex items-center gap-2">
+											<span class="text-sm font-medium text-text-primary">{ c.Name }</span>
+											@components.Badge(c.Badge, c.BadgeColor)
+										</div>
+										<span class="font-mono text-2xs text-text-muted">{ c.Address }</span>
+									</td>
+									<td class="px-4 py-3 hidden md:table-cell">
+										<span class="font-mono text-xs text-violet-600">{ c.TopFn }</span>
+									</td>
+									<td class="px-4 py-3 text-right">
+										<span class="font-mono text-sm font-semibold text-text-primary tabular">{ c.Calls }</span>
+									</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell">
+										<span class="font-mono text-xs text-text-strong tabular">{ c.Fees }</span>
+									</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell">
+										<span class="text-xs text-text-body">{ c.LastCall }</span>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+
+		<!-- Offers -->
+		if len(data.Offers) > 0 {
+			<div class="anim d3 mb-8">
+				<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Active Offers ({ fmt.Sprintf("%d", len(data.Offers)) })</h3>
+				<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
+					<table class="w-full text-left">
+						<thead>
+							<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
+								<th class="px-5 py-3 font-medium w-16">Side</th>
+								<th class="px-4 py-3 font-medium">Pair</th>
+								<th class="px-4 py-3 font-medium">Price</th>
+								<th class="px-4 py-3 font-medium text-right">Amount</th>
+								<th class="px-4 py-3 font-medium text-right hidden md:table-cell">Offer ID</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-border-subtle">
+							for _, o := range data.Offers {
+								<tr>
+									<td class="px-5 py-3">
+										@components.Badge(o.Side, o.SideColor)
+									</td>
+									<td class="px-4 py-3 text-sm text-text-primary">{ o.Pair }</td>
+									<td class="px-4 py-3 font-mono text-sm text-text-primary">{ o.Price } <span class="text-xs text-text-muted">{ o.PriceUnit }</span></td>
+									<td class="px-4 py-3 text-right font-mono text-sm text-text-primary tabular">{ o.Amount }</td>
+									<td class="px-4 py-3 text-right hidden md:table-cell font-mono text-xs text-text-body">{ o.OfferID }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// AccountSigners renders the signers & thresholds section.
+templ AccountSigners(data pages.AccountData) {
+	<div id="account-signers" class="anim d4 mb-8">
+		<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Signers &amp; Thresholds</h3>
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<!-- Thresholds -->
+			<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+				for _, t := range data.Thresholds {
+					<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+						<span class="text-text-muted">{ t.Label }</span>
+						<span class="font-semibold text-text-primary">{ t.Value }</span>
+					</div>
+				}
+			</div>
+			<!-- Signers -->
+			<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
+				for _, s := range data.Signers {
+					<div class="detail-row flex items-center justify-between px-5 py-2.5 border-b border-border-subtle">
+						<div class="flex items-center gap-2">
+							<span class="font-mono text-xs text-text-primary">{ s.Address }</span>
+							@components.Badge(s.Type, "gray")
+							if s.IsSelf {
+								@components.Badge("Self", "violet")
+							}
+						</div>
+						<span class="font-mono text-xs font-semibold text-text-primary">{ s.Weight }</span>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}

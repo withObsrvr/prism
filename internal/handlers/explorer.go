@@ -11,9 +11,9 @@ import (
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
-// Home renders the search-first landing page.
-// Uses mock data for everything except the latest ledger number, which is
-// fetched live from the gateway when available (currently testnet only).
+// Home renders the search-first landing page shell.
+// Data sections are loaded via htmx fragment endpoints (/fragments/home/*).
+// The shell only needs minimal data for the search hint (latest ledger number).
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -23,7 +23,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	data := mockHomeData(network)
 
-	// Overlay live latest ledger if gateway is available.
+	// Overlay live latest ledger for the search hint display.
 	if h.Gateway != nil {
 		ctx := r.Context()
 		if bronze, err := h.Gateway.GetBronzeNetworkStats(ctx, network); err == nil {

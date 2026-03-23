@@ -1,0 +1,145 @@
+package fragments
+
+import "fmt"
+
+// CardGrid renders n skeleton stat cards in a pulse grid matching the Network Pulse layout.
+templ CardGrid(n int) {
+	<div class="mx-auto max-w-[820px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-px rounded-xl bg-border-default overflow-hidden ring-1 ring-border-default">
+		for i := 0; i < n; i++ {
+			<div class="bg-surface-card px-4 py-3 text-center">
+				<div class="mx-auto h-3 w-20 rounded bg-surface-subtle animate-pulse mb-2"></div>
+				<div class="mx-auto h-6 w-16 rounded bg-surface-subtle animate-pulse mb-1"></div>
+				<div class="mx-auto h-3 w-12 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+		}
+	</div>
+}
+
+// TableRows renders n skeleton table rows with pulse bars.
+templ TableRows(n int) {
+	<div class="rounded-xl border border-border-default bg-surface-card overflow-hidden">
+		for i := 0; i < n; i++ {
+			<div class={ "flex items-center gap-4 px-5 py-3", templ.KV("bg-surface-subtle", i%2 == 1) }>
+				<div class="flex-1 space-y-1.5">
+					<div class="h-3.5 w-48 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3 w-32 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+				<div class="hidden md:flex items-center gap-3 flex-shrink-0">
+					<div class="h-3 w-10 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3 w-16 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// LedgerRows renders n compact skeleton rows matching the ledger sidebar.
+templ LedgerRows(n int) {
+	<div class="rounded-xl border border-border-default bg-surface-card overflow-hidden">
+		for i := 0; i < n; i++ {
+			<div class={ "flex items-center justify-between px-4 py-2.5", templ.KV("bg-surface-subtle", i%2 == 1) }>
+				<div class="space-y-1.5">
+					<div class="h-3.5 w-20 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3 w-14 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+				<div class="space-y-1.5 text-right">
+					<div class="h-3.5 w-8 rounded bg-surface-subtle animate-pulse ml-auto"></div>
+					<div class="h-3 w-12 rounded bg-surface-subtle animate-pulse ml-auto"></div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// ContractRows renders n skeleton rows matching the trending contracts table.
+templ ContractRows(n int) {
+	<div class="rounded-xl border border-border-default bg-surface-card overflow-hidden">
+		<div class="hidden md:flex items-center gap-3 px-4 py-2 bg-surface-subtle border-b border-border-subtle">
+			<div class="h-3 w-6 rounded bg-surface-subtle animate-pulse"></div>
+			<div class="flex-1 h-3 w-16 rounded bg-surface-subtle animate-pulse"></div>
+			<div class="h-3 w-20 rounded bg-surface-subtle animate-pulse"></div>
+			<div class="h-3 w-12 rounded bg-surface-subtle animate-pulse"></div>
+		</div>
+		for i := 0; i < n; i++ {
+			<div class={ "flex items-center gap-3 px-4 py-2.5", templ.KV("bg-surface-subtle", i%2 == 1) }>
+				<div class="h-7 w-7 rounded-lg bg-surface-subtle animate-pulse flex-shrink-0"></div>
+				<div class="flex-1 space-y-1.5">
+					<div class="h-3.5 w-32 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3 w-24 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+				<div class="h-3.5 w-16 rounded bg-surface-subtle animate-pulse"></div>
+				<div class="h-3 w-10 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+		}
+	</div>
+}
+
+// SidebarSkeleton renders skeleton for the assets + fee guide sidebar.
+templ SidebarSkeleton() {
+	<div class="flex flex-col gap-6">
+		<!-- Assets skeleton -->
+		<div>
+			<div class="flex items-center justify-between mb-3">
+				<div class="h-4 w-20 rounded bg-surface-subtle animate-pulse"></div>
+				<div class="h-3 w-14 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+			@assetRowsSkeleton(4)
+		</div>
+		<!-- Fee guide skeleton -->
+		<div>
+			<div class="flex items-center justify-between mb-3">
+				<div class="h-4 w-16 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+			<div class="rounded-xl border border-border-default bg-surface-card p-4 space-y-3">
+				for i := 0; i < 3; i++ {
+					<div class="flex items-center justify-between">
+						<div class="h-3 w-16 rounded bg-surface-subtle animate-pulse"></div>
+						<div class="h-3 w-20 rounded bg-surface-subtle animate-pulse"></div>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ assetRowsSkeleton(n int) {
+	<div class="rounded-xl border border-border-default bg-surface-card overflow-hidden">
+		for i := 0; i < n; i++ {
+			<div class={ "flex items-center gap-3 px-4 py-2.5", templ.KV("bg-surface-subtle", i%2 == 1) }>
+				<div class="h-7 w-7 rounded-full bg-surface-subtle animate-pulse flex-shrink-0"></div>
+				<div class="flex-1 space-y-1">
+					<div class="h-3.5 w-16 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+				<div class="space-y-1 text-right">
+					<div class="h-3.5 w-14 rounded bg-surface-subtle animate-pulse ml-auto"></div>
+					<div class="h-3 w-10 rounded bg-surface-subtle animate-pulse ml-auto"></div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// DetailRows renders n skeleton key-value detail rows.
+templ DetailRows(n int) {
+	<div class="rounded-xl border border-border-default bg-surface-card overflow-hidden">
+		for i := 0; i < n; i++ {
+			<div class={ "flex items-center justify-between px-5 py-3", templ.KV("bg-surface-subtle", i%2 == 1) }>
+				<div class="h-3.5 w-24 rounded bg-surface-subtle animate-pulse"></div>
+				<div class="h-3.5 w-40 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+		}
+	</div>
+}
+
+// StatsGrid renders n skeleton stat cards in a responsive grid.
+templ StatsGrid(n int) {
+	<div class={ fmt.Sprintf("grid grid-cols-2 sm:grid-cols-3 md:grid-cols-%d gap-3", n) }>
+		for i := 0; i < n; i++ {
+			<div class="rounded-xl border border-border-default bg-surface-card p-4">
+				<div class="h-3 w-20 rounded bg-surface-subtle animate-pulse mb-2"></div>
+				<div class="h-6 w-16 rounded bg-surface-subtle animate-pulse mb-1"></div>
+				<div class="h-3 w-12 rounded bg-surface-subtle animate-pulse"></div>
+			</div>
+		}
+	</div>
+}

@@ -50,6 +50,26 @@ templ Base(title string, activeNav string) {
 		<!-- Footer -->
 		@footer()
 
+		<!-- Update active nav indicator after htmx navigation -->
+		<script>
+			document.body.addEventListener('htmx:afterSwap', function(e) {
+				if (e.detail.target.tagName === 'MAIN') {
+					var path = window.location.pathname;
+					document.querySelectorAll('header nav a').forEach(function(a) {
+						var href = a.getAttribute('href');
+						var isActive = (href === '/' && path === '/') || (href !== '/' && path.startsWith(href));
+						if (isActive) {
+							a.className = a.className.replace('hover:text-text-primary', '').replace('after:scale-x-0 hover:after:scale-x-100', '') + ' text-text-primary';
+						} else {
+							// Reset to non-active styling
+							if (a.className.indexOf('after:scale-x-0') === -1) {
+								a.className = a.className.replace('text-text-primary', '') + ' hover:text-text-primary after:scale-x-0 hover:after:scale-x-100';
+							}
+						}
+					});
+				}
+			});
+		</script>
 		<!-- Ctrl+K → focus search or navigate to search page -->
 		<script>
 			document.addEventListener('keydown', function(e) {
@@ -165,8 +185,13 @@ templ topNav(active string) {
 				</div>
 				<span class="text-sm font-bold tracking-tight">Prism</span>
 			</a>
-			<!-- Desktop nav -->
-			<nav class="hidden md:flex items-center gap-1 h-14 text-sm font-medium text-text-body">
+			<!-- Desktop nav — hx-boost for SPA-like navigation -->
+			<nav class="hidden md:flex items-center gap-1 h-14 text-sm font-medium text-text-body"
+				 hx-boost="true"
+				 hx-target="main"
+				 hx-select="main"
+				 hx-swap="innerHTML show:window:top"
+				 hx-push-url="true">
 				@navItem("/", "Explorer", active == "explorer")
 				@navItem("/network", "Network", active == "network")
 				@navItem("/assets", "Assets", active == "assets")

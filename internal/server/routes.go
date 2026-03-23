@@ -84,7 +84,7 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /nft", h.NftGallery)
 
 	// ─────────────────────────────────────────────
-	// htmx partial endpoints
+	// htmx partial endpoints (legacy)
 	// ─────────────────────────────────────────────
 	// These return HTML fragments, not full pages.
 	// Triggered by hx-get on the client.
@@ -92,6 +92,51 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /partials/search-results", h.SearchResults)
 	mux.HandleFunc("GET /partials/live-feed", h.LiveFeed)
 	mux.HandleFunc("GET /partials/latest-ledger", h.LatestLedgerPartial)
+
+	// ─────────────────────────────────────────────
+	// htmx fragment endpoints
+	// ─────────────────────────────────────────────
+	// Per-section HTML fragments loaded by shell pages.
+
+	// Home page fragments
+	mux.HandleFunc("GET /fragments/home/network-pulse", h.HomeNetworkPulseFragment)
+	mux.HandleFunc("GET /fragments/home/recent-txs", h.HomeRecentTxsFragment)
+	mux.HandleFunc("GET /fragments/home/recent-ledgers", h.HomeRecentLedgersFragment)
+	mux.HandleFunc("GET /fragments/home/trending-contracts", h.HomeTrendingContractsFragment)
+	mux.HandleFunc("GET /fragments/home/sidebar", h.HomeSidebarFragment)
+
+	// Transaction detail fragments
+	mux.HandleFunc("GET /fragments/tx/{hash}/overview", h.TxOverviewFragment)
+	mux.HandleFunc("GET /fragments/tx/{hash}/operations", h.TxOperationsFragment)
+	mux.HandleFunc("GET /fragments/tx/{hash}/events", h.TxEventsFragment)
+	mux.HandleFunc("GET /fragments/tx/{hash}/balance-changes", h.TxBalanceChangesFragment)
+	mux.HandleFunc("GET /fragments/tx/{hash}/state-changes", h.TxStateChangesFragment)
+
+	// Ledger detail fragments
+	mux.HandleFunc("GET /fragments/ledger/{sequence}/txs", h.LedgerTxsFragment)
+	mux.HandleFunc("GET /fragments/ledger/{sequence}/ops-fees", h.LedgerOpsAndFeesFragment)
+	mux.HandleFunc("GET /fragments/ledger/{sequence}/soroban", h.LedgerSorobanFragment)
+
+	// Account fragments
+	mux.HandleFunc("GET /fragments/account/{id}/balances", h.AccountBalancesFragment)
+	mux.HandleFunc("GET /fragments/account/{id}/activity", h.AccountActivityFragment)
+	mux.HandleFunc("GET /fragments/account/{id}/signers", h.AccountSignersFragment)
+
+	// Contract detail fragments
+	mux.HandleFunc("GET /fragments/contract/{id}/info", h.ContractInfoFragment)
+	mux.HandleFunc("GET /fragments/contract/{id}/functions", h.ContractFunctionsFragment)
+	mux.HandleFunc("GET /fragments/contract/{id}/invocations", h.ContractInvocationsFragment)
+
+	// Network health fragments
+	mux.HandleFunc("GET /fragments/network/stats-grid", h.NetworkStatsGridFragment)
+	mux.HandleFunc("GET /fragments/network/validators", h.NetworkValidatorsFragment)
+	mux.HandleFunc("GET /fragments/network/recent-ledgers", h.NetworkRecentLedgersFragment)
+
+	// Asset directory fragments
+	mux.HandleFunc("GET /fragments/assets/table", h.AssetTableFragment)
+
+	// Events firehose fragments
+	mux.HandleFunc("GET /fragments/events/stream", h.EventsStreamFragment)
 
 	// ─────────────────────────────────────────────
 	// API endpoints
