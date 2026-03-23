@@ -18,8 +18,7 @@ func (h *Handlers) TxOverviewFragment(w http.ResponseWriter, r *http.Request) {
 	data := mockTxReceiptData(hash, shortHash)
 
 	if err := fragments.TxOverview(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load overview", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load overview", err)
 	}
 }
 
@@ -33,8 +32,7 @@ func (h *Handlers) TxOperationsFragment(w http.ResponseWriter, r *http.Request) 
 	data := mockTxReceiptData(hash, shortHash)
 
 	if err := fragments.TxOperations(data.Operations).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load operations", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load operations", err)
 	}
 }
 
@@ -48,8 +46,7 @@ func (h *Handlers) TxEventsFragment(w http.ResponseWriter, r *http.Request) {
 	data := mockTxReceiptData(hash, shortHash)
 
 	if err := fragments.TxEvents(data.Events).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load events", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load events", err)
 	}
 }
 
@@ -63,8 +60,7 @@ func (h *Handlers) TxBalanceChangesFragment(w http.ResponseWriter, r *http.Reque
 	data := mockTxReceiptData(hash, shortHash)
 
 	if err := fragments.TxBalanceChanges(data.BalanceChanges).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load balance changes", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load balance changes", err)
 	}
 }
 
@@ -78,8 +74,7 @@ func (h *Handlers) TxStateChangesFragment(w http.ResponseWriter, r *http.Request
 	data := mockTxReceiptData(hash, shortHash)
 
 	if err := fragments.TxStateChanges(data.StateChanges).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load state changes", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load state changes", err)
 	}
 }
 
@@ -91,8 +86,7 @@ func (h *Handlers) LedgerTxsFragment(w http.ResponseWriter, r *http.Request) {
 	data := mockLedgerDetailData(sequence)
 
 	if err := fragments.LedgerTxs(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load transactions", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load transactions", err)
 	}
 }
 
@@ -102,8 +96,7 @@ func (h *Handlers) LedgerOpsAndFeesFragment(w http.ResponseWriter, r *http.Reque
 	data := mockLedgerDetailData(sequence)
 
 	if err := fragments.LedgerOpsAndFees(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load operation breakdown", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load operation breakdown", err)
 	}
 }
 
@@ -113,7 +106,6 @@ func (h *Handlers) LedgerSorobanFragment(w http.ResponseWriter, r *http.Request)
 	data := mockLedgerDetailData(sequence)
 
 	if err := fragments.LedgerSoroban(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load Soroban runtime", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load Soroban runtime", err)
 	}
 }

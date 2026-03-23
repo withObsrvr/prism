@@ -158,13 +158,13 @@ dialog[open] {
   }
 
   /* htmx swap transitions — smooth content area fade */
-  main {
+  #page-content {
     transition: opacity 150ms ease-out;
   }
-  main.htmx-swapping {
+  #page-content.htmx-swapping {
     opacity: 0;
   }
-  main.htmx-settling {
+  #page-content.htmx-settling {
     opacity: 1;
   }
 

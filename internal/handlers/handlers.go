@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/templates/fragments"
 )
 
 // Handlers holds shared dependencies for all HTTP handlers.
@@ -61,6 +62,17 @@ func (h *Handlers) SetNetwork(w http.ResponseWriter, r *http.Request) {
 // When true, we return a partial HTML fragment instead of a full page.
 func isHTMX(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
+}
+
+// renderFragmentError logs the primary error, sets a 500 status, and renders
+// an inline error component with a retry button. If the error template itself
+// fails to render, that is also logged.
+func (h *Handlers) renderFragmentError(w http.ResponseWriter, r *http.Request, msg string, err error) {
+	h.Logger.Error("render fragment", "error", err, "path", r.URL.Path)
+	w.WriteHeader(http.StatusInternalServerError)
+	if err2 := fragments.FragmentError(msg, r.URL.Path).Render(r.Context(), w); err2 != nil {
+		h.Logger.Error("render fragment error fallback", "error", err2)
+	}
 }
 
 // Healthz is a simple health check for Nomad/load balancers.

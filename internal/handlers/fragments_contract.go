@@ -8,30 +8,30 @@ import (
 
 // ContractInfoFragment returns the contract info key-value section.
 func (h *Handlers) ContractInfoFragment(w http.ResponseWriter, r *http.Request) {
+	_ = r.PathValue("id") // Will be used when wiring live data.
 	data := mockContractDetailData()
 
 	if err := fragments.ContractInfo(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load contract info", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load contract info", err)
 	}
 }
 
 // ContractFunctionsFragment returns the top functions table.
 func (h *Handlers) ContractFunctionsFragment(w http.ResponseWriter, r *http.Request) {
+	_ = r.PathValue("id")
 	data := mockContractDetailData()
 
 	if err := fragments.ContractFunctions(data.Functions).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load functions", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load functions", err)
 	}
 }
 
 // ContractInvocationsFragment returns the recent invocations table.
 func (h *Handlers) ContractInvocationsFragment(w http.ResponseWriter, r *http.Request) {
+	_ = r.PathValue("id")
 	data := mockContractDetailData()
 
 	if err := fragments.ContractInvocations(data.Invocations).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render fragment", "error", err)
-		fragments.FragmentError("Could not load invocations", r.URL.Path).Render(r.Context(), w)
+		h.renderFragmentError(w, r, "Could not load invocations", err)
 	}
 }
