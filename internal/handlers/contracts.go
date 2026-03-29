@@ -18,11 +18,14 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
-	// Check if this C-address is a smart wallet — if so, redirect to smart account view.
+	// Detect smart wallets for future use. The redirect is disabled until
+	// the smart account page is wired to accept and render the requested ID.
+	// TODO: Enable redirect once SmartAccountDashboard uses the path {id}.
 	if h.useLiveData(r) {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
-			http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
-			return
+			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
+			// http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
+			// return
 		}
 	}
 

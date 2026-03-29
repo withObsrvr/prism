@@ -32,7 +32,7 @@ templ TxOverview(data pages.TxReceiptData) {
 				<span class="font-mono font-medium text-text-primary ml-4">{ data.FeePaid } stroops</span>
 				if data.MaxFee != "" {
 					<span class="text-text-muted ml-2">·</span>
-					<span class="text-text-body ml-2">max { data.MaxFee }</span>
+					<span class="text-text-body ml-2">max { data.MaxFee } stroops</span>
 				}
 				if data.FeeUSD != "—" {
 					<span class="text-text-muted ml-2">·</span>

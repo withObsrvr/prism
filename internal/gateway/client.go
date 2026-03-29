@@ -721,7 +721,7 @@ func (c *Client) GetTransactionSummaries(ctx context.Context, network string, ha
 		for _, h := range hashes {
 			params.Add("hashes", h)
 		}
-		cacheKey = fmt.Sprintf("%s:tx_summaries:%d", network, len(hashes))
+		cacheKey = fmt.Sprintf("%s:tx_summaries:%s", network, joinHashes(hashes))
 	}
 
 	if v, ok := c.cache.Get(cacheKey); ok {
@@ -794,7 +794,7 @@ func (c *Client) GetBatchDecodedTransactions(ctx context.Context, network string
 		cacheKey = fmt.Sprintf("%s:batch_decoded:ledger:%d:%d", network, ledger, limit)
 	} else if len(hashes) > 0 {
 		params.Set("hashes", joinHashes(hashes))
-		cacheKey = fmt.Sprintf("%s:batch_decoded:hashes:%d", network, len(hashes))
+		cacheKey = fmt.Sprintf("%s:batch_decoded:hashes:%s", network, joinHashes(hashes))
 	}
 
 	if v, ok := c.cache.Get(cacheKey); ok {

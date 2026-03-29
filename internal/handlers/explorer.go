@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"sort"
 	"time"
 
@@ -514,13 +515,14 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 			badge = "Wallet"
 			badgeColor = "violet"
 		}
+		safeHref := html.EscapeString(href)
 		fmt.Fprintf(w, `<a href="%s" class="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-subtle transition-colors border-b border-border-subtle last:border-b-0">
 			<div class="flex-1 min-w-0">
 				<span class="text-sm text-text-primary truncate block">%s</span>
 				<span class="font-mono text-2xs text-text-muted truncate block">%s</span>
 			</div>
 			<span class="rounded-full px-2 py-0.5 text-2xs font-semibold ring-1 text-%s-700 bg-%s-50 ring-%s-200 dark:text-%s-400 dark:bg-%s-950/30 dark:ring-%s-800 flex-shrink-0">%s</span>
-		</a>`, href,
+		</a>`, safeHref,
 			html.EscapeString(sr.Label),
 			html.EscapeString(gateway.ShortAddress(sr.ID)),
 			badgeColor, badgeColor, badgeColor, badgeColor, badgeColor, badgeColor,
@@ -528,7 +530,7 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(results.Results) > limit {
 		fmt.Fprintf(w, `<a href="/search?q=%s" class="block px-4 py-2 text-center text-xs font-medium text-text-body hover:bg-surface-subtle transition-colors">View all %d results →</a>`,
-			html.EscapeString(query), len(results.Results))
+			html.EscapeString(url.QueryEscape(query)), len(results.Results))
 	}
 	w.Write([]byte(`</div>`))
 }
@@ -642,7 +644,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		// Fee distribution — from per-ledger endpoint.
 		FeeBase:   gateway.FormatNumber(l.BaseFee),
 		FeeMedian: func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.MedianFee) }; return "—" }(),
-		FeeP99:    func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.P90Fee) }; return "—" }(),
+		FeeP99:    func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.P90Fee) }; return "—" }(), // API provides P90; P99 not available per-ledger
 		SurgePct:  func() string { if ledgerFees != nil && l.MaxTxSetSize > 0 { return fmt.Sprintf("%d%%", ledgerFees.TxCount*100/l.MaxTxSetSize) }; return "—" }(),
 	}
 
