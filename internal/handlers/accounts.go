@@ -10,7 +10,21 @@ import (
 )
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
-	data := mockAccountData()
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+
+	var data pages.AccountData
+	if h.useLiveData(r) {
+		if live, err := h.buildAccountData(r, network, id); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live account shell data failed, falling back to mock", "error", err)
+		}
+	}
+	if data.Address == "" {
+		data = mockAccountData()
+	}
+
 	pages.AccountPortfolioV2(data).Render(r.Context(), w)
 }
 

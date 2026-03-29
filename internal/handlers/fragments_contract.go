@@ -4,22 +4,49 @@ import (
 	"net/http"
 
 	"github.com/withObsrvr/prism/internal/templates/fragments"
+	"github.com/withObsrvr/prism/internal/templates/pages"
 )
+
+// buildContractFragmentData fetches contract detail data for fragment rendering.
+// Returns nil if live data is unavailable or not requested.
+func (h *Handlers) buildContractFragmentData(r *http.Request, network, contractID string) *pages.ContractDetailData {
+	if !h.useLiveData(r) {
+		return nil
+	}
+	data, err := h.buildContractDetailData(r, network, contractID)
+	if err != nil {
+		h.Logger.Warn("live contract data failed, falling back to mock", "error", err, "contract", contractID)
+		return nil
+	}
+	return &data
+}
 
 // ContractInfoFragment returns the contract info key-value section.
 func (h *Handlers) ContractInfoFragment(w http.ResponseWriter, r *http.Request) {
-	_ = r.PathValue("id") // Will be used when wiring live data.
-	data := mockContractDetailData()
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
 
-	if err := fragments.ContractInfo(data).Render(r.Context(), w); err != nil {
+	data := h.buildContractFragmentData(r, network, id)
+	if data == nil {
+		mock := mockContractDetailData()
+		data = &mock
+	}
+
+	if err := fragments.ContractInfo(*data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load contract info", err)
 	}
 }
 
 // ContractFunctionsFragment returns the top functions table.
 func (h *Handlers) ContractFunctionsFragment(w http.ResponseWriter, r *http.Request) {
-	_ = r.PathValue("id")
-	data := mockContractDetailData()
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+
+	data := h.buildContractFragmentData(r, network, id)
+	if data == nil {
+		mock := mockContractDetailData()
+		data = &mock
+	}
 
 	if err := fragments.ContractFunctions(data.Functions).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load functions", err)
@@ -28,8 +55,14 @@ func (h *Handlers) ContractFunctionsFragment(w http.ResponseWriter, r *http.Requ
 
 // ContractInvocationsFragment returns the recent invocations table.
 func (h *Handlers) ContractInvocationsFragment(w http.ResponseWriter, r *http.Request) {
-	_ = r.PathValue("id")
-	data := mockContractDetailData()
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+
+	data := h.buildContractFragmentData(r, network, id)
+	if data == nil {
+		mock := mockContractDetailData()
+		data = &mock
+	}
 
 	if err := fragments.ContractInvocations(data.Invocations).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load invocations", err)

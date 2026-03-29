@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"sort"
 	"time"
 
@@ -230,13 +232,76 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
+	network := networkFromRequest(r)
 
-	data := mockSearchData(query)
+	// Smart redirect: if query is unambiguously a single entity, go directly there.
+	if redirect := detectSmartRedirect(query); redirect != "" {
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
+	var data pages.SearchData
+	if h.useLiveData(r) {
+		if live, err := h.buildSearchData(r, network, query); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live search failed, falling back to mock", "error", err)
+		}
+	}
+	if data.Query == "" {
+		data = mockSearchData(query)
+	}
 
 	if err := pages.Search(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render search", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// detectSmartRedirect returns a redirect URL if the query unambiguously matches
+// a single entity type. Returns "" if ambiguous or unknown.
+// Note: C-addresses go to /contracts/ by default. The contract handler will
+// detect smart wallets and render appropriately.
+func detectSmartRedirect(query string) string {
+	q := query
+	// G + 55 chars = Stellar account address
+	if len(q) == 56 && q[0] == 'G' {
+		return "/account/" + q
+	}
+	// C + 55 chars = Stellar contract or smart wallet address
+	if len(q) == 56 && q[0] == 'C' {
+		return "/contracts/" + q
+	}
+	// 64 hex chars = transaction hash
+	if len(q) == 64 && isHex(q) {
+		return "/tx/" + q
+	}
+	// Pure number = ledger sequence
+	if isNumeric(q) {
+		return "/ledger/" + q
+	}
+	return ""
+}
+
+func isHex(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+func isNumeric(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (h *Handlers) buildSearchData(r *http.Request, network, query string) (pages.SearchData, error) {
@@ -281,6 +346,16 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 			badge = "Asset"
 			badgeColor = "blue"
 			href = "/assets/" + sr.ID
+		case "token":
+			iconBg = "bg-cyan-100"
+			badge = "Token"
+			badgeColor = "cyan"
+			href = "/contracts/" + sr.ID
+		case "smart_wallet":
+			iconBg = "bg-violet-100"
+			badge = "Smart Wallet"
+			badgeColor = "violet"
+			href = "/account/" + sr.ID + "/smart"
 		}
 
 		groups[sr.Type] = append(groups[sr.Type], pages.SearchResultItem{
@@ -302,7 +377,7 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 		})
 	}
 	sort.Slice(resultGroups, func(i, j int) bool {
-		order := map[string]int{"ledger": 0, "transaction": 1, "account": 2, "contract": 3, "asset": 4}
+		order := map[string]int{"ledger": 0, "transaction": 1, "account": 2, "contract": 3, "token": 4, "asset": 5}
 		oi, ok := order[resultGroups[i].Category]
 		if !ok {
 			oi = 99
@@ -351,20 +426,131 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 	return data, nil
 }
 
-// SearchResults returns an HTML fragment for live search.
+// SearchResults returns an HTML fragment for the live search dropdown on the home page.
+// Triggered by hx-get="/partials/search-results" with debounced keyup.
 func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	fmt.Fprintf(w, `<div class="search-results">Results for: %s</div>`, query)
+
+	// Smart redirect hint — if unambiguous, show a direct link.
+	if redirect := detectSmartRedirect(query); redirect != "" {
+		label := "View result"
+		switch {
+		case len(query) == 56 && query[0] == 'G':
+			label = "Account " + gateway.ShortAddress(query)
+		case len(query) == 56 && query[0] == 'C':
+			label = "Contract " + gateway.ShortAddress(query)
+		case len(query) == 64 && isHex(query):
+			label = "Transaction " + gateway.ShortHash(query)
+		case isNumeric(query):
+			label = "Ledger #" + query
+		}
+		fmt.Fprintf(w, `<div class="rounded-xl border border-border-default bg-surface-card shadow-lg overflow-hidden">
+			<a href="%s" class="flex items-center gap-3 px-4 py-3 hover:bg-surface-subtle transition-colors">
+				<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex-shrink-0">
+					<svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+				</div>
+				<div class="flex-1">
+					<span class="text-sm font-medium text-text-primary">%s</span>
+					<span class="text-2xs text-emerald-600 ml-2">Direct match — press Enter</span>
+				</div>
+			</a>
+		</div>`, redirect, html.EscapeString(label))
+		return
+	}
+
+	// Full search via gateway.
+	network := networkFromRequest(r)
+	if h.Gateway == nil {
+		fmt.Fprintf(w, `<div class="rounded-xl border border-border-default bg-surface-card shadow-lg px-4 py-3 text-sm text-text-muted">Search unavailable</div>`)
+		return
+	}
+
+	results, err := h.Gateway.Search(r.Context(), network, query)
+	if err != nil || len(results.Results) == 0 {
+		fmt.Fprintf(w, `<div class="rounded-xl border border-border-default bg-surface-card shadow-lg px-4 py-3 text-sm text-text-muted">No results for "%s"</div>`, html.EscapeString(query))
+		return
+	}
+
+	// Render compact result list (max 6 items).
+	w.Write([]byte(`<div class="rounded-xl border border-border-default bg-surface-card shadow-lg overflow-hidden">`))
+	limit := 6
+	if len(results.Results) < limit {
+		limit = len(results.Results)
+	}
+	for i := 0; i < limit; i++ {
+		sr := results.Results[i]
+		href := "/"
+		badge := sr.Type
+		badgeColor := "gray"
+		switch sr.Type {
+		case "account":
+			href = "/account/" + sr.ID
+			badge = "Account"
+		case "contract":
+			href = "/contracts/" + sr.ID
+			badge = "Contract"
+			badgeColor = "violet"
+		case "transaction":
+			href = "/tx/" + sr.ID
+			badge = "Tx"
+			badgeColor = "cyan"
+		case "ledger":
+			href = "/ledger/" + sr.ID
+			badge = "Ledger"
+			badgeColor = "emerald"
+		case "asset":
+			href = "/assets/" + sr.ID
+			badge = "Asset"
+			badgeColor = "blue"
+		case "token":
+			href = "/contracts/" + sr.ID
+			badge = "Token"
+			badgeColor = "cyan"
+		case "smart_wallet":
+			href = "/account/" + sr.ID + "/smart"
+			badge = "Wallet"
+			badgeColor = "violet"
+		}
+		safeHref := html.EscapeString(href)
+		fmt.Fprintf(w, `<a href="%s" class="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-subtle transition-colors border-b border-border-subtle last:border-b-0">
+			<div class="flex-1 min-w-0">
+				<span class="text-sm text-text-primary truncate block">%s</span>
+				<span class="font-mono text-2xs text-text-muted truncate block">%s</span>
+			</div>
+			<span class="rounded-full px-2 py-0.5 text-2xs font-semibold ring-1 text-%s-700 bg-%s-50 ring-%s-200 dark:text-%s-400 dark:bg-%s-950/30 dark:ring-%s-800 flex-shrink-0">%s</span>
+		</a>`, safeHref,
+			html.EscapeString(sr.Label),
+			html.EscapeString(gateway.ShortAddress(sr.ID)),
+			badgeColor, badgeColor, badgeColor, badgeColor, badgeColor, badgeColor,
+			html.EscapeString(badge))
+	}
+	if len(results.Results) > limit {
+		fmt.Fprintf(w, `<a href="/search?q=%s" class="block px-4 py-2 text-center text-xs font-medium text-text-body hover:bg-surface-subtle transition-colors">View all %d results →</a>`,
+			html.EscapeString(url.QueryEscape(query)), len(results.Results))
+	}
+	w.Write([]byte(`</div>`))
 }
 
 // LedgerDetail renders a single ledger page.
 func (h *Handlers) LedgerDetail(w http.ResponseWriter, r *http.Request) {
 	sequence := r.PathValue("sequence")
-	data := mockLedgerDetailData(sequence)
+	network := networkFromRequest(r)
+
+	var data pages.LedgerDetailData
+	if h.useLiveData(r) {
+		if live, err := h.buildLedgerDetailData(r, network, sequence); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live ledger shell data failed, falling back to mock", "error", err)
+		}
+	}
+	if data.Sequence == "" {
+		data = mockLedgerDetailData(sequence)
+	}
 
 	if err := pages.LedgerDetail(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render ledger detail", "error", err)
@@ -393,9 +579,21 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 
 	l := ledgers[0]
 
-	// Fetch transactions and operations for this ledger.
+	// Fetch transactions, operations, fees, and Soroban stats for this ledger.
 	txs, txErr := h.Gateway.GetTransactions(ctx, network, seq, seq, 50, "asc")
 	ops, opsErr := h.Gateway.GetOperations(ctx, network, seq, seq, 200)
+	ledgerFees, _ := h.Gateway.GetLedgerFees(ctx, network, seq)
+	ledgerSoroban, _ := h.Gateway.GetLedgerSoroban(ctx, network, seq)
+
+	// Try batch decoded txs for rich summaries.
+	decodedResp, _ := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 50)
+	decodedMap := make(map[string]*gateway.DecodedTransaction)
+	if decodedResp != nil {
+		for i := range decodedResp.Transactions {
+			dt := &decodedResp.Transactions[i]
+			decodedMap[dt.TxHash] = dt
+		}
+	}
 
 	// Parse close time.
 	closedAt := l.ClosedAt
@@ -412,9 +610,12 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 	}
 
 	data := pages.LedgerDetailData{
-		Sequence:     gateway.FormatNumber(l.Sequence),
-		PrevSequence: gateway.FormatNumber(l.Sequence - 1),
-		NextSequence: gateway.FormatNumber(l.Sequence + 1),
+		Sequence:        gateway.FormatNumber(l.Sequence),
+		SequenceRaw:     fmt.Sprintf("%d", l.Sequence),
+		PrevSequence:    gateway.FormatNumber(l.Sequence - 1),
+		PrevSequenceRaw: fmt.Sprintf("%d", l.Sequence-1),
+		NextSequence:    gateway.FormatNumber(l.Sequence + 1),
+		NextSequenceRaw: fmt.Sprintf("%d", l.Sequence+1),
 		ClosedAt:     closedAt,
 		CloseTime:    closeTime,
 		Hash:         gateway.ShortHash(l.LedgerHash),
@@ -429,21 +630,22 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		OpCount:      fmt.Sprintf("%d", l.OperationCount),
 		OpsPerTx:     fmt.Sprintf("%.1f", opsPerTx),
 		TotalFees:    func() string { if l.TotalFeeCharged != nil { return gateway.FormatNumber(*l.TotalFeeCharged) }; return gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount)) }(),
-		// Fields not available from bronze — use defaults
-		SorobanCalls:  "—",
+		SorobanCalls:  func() string { if l.SorobanOpCount != nil { return fmt.Sprintf("%d", *l.SorobanOpCount) }; return "—" }(),
 		SorobanPct:    "—",
 		FeesUSD:       "—",
-		EventsEmitted: "—",
-		TotalCPU:      "—",
-		StateReads:    "—",
-		StateReadKB:   "—",
-		StateWrites:   "—",
-		StateWriteKB:  "—",
-		RentBurned:    "—",
-		FeeBase:       gateway.FormatNumber(l.BaseFee),
-		FeeMedian:     "—",
-		FeeP99:        "—",
-		SurgePct:      "—",
+		EventsEmitted: func() string { if l.ContractEventsCount != nil { return fmt.Sprintf("%d", *l.ContractEventsCount) }; return "—" }(),
+		// Soroban runtime — from per-ledger endpoint.
+		TotalCPU:     func() string { if ledgerSoroban != nil { return gateway.FormatAbbrev(ledgerSoroban.TotalCPUInsns) + " insn" }; return "—" }(),
+		StateReads:   func() string { if ledgerSoroban != nil { return fmt.Sprintf("%d", ledgerSoroban.TotalReadBytes) }; return "—" }(),
+		StateReadKB:  func() string { if ledgerSoroban != nil { return fmt.Sprintf("%.1f KB", float64(ledgerSoroban.TotalReadBytes)/1024) }; return "—" }(),
+		StateWrites:  func() string { if ledgerSoroban != nil { return fmt.Sprintf("%d", ledgerSoroban.TotalWriteBytes) }; return "—" }(),
+		StateWriteKB: func() string { if ledgerSoroban != nil { return fmt.Sprintf("%.1f KB", float64(ledgerSoroban.TotalWriteBytes)/1024) }; return "—" }(),
+		RentBurned:   func() string { if ledgerSoroban != nil { return fmt.Sprintf("%.4f", float64(ledgerSoroban.TotalRentCharged)/10_000_000) }; return "—" }(),
+		// Fee distribution — from per-ledger endpoint.
+		FeeBase:   gateway.FormatNumber(l.BaseFee),
+		FeeMedian: func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.MedianFee) }; return "—" }(),
+		FeeP99:    func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.P90Fee) }; return "—" }(), // API provides P90; P99 not available per-ledger
+		SurgePct:  func() string { if ledgerFees != nil && l.MaxTxSetSize > 0 { return fmt.Sprintf("%d%%", ledgerFees.TxCount*100/l.MaxTxSetSize) }; return "—" }(),
 	}
 
 	// Op breakdown from operations data.
@@ -483,7 +685,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		data.OpBreakdown = []pages.OpBreakdownItem{}
 	}
 
-	// Transform transactions.
+	// Transform transactions — use decoded data when available for rich summaries.
 	if txErr == nil && len(txs) > 0 {
 		ledgerTxs := make([]pages.LedgerTx, 0, len(txs))
 		for i, tx := range txs {
@@ -493,13 +695,38 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 			}
 			opType := "tx"
 			opColor := "gray"
-			if tx.OperationCount > 1 {
+			summary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> · %d op(s)`,
+				html.EscapeString(gateway.ShortAddress(tx.SourceAccount)), tx.OperationCount)
+
+			// Enrich from decoded data if available.
+			if dt, ok := decodedMap[tx.TransactionHash]; ok && dt.Summary != nil {
+				summary = html.EscapeString(dt.Summary.Description)
+				switch dt.Summary.Type {
+				case "transfer":
+					opType = "transfer"
+					opColor = "cyan"
+				case "swap":
+					opType = "swap"
+					opColor = "emerald"
+				case "mint":
+					opType = "mint"
+					opColor = "emerald"
+				case "burn":
+					opType = "burn"
+					opColor = "red"
+				case "contract_call":
+					opType = "invoke"
+					opColor = "violet"
+				case "multi_op":
+					opType = "multi"
+					opColor = "violet"
+				default:
+					opType = dt.Summary.Type
+				}
+			} else if tx.OperationCount > 1 {
 				opType = "multi"
 				opColor = "violet"
 			}
-
-			summary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> · %d op(s)`,
-				html.EscapeString(gateway.ShortAddress(tx.SourceAccount)), tx.OperationCount)
 
 			ledgerTxs = append(ledgerTxs, pages.LedgerTx{
 				Index:     fmt.Sprintf("%d", i+1),
@@ -529,8 +756,19 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 	if len(hash) > 12 {
 		shortHash = hash[:6] + "..." + hash[len(hash)-4:]
 	}
+	network := networkFromRequest(r)
 
-	data := mockTxReceiptData(hash, shortHash)
+	var data pages.TxReceiptData
+	if h.useLiveData(r) {
+		if live, err := h.buildTxReceiptData(r, network, hash, shortHash); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live tx shell data failed, falling back to mock", "error", err)
+		}
+	}
+	if data.Hash == "" {
+		data = mockTxReceiptData(hash, shortHash)
+	}
 
 	if err := pages.TransactionReceiptV2(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render transaction receipt", "error", err)
@@ -632,20 +870,28 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		if !tx.Successful {
 			opStatus = "Failed"
 		}
+		// Build operation summary — use decoded args when available.
+		opSummary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> %s`, html.EscapeString(gateway.ShortAddress(op.SourceAccount)), html.EscapeString(op.TypeName))
+		if op.FunctionName != "" && op.ArgumentsJSON != "" {
+			opSummary = formatSorobanCall(op.SourceAccount, op.FunctionName, op.ArgumentsJSON)
+		} else if op.FunctionName != "" {
+			opSummary = fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> called <span class="font-mono text-violet-600">%s</span>`, html.EscapeString(gateway.ShortAddress(op.SourceAccount)), html.EscapeString(op.FunctionName))
+		}
+
 		ops = append(ops, pages.TxOperation{
 			Index:       fmt.Sprintf("%d", op.Index+1),
 			Type:        op.TypeName,
 			IsSoroban:   op.IsSorobanOp,
 			IsPrimary:   op.Index == 0,
 			Status:      opStatus,
-			SummaryHTML: fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> %s`, html.EscapeString(gateway.ShortAddress(op.SourceAccount)), html.EscapeString(op.TypeName)),
+			SummaryHTML: opSummary,
 			Contract:    gateway.ShortAddress(op.ContractID),
 			Function:    op.FunctionName,
 		})
 	}
 
-	// Build events list.
-	evts := make([]pages.TxEvent, 0, len(txFull.Events))
+	// Build events list from unified events.
+	evts := make([]pages.TxEvent, 0)
 	for i, evt := range txFull.Events {
 		typeColor := "gray"
 		switch evt.EventType {
@@ -673,6 +919,30 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			Contract:  gateway.ShortAddress(evt.ContractID),
 			DataHTML:  dataHTML,
 		})
+	}
+
+	// Supplement with generic contract events for decoded topics/data.
+	if genericResp, err := h.Gateway.GetGenericEvents(ctx, network, "", hash, 20); err == nil {
+		for _, ge := range genericResp.Events {
+			typeColor := "violet"
+			dataHTML := ""
+			if ge.TopicsDecoded != "" {
+				dataHTML = fmt.Sprintf(`<span class="font-mono text-2xs text-text-strong">%s</span>`, html.EscapeString(ge.TopicsDecoded))
+			}
+			if ge.DataDecoded != "" {
+				if dataHTML != "" {
+					dataHTML += ` <span class="text-text-muted mx-1">=</span> `
+				}
+				dataHTML += fmt.Sprintf(`<span class="font-mono text-2xs">%s</span>`, html.EscapeString(ge.DataDecoded))
+			}
+			evts = append(evts, pages.TxEvent{
+				Index:     fmt.Sprintf("%d", len(evts)),
+				Type:      ge.EventType,
+				TypeColor: typeColor,
+				Contract:  gateway.ShortAddress(ge.ContractID),
+				DataHTML:  dataHTML,
+			})
+		}
 	}
 
 	// Build balance changes from diffs.
@@ -738,12 +1008,13 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		Slippage:      slippage,
 		Route:         route,
 		FeePaid:       gateway.FormatNumber(tx.Fee),
+		MaxFee:        func() string { if tx.MaxFee > 0 { return gateway.FormatNumber(tx.MaxFee) }; return "" }(),
 		FeeUSD:        "—",
-		SorobanCPU:    "—",
-		SorobanMem:    "—",
-		SorobanReads:  "—",
-		SorobanWrites: "—",
-		SeqNumber:     "—",
+		SorobanCPU:    func() string { if txFull.SorobanResources != nil { return gateway.FormatAbbrev(txFull.SorobanResources.Instructions) + " insn" }; return "—" }(),
+		SorobanMem:    "—", // Not available from current API
+		SorobanReads:  func() string { if txFull.SorobanResources != nil { return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.ReadBytes)/1024) }; return "—" }(),
+		SorobanWrites: func() string { if txFull.SorobanResources != nil { return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.WriteBytes)/1024) }; return "—" }(),
+		SeqNumber:     fmt.Sprintf("%d", tx.AccountSequence),
 		Operations:    ops,
 		Events:        evts,
 		BalanceChanges: balChanges,
@@ -751,4 +1022,73 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	return data, nil
+}
+
+// formatSorobanCall formats a Soroban invoke_host_function operation summary
+// with decoded arguments, similar to stellar.expert's display:
+//
+//	mint(GCFB…TEKT, 10000000i128)
+func formatSorobanCall(source, functionName, argsJSON string) string {
+	// Parse the arguments JSON array.
+	var args []map[string]any
+	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+		return fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> called <span class="font-mono text-violet-600">%s</span>`,
+			html.EscapeString(gateway.ShortAddress(source)), html.EscapeString(functionName))
+	}
+
+	// Format each argument concisely.
+	formattedArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		formattedArgs = append(formattedArgs, html.EscapeString(formatScVal(arg)))
+	}
+
+	argsStr := ""
+	for i, a := range formattedArgs {
+		if i > 0 {
+			argsStr += ", "
+		}
+		argsStr += `<span class="font-mono text-xs">` + a + `</span>`
+	}
+
+	return fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> <span class="font-mono text-violet-600">%s</span>(%s)`,
+		html.EscapeString(gateway.ShortAddress(source)),
+		html.EscapeString(functionName),
+		argsStr)
+}
+
+// formatScVal formats a decoded Soroban ScVal for display.
+func formatScVal(val map[string]any) string {
+	valType, _ := val["type"].(string)
+	switch valType {
+	case "account", "contract":
+		if addr, ok := val["address"].(string); ok {
+			return gateway.ShortAddress(addr)
+		}
+	case "i128", "u128":
+		if v, ok := val["value"].(string); ok {
+			return v + valType
+		}
+	case "i64", "u64", "i32", "u32":
+		if v, ok := val["value"].(string); ok {
+			return v
+		}
+		if v, ok := val["value"].(float64); ok {
+			return fmt.Sprintf("%.0f", v)
+		}
+	case "bool":
+		if v, ok := val["value"].(bool); ok {
+			if v {
+				return "true"
+			}
+			return "false"
+		}
+	case "symbol":
+		if v, ok := val["value"].(string); ok {
+			return v
+		}
+	}
+	if v, ok := val["value"]; ok {
+		return fmt.Sprintf("%v", v)
+	}
+	return fmt.Sprintf("%v", val)
 }

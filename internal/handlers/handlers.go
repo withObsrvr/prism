@@ -64,6 +64,29 @@ func isHTMX(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
 }
 
+// useLiveData returns true if this request should attempt live gateway data.
+// Returns false (use mock) when:
+//   - Gateway client is nil (no API key configured)
+//   - Request has ?mock=true query param (manual override for testing)
+//
+// Usage in fragment handlers:
+//
+//	if h.useLiveData(r) {
+//	    data, err := h.buildXxxData(r, network)
+//	    if err == nil { /* render live */ return }
+//	    h.Logger.Warn("live data failed, falling back to mock", "error", err)
+//	}
+//	/* render mock */
+func (h *Handlers) useLiveData(r *http.Request) bool {
+	if h.Gateway == nil {
+		return false
+	}
+	if r.URL.Query().Get("mock") == "true" {
+		return false
+	}
+	return true
+}
+
 // renderFragmentError logs the primary error, sets a 500 status, and renders
 // an inline error component with a retry button. If the error template itself
 // fails to render, that is also logged.

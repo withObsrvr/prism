@@ -15,7 +15,32 @@ func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
-	data := mockContractDetailData()
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+
+	// Detect smart wallets for future use. The redirect is disabled until
+	// the smart account page is wired to accept and render the requested ID.
+	// TODO: Enable redirect once SmartAccountDashboard uses the path {id}.
+	if h.useLiveData(r) {
+		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
+			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
+			// http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
+			// return
+		}
+	}
+
+	var data pages.ContractDetailData
+	if h.useLiveData(r) {
+		if live, err := h.buildContractDetailData(r, network, id); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live contract shell data failed, falling back to mock", "error", err)
+		}
+	}
+	if data.Address == "" {
+		data = mockContractDetailData()
+	}
+
 	pages.ContractDetailV2(data).Render(r.Context(), w)
 }
 
