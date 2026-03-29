@@ -9,7 +9,12 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          config = {
+            allowUnfree = true;
+          };
+        };
         go = pkgs.go;
 
         devTools = with pkgs; [
@@ -38,6 +43,36 @@
           # Nix tools
           nixpkgs-fmt
           nil
+
+          # Playwright for E2E testing
+          playwright-driver
+        ];
+
+        # Playwright runtime dependencies
+        playwrightRuntimeDeps = with pkgs; [
+          glib
+          nss
+          nspr
+          dbus
+          atk
+          at-spi2-core
+          at-spi2-atk
+          cups
+          libdrm
+          expat
+          libxkbcommon
+          xorg.libxcb
+          xorg.libX11
+          xorg.libXcomposite
+          xorg.libXdamage
+          xorg.libXext
+          xorg.libXfixes
+          xorg.libXrandr
+          mesa
+          libgbm
+          pango
+          cairo
+          alsa-lib
         ];
 
         shellHook = ''
@@ -64,13 +99,17 @@
 
           mkdir -p .go/{bin,cache,mod}
 
+          # Playwright runtime dependencies
+          export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath playwrightRuntimeDeps}:$LD_LIBRARY_PATH"
+
           export PS1='\[\033[1;35m\][prism]\[\033[0m\] \[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;36m\]\w\[\033[0m\]\$ '
         '';
 
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = devTools;
+          buildInputs = devTools ++ playwrightRuntimeDeps;
           inherit shellHook;
         };
 
@@ -82,7 +121,7 @@
 
           vendorHash = null;
 
-          CGO_ENABLED = 0;
+          env.CGO_ENABLED = 0;
 
           ldflags = [
             "-s" "-w"

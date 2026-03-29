@@ -205,6 +205,7 @@ type TxFull struct {
 type TxInfo struct {
 	TxHash          string          `json:"tx_hash"`
 	Fee             int64           `json:"fee"`
+	MaxFee          int64           `json:"max_fee"`
 	LedgerSequence  int64           `json:"ledger_sequence"`
 	OperationCount  int             `json:"operation_count"`
 	Successful      bool            `json:"successful"`
@@ -511,4 +512,245 @@ type SearchResult struct {
 	ID      string         `json:"id"`
 	Label   string         `json:"label"`
 	Details map[string]any `json:"details,omitempty"`
+}
+
+// --- Smart Wallet Detection ---
+
+// SmartWalletInfo matches /silver/smart-wallet/{contract_id} response.
+type SmartWalletInfo struct {
+	ContractID     string             `json:"contract_id"`
+	IsSmartWallet  bool               `json:"is_smart_wallet"`
+	WalletType     string             `json:"wallet_type,omitempty"`     // "crossmint", "openzeppelin", "sep50", ""
+	Implementation string             `json:"implementation,omitempty"` // more specific impl name
+	HasCheckAuth   bool               `json:"has_check_auth"`
+	Confidence     float64            `json:"confidence,omitempty"`
+	SignerCount    int                `json:"signer_count"`
+	Signers        []SmartWalletSigner `json:"signers,omitempty"`
+}
+
+type SmartWalletSigner struct {
+	ID      string `json:"id"`
+	KeyType string `json:"key_type"` // "ed25519", "secp256r1", "webauthn"
+}
+
+// --- Fee Stats ---
+
+// FeeStats matches /silver/stats/fees response.
+type FeeStats struct {
+	Period      string  `json:"period"`
+	MedianFee   int64   `json:"median_fee"`
+	P75Fee      int64   `json:"p75_fee"`
+	P90Fee      int64   `json:"p90_fee"`
+	P99Fee      int64   `json:"p99_fee"`
+	MinFee      int64   `json:"min_fee"`
+	MaxFee      int64   `json:"max_fee"`
+	TotalFees   int64   `json:"total_fees"`
+	TxCount     int64   `json:"tx_count"`
+	SurgeActive bool    `json:"surge_active"`
+	SurgePct    float64 `json:"surge_pct_of_ledgers,omitempty"`
+	GeneratedAt string  `json:"generated_at"`
+}
+
+// --- Soroban Stats ---
+
+// SorobanStats matches /silver/stats/soroban response.
+type SorobanStats struct {
+	Contracts   SorobanContractStats  `json:"contracts"`
+	Execution   SorobanExecutionStats `json:"execution"`
+	State       SorobanStateStats     `json:"state"`
+	GeneratedAt string                `json:"generated_at"`
+}
+
+type SorobanContractStats struct {
+	TotalDeployed int64 `json:"total_deployed"`
+	Active24H     int64 `json:"active_24h"`
+	Active7D      int64 `json:"active_7d"`
+}
+
+type SorobanExecutionStats struct {
+	TotalInvocations24H  int64 `json:"total_invocations_24h"`
+	AvgCPUInsns          int64 `json:"avg_cpu_insns,omitempty"`
+	TotalCPUInsns        int64 `json:"total_cpu_insns,omitempty"`
+	RentBurned24HStroops int64 `json:"rent_burned_24h_stroops,omitempty"`
+}
+
+type SorobanStateStats struct {
+	PersistentEntries int64 `json:"persistent_entries"`
+	TemporaryEntries  int64 `json:"temporary_entries"`
+}
+
+// --- Semantic Contracts ---
+
+// SemanticContract matches /semantic/contracts response items.
+type SemanticContract struct {
+	ContractID        string   `json:"contract_id"`
+	ContractType      string   `json:"contract_type"`
+	WalletType        *string  `json:"wallet_type,omitempty"` // "crossmint", "openzeppelin", "sep50", nil
+	TokenName         *string  `json:"token_name,omitempty"`
+	TokenSymbol       *string  `json:"token_symbol,omitempty"`
+	TokenDecimals     *int     `json:"token_decimals,omitempty"`
+	DeployerAccount   *string  `json:"deployer_account,omitempty"`
+	DeployedAt        *string  `json:"deployed_at,omitempty"`
+	DeployedLedger    *int64   `json:"deployed_ledger,omitempty"`
+	TotalInvocations  int64    `json:"total_invocations"`
+	LastActivity      *string  `json:"last_activity,omitempty"`
+	UniqueCallers     int64    `json:"unique_callers"`
+	ObservedFunctions []string `json:"observed_functions,omitempty"`
+}
+
+type SemanticContractsResponse struct {
+	Contracts []SemanticContract `json:"contracts"`
+	Count     int                `json:"count"`
+}
+
+// --- Contract Interface ---
+
+// ContractInterface matches /silver/contracts/{id}/interface response.
+type ContractInterface struct {
+	ContractID        string   `json:"contract_id"`
+	DetectedType      string   `json:"detected_type"`
+	Interface         any      `json:"interface,omitempty"`
+	ObservedFunctions []string `json:"observed_functions"`
+}
+
+// --- Account Activity ---
+
+// AccountActivityItem matches /silver/accounts/{id}/activity response items.
+type AccountActivityItem struct {
+	Type           string         `json:"type"`
+	Timestamp      string         `json:"timestamp"`
+	LedgerSequence int64          `json:"ledger_sequence"`
+	TxHash         string         `json:"tx_hash"`
+	Details        map[string]any `json:"details,omitempty"`
+}
+
+type AccountActivityResponse struct {
+	AccountID string                `json:"account_id"`
+	Activity  []AccountActivityItem `json:"activity"`
+	Cursor    string                `json:"cursor,omitempty"`
+	HasMore   bool                  `json:"has_more"`
+	Count     int                   `json:"count"`
+}
+
+// --- Account Offers ---
+
+// AccountOffer matches /silver/accounts/{id}/offers response items.
+type AccountOffer struct {
+	OfferID      int64  `json:"offer_id"`
+	SellerID     string `json:"seller_id"`
+	SellingAsset string `json:"selling_asset"`
+	BuyingAsset  string `json:"buying_asset"`
+	Amount       string `json:"amount"`
+	Price        string `json:"price"`
+}
+
+type AccountOffersResponse struct {
+	AccountID string         `json:"account_id"`
+	Offers    []AccountOffer `json:"offers"`
+	Count     int            `json:"count"`
+	HasMore   bool           `json:"has_more"`
+}
+
+// --- Transaction Summaries ---
+
+// TransactionSummaryItem matches /silver/transactions/summaries response items.
+type TransactionSummaryItem struct {
+	TxHash          string  `json:"tx_hash"`
+	LedgerSequence  int64   `json:"ledger_sequence"`
+	ClosedAt        string  `json:"closed_at"`
+	SourceAccount   string  `json:"source_account"`
+	FeeCharged      int64   `json:"fee_charged"`
+	OpCount         int64   `json:"op_count"`
+	Successful      bool    `json:"successful"`
+	HasSoroban      bool    `json:"has_soroban"`
+	PrimaryContract *string `json:"primary_contract,omitempty"`
+	TxType          string  `json:"tx_type"`
+}
+
+type TransactionSummariesResponse struct {
+	Transactions []TransactionSummaryItem `json:"transactions"`
+	Count        int                      `json:"count"`
+}
+
+// --- Generic Events ---
+
+// GenericEvent matches /silver/events/generic response items.
+type GenericEvent struct {
+	ContractID     string `json:"contract_id"`
+	EventType      string `json:"event_type"`
+	LedgerSequence int64  `json:"ledger_sequence"`
+	TxHash         string `json:"tx_hash"`
+	ClosedAt       string `json:"closed_at"`
+	TopicsDecoded  string `json:"topics_decoded,omitempty"`
+	DataDecoded    string `json:"data_decoded,omitempty"`
+}
+
+type GenericEventsResponse struct {
+	Events     []GenericEvent `json:"events"`
+	Count      int            `json:"count"`
+	HasMore    bool           `json:"has_more"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+}
+
+// --- Batch Decoded Transactions ---
+
+// BatchDecodedResponse matches /silver/tx/batch/decoded response.
+type BatchDecodedResponse struct {
+	Transactions []DecodedTransaction `json:"transactions"`
+	Count        int                  `json:"count"`
+	Errors       []BatchDecodeError   `json:"errors,omitempty"`
+}
+
+type DecodedTransaction struct {
+	TxHash          string             `json:"tx_hash"`
+	LedgerSequence  int64              `json:"ledger_sequence"`
+	ClosedAt        string             `json:"closed_at"`
+	Successful      bool               `json:"successful"`
+	Fee             int64              `json:"fee"`
+	OperationCount  int                `json:"operation_count"`
+	SourceAccount   *string            `json:"source_account,omitempty"`
+	Summary         *TxSummary         `json:"summary,omitempty"`
+	Operations      []DecodedOperation `json:"operations,omitempty"`
+	Events          []UnifiedEvent     `json:"events,omitempty"`
+	SorobanResInsns *int64             `json:"soroban_resources_instructions,omitempty"`
+	SorobanResRead  *int64             `json:"soroban_resources_read_bytes,omitempty"`
+	SorobanResWrite *int64             `json:"soroban_resources_write_bytes,omitempty"`
+}
+
+type BatchDecodeError struct {
+	TxHash string `json:"tx_hash"`
+	Error  string `json:"error"`
+}
+
+// --- Per-Ledger Stats ---
+
+// LedgerFees matches /silver/ledgers/{seq}/fees response.
+type LedgerFees struct {
+	LedgerSequence int64      `json:"ledger_sequence"`
+	TxCount        int        `json:"tx_count"`
+	MinFee         int64      `json:"min_fee"`
+	MaxFee         int64      `json:"max_fee"`
+	MedianFee      int64      `json:"median_fee"`
+	P90Fee         int64      `json:"p90_fee"`
+	TotalFees      int64      `json:"total_fees"`
+	Histogram      []FeeBucket `json:"histogram,omitempty"`
+	GeneratedAt    string     `json:"generated_at"`
+}
+
+type FeeBucket struct {
+	Min   int64 `json:"min"`
+	Max   int64 `json:"max"`
+	Count int   `json:"count"`
+}
+
+// LedgerSoroban matches /silver/ledgers/{seq}/soroban response.
+type LedgerSoroban struct {
+	LedgerSequence   int64  `json:"ledger_sequence"`
+	SorobanTxCount   int64  `json:"soroban_tx_count"`
+	TotalCPUInsns    int64  `json:"total_cpu_insns"`
+	TotalReadBytes   int64  `json:"total_read_bytes"`
+	TotalWriteBytes  int64  `json:"total_write_bytes"`
+	TotalRentCharged int64  `json:"total_rent_charged"`
+	UniqueContracts  int64  `json:"unique_contracts"`
+	GeneratedAt      string `json:"generated_at"`
 }

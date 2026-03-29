@@ -61,9 +61,12 @@ func mockHomeData(network string) pages.HomeData {
 // mockLedgerDetailData returns hardcoded ledger detail data.
 func mockLedgerDetailData(sequence string) pages.LedgerDetailData {
 	return pages.LedgerDetailData{
-		Sequence:      sequence,
-		PrevSequence:  "5,104,937",
-		NextSequence:  "5,104,939",
+		Sequence:        sequence,
+		SequenceRaw:     sequence,
+		PrevSequence:    "5,104,937",
+		PrevSequenceRaw: "5104937",
+		NextSequence:    "5,104,939",
+		NextSequenceRaw: "5104939",
 		ClosedAt:      "Mar 2, 2026 · 14:32:18 UTC",
 		CloseTime:     "5.1s",
 		Hash:          "a1b2c3d4e5f6...7890abcdef12",
@@ -137,6 +140,7 @@ func mockTxReceiptData(hash, shortHash string) pages.TxReceiptData {
 		Slippage:      "0.12%",
 		Route:         "XLM → USDC (direct)",
 		FeePaid:       "10,200",
+		MaxFee:        "20,325",
 		FeeUSD:        "$0.001",
 		SorobanCPU:    "24.2M",
 		SorobanMem:    "1.2 MB",

@@ -30,11 +30,21 @@ templ TxOverview(data pages.TxReceiptData) {
 			<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
 				<span class="w-32 text-text-muted flex-shrink-0">Fee</span>
 				<span class="font-mono font-medium text-text-primary ml-4">{ data.FeePaid } stroops</span>
+				if data.MaxFee != "" {
+					<span class="text-text-muted ml-2">·</span>
+					<span class="text-text-body ml-2">max { data.MaxFee }</span>
+				}
 				if data.FeeUSD != "—" {
 					<span class="text-text-muted ml-2">·</span>
 					<span class="text-text-muted ml-2">~{ data.FeeUSD }</span>
 				}
 			</div>
+			if data.SeqNumber != "—" && data.SeqNumber != "" {
+				<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+					<span class="w-32 text-text-muted flex-shrink-0">Sequence</span>
+					<span class="font-mono text-xs text-text-primary ml-4">{ data.SeqNumber }</span>
+				</div>
+			}
 			if data.IsSoroban {
 				<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
 					<span class="w-32 text-text-muted flex-shrink-0">Resources</span>

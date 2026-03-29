@@ -7,9 +7,12 @@ import (
 )
 
 type LedgerDetailData struct {
-	Sequence     string
-	PrevSequence string
-	NextSequence string
+	Sequence        string
+	SequenceRaw     string // Unformatted sequence for URLs
+	PrevSequence    string
+	PrevSequenceRaw string // Unformatted for URLs
+	NextSequence    string
+	NextSequenceRaw string // Unformatted for URLs
 	ClosedAt     string
 	CloseTime    string
 	Hash         string
@@ -80,10 +83,10 @@ templ LedgerDetail(data LedgerDetailData) {
 				<div class="flex items-center gap-4 mb-5">
 					<h1 class="font-mono text-3xl font-bold text-text-primary tabular">{ data.Sequence }</h1>
 					<div class="flex items-center gap-1">
-						<a href={ templ.SafeURL("/ledger/" + data.PrevSequence) } class="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default hover:bg-surface-subtle" title="Previous ledger">
+						<a href={ templ.SafeURL("/ledger/" + data.PrevSequenceRaw) } class="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default hover:bg-surface-subtle" title="Previous ledger">
 							<svg class="h-3.5 w-3.5 text-text-body" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
 						</a>
-						<a href={ templ.SafeURL("/ledger/" + data.NextSequence) } class="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default hover:bg-surface-subtle" title="Next ledger">
+						<a href={ templ.SafeURL("/ledger/" + data.NextSequenceRaw) } class="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default hover:bg-surface-subtle" title="Next ledger">
 							<svg class="h-3.5 w-3.5 text-text-body" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 						</a>
 					</div>
@@ -136,12 +139,12 @@ templ LedgerDetail(data LedgerDetailData) {
 			</div>
 
 			<!-- Transactions: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/ledger/" + data.Sequence + "/txs" } hx-trigger="load" hx-swap="outerHTML">
+			<div hx-get={ "/fragments/ledger/" + data.SequenceRaw + "/txs" } hx-trigger="load" hx-swap="outerHTML">
 				@ledgerTableSkeleton(5)
 			</div>
 
 			<!-- Operation Breakdown + Fees: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/ledger/" + data.Sequence + "/ops-fees" } hx-trigger="load" hx-swap="outerHTML">
+			<div hx-get={ "/fragments/ledger/" + data.SequenceRaw + "/ops-fees" } hx-trigger="load" hx-swap="outerHTML">
 				<div class="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
 					<div class="rounded-xl border border-border-default bg-surface-card p-5 shadow-sm">
 						<div class="h-4 w-full rounded-full bg-surface-subtle animate-pulse mb-4"></div>
@@ -163,7 +166,7 @@ templ LedgerDetail(data LedgerDetailData) {
 			</div>
 
 			<!-- Soroban Runtime: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/ledger/" + data.Sequence + "/soroban" } hx-trigger="load" hx-swap="outerHTML">
+			<div hx-get={ "/fragments/ledger/" + data.SequenceRaw + "/soroban" } hx-trigger="load" hx-swap="outerHTML">
 				@ledgerDetailSkeleton(4)
 			</div>
 
@@ -182,7 +185,7 @@ templ LedgerDetail(data LedgerDetailData) {
 							</div>
 						}
 						@components.DetailRow("Previous Hash") {
-							<a href={ templ.SafeURL("/ledger/" + data.PrevSequence) } class="font-mono text-sm text-text-primary hover:text-violet-600">{ data.PrevHash }</a>
+							<a href={ templ.SafeURL("/ledger/" + data.PrevSequenceRaw) } class="font-mono text-sm text-text-primary hover:text-violet-600">{ data.PrevHash }</a>
 						}
 						@components.DetailRow("Base Fee") {
 							<span class="text-sm text-text-primary">{ data.BaseFee } stroops</span>
@@ -200,12 +203,12 @@ templ LedgerDetail(data LedgerDetailData) {
 			<!-- Context Links -->
 			<div class="anim d5 mb-10">
 				<div class="flex items-center gap-3 flex-wrap">
-					<a href={ templ.SafeURL("/ledger/" + data.PrevSequence) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
+					<a href={ templ.SafeURL("/ledger/" + data.PrevSequenceRaw) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
 						<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
 						<span class="text-xs font-medium text-text-strong">Previous Ledger</span>
 						<span class="font-mono text-2xs text-text-muted tabular">{ data.PrevSequence }</span>
 					</a>
-					<a href={ templ.SafeURL("/ledger/" + data.NextSequence) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
+					<a href={ templ.SafeURL("/ledger/" + data.NextSequenceRaw) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
 						<span class="text-xs font-medium text-text-strong">Next Ledger</span>
 						<span class="font-mono text-2xs text-text-muted tabular">{ data.NextSequence }</span>
 						<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
