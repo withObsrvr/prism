@@ -127,6 +127,7 @@ func mockTxReceiptData(hash, shortHash string) pages.TxReceiptData {
 		SummaryHTML:   `<span class="font-semibold">GABC...7X92</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485.00 USDC</span> via <span class="font-semibold">Soroswap Router</span>`,
 		Timestamp:     "Oct 24, 2026 at 14:14:22 UTC",
 		Ledger:        "4,819,284",
+		LedgerRaw:     "4819284",
 		OpsCount:      "3",
 		EventsCount:   "4",
 		SourceAddr:    "GABC...7X92",

@@ -996,6 +996,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		SummaryHTML:   summaryHTML,
 		Timestamp:     timestamp,
 		Ledger:        gateway.FormatNumber(tx.LedgerSequence),
+		LedgerRaw:     fmt.Sprintf("%d", tx.LedgerSequence),
 		OpsCount:      fmt.Sprintf("%d", tx.OperationCount),
 		EventsCount:   fmt.Sprintf("%d", len(txFull.Events)),
 		SourceAddr:    sourceAddr,
