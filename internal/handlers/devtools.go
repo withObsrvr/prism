@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/withObsrvr/prism/internal/events"
@@ -204,13 +205,19 @@ func extractAmount(dataDecoded *string) string {
 		return data.Value
 	}
 	// Convert from stroops (7 decimals) to human-readable.
+	// Use big.Int arithmetic throughout to avoid int64 overflow on large i128 values.
 	stroopsPerUnit := big.NewInt(10_000_000)
-	whole := new(big.Int).Div(v, stroopsPerUnit)
-	frac := new(big.Int).Mod(v, stroopsPerUnit)
+	whole := new(big.Int)
+	frac := new(big.Int)
+	whole.DivMod(v, stroopsPerUnit, frac)
+	frac.Abs(frac)
 	if frac.Sign() == 0 {
-		return gateway.FormatNumber(whole.Int64())
+		return whole.String()
 	}
-	return fmt.Sprintf("%s.%02d", gateway.FormatNumber(whole.Int64()), frac.Int64()/100_000)
+	// Format fractional part as 7 digits with leading zeros, then trim trailing zeros.
+	fracStr := fmt.Sprintf("%07d", frac.Int64())
+	fracStr = strings.TrimRight(fracStr, "0")
+	return whole.String() + "." + fracStr
 }
 
 func (h *Handlers) StateRentTracker(w http.ResponseWriter, r *http.Request) {

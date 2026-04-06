@@ -38,8 +38,8 @@ func mockHomeData(network string) pages.HomeData {
 			{Sequence: "61,504,110", SequenceRaw: "61504110", Age: "19.6s", TxCount: "29 txs", OpCount: "9 ops"},
 			{Sequence: "61,504,109", SequenceRaw: "61504109", Age: "24.8s", TxCount: "44 txs", OpCount: "15 ops"},
 			{Sequence: "61,504,108", SequenceRaw: "61504108", Age: "30.1s", TxCount: "36 txs", OpCount: "11 ops"},
-			{Sequence: "61,504,107", Age: "35.4s", TxCount: "47 txs", OpCount: "16 ops"},
-			{Sequence: "61,504,106", Age: "40.7s", TxCount: "33 txs", OpCount: "10 ops"},
+			{Sequence: "61,504,107", SequenceRaw: "61504107", Age: "35.4s", TxCount: "47 txs", OpCount: "16 ops"},
+			{Sequence: "61,504,106", SequenceRaw: "61504106", Age: "40.7s", TxCount: "33 txs", OpCount: "10 ops"},
 		},
 		Contracts: []pages.HomeContract{
 			{Rank: 1, Name: "Soroswap Router", Tag: "DEX", TagColor: "violet", Address: "CDLZ9...WK42", Invocations: "284,102", Change: "+18%", IsPositive: true},

@@ -327,7 +327,7 @@ type ActionButton struct {
 // Uses data-copy attribute + global click handler to avoid templ ComponentScript
 // name collisions (all buttons would share the same function otherwise).
 templ CopyButton(text string) {
-	<button data-copy={ text }
+	<button type="button" data-copy={ text }
 			class="copy-btn text-text-muted hover:text-text-body transition-colors"
 			title="Copy to clipboard">
 		<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
