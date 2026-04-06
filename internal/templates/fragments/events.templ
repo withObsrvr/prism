@@ -77,10 +77,26 @@ templ EventsStream(data pages.EventsFirehoseData) {
 		</table>
 
 		<!-- Load more -->
-		<div class="border-t border-border-subtle py-3.5 text-center bg-surface-subtle">
-			<button class="text-xs font-medium text-text-body hover:text-text-primary transition-colors">Load older events</button>
-		</div>
+		if data.HasMore && data.NextCursor != "" {
+			<div class="border-t border-border-subtle py-3.5 text-center bg-surface-subtle">
+				<button
+					hx-get={ "/fragments/events/stream?cursor=" + data.NextCursor + tabParam(data.ActiveTab) }
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class="text-xs font-medium text-text-body hover:text-text-primary transition-colors">
+					Load older events
+				</button>
+			</div>
+		}
 	</div>
+}
+
+// tabParam returns a query string fragment for the active tab, or empty string.
+func tabParam(tab string) string {
+	if tab != "" {
+		return "&tab=" + tab
+	}
+	return ""
 }
 
 // eventsColor maps the firehose TypeColor strings to shared TypeBadge colors.

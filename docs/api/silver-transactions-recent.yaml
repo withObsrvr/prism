@@ -1,0 +1,351 @@
+openapi: 3.1.0
+info:
+  title: Obsrvr Gateway – Silver Transactions Recent
+  description: >
+    Returns the most recent transactions with decoded summaries.
+    Replaces the 3-call pattern (bronze/stats/network → bronze/transactions → silver/tx/batch/decoded)
+    with a single endpoint that returns everything needed for a "Latest Transactions" UI component.
+  version: 1.0.0
+
+paths:
+  /lake/v1/{network}/api/v1/silver/transactions/recent:
+    get:
+      operationId: getRecentTransactions
+      summary: Get recent transactions with decoded summaries
+      description: >
+        Returns the most recent transactions across the latest ledgers,
+        enriched with human-readable summaries and type classifications.
+        Transactions are returned in descending order (newest first).
+      parameters:
+        - name: network
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [mainnet, testnet, futurenet]
+          description: Stellar network to query.
+
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 6
+          description: Number of transactions to return.
+
+      responses:
+        "200":
+          description: Recent transactions with summaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecentTransactionsResponse"
+              examples:
+                mixed:
+                  summary: Mix of classic and Soroban transactions
+                  value:
+                    latest_sequence: 15520
+                    count: 6
+                    transactions:
+                      - tx_hash: "db509638c17a6ff294f90318787eb149317441b7b91514b22f5ad549398d16e8"
+                        ledger_sequence: 15520
+                        closed_at: "2025-12-18T14:54:33Z"
+                        successful: true
+                        fee: 54967
+                        operation_count: 1
+                        source_account: "GAJAZXSZN3RSLV4L2VQZLPGHZ7OMND552T4SRVE5M34DRJOJD2752JAO"
+                        summary:
+                          type: "contract_call"
+                          description: "Called approve() on CAUPX...UKXT5"
+                          involved_contracts:
+                            - "CAUPXJIGAV4PLNWJIVYTDRMS7YCEQXSQ7GASJWSJT6EPIKZ3TPWUKXT5"
+
+                      - tx_hash: "4f5a83332e8fd47e68e9c6614829dc1dbc45f823d0e17ee760345a0e2b150c3b"
+                        ledger_sequence: 15520
+                        closed_at: "2025-12-18T14:54:33Z"
+                        successful: true
+                        fee: 300
+                        operation_count: 3
+                        source_account: "GC2GUPA2OUWPU67BBGBJFWE626V5YIVLFFYUQZRIIKLWRSKHN3PJOKS7"
+                        summary:
+                          type: "classic"
+                          description: "ChangeTrust + Payment of 1.93B TESTTOKEN18 to GCKR4P4..."
+                          involved_contracts: []
+
+                      - tx_hash: "b78ba2bb22db34119e9becadf8da940f3429a9f7d2ecf7ce378f1c6234e9ddb3"
+                        ledger_sequence: 15519
+                        closed_at: "2025-12-18T14:54:28Z"
+                        successful: true
+                        fee: 100
+                        operation_count: 1
+                        source_account: "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"
+                        summary:
+                          type: "transfer"
+                          description: "Sent 50,000 ATSBPIUSD to GBMHK...JWF4H"
+                          involved_contracts: []
+                          transfer:
+                            asset: "ATSBPIUSD"
+                            amount: "50000"
+                            from: "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"
+                            to: "GBMHKGWUZZV52MSNYX5SHZB2LFTX2N2WIFPNZBZ4GTMWUJX3TN2JWF4H"
+
+                      - tx_hash: "1841e49564a2ea113d79106b07ad6c2908bcc61c4d4885ff3fb3b8d7c1929bb5"
+                        ledger_sequence: 15518
+                        closed_at: "2025-12-18T14:54:23Z"
+                        successful: true
+                        fee: 89420
+                        operation_count: 1
+                        source_account: "GCRPHBKSE674ROHD7HYQLIZ5BX76IYT6WFS6FZJO6GMYUUJZN4ZAIOES"
+                        summary:
+                          type: "swap"
+                          description: "Swapped 5,000 XLM for 485.00 USDC via Soroswap"
+                          involved_contracts:
+                            - "CDMO6H62M3DRFBJK64FJMWRWQX5KII4LOGTFPPCZX5TI4HZIZXUBJYCR"
+                          swap:
+                            amount_in: "5000"
+                            amount_out: "485.00"
+                            asset_in: "XLM"
+                            asset_out: "USDC"
+
+                      - tx_hash: "334e515756117f196ad3ba85b8b1a5b1375be212a833968dc80c708661fd8bbe"
+                        ledger_sequence: 15517
+                        closed_at: "2025-12-18T14:54:18Z"
+                        successful: true
+                        fee: 1500
+                        operation_count: 15
+                        source_account: "GAZQZNFGJ36GKPMCBATRASKUIQIBJ5NP2JT2MRUGO6D2SJ2APXWTSBNA"
+                        summary:
+                          type: "multi_op"
+                          description: "15 operations: Token setup for PTR"
+                          involved_contracts: []
+
+                      - tx_hash: "605c118b626e095e97c737285b23c593b9e045b31af2066842ce83adf2757497"
+                        ledger_sequence: 15517
+                        closed_at: "2025-12-18T14:54:18Z"
+                        successful: false
+                        fee: 100
+                        operation_count: 1
+                        source_account: "GAZVKS3HKI6NFDODPLSMIKP55AT2VCMAUGZ5LPOGDIHPQFKQZPW5QEPV"
+                        summary:
+                          type: "transfer"
+                          description: "Sent 50 XLM to GBUWO...GXBP (failed)"
+                          involved_contracts: []
+                          transfer:
+                            asset: "XLM"
+                            amount: "50"
+                            from: "GAZVKS3HKI6NFDODPLSMIKP55AT2VCMAUGZ5LPOGDIHPQFKQZPW5QEPV"
+                            to: "GBUWO6WBFJKUURQNWGUIEXMEQC7JVAOWPWV2PF65M7FOUQ7MP5O6GXBP"
+
+        "400":
+          description: Invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+        "401":
+          description: Missing or invalid API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+        "404":
+          description: Network not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    RecentTransactionsResponse:
+      type: object
+      required: [latest_sequence, count, transactions]
+      properties:
+        latest_sequence:
+          type: integer
+          format: int64
+          description: The latest ledger sequence at query time. Useful for UI display.
+          example: 15520
+
+        count:
+          type: integer
+          description: Number of transactions returned.
+          example: 6
+
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentTransaction"
+
+    RecentTransaction:
+      type: object
+      required:
+        - tx_hash
+        - ledger_sequence
+        - closed_at
+        - successful
+        - fee
+        - operation_count
+        - source_account
+        - summary
+      properties:
+        tx_hash:
+          type: string
+          description: Full transaction hash.
+          example: "db509638c17a6ff294f90318787eb149317441b7b91514b22f5ad549398d16e8"
+
+        ledger_sequence:
+          type: integer
+          format: int64
+          description: Ledger this transaction was included in.
+          example: 15520
+
+        closed_at:
+          type: string
+          format: date-time
+          description: When the ledger closed (RFC 3339).
+          example: "2025-12-18T14:54:33Z"
+
+        successful:
+          type: boolean
+          description: Whether the transaction succeeded.
+          example: true
+
+        fee:
+          type: integer
+          format: int64
+          description: Fee charged in stroops.
+          example: 54967
+
+        operation_count:
+          type: integer
+          description: Number of operations in this transaction.
+          example: 1
+
+        source_account:
+          type: string
+          description: The transaction's source account (G... address).
+          example: "GAJAZXSZN3RSLV4L2VQZLPGHZ7OMND552T4SRVE5M34DRJOJD2752JAO"
+
+        summary:
+          $ref: "#/components/schemas/TransactionSummary"
+
+    TransactionSummary:
+      type: object
+      required: [type, description]
+      properties:
+        type:
+          type: string
+          description: >
+            Machine-readable transaction classification.
+            Used for badge/label rendering in the UI.
+          enum:
+            - transfer
+            - mint
+            - burn
+            - swap
+            - contract_call
+            - multi_op
+            - multi_transfer
+            - classic
+          example: "contract_call"
+
+        description:
+          type: string
+          description: >
+            Human-readable one-line summary of what the transaction did.
+            Should be suitable for direct display in a transaction list.
+            Use short addresses (first 5 + last 5 chars) for any embedded addresses.
+          example: "Called approve() on CAUPX...UKXT5"
+
+        involved_contracts:
+          type: array
+          items:
+            type: string
+          description: Contract IDs involved in this transaction (empty for classic-only txs).
+          default: []
+          example: ["CAUPXJIGAV4PLNWJIVYTDRMS7YCEQXSQ7GASJWSJT6EPIKZ3TPWUKXT5"]
+
+        transfer:
+          description: Present when type is "transfer".
+          allOf:
+            - $ref: "#/components/schemas/TransferDetail"
+
+        swap:
+          description: Present when type is "swap".
+          allOf:
+            - $ref: "#/components/schemas/SwapDetail"
+
+        mint:
+          description: Present when type is "mint".
+          allOf:
+            - $ref: "#/components/schemas/TransferDetail"
+
+        burn:
+          description: Present when type is "burn".
+          allOf:
+            - $ref: "#/components/schemas/TransferDetail"
+
+    TransferDetail:
+      type: object
+      required: [asset, amount]
+      properties:
+        asset:
+          type: string
+          description: Asset code (e.g. "XLM", "USDC", "TESTTOKEN18").
+          example: "USDC"
+        amount:
+          type: string
+          description: Amount as a decimal string (stroops already converted to units).
+          example: "50000"
+        from:
+          type: string
+          description: Sender address (may be absent for mints).
+          example: "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"
+        to:
+          type: string
+          description: Receiver address (may be absent for burns).
+          example: "GBMHKGWUZZV52MSNYX5SHZB2LFTX2N2WIFPNZBZ4GTMWUJX3TN2JWF4H"
+
+    SwapDetail:
+      type: object
+      required: [amount_in, amount_out, asset_in, asset_out]
+      properties:
+        amount_in:
+          type: string
+          description: Input amount as decimal string.
+          example: "5000"
+        amount_out:
+          type: string
+          description: Output amount as decimal string.
+          example: "485.00"
+        asset_in:
+          type: string
+          description: Input asset code.
+          example: "XLM"
+        asset_out:
+          type: string
+          description: Output asset code.
+          example: "USDC"
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "start_ledger or end_ledger is required"
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Format: `Api-Key {key}`"
+
+security:
+  - apiKey: []

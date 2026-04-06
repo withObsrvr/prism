@@ -874,3 +874,61 @@ func (c *Client) GetLedgerSoroban(ctx context.Context, network string, sequence 
 	c.cache.Set(cacheKey, &result, TTLImmutable)
 	return &result, nil
 }
+
+// --- Explorer Events ---
+
+// GetExplorerEvents returns enriched explorer events with classification and pagination.
+func (c *Client) GetExplorerEvents(ctx context.Context, network string, p ExplorerEventsParams) (*ExplorerEventsResponse, error) {
+	params := url.Values{}
+	if p.Type != "" {
+		params.Set("type", p.Type)
+	}
+	if p.Tab != "" {
+		params.Set("tab", p.Tab)
+	}
+	if p.ContractID != "" {
+		params.Set("contract_id", p.ContractID)
+	}
+	if p.ContractName != "" {
+		params.Set("contract_name", p.ContractName)
+	}
+	if p.TxHash != "" {
+		params.Set("tx_hash", p.TxHash)
+	}
+	if p.TopicMatch != "" {
+		params.Set("topic_match", p.TopicMatch)
+	}
+	if p.StartLedger > 0 {
+		params.Set("start_ledger", fmt.Sprintf("%d", p.StartLedger))
+	}
+	if p.EndLedger > 0 {
+		params.Set("end_ledger", fmt.Sprintf("%d", p.EndLedger))
+	}
+	if p.Limit > 0 {
+		params.Set("limit", fmt.Sprintf("%d", p.Limit))
+	}
+	if p.Cursor != "" {
+		params.Set("cursor", p.Cursor)
+	}
+	if p.Order != "" {
+		params.Set("order", p.Order)
+	}
+
+	cacheKey := fmt.Sprintf("%s:explorer_events:%s", network, params.Encode())
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*ExplorerEventsResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/explorer/events")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var result ExplorerEventsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing explorer events: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
