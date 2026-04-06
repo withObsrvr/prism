@@ -69,6 +69,29 @@ templ Base(title string, activeNav string) {
 				}
 			});
 		</script>
+		<!-- Global copy-to-clipboard handler for all CopyButton components -->
+		<script>
+			document.addEventListener('click', function(e) {
+				var btn = e.target.closest('[data-copy]');
+				if (!btn) return;
+				e.preventDefault();
+				var text = btn.getAttribute('data-copy');
+				if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+				navigator.clipboard.writeText(text).then(function() {
+					var svg = btn.querySelector('svg');
+					if (!svg) return;
+					var orig = svg.innerHTML;
+					svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+					svg.classList.add('text-emerald-500');
+					svg.classList.remove('text-text-muted');
+					setTimeout(function() {
+						svg.innerHTML = orig;
+						svg.classList.remove('text-emerald-500');
+						svg.classList.add('text-text-muted');
+					}, 1500);
+				}).catch(function() {});
+			});
+		</script>
 		<!-- Ctrl+K → focus search or navigate to search page -->
 		<script>
 			document.addEventListener('keydown', function(e) {

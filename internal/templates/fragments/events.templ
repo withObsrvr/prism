@@ -1,6 +1,7 @@
 package fragments
 
 import (
+	"net/url"
 	"github.com/withObsrvr/prism/internal/templates/components"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
@@ -77,10 +78,27 @@ templ EventsStream(data pages.EventsFirehoseData) {
 		</table>
 
 		<!-- Load more -->
-		<div class="border-t border-border-subtle py-3.5 text-center bg-surface-subtle">
-			<button class="text-xs font-medium text-text-body hover:text-text-primary transition-colors">Load older events</button>
-		</div>
+		if data.HasMore && data.NextCursor != "" {
+			<div class="border-t border-border-subtle py-3.5 text-center bg-surface-subtle">
+				<button
+					hx-get={ eventsStreamURL(data.NextCursor, data.ActiveTab) }
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class="text-xs font-medium text-text-body hover:text-text-primary transition-colors">
+					Load older events
+				</button>
+			</div>
+		}
 	</div>
+}
+
+// eventsStreamURL builds a URL-safe query string for the events stream fragment.
+func eventsStreamURL(cursor, tab string) string {
+	u := "/fragments/events/stream?cursor=" + url.QueryEscape(cursor)
+	if tab != "" {
+		u += "&tab=" + url.QueryEscape(tab)
+	}
+	return u
 }
 
 // eventsColor maps the firehose TypeColor strings to shared TypeBadge colors.

@@ -15,6 +15,7 @@ type TxReceiptData struct {
 	SummaryHTML   string
 	Timestamp     string
 	Ledger        string
+	LedgerRaw     string // Unformatted for URLs
 	OpsCount      string
 	EventsCount   string
 	// Flow diagram
@@ -203,7 +204,7 @@ templ TransactionReceipt(data TxReceiptData) {
 						</div>
 					}
 					@components.DetailRow("Ledger") {
-						<a href={ templ.SafeURL("/ledger/" + data.Ledger) } class="font-mono text-sm font-medium text-text-primary hover:text-violet-600 tabular">{ data.Ledger }</a>
+						<a href={ templ.SafeURL("/ledger/" + data.LedgerRaw) } class="font-mono text-sm font-medium text-text-primary hover:text-violet-600 tabular">{ data.Ledger }</a>
 					}
 					@components.DetailRow("Timestamp") {
 						<span class="text-sm text-text-primary">{ data.Timestamp }</span>
@@ -378,7 +379,7 @@ templ TransactionReceipt(data TxReceiptData) {
 						<span class="text-xs font-medium text-text-strong">View Account</span>
 						<span class="font-mono text-2xs text-text-muted">{ data.SourceAddr }</span>
 					</a>
-					<a href={ templ.SafeURL("/ledger/" + data.Ledger) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
+					<a href={ templ.SafeURL("/ledger/" + data.LedgerRaw) } class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 shadow-sm hover:bg-surface-subtle">
 						<svg class="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
 						<span class="text-xs font-medium text-text-strong">View Ledger</span>
 						<span class="font-mono text-2xs text-text-muted">{ data.Ledger }</span>

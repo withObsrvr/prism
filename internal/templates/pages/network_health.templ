@@ -64,6 +64,7 @@ type ValidatorRow struct {
 
 type NetworkLedger struct {
 	Sequence    string
+	SequenceRaw string // Unformatted for URLs
 	Age         string
 	TxCount     string
 	OpsCount    string
@@ -266,7 +267,7 @@ templ NetworkHealth(data NetworkHealthData) {
 						<div class={ "tx-row flex items-center px-5 py-2.5", templ.KV("bg-surface-subtle", i%2 == 1 && !l.IsSlow), templ.KV("glow", l.IsLatest), templ.KV("bg-amber-50/40 dark:bg-amber-950/20", l.IsSlow) }>
 							<div class="w-28">
 								<div class="flex items-center gap-1.5">
-									<a href={ templ.SafeURL("/ledger/" + l.Sequence) } class="font-mono text-xs font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ l.Sequence }</a>
+									<a href={ templ.SafeURL("/ledger/" + l.SequenceRaw) } class="font-mono text-xs font-semibold text-emerald-700 hover:text-emerald-800 tabular">{ l.Sequence }</a>
 									if l.IsLatest {
 										<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
 									}

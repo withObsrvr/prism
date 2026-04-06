@@ -12,6 +12,9 @@ type EventsFirehoseData struct {
 	EventsPerSec  string
 	Filters       []EventFilter
 	Events        []FirehoseEvent
+	NextCursor    string
+	HasMore       bool
+	ActiveTab     string
 }
 
 type EventFilter struct {

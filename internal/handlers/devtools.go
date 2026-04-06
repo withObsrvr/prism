@@ -3,8 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/withObsrvr/prism/internal/events"
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
@@ -35,44 +40,184 @@ func (h *Handlers) EventsFirehoseV1(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) buildEventsFirehoseData(r *http.Request, network string) (pages.EventsFirehoseData, error) {
 	ctx := r.Context()
+	q := r.URL.Query()
 
-	transfers, err := h.Gateway.GetTransfers(ctx, network, 20)
-	if err != nil {
-		return pages.EventsFirehoseData{}, fmt.Errorf("fetching transfers: %w", err)
+	limit := 20
+	if l := q.Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 200 {
+			limit = parsed
+		}
 	}
 
-	events := make([]pages.FirehoseEvent, 0, len(transfers))
-	for _, t := range transfers {
-		typeColor := "transfer"
-		evtType := "transfer"
+	params := gateway.ExplorerEventsParams{
+		Type:         q.Get("type"),
+		Tab:          q.Get("tab"),
+		ContractID:   q.Get("contract_id"),
+		ContractName: q.Get("contract_name"),
+		TxHash:       q.Get("tx_hash"),
+		Cursor:       q.Get("cursor"),
+		Limit:        limit,
+		Order:        "desc",
+	}
 
-		detailObj := map[string]string{
-			"type":   evtType,
-			"from":   gateway.ShortAddress(t.FromAccount),
-			"to":     gateway.ShortAddress(t.ToAccount),
-			"amount": t.Amount,
-			"asset":  t.AssetCode,
-		}
-		detailJSON, _ := json.MarshalIndent(detailObj, "", "  ")
+	resp, err := h.Gateway.GetExplorerEvents(ctx, network, params)
+	if err != nil {
+		return pages.EventsFirehoseData{}, fmt.Errorf("fetching explorer events: %w", err)
+	}
 
-		events = append(events, pages.FirehoseEvent{
-			Time:         t.Timestamp,
-			Type:         evtType,
-			TypeColor:    typeColor,
-			ContractName: t.AssetCode,
-			Ledger:       gateway.FormatNumber(t.LedgerSequence),
-			TxShort:      gateway.ShortHash(t.TransactionHash),
-			TxHash:       t.TransactionHash,
-			DetailJSON:   string(detailJSON),
-		})
+	events := make([]pages.FirehoseEvent, 0, len(resp.Events))
+	for _, e := range resp.Events {
+		events = append(events, mapExplorerEvent(e))
 	}
 
 	data := pages.EventsFirehoseData{
-		MatchedEvents: fmt.Sprintf("%d", len(transfers)),
+		MatchedEvents: gateway.FormatNumber(int64(resp.Meta.MatchedCount)),
+		LedgerStart:   gateway.FormatNumber(resp.Meta.LedgerRange.Min),
+		LedgerEnd:     gateway.FormatNumber(resp.Meta.LedgerRange.Max),
 		Events:        events,
+		HasMore:       resp.HasMore,
+		ActiveTab:     params.Tab,
+	}
+	if resp.Meta.EventsPerSecond != nil {
+		data.EventsPerSec = fmt.Sprintf("%.0f", *resp.Meta.EventsPerSecond)
+	}
+	if resp.NextCursor != nil {
+		data.NextCursor = *resp.NextCursor
 	}
 
 	return data, nil
+}
+
+func mapExplorerEvent(e gateway.ExplorerEvent) pages.FirehoseEvent {
+	age := ""
+	if t, err := time.Parse(time.RFC3339, e.ClosedAt); err == nil {
+		age = gateway.FormatAge(t)
+	}
+
+	contractName := derefOr(e.ContractName, "")
+	if contractName == "" {
+		contractName = derefOr(e.ContractSymbol, "Unknown")
+	}
+
+	asset := derefOr(e.ContractSymbol, derefOr(e.Topic3, ""))
+	amount := extractAmount(e.DataDecoded)
+
+	// Build RawEvent for the decoder to produce TopicsHTML.
+	raw := events.RawEvent{
+		Type:   e.Type,
+		From:   gateway.ShortAddress(derefOr(e.Topic1, "")),
+		To:     gateway.ShortAddress(derefOr(e.Topic2, "")),
+		Amount: amount,
+		Asset:  asset,
+	}
+
+	topicsHTML := ""
+	if decoded := events.Decode(raw); decoded != nil {
+		topicsHTML = decoded.TopicsHTML()
+	}
+
+	// Build detail JSON from topic and data fields.
+	detail := map[string]string{"type": e.Type}
+	if v := derefOr(e.Topic0, ""); v != "" {
+		detail["topic0"] = v
+	}
+	if v := derefOr(e.Topic1, ""); v != "" {
+		detail["topic1"] = v
+	}
+	if v := derefOr(e.Topic2, ""); v != "" {
+		detail["topic2"] = v
+	}
+	if v := derefOr(e.Topic3, ""); v != "" {
+		detail["topic3"] = v
+	}
+	if e.DataDecoded != nil {
+		detail["data"] = *e.DataDecoded
+	}
+	detailJSON, _ := json.MarshalIndent(detail, "", "  ")
+
+	fe := pages.FirehoseEvent{
+		Time:         age,
+		Type:         e.Type,
+		TypeColor:    explorerEventTypeColor(e.Type),
+		ContractName: contractName,
+		ContractAddr: gateway.ShortAddress(derefOr(e.ContractID, "")),
+		TopicsHTML:   topicsHTML,
+		Ledger:       gateway.FormatNumber(e.LedgerSequence),
+		TxShort:      gateway.ShortHash(e.TransactionHash),
+		TxHash:       e.TransactionHash,
+		DetailJSON:   string(detailJSON),
+	}
+
+	if e.Protocol != nil {
+		fe.DetailMeta = *e.Protocol
+	}
+
+	// TODO: re-enable once the API populates `successful` correctly.
+	// Currently all events return successful=false regardless of actual tx status.
+	// if !e.Successful {
+	// 	fe.AlertBadge = "Failed"
+	// 	fe.AlertColor = "red"
+	// }
+
+	return fe
+}
+
+func explorerEventTypeColor(eventType string) string {
+	switch eventType {
+	case "transfer":
+		return "transfer"
+	case "swap":
+		return "contract"
+	case "mint":
+		return "mint"
+	case "burn":
+		return "burn"
+	case "approve":
+		return "approve"
+	default:
+		return "system"
+	}
+}
+
+func derefOr(p *string, fallback string) string {
+	if p != nil {
+		return *p
+	}
+	return fallback
+}
+
+// extractAmount parses the data_decoded JSON from explorer events
+// and returns a human-readable amount string.
+// The API returns i128 values like: {"hi":0,"lo":100000000000,"type":"i128","value":"100000000000"}
+// Stellar amounts use 7 decimal places (stroops).
+func extractAmount(dataDecoded *string) string {
+	if dataDecoded == nil {
+		return ""
+	}
+	var data struct {
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal([]byte(*dataDecoded), &data); err != nil || data.Value == "" {
+		return ""
+	}
+	v, ok := new(big.Int).SetString(data.Value, 10)
+	if !ok {
+		return data.Value
+	}
+	// Convert from stroops (7 decimals) to human-readable.
+	// Use big.Int arithmetic throughout to avoid int64 overflow on large i128 values.
+	stroopsPerUnit := big.NewInt(10_000_000)
+	whole := new(big.Int)
+	frac := new(big.Int)
+	whole.DivMod(v, stroopsPerUnit, frac)
+	frac.Abs(frac)
+	if frac.Sign() == 0 {
+		return whole.String()
+	}
+	// Format fractional part as 7 digits with leading zeros, then trim trailing zeros.
+	fracStr := fmt.Sprintf("%07d", frac.Int64())
+	fracStr = strings.TrimRight(fracStr, "0")
+	return whole.String() + "." + fracStr
 }
 
 func (h *Handlers) StateRentTracker(w http.ResponseWriter, r *http.Request) {

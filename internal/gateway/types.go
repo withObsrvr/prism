@@ -754,3 +754,63 @@ type LedgerSoroban struct {
 	UniqueContracts  int64  `json:"unique_contracts"`
 	GeneratedAt      string `json:"generated_at"`
 }
+
+// --- Explorer Events ---
+
+// ExplorerEventsResponse matches /explorer/events response.
+type ExplorerEventsResponse struct {
+	Meta       ExplorerEventMeta `json:"meta"`
+	Events     []ExplorerEvent   `json:"events"`
+	HasMore    bool              `json:"has_more"`
+	NextCursor *string           `json:"next_cursor"`
+	Count      int               `json:"count"`
+}
+
+type ExplorerEventMeta struct {
+	MatchedCount    int                      `json:"matched_count"`
+	CountCapped     bool                     `json:"count_capped"`
+	LedgerRange     ExplorerEventLedgerRange `json:"ledger_range"`
+	EventsPerSecond *float64                 `json:"events_per_second"`
+}
+
+type ExplorerEventLedgerRange struct {
+	Min int64 `json:"min"`
+	Max int64 `json:"max"`
+}
+
+type ExplorerEvent struct {
+	EventID         string  `json:"event_id"`
+	Type            string  `json:"type"`
+	Protocol        *string `json:"protocol"`
+	ContractID      *string `json:"contract_id"`
+	ContractName    *string `json:"contract_name"`
+	ContractSymbol  *string `json:"contract_symbol"`
+	LedgerSequence  int64   `json:"ledger_sequence"`
+	TransactionHash string  `json:"transaction_hash"`
+	ClosedAt        string  `json:"closed_at"`
+	Successful      bool    `json:"successful"`
+	Topic0          *string `json:"topic0"`
+	Topic1          *string `json:"topic1"`
+	Topic2          *string `json:"topic2"`
+	Topic3          *string `json:"topic3"`
+	TopicsDecoded   *string `json:"topics_decoded"`
+	Data            *string `json:"data"`
+	DataDecoded     *string `json:"data_decoded"`
+	EventIndex      int     `json:"event_index"`
+	OperationIndex  int     `json:"operation_index"`
+}
+
+// ExplorerEventsParams holds query parameters for GetExplorerEvents.
+type ExplorerEventsParams struct {
+	Type         string
+	Tab          string
+	ContractID   string
+	ContractName string
+	TxHash       string
+	TopicMatch   string
+	StartLedger  int64
+	EndLedger    int64
+	Limit        int
+	Cursor       string
+	Order        string
+}

@@ -33,11 +33,41 @@ templ EventsFirehoseV2(data EventsFirehoseData) {
 
 			<!-- Tabs -->
 			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-4">
-				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">All Events</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Transfers</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Swaps</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Mints / Burns</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Contract Calls</button>
+				<button
+					hx-get="/fragments/events/stream"
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class={ "pb-3.5 hover:text-text-primary transition-colors", templ.KV("border-b-2 border-text-primary text-text-primary font-semibold", data.ActiveTab == "") }>
+					All Events
+				</button>
+				<button
+					hx-get="/fragments/events/stream?tab=transfers"
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class={ "pb-3.5 hover:text-text-primary transition-colors", templ.KV("border-b-2 border-text-primary text-text-primary font-semibold", data.ActiveTab == "transfers") }>
+					Transfers
+				</button>
+				<button
+					hx-get="/fragments/events/stream?tab=swaps"
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class={ "pb-3.5 hover:text-text-primary transition-colors", templ.KV("border-b-2 border-text-primary text-text-primary font-semibold", data.ActiveTab == "swaps") }>
+					Swaps
+				</button>
+				<button
+					hx-get="/fragments/events/stream?tab=mints_burns"
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class={ "pb-3.5 hover:text-text-primary transition-colors", templ.KV("border-b-2 border-text-primary text-text-primary font-semibold", data.ActiveTab == "mints_burns") }>
+					Mints / Burns
+				</button>
+				<button
+					hx-get="/fragments/events/stream?tab=contract_calls"
+					hx-target="#events-stream"
+					hx-swap="outerHTML"
+					class={ "pb-3.5 hover:text-text-primary transition-colors", templ.KV("border-b-2 border-text-primary text-text-primary font-semibold", data.ActiveTab == "contract_calls") }>
+					Contract Calls
+				</button>
 			</div>
 
 			<!-- Filter bar -->

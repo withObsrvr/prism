@@ -180,6 +180,7 @@ func (h *Handlers) buildNetworkHealthData(r *http.Request, network string) (page
 			}
 			recentLedgers = append(recentLedgers, pages.NetworkLedger{
 				Sequence:    gateway.FormatNumber(l.Sequence),
+				SequenceRaw: fmt.Sprintf("%d", l.Sequence),
 				Age:         age,
 				TxCount:     fmt.Sprintf("%d", l.SuccessfulTxCount),
 				OpsCount:    fmt.Sprintf("%d", l.OperationCount),

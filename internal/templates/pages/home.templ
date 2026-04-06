@@ -42,11 +42,12 @@ type HomeTx struct {
 }
 
 type HomeLedger struct {
-	Sequence string
-	Age      string
-	TxCount  string
-	OpCount  string
-	IsLatest bool
+	Sequence    string
+	SequenceRaw string // Unformatted for URLs
+	Age         string
+	TxCount     string
+	OpCount     string
+	IsLatest    bool
 }
 
 type HomeContract struct {

@@ -267,11 +267,12 @@ func (h *Handlers) buildHomeLedgers(r *http.Request, network string) ([]pages.Ho
 			age = gateway.FormatAge(t)
 		}
 		result = append(result, pages.HomeLedger{
-			Sequence: gateway.FormatNumber(l.Sequence),
-			Age:      age,
-			TxCount:  fmt.Sprintf("%d txs", l.SuccessfulTxCount),
-			OpCount:  fmt.Sprintf("%d ops", l.OperationCount),
-			IsLatest: i == 0,
+			Sequence:    gateway.FormatNumber(l.Sequence),
+			SequenceRaw: fmt.Sprintf("%d", l.Sequence),
+			Age:         age,
+			TxCount:     fmt.Sprintf("%d txs", l.SuccessfulTxCount),
+			OpCount:     fmt.Sprintf("%d ops", l.OperationCount),
+			IsLatest:    i == 0,
 		})
 	}
 
