@@ -139,6 +139,8 @@ Prism's UI was built against rich mock data. With the Obsrvr Gateway wired in (P
 
 ### 1.3 `GET /bronze/ledgers`
 
+**Current role:** still useful for raw bronze ledger range/detail access and network-health style drill-downs.
+
 **Current per-ledger shape (abbreviated):**
 ```json
 {
@@ -155,7 +157,16 @@ Prism's UI was built against rich mock data. With the Obsrvr Gateway wired in (P
 }
 ```
 
-**Proposed additions per ledger:**
+**Note:** For Prism's home-page "Latest Ledgers" widget, this older bronze range flow has now been superseded by:
+- `GET /silver/ledgers/recent?limit=6`
+
+That serving-backed endpoint collapses the previous 2-call pattern:
+- `GET /bronze/stats/network`
+- `GET /bronze/ledgers?start={N-5}&end={N}&limit=6&order=desc`
+
+into a single request.
+
+**Proposed additions per ledger (still applicable for bronze detail/range usage):**
 ```json
 {
   "soroban_op_count": 87,
@@ -693,6 +704,7 @@ Deep Soroban network metrics. Powers a potential Soroban-focused dashboard.
 | 1.1 | `/silver/stats/network` | Gateway | Enhance | P1 | Home, Network Health |
 | 1.2 | `/silver/tx/{hash}/full` | Gateway | Enhance | P1 | Transaction Receipt |
 | 1.3 | `/bronze/ledgers` | Gateway | Enhance | P1 | Network Health, Ledger Detail |
+| 1.3a | `/silver/ledgers/recent` | Gateway | New | P1 | Home |
 | 1.4 | `/silver/explorer/account` | Gateway | Enhance | P1 | Account Portfolio |
 | 2.1 | `/silver/stats/fees` | Gateway | New | P2 | Home, Network Health |
 | 2.2 | `/silver/contracts/{id}/metadata` | Gateway | New | P2 | Contract Detail |

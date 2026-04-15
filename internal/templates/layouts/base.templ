@@ -222,18 +222,16 @@ templ topNav(active string) {
 			</nav>
 		</div>
 		<div class="flex items-center gap-3">
-			if active != "explorer" {
-				<!-- Search trigger — desktop wide bar -->
-				<a href="/search" class="hidden md:flex items-center gap-2.5 rounded-xl border border-border-default bg-surface-card px-4 py-2 text-sm text-text-muted hover:border-text-muted hover:text-text-body hover:shadow-sm transition-all w-80 lg:w-96 ring-1 ring-border-subtle">
-					<svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-					<span class="flex-1">Search accounts, txns, ledgers…</span>
-					<kbd class="rounded border border-border-default bg-surface-subtle px-1.5 py-0.5 text-2xs font-semibold text-text-muted">Ctrl+K</kbd>
-				</a>
-				<!-- Search trigger — mobile -->
-				<a href="/search" class="flex md:hidden items-center justify-center h-9 w-9 rounded-lg border border-border-default bg-surface-card text-text-body hover:bg-surface-subtle transition-colors">
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-				</a>
-			}
+			<!-- Search trigger — desktop wide bar. Always shown so it survives htmx navigation. -->
+			<a href="/search" class="hidden md:flex items-center gap-2.5 rounded-xl border border-border-default bg-surface-card px-4 py-2 text-sm text-text-muted hover:border-text-muted hover:text-text-body hover:shadow-sm transition-all w-80 lg:w-96 ring-1 ring-border-subtle">
+				<svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+				<span class="flex-1">Search accounts, txns, ledgers…</span>
+				<kbd class="rounded border border-border-default bg-surface-subtle px-1.5 py-0.5 text-2xs font-semibold text-text-muted">Ctrl+K</kbd>
+			</a>
+			<!-- Search trigger — mobile -->
+			<a href="/search" class="flex md:hidden items-center justify-center h-9 w-9 rounded-lg border border-border-default bg-surface-card text-text-body hover:bg-surface-subtle transition-colors">
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+			</a>
 			<!-- Theme toggle -->
 			<button onclick="cycleTheme()" class="flex items-center justify-center h-9 w-9 rounded-lg border border-border-default bg-surface-card text-text-body hover:bg-surface-subtle transition-colors cursor-pointer" title="Toggle theme">
 				<!-- System icon (monitor) -->

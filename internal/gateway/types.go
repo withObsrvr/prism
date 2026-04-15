@@ -263,7 +263,7 @@ type UnifiedEvent struct {
 	LedgerSequence int64  `json:"ledger_sequence"`
 	TxHash         string `json:"tx_hash"`
 	ClosedAt       string `json:"closed_at"`
-	EventType      string `json:"event_type"` // transfer, mint, burn
+	EventType      string `json:"event_type"`  // transfer, mint, burn
 	SourceType     string `json:"source_type"` // classic, soroban
 	OperationType  int    `json:"operation_type"`
 	EventIndex     int    `json:"event_index"`
@@ -273,6 +273,12 @@ type UnifiedEvent struct {
 	AssetCode      string `json:"asset_code,omitempty"`
 	AssetIssuer    string `json:"asset_issuer,omitempty"`
 	ContractID     string `json:"contract_id,omitempty"`
+	// Token metadata inlined by the silver enricher (tx/full and tx/decoded paths only).
+	// May be empty for custom Soroban contracts the API can't classify.
+	TokenName     string `json:"token_name,omitempty"`
+	TokenSymbol   string `json:"token_symbol,omitempty"`
+	TokenDecimals int    `json:"token_decimals,omitempty"`
+	TokenType     string `json:"token_type,omitempty"` // "sac", "custom_soroban"
 }
 
 // TxDiffs matches /silver/tx/{hash}/diffs response.
@@ -434,6 +440,39 @@ type ContractFunction struct {
 type DailyCallCount struct {
 	Date  string `json:"date"`
 	Count int64  `json:"count"`
+}
+
+// ContractMetadata matches /silver/contracts/{id}/metadata response.
+type ContractMetadata struct {
+	ContractID          string                             `json:"contract_id"`
+	DisplayName         string                             `json:"display_name"`
+	ContractType        string                             `json:"contract_type"`
+	CreatorAddress      string                             `json:"creator_address"`
+	WASMHash            string                             `json:"wasm_hash"`
+	CreatedLedger       int64                              `json:"created_ledger"`
+	CreatedAt           string                             `json:"created_at"`
+	TotalEntries        int64                              `json:"total_entries"`
+	PersistentEntries   int64                              `json:"persistent_entries"`
+	TotalStateSizeBytes int64                              `json:"total_state_size_bytes"`
+	ExportedFunctions   []ContractExportedFunctionMetadata `json:"exported_functions"`
+}
+
+type ContractExportedFunctionMetadata struct {
+	Name      string `json:"name"`
+	CallCount int64  `json:"call_count"`
+}
+
+// ContractStorageResponse matches /silver/contracts/{id}/storage response.
+type ContractStorageResponse struct {
+	Entries []ContractStorageEntry `json:"entries"`
+}
+
+type ContractStorageEntry struct {
+	Key        string `json:"key"`
+	KeyHash    string `json:"key_hash"`
+	Type       string `json:"type"`
+	Durability string `json:"durability"`
+	SizeBytes  int64  `json:"size_bytes"`
 }
 
 // ContractRecentCalls matches /silver/contracts/{id}/recent-calls response.
@@ -694,6 +733,64 @@ type GenericEventsResponse struct {
 
 // --- Batch Decoded Transactions ---
 
+// RecentTransactionsResponse matches /silver/transactions/recent response.
+// Single-call replacement for the bronze/stats + bronze/transactions + silver/tx/batch/decoded pattern.
+type RecentTransactionsResponse struct {
+	LatestSequence int64                `json:"latest_sequence"`
+	Count          int                  `json:"count"`
+	Transactions   []DecodedTransaction `json:"transactions"`
+}
+
+// Token matches /silver/tokens/{contract_id} — metadata for a SAC or custom Soroban token.
+// Used to resolve an event's contract_id into a human-readable asset symbol and decimal scale.
+type Token struct {
+	ContractID    string `json:"contract_id"`
+	Name          string `json:"name,omitempty"`
+	Symbol        string `json:"symbol,omitempty"`
+	SourceType    string `json:"source_type,omitempty"`    // "soroban", "classic"
+	TokenType     string `json:"token_type,omitempty"`     // "sac", "custom_soroban"
+	Decimals      int    `json:"decimals"`
+	HolderCount   int64  `json:"holder_count,omitempty"`
+	TransferCount int64  `json:"transfer_count,omitempty"`
+	FirstSeen     string `json:"first_seen,omitempty"`
+	LastActivity  string `json:"last_activity,omitempty"`
+}
+
+// LedgerFullResponse matches /silver/ledger/{seq}/full — a composite endpoint returning
+// ledger header, transactions, operations, fee distribution, and Soroban stats in one call.
+// Replaces the 6-call fan-out used by the ledger detail page.
+type LedgerFullResponse struct {
+	LedgerSequence int64          `json:"ledger_sequence"`
+	Ledger         Ledger         `json:"ledger"`
+	Transactions   []Transaction  `json:"transactions"`
+	Operations     []Operation    `json:"operations"`
+	Fees           *LedgerFees    `json:"fees,omitempty"`
+	Soroban        *LedgerSoroban `json:"soroban,omitempty"`
+	GeneratedAt    string         `json:"generated_at"`
+}
+
+// RecentLedger matches a single entry in /silver/ledgers/recent response.
+// Leaner shape than the bronze Ledger type (no total_coins, base_reserve, etc.).
+type RecentLedger struct {
+	LedgerSequence     int64  `json:"ledger_sequence"`
+	ClosedAt           string `json:"closed_at"`
+	LedgerHash         string `json:"ledger_hash"`
+	PreviousLedgerHash string `json:"previous_ledger_hash"`
+	ProtocolVersion    int    `json:"protocol_version"`
+	BaseFeeStroops     int64  `json:"base_fee_stroops"`
+	SuccessfulTxCount  int    `json:"successful_tx_count"`
+	FailedTxCount      int    `json:"failed_tx_count"`
+	OperationCount     int    `json:"operation_count"`
+}
+
+// RecentLedgersResponse matches /silver/ledgers/recent response.
+// Single-call replacement for the bronze/stats + bronze/ledgers pattern.
+type RecentLedgersResponse struct {
+	LatestSequence int64          `json:"latest_sequence"`
+	Count          int            `json:"count"`
+	Ledgers        []RecentLedger `json:"ledgers"`
+}
+
 // BatchDecodedResponse matches /silver/tx/batch/decoded response.
 type BatchDecodedResponse struct {
 	Transactions []DecodedTransaction `json:"transactions"`
@@ -798,6 +895,36 @@ type ExplorerEvent struct {
 	DataDecoded     *string `json:"data_decoded"`
 	EventIndex      int     `json:"event_index"`
 	OperationIndex  int     `json:"operation_index"`
+}
+
+// --- Transaction Effects ---
+
+// TransactionEffectsResponse matches /silver/effects/transaction/{hash} response.
+type TransactionEffectsResponse struct {
+	TransactionHash string              `json:"transaction_hash"`
+	Count           int                 `json:"count"`
+	Effects         []TransactionEffect `json:"effects"`
+}
+
+type TransactionEffect struct {
+	LedgerSequence   int64          `json:"ledger_sequence"`
+	TransactionHash  string         `json:"transaction_hash"`
+	OperationIndex   int            `json:"operation_index"`
+	EffectIndex      int            `json:"effect_index"`
+	OperationID      int64          `json:"operation_id,omitempty"`
+	EffectType       int            `json:"effect_type"`
+	EffectTypeString string         `json:"effect_type_string"`
+	AccountID        string         `json:"account_id"`
+	Asset            *EffectAsset   `json:"asset,omitempty"`
+	Amount           string         `json:"amount,omitempty"`
+	Details          map[string]any `json:"details,omitempty"`
+	Timestamp        string         `json:"timestamp"`
+}
+
+type EffectAsset struct {
+	Code   string `json:"code"`
+	Type   string `json:"type"`
+	Issuer string `json:"issuer,omitempty"`
 }
 
 // ExplorerEventsParams holds query parameters for GetExplorerEvents.

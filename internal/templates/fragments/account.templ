@@ -109,10 +109,10 @@ templ AccountActivity(data pages.AccountData) {
 								<tr class="hover:bg-surface-subtle transition-colors">
 									<td class="px-5 py-3">
 										<div class="flex items-center gap-2">
-											<span class="text-sm font-medium text-text-primary">{ c.Name }</span>
+											<a href={ templ.SafeURL(c.Href) } class="text-sm font-medium text-text-primary hover:text-violet-600">{ c.Name }</a>
 											@components.Badge(c.Badge, c.BadgeColor)
 										</div>
-										<span class="font-mono text-2xs text-text-muted">{ c.Address }</span>
+										<a href={ templ.SafeURL(c.Href) } class="font-mono text-2xs text-emerald-700 dark:text-emerald-400 hover:underline">{ c.Address }</a>
 									</td>
 									<td class="px-4 py-3 hidden md:table-cell">
 										<span class="font-mono text-xs text-violet-600">{ c.TopFn }</span>

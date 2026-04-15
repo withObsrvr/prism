@@ -32,6 +32,8 @@ func (app *Application) Routes() http.Handler {
 
 	// Transactions
 	mux.HandleFunc("GET /tx/{hash}", h.TransactionReceipt)
+	mux.HandleFunc("GET /tx/v3/{hash}", h.TransactionReceiptV3)
+	mux.HandleFunc("GET /tx/v2/{hash}", h.TransactionReceiptV2)
 	mux.HandleFunc("GET /tx/v1/{hash}", h.TransactionReceiptV1)
 
 	// ─────────────────────────────────────────────
@@ -109,7 +111,9 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /fragments/tx/{hash}/overview", h.TxOverviewFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/operations", h.TxOperationsFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/events", h.TxEventsFragment)
+	mux.HandleFunc("GET /fragments/tx/{hash}/effects", h.TxEffectsFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/balance-changes", h.TxBalanceChangesFragment)
+	mux.HandleFunc("GET /fragments/tx/{hash}/timeline", h.TxTimelineFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/state-changes", h.TxStateChangesFragment)
 
 	// Ledger detail fragments

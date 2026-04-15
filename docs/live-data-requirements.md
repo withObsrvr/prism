@@ -42,8 +42,8 @@ This document maps every Prism fragment to the data sources needed to replace mo
 
 | Field | Source | Endpoint | Response Field |
 |-------|--------|----------|----------------|
-| `LatestLedger` | stellar-query-api | `GET /bronze/stats/network` | `ledger.latest_sequence` |
-| `LedgerAge` | stellar-query-api | `GET /bronze/stats/network` | `ledger.closed_at` → compute age |
+| `LatestLedger` | stellar-query-api | `GET /silver/ledgers/recent?limit=1` | `latest_sequence` |
+| `LedgerAge` | stellar-query-api | `GET /silver/ledgers/recent?limit=1` | `ledgers[0].closed_at` → compute age |
 | `TxCount24H` | stellar-query-api | `GET /bronze/stats/network` | `transactions_24h.total` |
 | `TxChange` | stellar-query-api | Needs historical comparison — not directly available. Could compute from 2 stats calls 24h apart, or add a `change_pct` field to the stats endpoint |
 | `TPSAvg` | stellar-query-api | `GET /silver/stats/network` | `transactions_24h.total / 86400` (compute) |
@@ -62,20 +62,18 @@ This document maps every Prism fragment to the data sources needed to replace mo
 
 | Field | Source | Endpoint | Response Field |
 |-------|--------|----------|----------------|
-| `Hash` | stellar-query-api | `GET /bronze/transactions?limit=6&order=desc` | `tx_hash` |
+| `Hash` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].tx_hash` |
 | `ShortHash` | — | Computed from Hash | `hash[:4] + "…" + hash[-4:]` |
-| `Type` | stellar-query-api | `GET /silver/tx/{hash}/decoded` (per-tx) or batch | `summary.type` |
+| `Type` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].summary.type` |
 | `TypeLabel` | — | Computed from Type | Map type → human label |
-| `Summary` | stellar-query-api | `GET /silver/tx/{hash}/decoded` | `summary.description` |
-| `From` | stellar-query-api | `GET /bronze/transactions` | `source_account` |
-| `Ops` | stellar-query-api | `GET /bronze/transactions` | `operation_count` |
-| `Fee` | stellar-query-api | `GET /bronze/transactions` | `fee_charged` |
-| `Age` | stellar-query-api | `GET /bronze/transactions` | `created_at` → compute age |
+| `Summary` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].summary.description` |
+| `From` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].source_account` |
+| `Ops` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].operation_count` |
+| `Fee` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].fee` |
+| `Age` | stellar-query-api | `GET /silver/transactions/recent?limit=6` | `transactions[].closed_at` → compute age |
 
-**Gateway method**: `GetTransactions`
-**Note**: Bronze transactions give hash/source/fee/ops but no human-readable summary. For summaries, either:
-- Call `POST /silver/tx/batch` with the 6 hashes to get decoded summaries
-- Or use enriched operations: `GET /silver/operations/enriched?limit=6&order=desc`
+**Gateway method**: `GetRecentTransactions`
+**Note**: This is now a single-call serving-backed flow. It replaces the older bronze transactions + decoded summary fan-out pattern for the home-page latest-transactions widget.
 
 ---
 
@@ -84,13 +82,14 @@ This document maps every Prism fragment to the data sources needed to replace mo
 
 | Field | Source | Endpoint | Response Field |
 |-------|--------|----------|----------------|
-| `Sequence` | stellar-query-api | `GET /bronze/ledgers?limit=6&order=desc` | `ledger_sequence` |
-| `Age` | stellar-query-api | same | `closed_at` → compute age |
-| `TxCount` | stellar-query-api | same | `tx_count` (or `successful_tx_count + failed_tx_count`) |
-| `OpCount` | stellar-query-api | same | `operation_count` |
+| `Sequence` | stellar-query-api | `GET /silver/ledgers/recent?limit=6` | `ledgers[].ledger_sequence` |
+| `Age` | stellar-query-api | same | `ledgers[].closed_at` → compute age |
+| `TxCount` | stellar-query-api | same | `ledgers[].successful_tx_count + ledgers[].failed_tx_count` |
+| `OpCount` | stellar-query-api | same | `ledgers[].operation_count` |
 | `IsLatest` | — | Computed | First item in desc-ordered list |
 
-**Gateway method**: `GetLedgers` — clean match, no gaps.
+**Gateway method**: `GetRecentLedgers`
+**Note**: This is now a single-call serving-backed flow. It replaces the older bronze stats + bronze ledgers 2-call pattern for the home-page latest-ledgers widget.
 
 ---
 

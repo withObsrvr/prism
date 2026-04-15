@@ -114,12 +114,19 @@ func (h *Handlers) HomeRecentTxsFragment(w http.ResponseWriter, r *http.Request)
 }
 
 // buildHomeRecentTxs fetches recent transactions with decoded summaries.
-// It tries the batch decode endpoint first (rich summaries from silver),
-// then falls back to basic bronze transaction data if silver is lagging.
+// It prefers the single-call serving endpoint (silver/transactions/recent), and falls back to
+// the legacy bronze/stats + bronze/transactions + silver/tx/batch/decoded pattern if it fails.
 func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.HomeTx, error) {
 	ctx := r.Context()
 
-	// Get latest sequence to compute range.
+	// Try the new single-call serving endpoint first.
+	if resp, err := h.Gateway.GetSilverRecentTransactions(ctx, network, 6); err == nil {
+		return mapDecodedTxsToHomeTxs(resp.Transactions), nil
+	} else {
+		h.Logger.Debug("silver recent transactions unavailable, falling back to legacy multi-call", "error", err)
+	}
+
+	// Fallback: legacy multi-call flow.
 	bronze, err := h.Gateway.GetBronzeNetworkStats(ctx, network)
 	if err != nil {
 		return nil, fmt.Errorf("fetching bronze stats: %w", err)
@@ -131,13 +138,11 @@ func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.
 		startSeq = 1
 	}
 
-	// Fetch raw txs from bronze (real-time).
 	rawTxs, err := h.Gateway.GetTransactions(ctx, network, startSeq, latestSeq, 6, "desc")
 	if err != nil {
 		return nil, fmt.Errorf("fetching transactions: %w", err)
 	}
 
-	// Try batch decoded endpoint for rich summaries (may fail if silver is lagging).
 	hashes := make([]string, 0, len(rawTxs))
 	for _, tx := range rawTxs {
 		hashes = append(hashes, tx.TransactionHash)
@@ -167,36 +172,14 @@ func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.
 		typeLabel := "Classic"
 		summary := fmt.Sprintf("From %s", gateway.ShortAddress(tx.SourceAccount))
 
-		// Enrich from decoded data if available.
 		if dt, ok := decodedMap[tx.TransactionHash]; ok && dt.Summary != nil {
 			txType = dt.Summary.Type
 			summary = dt.Summary.Description
-
-			switch txType {
-			case "transfer":
-				typeLabel = "Transfer"
-			case "mint":
-				typeLabel = "Mint"
-			case "burn":
-				typeLabel = "Burn"
-			case "swap":
-				typeLabel = "Swap"
-			case "contract_call":
-				typeLabel = "Contract"
-			case "multi_op":
-				typeLabel = "Multi-Op"
-			case "multi_transfer":
-				typeLabel = "Transfers"
-			default:
-				typeLabel = "Classic"
-			}
-		} else {
-			// Basic classification from bronze data only.
-			if tx.OperationCount > 3 {
-				txType = "multi_op"
-				typeLabel = "Multi-Op"
-				summary = fmt.Sprintf("%d operations from %s", tx.OperationCount, gateway.ShortAddress(tx.SourceAccount))
-			}
+			typeLabel = txTypeLabel(txType)
+		} else if tx.OperationCount > 3 {
+			txType = "multi_op"
+			typeLabel = "Multi-Op"
+			summary = fmt.Sprintf("%d operations from %s", tx.OperationCount, gateway.ShortAddress(tx.SourceAccount))
 		}
 
 		result = append(result, pages.HomeTx{
@@ -213,6 +196,84 @@ func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.
 	}
 
 	return result, nil
+}
+
+// mapDecodedTxsToHomeTxs converts silver decoded transactions to the home page row shape.
+func mapDecodedTxsToHomeTxs(txs []gateway.DecodedTransaction) []pages.HomeTx {
+	result := make([]pages.HomeTx, 0, len(txs))
+	for _, tx := range txs {
+		age := "—"
+		if t, err := time.Parse(time.RFC3339, tx.ClosedAt); err == nil {
+			age = gateway.FormatAge(t)
+		}
+
+		source := ""
+		if tx.SourceAccount != nil {
+			source = *tx.SourceAccount
+		}
+
+		txType := "classic"
+		summary := fmt.Sprintf("From %s", gateway.ShortAddress(source))
+		if tx.Summary != nil {
+			if tx.Summary.Type != "" {
+				txType = tx.Summary.Type
+			}
+			if tx.Summary.Description != "" {
+				summary = tx.Summary.Description
+			}
+		}
+
+		result = append(result, pages.HomeTx{
+			Hash:      tx.TxHash,
+			ShortHash: gateway.ShortHash(tx.TxHash),
+			Type:      txType,
+			TypeLabel: txTypeLabel(txType),
+			Summary:   summary,
+			From:      gateway.ShortAddress(source),
+			Ops:       fmt.Sprintf("%d ops", tx.OperationCount),
+			Fee:       gateway.FormatNumber(tx.Fee) + " str",
+			Age:       age,
+		})
+	}
+	return result
+}
+
+// txTypeLabel maps a summary type string to a human-readable label.
+func txTypeLabel(txType string) string {
+	switch txType {
+	case "transfer":
+		return "Transfer"
+	case "mint":
+		return "Mint"
+	case "burn":
+		return "Burn"
+	case "swap":
+		return "Swap"
+	case "contract_call":
+		return "Contract"
+	case "multi_op":
+		return "Multi-Op"
+	case "multi_transfer":
+		return "Transfers"
+	default:
+		return "Classic"
+	}
+}
+
+// mapRecentLedgerToHomeLedger converts a silver recent ledger to the home page row shape.
+func mapRecentLedgerToHomeLedger(l gateway.RecentLedger, isLatest bool) pages.HomeLedger {
+	age := "—"
+	if t, err := time.Parse(time.RFC3339, l.ClosedAt); err == nil {
+		age = gateway.FormatAge(t)
+	}
+	return pages.HomeLedger{
+		Sequence:    gateway.FormatNumber(l.LedgerSequence),
+		SequenceRaw: fmt.Sprintf("%d", l.LedgerSequence),
+		Age:         age,
+		TxCount:     fmt.Sprintf("%d txs", l.SuccessfulTxCount),
+		OpCount:     fmt.Sprintf("%d ops", l.OperationCount),
+		IsLatest:    isLatest,
+	}
 }
 
 // ── Fragment 3: Recent Ledgers ──
@@ -241,9 +302,23 @@ func (h *Handlers) HomeRecentLedgersFragment(w http.ResponseWriter, r *http.Requ
 }
 
 // buildHomeLedgers fetches recent ledgers from the gateway.
+// It prefers the single-call serving endpoint (silver/ledgers/recent) and falls back to
+// the legacy bronze/stats + bronze/ledgers pattern if it fails.
 func (h *Handlers) buildHomeLedgers(r *http.Request, network string) ([]pages.HomeLedger, error) {
 	ctx := r.Context()
 
+	// Try the new single-call serving endpoint first.
+	if resp, err := h.Gateway.GetSilverRecentLedgers(ctx, network, 6); err == nil {
+		result := make([]pages.HomeLedger, 0, len(resp.Ledgers))
+		for i, l := range resp.Ledgers {
+			result = append(result, mapRecentLedgerToHomeLedger(l, i == 0))
+		}
+		return result, nil
+	} else {
+		h.Logger.Debug("silver recent ledgers unavailable, falling back to legacy multi-call", "error", err)
+	}
+
+	// Fallback: legacy 2-call flow.
 	bronze, err := h.Gateway.GetBronzeNetworkStats(ctx, network)
 	if err != nil {
 		return nil, fmt.Errorf("fetching bronze stats: %w", err)
@@ -359,6 +434,7 @@ func (h *Handlers) buildHomeContracts(r *http.Request, network string) ([]pages.
 			Tag:         tag,
 			TagColor:    tagColor,
 			Address:     gateway.ShortAddress(c.ContractID),
+			Href:        "/contracts/" + c.ContractID,
 			Invocations: gateway.FormatNumber(c.TotalCalls),
 			Change:      "",
 			IsPositive:  true,

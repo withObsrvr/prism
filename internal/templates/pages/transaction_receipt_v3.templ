@@ -6,18 +6,27 @@ import (
 	"github.com/withObsrvr/prism/internal/templates/layouts"
 )
 
-func effectsCount(effects []TxEffect) string {
+func v3EffectsCount(effects []TxEffect) string {
 	return fmt.Sprintf("%d", len(effects))
 }
 
-// TransactionReceiptV2 renders the Ramp-inspired transaction detail page.
-templ TransactionReceiptV2(data TxReceiptData) {
+// TransactionReceiptV3 renders the transaction detail page with breadcrumbs
+// and Overview as the first tab section (matching the original design mock).
+templ TransactionReceiptV3(data TxReceiptData) {
 	@layouts.Base("Transaction " + data.ShortHash + " — Prism", "explorer") {
 		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
 
+			<!-- Breadcrumb -->
+			<nav class="anim flex items-center gap-1.5 text-xs text-text-muted mb-4">
+				<a href="/" class="text-emerald-600 dark:text-emerald-400 hover:underline">Explorer</a>
+				<span class="opacity-40">›</span>
+				<span>Transactions</span>
+				<span class="opacity-40">›</span>
+				<span class="font-mono">{ data.ShortHash }</span>
+			</nav>
+
 			<!-- Header: status + hash + badges -->
-			<div class="anim mt-4 mb-5">
-				@components.BackNav("Back to Explorer", "/")
+			<div class="anim mb-5">
 				<div class="flex items-center gap-3 mb-2">
 					if data.Status == "success" {
 						<div class="flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 ring-1 ring-emerald-200 dark:ring-emerald-800">
@@ -62,17 +71,13 @@ templ TransactionReceiptV2(data TxReceiptData) {
 				</div>
 			</div>
 
-			<!-- Key-value overview: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/tx/" + data.Hash + "/overview" } hx-trigger="load" hx-swap="outerHTML">
-				@txDetailSkeleton(4)
-			</div>
-
-			<!-- Tabs -->
+			<!-- Tabs — Overview is first and active -->
 			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
-				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Operations ({ data.OpsCount })</button>
+				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Overview</button>
+				<button class="pb-3.5 hover:text-text-primary transition-colors">Operations ({ data.OpsCount })</button>
 				<button class="pb-3.5 hover:text-text-primary transition-colors">Events ({ data.EventsCount })</button>
 				if len(data.Effects) > 0 {
-					<button class="pb-3.5 hover:text-text-primary transition-colors">Effects ({ effectsCount(data.Effects) })</button>
+					<button class="pb-3.5 hover:text-text-primary transition-colors">Effects ({ v3EffectsCount(data.Effects) })</button>
 				}
 				<button class="pb-3.5 hover:text-text-primary transition-colors">Balance Changes</button>
 				if len(data.StateChanges) > 0 {
@@ -80,32 +85,42 @@ templ TransactionReceiptV2(data TxReceiptData) {
 				}
 			</div>
 
+			<!-- Overview (Transaction Details): loaded via htmx fragment -->
+			<div hx-get={ "/fragments/tx/" + data.Hash + "/overview" } hx-trigger="load" hx-swap="outerHTML">
+				@v3TxDetailSkeleton(6)
+			</div>
+
+			<!-- What Happened timeline: loaded via htmx fragment -->
+			<div hx-get={ "/fragments/tx/" + data.Hash + "/timeline" } hx-trigger="load" hx-swap="outerHTML">
+				@v3TimelineSkeleton(4)
+			</div>
+
 			<!-- Operations: loaded via htmx fragment -->
 			<div hx-get={ "/fragments/tx/" + data.Hash + "/operations" } hx-trigger="load" hx-swap="outerHTML">
-				@txTableSkeleton(4)
+				@v3TxTableSkeleton(4)
 			</div>
 
 			<!-- Events: loaded via htmx fragment -->
 			<div hx-get={ "/fragments/tx/" + data.Hash + "/events" } hx-trigger="load" hx-swap="outerHTML">
-				@txTableSkeleton(4)
+				@v3TxTableSkeleton(4)
 			</div>
 
 			<!-- Effects -->
 			if len(data.Effects) > 0 {
 				<div hx-get={ "/fragments/tx/" + data.Hash + "/effects" } hx-trigger="load" hx-swap="outerHTML">
-					@txTableSkeleton(3)
+					@v3TxTableSkeleton(3)
 				</div>
 			}
 
 			<!-- Balance Changes: loaded via htmx fragment -->
 			<div hx-get={ "/fragments/tx/" + data.Hash + "/balance-changes" } hx-trigger="load" hx-swap="outerHTML">
-				@txTableSkeleton(3)
+				@v3TxTableSkeleton(3)
 			</div>
 
 			<!-- State Changes: loaded via htmx fragment -->
 			if len(data.StateChanges) > 0 {
 				<div hx-get={ "/fragments/tx/" + data.Hash + "/state-changes" } hx-trigger="load" hx-swap="outerHTML">
-					@txTableSkeleton(3)
+					@v3TxTableSkeleton(3)
 				</div>
 			}
 
@@ -134,7 +149,28 @@ templ TransactionReceiptV2(data TxReceiptData) {
 
 // ── Skeleton placeholders for htmx fragment loading ──
 
-templ txDetailSkeleton(n int) {
+templ v3TimelineSkeleton(n int) {
+	<div class="mb-8">
+		<div class="h-3.5 w-28 rounded bg-surface-subtle animate-pulse mb-4"></div>
+		for i := 0; i < n; i++ {
+			<div class="grid grid-cols-[32px_1fr] gap-x-3">
+				<div class="flex flex-col items-center">
+					<div class="w-2.5 h-2.5 rounded-full bg-surface-subtle animate-pulse mt-1.5"></div>
+					if i < n-1 {
+						<div class="w-px flex-1 bg-border-default my-1 min-h-[16px]"></div>
+					}
+				</div>
+				<div class="pb-5 space-y-1.5">
+					<div class="h-5 w-20 rounded-full bg-surface-subtle animate-pulse"></div>
+					<div class="h-3.5 w-64 rounded bg-surface-subtle animate-pulse"></div>
+					<div class="h-3 w-48 rounded bg-surface-subtle animate-pulse"></div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ v3TxDetailSkeleton(n int) {
 	<div class="anim d1 mb-6">
 		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 			for i := 0; i < n; i++ {
@@ -147,7 +183,7 @@ templ txDetailSkeleton(n int) {
 	</div>
 }
 
-templ txTableSkeleton(n int) {
+templ v3TxTableSkeleton(n int) {
 	<div class="mb-8">
 		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
 			for i := 0; i < n; i++ {

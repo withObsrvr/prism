@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
@@ -170,6 +171,7 @@ func (h *Handlers) buildHomeData(r *http.Request, network string) (pages.HomeDat
 				Tag:         "Contract",
 				TagColor:    "violet",
 				Address:     gateway.ShortAddress(c.ContractID),
+				Href:        "/contracts/" + c.ContractID,
 				Invocations: gateway.FormatNumber(c.TotalCalls),
 				Change:      "",
 				IsPositive:  true,
@@ -560,6 +562,8 @@ func (h *Handlers) LedgerDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 // buildLedgerDetailData fetches a single ledger and its transactions from the gateway.
+// Prefers the single-call /silver/ledger/{seq}/full endpoint, falling back to the legacy
+// 6-call fan-out if it fails.
 func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence string) (pages.LedgerDetailData, error) {
 	ctx := r.Context()
 
@@ -569,27 +573,46 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		return pages.LedgerDetailData{}, fmt.Errorf("invalid sequence: %s", sequence)
 	}
 
-	// Fetch the single ledger.
-	ledgers, err := h.Gateway.GetLedgers(ctx, network, seq, seq, 1, "asc")
-	if err != nil {
-		return pages.LedgerDetailData{}, fmt.Errorf("fetching ledger %d: %w", seq, err)
+	var (
+		l             gateway.Ledger
+		txs           []gateway.Transaction
+		ops           []gateway.Operation
+		ledgerFees    *gateway.LedgerFees
+		ledgerSoroban *gateway.LedgerSoroban
+		txErr         error
+		opsErr        error
+	)
+
+	// Try the composite single-call endpoint first.
+	if full, err := h.Gateway.GetSilverLedgerFull(ctx, network, seq); err == nil {
+		l = full.Ledger
+		txs = full.Transactions
+		ops = full.Operations
+		ledgerFees = full.Fees
+		ledgerSoroban = full.Soroban
+	} else {
+		h.Logger.Debug("silver ledger full unavailable, falling back to legacy multi-call", "error", err, "seq", seq)
+
+		// Fallback: legacy 4-call fan-out.
+		ledgers, err := h.Gateway.GetLedgers(ctx, network, seq, seq, 1, "asc")
+		if err != nil {
+			return pages.LedgerDetailData{}, fmt.Errorf("fetching ledger %d: %w", seq, err)
+		}
+		if len(ledgers) == 0 {
+			return pages.LedgerDetailData{}, fmt.Errorf("ledger %d not found", seq)
+		}
+		l = ledgers[0]
+
+		txs, txErr = h.Gateway.GetTransactions(ctx, network, seq, seq, 50, "asc")
+		ops, opsErr = h.Gateway.GetOperations(ctx, network, seq, seq, 200)
+		ledgerFees, _ = h.Gateway.GetLedgerFees(ctx, network, seq)
+		ledgerSoroban, _ = h.Gateway.GetLedgerSoroban(ctx, network, seq)
 	}
-	if len(ledgers) == 0 {
-		return pages.LedgerDetailData{}, fmt.Errorf("ledger %d not found", seq)
-	}
 
-	l := ledgers[0]
-
-	// Fetch transactions, operations, fees, and Soroban stats for this ledger.
-	txs, txErr := h.Gateway.GetTransactions(ctx, network, seq, seq, 50, "asc")
-	ops, opsErr := h.Gateway.GetOperations(ctx, network, seq, seq, 200)
-	ledgerFees, _ := h.Gateway.GetLedgerFees(ctx, network, seq)
-	ledgerSoroban, _ := h.Gateway.GetLedgerSoroban(ctx, network, seq)
-
-	// Try batch decoded txs for rich summaries.
-	decodedResp, _ := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 50)
+	// Best-effort enrichment: batch-decoded summaries for the transactions list.
+	// Not critical — fall back to source-account summary if unavailable.
 	decodedMap := make(map[string]*gateway.DecodedTransaction)
-	if decodedResp != nil {
+	if decodedResp, err := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 50); err == nil && decodedResp != nil {
 		for i := range decodedResp.Transactions {
 			dt := &decodedResp.Transactions[i]
 			decodedMap[dt.TxHash] = dt
@@ -777,6 +800,26 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handlers) TransactionReceiptV2(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	shortHash := hash
+	if len(hash) > 12 {
+		shortHash = hash[:6] + "..." + hash[len(hash)-4:]
+	}
+	data := mockTxReceiptData(hash, shortHash)
+	pages.TransactionReceiptV2(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) TransactionReceiptV3(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	shortHash := hash
+	if len(hash) > 12 {
+		shortHash = hash[:6] + "..." + hash[len(hash)-4:]
+	}
+	data := mockTxReceiptData(hash, shortHash)
+	pages.TransactionReceiptV3(data).Render(r.Context(), w)
+}
+
 func (h *Handlers) TransactionReceiptV1(w http.ResponseWriter, r *http.Request) {
 	hash := r.PathValue("hash")
 	shortHash := hash
@@ -787,13 +830,60 @@ func (h *Handlers) TransactionReceiptV1(w http.ResponseWriter, r *http.Request) 
 	pages.TransactionReceipt(data).Render(r.Context(), w)
 }
 
+// resolveEventAsset returns the (assetLabel, decimals) for an event, applying the precedence
+// chain laid out by the silver enricher contract:
+//
+//  1. token_symbol (inlined by the silver enricher) → use it
+//  2. asset_code (classic asset on the event) → use it
+//  3. classic native PAYMENT (operation_type=1, source_type=classic, no contract_id, no asset_code) → "XLM"
+//  4. unknown contract reference fallback → "token (CBIE...DAMA)"
+//  5. completely unknown → "" (render amount alone)
+//
+// We deliberately do NOT default to "XLM" for non-PAYMENT classic ops (e.g. PATH_PAYMENT)
+// because path payments can move arbitrary assets — guessing "XLM" risks displaying wrong data.
+func resolveEventAsset(evt gateway.UnifiedEvent) (label string, decimals int) {
+	// Decimals default to 7 (native XLM and most Stellar SACs); honor explicit token_decimals when set.
+	decimals = 7
+	if evt.TokenDecimals > 0 {
+		decimals = evt.TokenDecimals
+	}
+
+	// 1. Inlined token metadata (preferred).
+	if evt.TokenSymbol != "" {
+		return evt.TokenSymbol, decimals
+	}
+
+	// 2. Explicit classic asset code.
+	if evt.AssetCode != "" {
+		return evt.AssetCode, decimals
+	}
+
+	// 3. Strict classic native: only operation_type 1 (PAYMENT) qualifies as unambiguous native.
+	const opTypePayment = 1
+	if evt.SourceType == "classic" && evt.ContractID == "" && evt.OperationType == opTypePayment {
+		return "XLM", decimals
+	}
+
+	// 4. Unknown contract — at least surface the contract reference so the user isn't lied to.
+	if evt.ContractID != "" {
+		return "token (" + gateway.ShortAddress(evt.ContractID) + ")", decimals
+	}
+
+	// 5. No usable info — render amount with no asset label.
+	return "", decimals
+}
+
 // buildTxReceiptData fetches real transaction data from the gateway.
 func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash string) (pages.TxReceiptData, error) {
 	ctx := r.Context()
 
-	// Fetch full decoded transaction and diffs concurrently.
+	// Fetch full decoded transaction, diffs, and effects.
 	txFull, fullErr := h.Gateway.GetTransactionFull(ctx, network, hash)
 	txDiffs, diffsErr := h.Gateway.GetTransactionDiffs(ctx, network, hash)
+	txEffects, effectsErr := h.Gateway.GetTransactionEffects(ctx, network, hash)
+	if effectsErr != nil {
+		h.Logger.Debug("effects unavailable for tx", "hash", hash, "error", effectsErr)
+	}
 
 	if fullErr != nil {
 		return pages.TxReceiptData{}, fmt.Errorf("fetching tx full: %w", fullErr)
@@ -820,8 +910,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	// Parse timestamp.
 	timestamp := tx.ClosedAt
+	timestampRelative := ""
+	timestampISO := tx.ClosedAt
 	if t, err := time.Parse(time.RFC3339, tx.ClosedAt); err == nil {
 		timestamp = t.Format("Jan 2, 2006 at 15:04:05 UTC")
+		timestampRelative = gateway.FormatAge(t)
+		timestampISO = t.Format(time.RFC3339)
 	}
 
 	// Build summary HTML from the summary description.
@@ -832,6 +926,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	sourceAmount := "—"
 	contractName := "—"
 	contractAddr := "—"
+	contractAddrFull := ""
 	contractFn := "—"
 	destAddr := "—"
 	destAmount := "—"
@@ -841,19 +936,25 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	if summary.Transfer != nil {
 		sourceAddr = gateway.ShortAddress(summary.Transfer.From)
-		sourceAmount = summary.Transfer.Amount + " " + summary.Transfer.Asset
+		amt := gateway.FormatStroopsToXLM(summary.Transfer.Amount)
+		asset := summary.Transfer.Asset
+		if asset == "" || asset == "tokens" {
+			asset = "XLM"
+		}
+		sourceAmount = amt + " " + asset
 		destAddr = gateway.ShortAddress(summary.Transfer.To)
-		destAmount = "+" + summary.Transfer.Amount + " " + summary.Transfer.Asset
+		destAmount = "+" + amt + " " + asset
 	}
 	if summary.Swap != nil {
-		sourceAmount = summary.Swap.AmountIn + " " + summary.Swap.AssetIn
-		destAmount = "+" + summary.Swap.AmountOut + " " + summary.Swap.AssetOut
-		route = summary.Swap.AssetIn + " -> " + summary.Swap.AssetOut
+		sourceAmount = gateway.FormatStroopsToXLM(summary.Swap.AmountIn) + " " + summary.Swap.AssetIn
+		destAmount = "+" + gateway.FormatStroopsToXLM(summary.Swap.AmountOut) + " " + summary.Swap.AssetOut
+		route = summary.Swap.AssetIn + " → " + summary.Swap.AssetOut
 	}
 	if len(txFull.Operations) > 0 {
 		op := txFull.Operations[0]
 		if op.ContractID != "" {
 			contractAddr = gateway.ShortAddress(op.ContractID)
+			contractAddrFull = op.ContractID
 			contractName = contractAddr
 		}
 		if op.FunctionName != "" {
@@ -871,17 +972,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		if !tx.Successful {
 			opStatus = "Failed"
 		}
-		// Build operation summary — use decoded args when available.
-		opSummary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> %s`, html.EscapeString(gateway.ShortAddress(op.SourceAccount)), html.EscapeString(op.TypeName))
-		if op.FunctionName != "" && op.ArgumentsJSON != "" {
-			opSummary = formatSorobanCall(op.SourceAccount, op.FunctionName, op.ArgumentsJSON)
-		} else if op.FunctionName != "" {
-			opSummary = fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> called <span class="font-mono text-violet-600">%s</span>`, html.EscapeString(gateway.ShortAddress(op.SourceAccount)), html.EscapeString(op.FunctionName))
-		}
+
+		opSummary := buildOperationSummary(op)
 
 		ops = append(ops, pages.TxOperation{
 			Index:       fmt.Sprintf("%d", op.Index+1),
-			Type:        op.TypeName,
+			Type:        gateway.OperationDisplayName(op.TypeName),
 			IsSoroban:   op.IsSorobanOp,
 			IsPrimary:   op.Index == 0,
 			Status:      opStatus,
@@ -892,6 +988,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	// Build events list from unified events.
+	// Token metadata (symbol, decimals) is now inlined on each event by the API enricher.
 	evts := make([]pages.TxEvent, 0)
 	for i, evt := range txFull.Events {
 		typeColor := "gray"
@@ -903,9 +1000,16 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		case "burn":
 			typeColor = "red"
 		}
+
 		dataHTML := ""
 		if evt.Amount != "" {
-			dataHTML = fmt.Sprintf(`<span class="font-medium">%s %s</span>`, html.EscapeString(evt.Amount), html.EscapeString(evt.AssetCode))
+			assetLabel, decimals := resolveEventAsset(evt)
+			amount := gateway.FormatTokenAmount(evt.Amount, decimals)
+			display := amount
+			if assetLabel != "" {
+				display = amount + " " + assetLabel
+			}
+			dataHTML = fmt.Sprintf(`<span class="font-medium">%s</span>`, html.EscapeString(display))
 			if evt.From != "" {
 				dataHTML += fmt.Sprintf(` from <span class="font-mono text-xs">%s</span>`, html.EscapeString(gateway.ShortAddress(evt.From)))
 			}
@@ -987,29 +1091,68 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		}
 	}
 
+	// Build effects list.
+	var effects []pages.TxEffect
+	if effectsErr == nil && txEffects != nil {
+		for i, eff := range txEffects.Effects {
+			asset := ""
+			if eff.Asset != nil {
+				asset = eff.Asset.Code
+			}
+			amount := ""
+			isPositive := false
+			if eff.Amount != "" {
+				amount = gateway.FormatDecimalAmount(eff.Amount)
+			}
+
+			switch eff.EffectTypeString {
+			case "account_credited", "contract_credited",
+				"claimable_balance_claimed", "liquidity_pool_deposited":
+				isPositive = true
+			}
+
+			effects = append(effects, pages.TxEffect{
+				Index:       fmt.Sprintf("%d", i),
+				Type:        eff.EffectTypeString,
+				TypeDisplay: gateway.EffectDisplayName(eff.EffectTypeString),
+				TypeColor:   gateway.EffectTypeColor(eff.EffectTypeString),
+				Account:     gateway.ShortAddress(eff.AccountID),
+				AccountFull: eff.AccountID,
+				Asset:       asset,
+				Amount:      amount,
+				IsPositive:  isPositive,
+				SummaryHTML: buildEffectSummary(eff),
+			})
+		}
+	}
+
 	data := pages.TxReceiptData{
 		Hash:          hash,
 		ShortHash:     shortHash,
 		Status:        status,
 		IsSoroban:     isSoroban,
 		HasClassicOps: hasClassic,
-		SummaryHTML:   summaryHTML,
-		Timestamp:     timestamp,
-		Ledger:        gateway.FormatNumber(tx.LedgerSequence),
+		SummaryHTML:        summaryHTML,
+		Timestamp:          timestamp,
+		TimestampRelative:  timestampRelative,
+		TimestampISO:       timestampISO,
+		Ledger:             gateway.FormatNumber(tx.LedgerSequence),
 		LedgerRaw:     fmt.Sprintf("%d", tx.LedgerSequence),
 		OpsCount:      fmt.Sprintf("%d", tx.OperationCount),
 		EventsCount:   fmt.Sprintf("%d", len(txFull.Events)),
 		SourceAddr:    sourceAddr,
 		SourceAmount:  sourceAmount,
-		ContractName:  contractName,
-		ContractAddr:  contractAddr,
-		ContractFn:    contractFn,
+		ContractName:     contractName,
+		ContractAddr:     contractAddr,
+		ContractAddrFull: contractAddrFull,
+		ContractFn:       contractFn,
 		DestAddr:      destAddr,
 		DestAmount:    destAmount,
 		EffectiveRate: effectiveRate,
 		Slippage:      slippage,
 		Route:         route,
 		FeePaid:       gateway.FormatNumber(tx.Fee),
+		FeePaidXLM:    gateway.FormatFeeXLM(tx.Fee),
 		MaxFee:        func() string { if tx.MaxFee > 0 { return gateway.FormatNumber(tx.MaxFee) }; return "" }(),
 		FeeUSD:        "—",
 		SorobanCPU:    func() string { if txFull.SorobanResources != nil { return gateway.FormatAbbrev(txFull.SorobanResources.Instructions) + " insn" }; return "—" }(),
@@ -1021,6 +1164,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		Events:        evts,
 		BalanceChanges: balChanges,
 		StateChanges:  stateChanges,
+		Effects:       effects,
 	}
 
 	return data, nil
@@ -1030,6 +1174,204 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 // with decoded arguments, similar to stellar.expert's display:
 //
 //	mint(GCFB…TEKT, 10000000i128)
+// buildOperationSummary produces a human-readable HTML summary for a single operation.
+func buildOperationSummary(op gateway.DecodedOperation) string {
+	source := html.EscapeString(gateway.ShortAddress(op.SourceAccount))
+
+	// Soroban contract calls — use decoded args when available.
+	if op.FunctionName != "" && op.ArgumentsJSON != "" {
+		return formatSorobanCall(op.SourceAccount, op.FunctionName, op.ArgumentsJSON)
+	}
+	if op.FunctionName != "" {
+		return fmt.Sprintf(`<span class="font-medium text-text-primary">%s</span> called <span class="font-mono text-violet-600 dark:text-violet-400">%s()</span>`,
+			source, html.EscapeString(op.FunctionName))
+	}
+
+	displayName := strings.ToLower(gateway.OperationDisplayName(op.TypeName))
+	dest := html.EscapeString(gateway.ShortAddress(op.Destination))
+	asset := op.AssetCode
+	if asset == "" {
+		asset = "XLM"
+	}
+
+	// Classic operations — use available fields for richer summaries.
+	// Note: op.Amount from the API is in stroops (7 decimal places).
+	fmtAmount := gateway.FormatStroopsToXLM(op.Amount)
+
+	switch op.TypeName {
+	case "create_account", "OperationTypeCreateAccount":
+		return fmt.Sprintf(`Created account <span class="font-mono text-text-primary">%s</span> with <span class="font-semibold">%s XLM</span>`, dest, fmtAmount)
+	case "payment", "OperationTypePayment":
+		if op.Amount != "" && op.Destination != "" {
+			return fmt.Sprintf(`Sent <span class="font-semibold">%s %s</span> to <span class="font-mono text-text-primary">%s</span>`,
+				fmtAmount, html.EscapeString(asset), dest)
+		}
+	case "account_merge", "OperationTypeAccountMerge":
+		if op.Destination != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> merged account into <span class="font-mono text-text-primary">%s</span>`, source, dest)
+		}
+	case "change_trust", "OperationTypeChangeTrust":
+		if op.AssetCode != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> added trustline for <span class="font-semibold">%s</span>`, source, html.EscapeString(op.AssetCode))
+		}
+	case "manage_sell_offer", "OperationTypeManageSellOffer":
+		if op.Amount != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> sell offer: <span class="font-semibold">%s %s</span>`,
+				source, fmtAmount, html.EscapeString(asset))
+		}
+	case "manage_buy_offer", "OperationTypeManageBuyOffer":
+		if op.Amount != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> buy offer: <span class="font-semibold">%s %s</span>`,
+				source, fmtAmount, html.EscapeString(asset))
+		}
+	case "set_options", "OperationTypeSetOptions":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated account options`, source)
+	case "manage_data", "OperationTypeManageData":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated data entry`, source)
+	case "set_trust_line_flags", "OperationTypeSetTrustLineFlags":
+		if op.Destination != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> set trust flags for <span class="font-mono text-text-primary">%s</span>`, source, dest)
+		}
+	}
+
+	// Fallback: source + display name + optional destination.
+	if op.Destination != "" {
+		return fmt.Sprintf(`<span class="font-medium text-text-primary">%s</span> %s <span class="font-mono text-text-primary">%s</span>`,
+			source, html.EscapeString(displayName), dest)
+	}
+	return fmt.Sprintf(`<span class="font-medium text-text-primary">%s</span> %s`, source, html.EscapeString(displayName))
+}
+
+// buildEffectSummary produces a human-readable HTML summary for a single effect.
+func buildEffectSummary(eff gateway.TransactionEffect) string {
+	acct := html.EscapeString(gateway.ShortAddress(eff.AccountID))
+	asset := "XLM"
+	if eff.Asset != nil && eff.Asset.Code != "" {
+		asset = eff.Asset.Code
+	}
+	// Amount is already decimal from the API (e.g. "10000.0000000").
+	amount := gateway.FormatDecimalAmount(eff.Amount)
+
+	// Helper to read string values from details map.
+	detailStr := func(key string) string {
+		if eff.Details == nil {
+			return ""
+		}
+		if v, ok := eff.Details[key]; ok {
+			return fmt.Sprintf("%v", v)
+		}
+		return ""
+	}
+
+	switch eff.EffectTypeString {
+	// Account
+	case "account_created":
+		bal := gateway.FormatDecimalAmount(detailStr("starting_balance"))
+		if bal != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> was created with <span class="font-semibold">%s XLM</span>`, acct, bal)
+		}
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> was created`, acct)
+	case "account_removed":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> was removed`, acct)
+	case "account_credited", "contract_credited":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> received <span class="font-semibold text-emerald-600 dark:text-emerald-400">+%s %s</span>`, acct, amount, html.EscapeString(asset))
+	case "account_debited", "contract_debited":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> sent <span class="font-semibold text-red-600 dark:text-red-400">-%s %s</span>`, acct, amount, html.EscapeString(asset))
+	case "account_thresholds_updated":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated thresholds`, acct)
+	case "account_home_domain_updated":
+		domain := detailStr("home_domain")
+		if domain != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> set home domain to <span class="font-semibold">%s</span>`, acct, html.EscapeString(domain))
+		}
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated home domain`, acct)
+	case "account_flags_updated":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated account flags`, acct)
+
+	// Signer
+	case "signer_created":
+		key := gateway.ShortAddress(detailStr("public_key"))
+		return fmt.Sprintf(`Signer <span class="font-mono text-text-primary">%s</span> added to <span class="font-mono text-text-primary">%s</span>`, html.EscapeString(key), acct)
+	case "signer_removed":
+		key := gateway.ShortAddress(detailStr("public_key"))
+		return fmt.Sprintf(`Signer <span class="font-mono text-text-primary">%s</span> removed from <span class="font-mono text-text-primary">%s</span>`, html.EscapeString(key), acct)
+	case "signer_updated":
+		key := gateway.ShortAddress(detailStr("public_key"))
+		return fmt.Sprintf(`Signer <span class="font-mono text-text-primary">%s</span> updated on <span class="font-mono text-text-primary">%s</span>`, html.EscapeString(key), acct)
+
+	// Trustline
+	case "trustline_created":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> added trustline for <span class="font-semibold">%s</span>`, acct, html.EscapeString(asset))
+	case "trustline_removed":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> removed trustline for <span class="font-semibold">%s</span>`, acct, html.EscapeString(asset))
+	case "trustline_updated":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated trustline for <span class="font-semibold">%s</span>`, acct, html.EscapeString(asset))
+	case "trustline_flags_updated":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated trust flags`, acct)
+
+	// DEX
+	case "trade":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> traded <span class="font-semibold">%s %s</span>`, acct, amount, html.EscapeString(asset))
+	case "offer_created":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> created offer`, acct)
+	case "offer_removed":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> removed offer`, acct)
+	case "offer_updated":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated offer`, acct)
+
+	// Data
+	case "data_created":
+		name := detailStr("name")
+		if name != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> created data entry <span class="font-semibold">%s</span>`, acct, html.EscapeString(name))
+		}
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> created data entry`, acct)
+	case "data_removed":
+		name := detailStr("name")
+		if name != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> removed data entry <span class="font-semibold">%s</span>`, acct, html.EscapeString(name))
+		}
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> removed data entry`, acct)
+	case "data_updated":
+		name := detailStr("name")
+		if name != "" {
+			return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated data entry <span class="font-semibold">%s</span>`, acct, html.EscapeString(name))
+		}
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> updated data entry`, acct)
+	case "sequence_bumped":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> bumped sequence`, acct)
+
+	// Claimable Balance
+	case "claimable_balance_created", "claimable_balance_claimant_created":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> created claimable balance of <span class="font-semibold">%s %s</span>`, acct, amount, html.EscapeString(asset))
+	case "claimable_balance_claimed":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> claimed <span class="font-semibold">%s %s</span>`, acct, amount, html.EscapeString(asset))
+	case "claimable_balance_clawed_back":
+		return fmt.Sprintf(`Claimable balance clawed back from <span class="font-mono text-text-primary">%s</span>`, acct)
+
+	// Liquidity Pool
+	case "liquidity_pool_deposited":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> deposited into liquidity pool`, acct)
+	case "liquidity_pool_withdrew":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> withdrew from liquidity pool`, acct)
+	case "liquidity_pool_trade":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> pool trade`, acct)
+	case "liquidity_pool_created":
+		return fmt.Sprintf(`Liquidity pool created by <span class="font-mono text-text-primary">%s</span>`, acct)
+	case "liquidity_pool_removed":
+		return fmt.Sprintf(`Liquidity pool removed`)
+
+	// Soroban
+	case "extend_footprint_ttl":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> extended TTL`, acct)
+	case "restore_footprint":
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> restored footprint`, acct)
+
+	default:
+		return fmt.Sprintf(`<span class="font-mono text-text-primary">%s</span> %s`, acct, html.EscapeString(gateway.EffectDisplayName(eff.EffectTypeString)))
+	}
+}
+
 func formatSorobanCall(source, functionName, argsJSON string) string {
 	// Parse the arguments JSON array.
 	var args []map[string]any

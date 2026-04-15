@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: Obsrvr Gateway – Silver Ledgers Recent
+  description: >
+    Returns the most recent ledgers from the serving layer.
+    Replaces the 2-call pattern (bronze/stats/network → bronze/ledgers)
+    with a single endpoint that returns everything needed for a "Latest Ledgers" UI component.
+  version: 1.0.0
+
+paths:
+  /lake/v1/{network}/api/v1/silver/ledgers/recent:
+    get:
+      operationId: getRecentLedgers
+      summary: Get recent ledgers
+      description: >
+        Returns the newest ledgers in descending order (latest first),
+        including headline per-ledger counts needed for home-page and explorer recent-ledger lists.
+      parameters:
+        - name: network
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [mainnet, testnet, futurenet]
+          description: Stellar network to query.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 6
+          description: Number of ledgers to return.
+      responses:
+        "200":
+          description: Recent ledgers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecentLedgersResponse"
+              examples:
+                latest:
+                  summary: Latest 6 ledgers for a home-page widget
+                  value:
+                    latest_sequence: 2035936
+                    count: 6
+                    ledgers:
+                      - ledger_sequence: 2035936
+                        closed_at: "2026-04-14T16:27:28Z"
+                        ledger_hash: "4e7f7f0d3a..."
+                        previous_ledger_hash: "d1a55c93ab..."
+                        protocol_version: 22
+                        base_fee_stroops: 100
+                        successful_tx_count: 20
+                        failed_tx_count: 0
+                        operation_count: 49
+                      - ledger_sequence: 2035935
+                        closed_at: "2026-04-14T16:27:23Z"
+                        protocol_version: 22
+                        base_fee_stroops: 100
+                        successful_tx_count: 15
+                        failed_tx_count: 0
+                        operation_count: 31
+        "400":
+          description: Invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Network not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    RecentLedgersResponse:
+      type: object
+      required: [latest_sequence, count, ledgers]
+      properties:
+        latest_sequence:
+          type: integer
+          format: int64
+          description: Latest ledger sequence available at query time.
+          example: 2035936
+        count:
+          type: integer
+          description: Number of ledgers returned.
+          example: 6
+        ledgers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentLedger"
+    RecentLedger:
+      type: object
+      required:
+        - ledger_sequence
+        - closed_at
+        - successful_tx_count
+        - operation_count
+      properties:
+        ledger_sequence:
+          type: integer
+          format: int64
+          example: 2035936
+        closed_at:
+          type: string
+          format: date-time
+          example: "2026-04-14T16:27:28Z"
+        ledger_hash:
+          type: string
+          example: "4e7f7f0d3a..."
+        previous_ledger_hash:
+          type: string
+          example: "d1a55c93ab..."
+        protocol_version:
+          type: integer
+          example: 22
+        base_fee_stroops:
+          type: integer
+          format: int64
+          example: 100
+        successful_tx_count:
+          type: integer
+          example: 20
+        failed_tx_count:
+          type: integer
+          example: 0
+        operation_count:
+          type: integer
+          example: 49
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid request
