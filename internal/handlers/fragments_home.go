@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -60,16 +61,16 @@ func (h *Handlers) buildHomeNetworkPulse(r *http.Request, network string) (pages
 	tpsPeak := tpsAvg * 3 // estimate
 
 	data := pages.HomeData{
-		Network:      network,
-		LatestLedger: gateway.FormatNumber(latestSeq),
-		LedgerAge:    ledgerAge,
-		TxCount24H:   gateway.FormatNumber(txCount24H),
-		TxChange:     "", // Not available without historical comparison
-		TPSAvg:       fmt.Sprintf("%.1f", tpsAvg),
-		TPSPeak:      fmt.Sprintf("%.0f", tpsPeak),
-		SorobanCalls: gateway.FormatNumber(sorobanCalls),
+		Network:       network,
+		LatestLedger:  gateway.FormatNumber(latestSeq),
+		LedgerAge:     ledgerAge,
+		TxCount24H:    gateway.FormatNumber(txCount24H),
+		TxChange:      "", // Not available without historical comparison
+		TPSAvg:        fmt.Sprintf("%.1f", tpsAvg),
+		TPSPeak:       fmt.Sprintf("%.0f", tpsPeak),
+		SorobanCalls:  gateway.FormatNumber(sorobanCalls),
 		SorobanChange: "",
-		Validators:   35, // Needs Radar client — static for now
+		Validators:    35, // Needs Radar client — static for now
 	}
 
 	// Try fee stats for the fee guide values.
@@ -121,7 +122,9 @@ func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.
 
 	// Try the new single-call serving endpoint first.
 	if resp, err := h.Gateway.GetSilverRecentTransactions(ctx, network, 6); err == nil {
-		return mapDecodedTxsToHomeTxs(resp.Transactions), nil
+		rows := mapDecodedTxsToHomeTxs(resp.Transactions)
+		h.enrichHomeTxRowsWithSmartWallet(ctx, network, resp.Transactions, rows)
+		return rows, nil
 	} else {
 		h.Logger.Debug("silver recent transactions unavailable, falling back to legacy multi-call", "error", err)
 	}
@@ -195,7 +198,45 @@ func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.
 		})
 	}
 
+	h.enrichHomeTxRowsWithSmartWallet(ctx, network, decodedTransactionsFromMap(rawTxs, decodedMap), result)
 	return result, nil
+}
+
+func decodedTransactionsFromMap(rawTxs []gateway.Transaction, decodedMap map[string]*gateway.DecodedTransaction) []gateway.DecodedTransaction {
+	out := make([]gateway.DecodedTransaction, 0, len(rawTxs))
+	for _, tx := range rawTxs {
+		if dt, ok := decodedMap[tx.TransactionHash]; ok && dt != nil {
+			out = append(out, *dt)
+		}
+	}
+	return out
+}
+
+func (h *Handlers) enrichHomeTxRowsWithSmartWallet(ctx context.Context, network string, txs []gateway.DecodedTransaction, rows []pages.HomeTx) {
+	byHash := make(map[string]int, len(rows))
+	for i, row := range rows {
+		byHash[row.Hash] = i
+	}
+	for _, tx := range txs {
+		idx, ok := byHash[tx.TxHash]
+		if !ok {
+			continue
+		}
+		for _, op := range tx.Operations {
+			if op.ContractID == "" {
+				continue
+			}
+			info, err := h.Gateway.GetSmartWalletInfo(ctx, network, op.ContractID)
+			if err != nil || info == nil || !info.IsSmartWallet {
+				continue
+			}
+			label := walletTypeLabel(firstNonEmpty(info.WalletType, "smart_wallet"))
+			rows[idx].Type = "smart_wallet"
+			rows[idx].TypeLabel = label
+			rows[idx].Summary = fmt.Sprintf("%s wallet interaction from %s", label, gateway.ShortAddress(derefOr(tx.SourceAccount, "")))
+			break
+		}
+	}
 }
 
 // mapDecodedTxsToHomeTxs converts silver decoded transactions to the home page row shape.

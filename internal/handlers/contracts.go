@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/humanize"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
@@ -19,14 +20,12 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
-	// Detect smart wallets for future use. The redirect is disabled until
-	// the smart account page is wired to accept and render the requested ID.
-	// TODO: Enable redirect once SmartAccountDashboard uses the path {id}.
+	// Redirect smart-wallet contracts to the dedicated wallet view.
 	if h.useLiveData(r) {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
 			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
-			// http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
-			// return
+			http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
+			return
 		}
 	}
 
@@ -35,7 +34,8 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 		if live, err := h.buildContractDetailData(r, network, id); err == nil {
 			data = live
 		} else {
-			h.Logger.Warn("live contract shell data failed, falling back to mock", "error", err)
+			h.Logger.Warn("live contract shell data failed", "error", err, "contract", id)
+			data = unavailableContractDetailData(id)
 		}
 	}
 	if data.Address == "" {
@@ -109,11 +109,14 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 	if analytics != nil {
 		var funcs []pages.ContractFunction
 		for _, f := range analytics.TopFunctions {
+			desc, category := describeContractFunction(f.Name)
 			funcs = append(funcs, pages.ContractFunction{
-				Name:     f.Name,
-				Calls24h: gateway.FormatNumber(f.Count),
-				Calls7d:  "—",
-				Calls30d: "—",
+				Name:        f.Name,
+				Description: desc,
+				Category:    category,
+				Calls24h:    gateway.FormatNumber(f.Count),
+				Calls7d:     "—",
+				Calls30d:    "—",
 			})
 		}
 		if len(funcs) > 0 {
@@ -123,6 +126,10 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		var activityPoints []float64
 		var total7d int64
 		var peak int64
+		var topFunctionTotal int64
+		for _, f := range analytics.TopFunctions {
+			topFunctionTotal += f.Count
+		}
 		for _, d := range analytics.DailyCalls7D {
 			activityPoints = append(activityPoints, float64(d.Count))
 			total7d += d.Count
@@ -137,8 +144,14 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		}
 
 		totalCalls := analytics.Stats.TotalCallsAsCaller + analytics.Stats.TotalCallsAsCallee
+		if totalCalls == 0 && topFunctionTotal > 0 {
+			totalCalls = topFunctionTotal
+		}
 		data.TotalInvocations = gateway.FormatNumber(totalCalls)
 		data.LastInvoked = formatContractAge(analytics.Timeline.LastActivity)
+		if data.LastInvoked == "—" && topFunctionTotal > 0 {
+			data.LastInvoked = "Recent activity observed"
+		}
 		if data.DeployedAt == "—" {
 			if analytics.Timeline.FirstSeen != "" {
 				if t, err := time.Parse(time.RFC3339, analytics.Timeline.FirstSeen); err == nil {
@@ -153,11 +166,14 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 
 	if len(data.Functions) == 0 && metadata != nil {
 		for _, fn := range metadata.ExportedFunctions {
+			desc, category := describeContractFunction(fn.Name)
 			data.Functions = append(data.Functions, pages.ContractFunction{
-				Name:     fn.Name,
-				Calls24h: gateway.FormatNumber(fn.CallCount),
-				Calls7d:  "—",
-				Calls30d: "—",
+				Name:        fn.Name,
+				Description: desc,
+				Category:    category,
+				Calls24h:    gateway.FormatNumber(fn.CallCount),
+				Calls7d:     "—",
+				Calls30d:    "—",
 			})
 		}
 	}
@@ -176,6 +192,7 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 			Caller:      gateway.ShortAddress(call.SourceAccount),
 			Status:      status,
 			StatusColor: statusColor,
+			Summary:     summarizeContractInvocation(call.FunctionName, call.SourceAccount, data.Name),
 			Age:         formatContractAge(call.ClosedAt),
 		})
 	}
@@ -200,6 +217,25 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 	}
 	if data.FunctionsCount == "" {
 		data.FunctionsCount = fmt.Sprintf("%d", len(data.Functions))
+	}
+
+	human := humanize.BuildContractSummary(metadata, analytics)
+	data.Narrative = human.Narrative
+	data.Context = human.Context
+	data.FunctionSummary = human.FunctionSummary
+	data.StorageSummary = human.StorageSummary
+	for _, sig := range human.Signals {
+		data.Signals = append(data.Signals, pages.ContractHumanSignal{
+			Title:    sig.Title,
+			Severity: sig.Severity,
+			Summary:  sig.Summary,
+		})
+	}
+	for _, ev := range human.Evidence {
+		data.Evidence = append(data.Evidence, pages.ContractHumanEvidence{
+			Label: ev.Label,
+			Value: ev.Value,
+		})
 	}
 
 	return data, nil
@@ -255,6 +291,64 @@ func titleCase(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
+}
+
+func unavailableContractDetailData(contractID string) pages.ContractDetailData {
+	short := gateway.ShortAddress(contractID)
+	return pages.ContractDetailData{
+		Name:             short,
+		Address:          contractID,
+		DeployedAt:       "—",
+		DeployLedger:     "—",
+		LastInvoked:      "—",
+		StateSize:        "—",
+		WASMHash:         "—",
+		WASMSize:         "—",
+		MonthlyRent:      "—",
+		StorageEntries:   "—",
+		TotalInvocations: "—",
+		FunctionsCount:   "—",
+		SuccessRate:      "—",
+		Narrative:        short + " could not be loaded from live testnet data right now.",
+		Context:          "Prism did not fall back to mock data for this page so the live-data issue is visible during QA.",
+		Signals: []pages.ContractHumanSignal{{
+			Title:    "Live data unavailable",
+			Severity: "warn",
+			Summary:  "Contract metadata or analytics could not be loaded for this contract on the selected network.",
+		}},
+		Evidence: []pages.ContractHumanEvidence{{Label: "Requested contract", Value: contractID}},
+	}
+}
+
+func describeContractFunction(functionName string) (description, category string) {
+	if functionName == "" {
+		return "", ""
+	}
+	if rule, ok := humanize.LookupFunctionNarration(functionName); ok {
+		description = rule.Description
+		if description == "" && rule.Phrase != "" {
+			description = strings.ToUpper(rule.Phrase[:1]) + rule.Phrase[1:] + "."
+		}
+		return description, strings.ReplaceAll(rule.Category, "_", " ")
+	}
+	return strings.ToUpper(humanize.HumanizeFunctionName(functionName)[:1]) + humanize.HumanizeFunctionName(functionName)[1:] + ".", ""
+}
+
+func summarizeContractInvocation(functionName, sourceAccount, contractName string) string {
+	caller := gateway.ShortAddress(sourceAccount)
+	if functionName == "" {
+		if contractName != "" && contractName != gateway.ShortAddress(contractName) {
+			return fmt.Sprintf("%s interacted with %s", caller, contractName)
+		}
+		return fmt.Sprintf("%s called this contract", caller)
+	}
+	if rule, ok := humanize.LookupFunctionNarration(functionName); ok && rule.Phrase != "" {
+		if contractName != "" {
+			return fmt.Sprintf("%s %s on %s", caller, rule.Phrase, contractName)
+		}
+		return fmt.Sprintf("%s %s", caller, rule.Phrase)
+	}
+	return fmt.Sprintf("%s called %s()", caller, humanize.HumanizeFunctionName(functionName))
 }
 
 func storageTypeColor(t string) string {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/humanize"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
@@ -238,7 +240,7 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 
 	// Smart redirect: if query is unambiguously a single entity, go directly there.
-	if redirect := detectSmartRedirect(query); redirect != "" {
+	if redirect := h.detectSmartRedirect(r.Context(), network, query); redirect != "" {
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
@@ -263,9 +265,7 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 
 // detectSmartRedirect returns a redirect URL if the query unambiguously matches
 // a single entity type. Returns "" if ambiguous or unknown.
-// Note: C-addresses go to /contracts/ by default. The contract handler will
-// detect smart wallets and render appropriately.
-func detectSmartRedirect(query string) string {
+func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query string) string {
 	q := query
 	// G + 55 chars = Stellar account address
 	if len(q) == 56 && q[0] == 'G' {
@@ -273,6 +273,11 @@ func detectSmartRedirect(query string) string {
 	}
 	// C + 55 chars = Stellar contract or smart wallet address
 	if len(q) == 56 && q[0] == 'C' {
+		if h.Gateway != nil {
+			if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, q); err == nil && info != nil && info.IsSmartWallet {
+				return "/account/" + q + "/smart"
+			}
+		}
 		return "/contracts/" + q
 	}
 	// 64 hex chars = transaction hash
@@ -438,12 +443,16 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	network := networkFromRequest(r)
+
 	// Smart redirect hint — if unambiguous, show a direct link.
-	if redirect := detectSmartRedirect(query); redirect != "" {
+	if redirect := h.detectSmartRedirect(r.Context(), network, query); redirect != "" {
 		label := "View result"
 		switch {
 		case len(query) == 56 && query[0] == 'G':
 			label = "Account " + gateway.ShortAddress(query)
+		case len(query) == 56 && query[0] == 'C' && strings.Contains(redirect, "/smart"):
+			label = "Smart Wallet " + gateway.ShortAddress(query)
 		case len(query) == 56 && query[0] == 'C':
 			label = "Contract " + gateway.ShortAddress(query)
 		case len(query) == 64 && isHex(query):
@@ -466,7 +475,6 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Full search via gateway.
-	network := networkFromRequest(r)
 	if h.Gateway == nil {
 		fmt.Fprintf(w, `<div class="rounded-xl border border-border-default bg-surface-card shadow-lg px-4 py-3 text-sm text-text-muted">Search unavailable</div>`)
 		return
@@ -640,36 +648,96 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		PrevSequenceRaw: fmt.Sprintf("%d", l.Sequence-1),
 		NextSequence:    gateway.FormatNumber(l.Sequence + 1),
 		NextSequenceRaw: fmt.Sprintf("%d", l.Sequence+1),
-		ClosedAt:     closedAt,
-		CloseTime:    closeTime,
-		Hash:         gateway.ShortHash(l.LedgerHash),
-		PrevHash:     gateway.ShortHash(l.PreviousLedgerHash),
-		Protocol:     fmt.Sprintf("%d", l.ProtocolVersion),
-		BaseFee:      gateway.FormatNumber(l.BaseFee),
-		MaxTxSetSize: fmt.Sprintf("%d", l.MaxTxSetSize),
-		TotalCoins:   totalCoins,
-		TxCount:      fmt.Sprintf("%d", l.TransactionCount),
-		TxSuccess:    fmt.Sprintf("%d", l.SuccessfulTxCount),
-		TxFailed:     fmt.Sprintf("%d", l.FailedTxCount),
-		OpCount:      fmt.Sprintf("%d", l.OperationCount),
-		OpsPerTx:     fmt.Sprintf("%.1f", opsPerTx),
-		TotalFees:    func() string { if l.TotalFeeCharged != nil { return gateway.FormatNumber(*l.TotalFeeCharged) }; return gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount)) }(),
-		SorobanCalls:  func() string { if l.SorobanOpCount != nil { return fmt.Sprintf("%d", *l.SorobanOpCount) }; return "—" }(),
-		SorobanPct:    "—",
-		FeesUSD:       "—",
-		EventsEmitted: func() string { if l.ContractEventsCount != nil { return fmt.Sprintf("%d", *l.ContractEventsCount) }; return "—" }(),
+		ClosedAt:        closedAt,
+		CloseTime:       closeTime,
+		Hash:            gateway.ShortHash(l.LedgerHash),
+		PrevHash:        gateway.ShortHash(l.PreviousLedgerHash),
+		Protocol:        fmt.Sprintf("%d", l.ProtocolVersion),
+		BaseFee:         gateway.FormatNumber(l.BaseFee),
+		MaxTxSetSize:    fmt.Sprintf("%d", l.MaxTxSetSize),
+		TotalCoins:      totalCoins,
+		TxCount:         fmt.Sprintf("%d", l.TransactionCount),
+		TxSuccess:       fmt.Sprintf("%d", l.SuccessfulTxCount),
+		TxFailed:        fmt.Sprintf("%d", l.FailedTxCount),
+		OpCount:         fmt.Sprintf("%d", l.OperationCount),
+		OpsPerTx:        fmt.Sprintf("%.1f", opsPerTx),
+		TotalFees: func() string {
+			if l.TotalFeeCharged != nil {
+				return gateway.FormatNumber(*l.TotalFeeCharged)
+			}
+			return gateway.FormatNumber(l.BaseFee * int64(l.TransactionCount))
+		}(),
+		SorobanCalls: func() string {
+			if l.SorobanOpCount != nil {
+				return fmt.Sprintf("%d", *l.SorobanOpCount)
+			}
+			return "—"
+		}(),
+		SorobanPct: "—",
+		FeesUSD:    "—",
+		EventsEmitted: func() string {
+			if l.ContractEventsCount != nil {
+				return fmt.Sprintf("%d", *l.ContractEventsCount)
+			}
+			return "—"
+		}(),
 		// Soroban runtime — from per-ledger endpoint.
-		TotalCPU:     func() string { if ledgerSoroban != nil { return gateway.FormatAbbrev(ledgerSoroban.TotalCPUInsns) + " insn" }; return "—" }(),
-		StateReads:   func() string { if ledgerSoroban != nil { return fmt.Sprintf("%d", ledgerSoroban.TotalReadBytes) }; return "—" }(),
-		StateReadKB:  func() string { if ledgerSoroban != nil { return fmt.Sprintf("%.1f KB", float64(ledgerSoroban.TotalReadBytes)/1024) }; return "—" }(),
-		StateWrites:  func() string { if ledgerSoroban != nil { return fmt.Sprintf("%d", ledgerSoroban.TotalWriteBytes) }; return "—" }(),
-		StateWriteKB: func() string { if ledgerSoroban != nil { return fmt.Sprintf("%.1f KB", float64(ledgerSoroban.TotalWriteBytes)/1024) }; return "—" }(),
-		RentBurned:   func() string { if ledgerSoroban != nil { return fmt.Sprintf("%.4f", float64(ledgerSoroban.TotalRentCharged)/10_000_000) }; return "—" }(),
+		TotalCPU: func() string {
+			if ledgerSoroban != nil {
+				return gateway.FormatAbbrev(ledgerSoroban.TotalCPUInsns) + " insn"
+			}
+			return "—"
+		}(),
+		StateReads: func() string {
+			if ledgerSoroban != nil {
+				return fmt.Sprintf("%d", ledgerSoroban.TotalReadBytes)
+			}
+			return "—"
+		}(),
+		StateReadKB: func() string {
+			if ledgerSoroban != nil {
+				return fmt.Sprintf("%.1f KB", float64(ledgerSoroban.TotalReadBytes)/1024)
+			}
+			return "—"
+		}(),
+		StateWrites: func() string {
+			if ledgerSoroban != nil {
+				return fmt.Sprintf("%d", ledgerSoroban.TotalWriteBytes)
+			}
+			return "—"
+		}(),
+		StateWriteKB: func() string {
+			if ledgerSoroban != nil {
+				return fmt.Sprintf("%.1f KB", float64(ledgerSoroban.TotalWriteBytes)/1024)
+			}
+			return "—"
+		}(),
+		RentBurned: func() string {
+			if ledgerSoroban != nil {
+				return fmt.Sprintf("%.4f", float64(ledgerSoroban.TotalRentCharged)/10_000_000)
+			}
+			return "—"
+		}(),
 		// Fee distribution — from per-ledger endpoint.
-		FeeBase:   gateway.FormatNumber(l.BaseFee),
-		FeeMedian: func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.MedianFee) }; return "—" }(),
-		FeeP99:    func() string { if ledgerFees != nil { return gateway.FormatNumber(ledgerFees.P90Fee) }; return "—" }(), // API provides P90; P99 not available per-ledger
-		SurgePct:  func() string { if ledgerFees != nil && l.MaxTxSetSize > 0 { return fmt.Sprintf("%d%%", ledgerFees.TxCount*100/l.MaxTxSetSize) }; return "—" }(),
+		FeeBase: gateway.FormatNumber(l.BaseFee),
+		FeeMedian: func() string {
+			if ledgerFees != nil {
+				return gateway.FormatNumber(ledgerFees.MedianFee)
+			}
+			return "—"
+		}(),
+		FeeP99: func() string {
+			if ledgerFees != nil {
+				return gateway.FormatNumber(ledgerFees.P90Fee)
+			}
+			return "—"
+		}(), // API provides P90; P99 not available per-ledger
+		SurgePct: func() string {
+			if ledgerFees != nil && l.MaxTxSetSize > 0 {
+				return fmt.Sprintf("%d%%", ledgerFees.TxCount*100/l.MaxTxSetSize)
+			}
+			return "—"
+		}(),
 	}
 
 	// Op breakdown from operations data.
@@ -723,29 +791,37 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 				html.EscapeString(gateway.ShortAddress(tx.SourceAccount)), tx.OperationCount)
 
 			// Enrich from decoded data if available.
-			if dt, ok := decodedMap[tx.TransactionHash]; ok && dt.Summary != nil {
-				summary = html.EscapeString(dt.Summary.Description)
-				switch dt.Summary.Type {
-				case "transfer":
-					opType = "transfer"
-					opColor = "cyan"
-				case "swap":
-					opType = "swap"
-					opColor = "emerald"
-				case "mint":
-					opType = "mint"
-					opColor = "emerald"
-				case "burn":
-					opType = "burn"
-					opColor = "red"
-				case "contract_call":
-					opType = "invoke"
+			if dt, ok := decodedMap[tx.TransactionHash]; ok {
+				if dt.Summary != nil {
+					summary = html.EscapeString(dt.Summary.Description)
+					switch dt.Summary.Type {
+					case "transfer":
+						opType = "transfer"
+						opColor = "cyan"
+					case "swap":
+						opType = "swap"
+						opColor = "emerald"
+					case "mint":
+						opType = "mint"
+						opColor = "emerald"
+					case "burn":
+						opType = "burn"
+						opColor = "red"
+					case "contract_call":
+						opType = "invoke"
+						opColor = "violet"
+					case "multi_op":
+						opType = "multi"
+						opColor = "violet"
+					default:
+						opType = dt.Summary.Type
+					}
+				}
+				if walletInfo := h.firstSmartWalletForDecodedTx(ctx, network, dt); walletInfo != nil {
+					label := walletTypeLabel(firstNonEmpty(walletInfo.WalletType, walletInfo.Implementation))
+					opType = "wallet"
 					opColor = "violet"
-				case "multi_op":
-					opType = "multi"
-					opColor = "violet"
-				default:
-					opType = dt.Summary.Type
+					summary = html.EscapeString(fmt.Sprintf("%s wallet interaction from %s", label, gateway.ShortAddress(tx.SourceAccount)))
 				}
 			} else if tx.OperationCount > 1 {
 				opType = "multi"
@@ -877,10 +953,11 @@ func resolveEventAsset(evt gateway.UnifiedEvent) (label string, decimals int) {
 func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash string) (pages.TxReceiptData, error) {
 	ctx := r.Context()
 
-	// Fetch full decoded transaction, diffs, and effects.
+	// Fetch full decoded transaction, diffs, effects, and semantic view.
 	txFull, fullErr := h.Gateway.GetTransactionFull(ctx, network, hash)
 	txDiffs, diffsErr := h.Gateway.GetTransactionDiffs(ctx, network, hash)
 	txEffects, effectsErr := h.Gateway.GetTransactionEffects(ctx, network, hash)
+	semanticTx, semanticErr := h.Gateway.GetSemanticTransaction(ctx, network, hash, true)
 	if effectsErr != nil {
 		h.Logger.Debug("effects unavailable for tx", "hash", hash, "error", effectsErr)
 	}
@@ -891,6 +968,11 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	tx := txFull.Transaction
 	summary := txFull.Summary
+
+	normalizedCtx, normErr := h.buildNormalizedTxContext(ctx, network, txFull, semanticTx)
+	if normErr != nil {
+		h.Logger.Debug("smart-wallet tx normalization unavailable", "hash", hash, "error", normErr)
+	}
 
 	status := "success"
 	if !tx.Successful {
@@ -1127,53 +1209,205 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	data := pages.TxReceiptData{
-		Hash:          hash,
-		ShortHash:     shortHash,
-		Status:        status,
-		IsSoroban:     isSoroban,
-		HasClassicOps: hasClassic,
-		SummaryHTML:        summaryHTML,
-		Timestamp:          timestamp,
-		TimestampRelative:  timestampRelative,
-		TimestampISO:       timestampISO,
-		Ledger:             gateway.FormatNumber(tx.LedgerSequence),
-		LedgerRaw:     fmt.Sprintf("%d", tx.LedgerSequence),
-		OpsCount:      fmt.Sprintf("%d", tx.OperationCount),
-		EventsCount:   fmt.Sprintf("%d", len(txFull.Events)),
-		SourceAddr:    sourceAddr,
-		SourceAmount:  sourceAmount,
-		ContractName:     contractName,
-		ContractAddr:     contractAddr,
-		ContractAddrFull: contractAddrFull,
-		ContractFn:       contractFn,
-		DestAddr:      destAddr,
-		DestAmount:    destAmount,
-		EffectiveRate: effectiveRate,
-		Slippage:      slippage,
-		Route:         route,
-		FeePaid:       gateway.FormatNumber(tx.Fee),
-		FeePaidXLM:    gateway.FormatFeeXLM(tx.Fee),
-		MaxFee:        func() string { if tx.MaxFee > 0 { return gateway.FormatNumber(tx.MaxFee) }; return "" }(),
-		FeeUSD:        "—",
-		SorobanCPU:    func() string { if txFull.SorobanResources != nil { return gateway.FormatAbbrev(txFull.SorobanResources.Instructions) + " insn" }; return "—" }(),
-		SorobanMem:    "—", // Not available from current API
-		SorobanReads:  func() string { if txFull.SorobanResources != nil { return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.ReadBytes)/1024) }; return "—" }(),
-		SorobanWrites: func() string { if txFull.SorobanResources != nil { return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.WriteBytes)/1024) }; return "—" }(),
-		SeqNumber:     fmt.Sprintf("%d", tx.AccountSequence),
-		Operations:    ops,
-		Events:        evts,
+		Hash:              hash,
+		ShortHash:         shortHash,
+		Status:            status,
+		IsSoroban:         isSoroban,
+		HasClassicOps:     hasClassic,
+		SummaryHTML:       summaryHTML,
+		Timestamp:         timestamp,
+		TimestampRelative: timestampRelative,
+		TimestampISO:      timestampISO,
+		Ledger:            gateway.FormatNumber(tx.LedgerSequence),
+		LedgerRaw:         fmt.Sprintf("%d", tx.LedgerSequence),
+		OpsCount:          fmt.Sprintf("%d", tx.OperationCount),
+		EventsCount:       fmt.Sprintf("%d", len(txFull.Events)),
+		SourceAddr:        sourceAddr,
+		SourceAddrFull:    tx.SourceAccount,
+		SourceAmount:      sourceAmount,
+		ContractName:      contractName,
+		ContractAddr:      contractAddr,
+		ContractAddrFull:  contractAddrFull,
+		ContractFn:        contractFn,
+		DestAddr:          destAddr,
+		DestAmount:        destAmount,
+		EffectiveRate:     effectiveRate,
+		Slippage:          slippage,
+		Route:             route,
+		FeePaid:           gateway.FormatNumber(tx.Fee),
+		FeePaidXLM:        gateway.FormatFeeXLM(tx.Fee),
+		MaxFee: func() string {
+			if tx.MaxFee > 0 {
+				return gateway.FormatNumber(tx.MaxFee)
+			}
+			return ""
+		}(),
+		FeeUSD: "—",
+		SorobanCPU: func() string {
+			if txFull.SorobanResources != nil {
+				return gateway.FormatAbbrev(txFull.SorobanResources.Instructions) + " insn"
+			}
+			return "—"
+		}(),
+		SorobanMem: "—", // Not available from current API
+		SorobanReads: func() string {
+			if txFull.SorobanResources != nil {
+				return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.ReadBytes)/1024)
+			}
+			return "—"
+		}(),
+		SorobanWrites: func() string {
+			if txFull.SorobanResources != nil {
+				return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.WriteBytes)/1024)
+			}
+			return "—"
+		}(),
+		SeqNumber:      fmt.Sprintf("%d", tx.AccountSequence),
+		Operations:     ops,
+		Events:         evts,
 		BalanceChanges: balChanges,
-		StateChanges:  stateChanges,
-		Effects:       effects,
+		StateChanges:   stateChanges,
+		Effects:        effects,
+	}
+
+	if semanticErr == nil && semanticTx != nil {
+		human := humanize.BuildTxNarrative(semanticTx)
+		data.HumanTitle = human.Title
+		data.HumanNarrative = human.Narrative
+		data.ConfidenceLabel = human.ConfidenceLabel
+		data.ConfidenceValue = human.ConfidenceValue
+		data.SemanticTxType = semanticTx.Classification.TxType
+		data.SemanticSubtype = semanticTx.Classification.Subtype
+		for _, actor := range human.Actors {
+			data.HumanActors = append(data.HumanActors, pages.TxHumanActor{
+				Label:     actor.Label,
+				Role:      actor.Role,
+				ActorType: actor.ActorType,
+				Href:      actor.Href,
+			})
+		}
+		for _, ev := range human.Evidence {
+			data.HumanEvidence = append(data.HumanEvidence, pages.TxHumanEvidence{
+				Label: ev.Label,
+				Value: ev.Value,
+			})
+		}
+		for _, sig := range human.Signals {
+			data.HumanSignals = append(data.HumanSignals, pages.TxHumanSignal{
+				Title:    sig.Title,
+				Severity: sig.Severity,
+				Summary:  sig.Summary,
+			})
+		}
+	}
+
+	if normalizedCtx != nil {
+		data.ActorModelSource = normalizedCtx.SourceOfTruth
+		if normalizedCtx.Submitter != nil {
+			data.SubmitterAddr = normalizedCtx.Submitter.ID
+			data.SubmitterShort = normalizedCtx.Submitter.Short
+			data.SourceAddr = normalizedCtx.Submitter.Short
+			data.SourceAddrFull = normalizedCtx.Submitter.ID
+		}
+		if normalizedCtx.FeePayer != nil {
+			data.FeePayerAddr = normalizedCtx.FeePayer.ID
+			data.FeePayerShort = normalizedCtx.FeePayer.Short
+		}
+		if normalizedCtx.EffectiveActor != nil {
+			data.EffectiveActorAddr = normalizedCtx.EffectiveActor.ID
+			data.EffectiveActorShort = normalizedCtx.EffectiveActor.Short
+			data.EffectiveActorType = normalizedCtx.EffectiveActor.ActorType
+			data.EffectiveActorHref = normalizedCtx.EffectiveActor.Href
+		}
+		if normalizedCtx.DownstreamContract != nil {
+			data.DownstreamContractAddr = normalizedCtx.DownstreamContract.ID
+			data.DownstreamContractShort = normalizedCtx.DownstreamContract.Short
+			data.DownstreamContractHref = normalizedCtx.DownstreamContract.Href
+		}
+		if normalizedCtx.DownstreamFunction != "" {
+			data.DownstreamFunctionName = normalizedCtx.DownstreamFunction
+		}
+		if normalizedCtx.Wallet != nil && normalizedCtx.Wallet.Detected {
+			data.SmartWalletDetected = true
+			data.SmartWalletContract = normalizedCtx.Wallet.ContractID
+			data.SmartWalletContractShort = normalizedCtx.Wallet.ContractShort
+			data.SmartWalletType = walletTypeLabel(normalizedCtx.Wallet.WalletType)
+			data.SmartWalletImplementation = normalizedCtx.Wallet.Implementation
+			data.SmartWalletConfidence = walletConfidenceLabel(normalizedCtx.Wallet.Confidence)
+			if data.EffectiveActorAddr == "" {
+				data.EffectiveActorAddr = normalizedCtx.Wallet.ContractID
+				data.EffectiveActorShort = normalizedCtx.Wallet.ContractShort
+				data.EffectiveActorType = "smart_wallet"
+				data.EffectiveActorHref = "/account/" + normalizedCtx.Wallet.ContractID + "/smart"
+			}
+			if data.HumanTitle == "" {
+				data.HumanTitle = "Smart wallet transaction"
+			}
+			if data.HumanNarrative == "" {
+				data.HumanNarrative = fmt.Sprintf("This transaction was submitted by %s but executed through the %s smart wallet %s.", gateway.ShortAddress(data.SubmitterAddr), data.SmartWalletType, data.SmartWalletContractShort)
+			}
+			data.HumanEvidence = append(data.HumanEvidence,
+				pages.TxHumanEvidence{Label: "Wallet involved", Value: "Yes"},
+				pages.TxHumanEvidence{Label: "Wallet type", Value: data.SmartWalletType},
+				pages.TxHumanEvidence{Label: "Effective actor", Value: "smart_wallet"},
+				pages.TxHumanEvidence{Label: "Actor model source", Value: normalizedCtx.SourceOfTruth},
+			)
+			data.HumanSignals = append(data.HumanSignals,
+				pages.TxHumanSignal{Title: "Smart wallet involved", Severity: "info", Summary: "Prism detected smart-wallet-mediated execution in this transaction."},
+				pages.TxHumanSignal{Title: "Delegated execution", Severity: "info", Summary: "The submitting classic account is distinct from the effective wallet actor."},
+			)
+		}
+		if len(data.HumanActors) == 0 {
+			if data.SubmitterAddr != "" {
+				data.HumanActors = append(data.HumanActors, pages.TxHumanActor{Label: data.SubmitterShort, Role: "Submitter", ActorType: "classic_account", Href: "/account/" + data.SubmitterAddr})
+			}
+			if data.EffectiveActorAddr != "" {
+				data.HumanActors = append(data.HumanActors, pages.TxHumanActor{Label: data.EffectiveActorShort, Role: "Effective Actor", ActorType: data.EffectiveActorType, Href: data.EffectiveActorHref})
+			}
+			if data.DownstreamContractAddr != "" {
+				data.HumanActors = append(data.HumanActors, pages.TxHumanActor{Label: data.DownstreamContractShort, Role: "Protocol", ActorType: "contract", Href: data.DownstreamContractHref})
+			}
+		}
+		data.HumanEvidence = dedupeHumanEvidence(data.HumanEvidence)
+		data.HumanSignals = dedupeHumanSignals(data.HumanSignals)
 	}
 
 	return data, nil
+}
+
+func dedupeHumanEvidence(items []pages.TxHumanEvidence) []pages.TxHumanEvidence {
+	seen := map[string]bool{}
+	out := make([]pages.TxHumanEvidence, 0, len(items))
+	for _, item := range items {
+		key := item.Label + ":" + item.Value
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, item)
+	}
+	return out
+}
+
+func dedupeHumanSignals(items []pages.TxHumanSignal) []pages.TxHumanSignal {
+	seen := map[string]bool{}
+	out := make([]pages.TxHumanSignal, 0, len(items))
+	for _, item := range items {
+		key := item.Title + ":" + item.Summary
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, item)
+	}
+	return out
 }
 
 // formatSorobanCall formats a Soroban invoke_host_function operation summary
 // with decoded arguments, similar to stellar.expert's display:
 //
 //	mint(GCFB…TEKT, 10000000i128)
+//
 // buildOperationSummary produces a human-readable HTML summary for a single operation.
 func buildOperationSummary(op gateway.DecodedOperation) string {
 	source := html.EscapeString(gateway.ShortAddress(op.SourceAccount))

@@ -10,20 +10,62 @@ templ TxOverview(data pages.TxReceiptData) {
 	<div id="tx-overview" class="anim d1 mb-6">
 		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden text-sm">
 			<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
-				<span class="w-32 text-text-muted flex-shrink-0">Source</span>
+				<span class="w-32 text-text-muted flex-shrink-0">
+					if data.SmartWalletDetected {
+						Submitter
+					} else {
+						Source
+					}
+				</span>
 				<div class="flex items-center gap-1.5 ml-4">
-					<a href={ templ.SafeURL("/account/" + data.SourceAddr) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.SourceAddr }</a>
-					@components.CopyButton(data.SourceAddr)
+					<a href={ templ.SafeURL("/account/" + data.SourceAddrFull) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.SourceAddr }</a>
+					@components.CopyButton(data.SourceAddrFull)
 				</div>
 			</div>
-			if data.ContractAddr != "—" {
+			if data.EffectiveActorAddr != "" && data.EffectiveActorAddr != data.SourceAddrFull {
 				<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
-					<span class="w-32 text-text-muted flex-shrink-0">Contract</span>
+					<span class="w-32 text-text-muted flex-shrink-0">Effective Actor</span>
 					<div class="flex items-center gap-2 ml-4">
-						<span class="text-text-primary font-medium">{ data.ContractName }</span>
-						<a href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.ContractAddr }</a>
-						<span class="text-text-muted">&middot;</span>
-						<span class="font-mono text-xs text-violet-600">{ data.ContractFn }</span>
+						<a href={ templ.SafeURL(data.EffectiveActorHref) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.EffectiveActorShort }</a>
+						if data.EffectiveActorType != "" {
+							<span class="text-text-muted">·</span>
+							<span class="text-xs text-text-body">{ data.EffectiveActorType }</span>
+						}
+					</div>
+				</div>
+			}
+			if data.SmartWalletDetected {
+				<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+					<span class="w-32 text-text-muted flex-shrink-0">Wallet</span>
+					<div class="flex items-center gap-2 ml-4">
+						<a href={ templ.SafeURL("/account/" + data.SmartWalletContract + "/smart") } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.SmartWalletContractShort }</a>
+						if data.SmartWalletType != "" {
+							<span class="text-text-muted">·</span>
+							<span class="text-xs text-text-body">{ data.SmartWalletType }</span>
+						}
+					</div>
+				</div>
+			}
+			if data.DownstreamContractAddr != "" || data.ContractAddr != "—" {
+				<div class="detail-row flex items-center px-5 py-2.5 border-b border-border-subtle">
+					<span class="w-32 text-text-muted flex-shrink-0">Target</span>
+					<div class="flex items-center gap-2 ml-4">
+						if data.DownstreamContractAddr != "" {
+							<a href={ templ.SafeURL(data.DownstreamContractHref) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.DownstreamContractShort }</a>
+						} else {
+							<span class="text-text-primary font-medium">{ data.ContractName }</span>
+							<a href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ data.ContractAddr }</a>
+						}
+						if data.DownstreamFunctionName != "" || data.ContractFn != "—" {
+							<span class="text-text-muted">&middot;</span>
+							<span class="font-mono text-xs text-violet-600">
+								if data.DownstreamFunctionName != "" {
+									{ data.DownstreamFunctionName }()
+								} else {
+									{ data.ContractFn }
+								}
+							</span>
+						}
 					</div>
 				</div>
 			}

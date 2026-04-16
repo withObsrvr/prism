@@ -11,6 +11,15 @@ type TxReceiptData struct {
 	Status        string // "success" or "failed"
 	IsSoroban     bool
 	HasClassicOps bool
+	HumanTitle       string
+	HumanNarrative   string
+	ConfidenceLabel  string
+	ConfidenceValue  string
+	SemanticTxType   string
+	SemanticSubtype  string
+	HumanActors      []TxHumanActor
+	HumanEvidence    []TxHumanEvidence
+	HumanSignals     []TxHumanSignal
 	// Summary
 	SummaryHTML        string
 	Timestamp          string
@@ -20,8 +29,29 @@ type TxReceiptData struct {
 	LedgerRaw          string // Unformatted for URLs
 	OpsCount      string
 	EventsCount   string
+	// Actor model / smart wallet context
+	ActorModelSource         string
+	SmartWalletDetected      bool
+	SmartWalletContract      string
+	SmartWalletContractShort string
+	SmartWalletType          string
+	SmartWalletImplementation string
+	SmartWalletConfidence    string
+	SubmitterAddr            string
+	SubmitterShort           string
+	FeePayerAddr             string
+	FeePayerShort            string
+	EffectiveActorAddr       string
+	EffectiveActorShort      string
+	EffectiveActorType       string
+	EffectiveActorHref       string
+	DownstreamContractAddr   string
+	DownstreamContractShort  string
+	DownstreamContractHref   string
+	DownstreamFunctionName   string
 	// Flow diagram
 	SourceAddr       string
+	SourceAddrFull   string
 	SourceAmount     string
 	ContractName     string
 	ContractAddr     string
@@ -69,6 +99,24 @@ type TxReceiptData struct {
 }
 
 // TxTimelineItem represents a single entry in the "What Happened" timeline.
+type TxHumanActor struct {
+	Label     string
+	Role      string
+	ActorType string
+	Href      string
+}
+
+type TxHumanEvidence struct {
+	Label string
+	Value string
+}
+
+type TxHumanSignal struct {
+	Title    string
+	Severity string
+	Summary  string
+}
+
 type TxTimelineItem struct {
 	DotColor    string // "blue", "green", "red", "gray"
 	BadgeLabel  string // e.g. "Transfer", "Account created", "Debit"

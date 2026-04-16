@@ -7,13 +7,31 @@ import (
 )
 
 type SmartAccountData struct {
-	Name          string
-	ContractID    string
-	TotalBalance  string
-	BalanceCents  string
-	Signers       []SmartSigner
-	Policies      []SmartPolicy
-	SessionKeys   []SmartSessionKey
+	Name                 string
+	ContractID           string
+	TotalBalance         string
+	BalanceCents         string
+	BadgeLabel           string
+	ClassificationSource string
+	Confidence           string
+	Evidence             []string
+	ApprovalSummary      string
+	Degraded             bool
+	PartialData          bool
+	SignerSourceLabel    string
+	PolicyStateLabel     string
+	ActivitySourceLabel  string
+	ActivityWindowLabel  string
+	OverviewTabLabel     string
+	SecurityTabLabel     string
+	ActivityTabLabel     string
+	ActiveWindows        []string
+	CommonFunctions      []SmartFunctionSummary
+	CommonProtocols      []SmartProtocolSummary
+	ActivityLog          []SecurityEvent
+	Signers              []SmartSigner
+	Policies             []SmartPolicy
+	SessionKeys          []SmartSessionKey
 	// Thresholds
 	LowThreshold    string
 	MedThreshold    string
@@ -29,22 +47,29 @@ type SmartAccountData struct {
 }
 
 type SmartSigner struct {
-	Name       string
-	Role       string
-	RoleColor  string
-	Address    string
-	KeyType    string
-	Weight     string
-	IconSVG    string // "key", "user", "recovery"
-	IconBg     string // "bg-amber-50 text-amber-600 ring-1 ring-amber-100"
+	Name        string
+	Role        string
+	RoleColor   string
+	Address     string
+	AddressFull string
+	AddressHref string
+	KeyType     string
+	Weight      string
+	IconSVG     string // "key", "user", "recovery"
+	IconBg      string // "bg-amber-50 text-amber-600 ring-1 ring-amber-100"
 }
 
 type ContractHealth struct {
-	RentStatus   string // "Healthy", "Low"
-	TTLRemaining string
-	WASMHash     string
-	OZVersion    string
-	Deployed     string
+	RentStatus     string // "Healthy", "Low"
+	TTLRemaining   string
+	WASMHash       string
+	OZVersion      string
+	Deployed       string
+	Deployer       string
+	DeployerFull   string
+	DeployerHref   string
+	StateSize      string
+	StorageEntries string
 }
 
 type SmartPolicy struct {
@@ -80,12 +105,24 @@ type SmartSessionKey struct {
 	Scope       string
 }
 
+type SmartFunctionSummary struct {
+	Name  string
+	Count string
+}
+
+type SmartProtocolSummary struct {
+	Name  string
+	Count string
+}
+
 type SecurityEvent struct {
 	Action      string
 	Detail      string
 	Time        string
 	Status      string
 	StatusColor string
+	TxHash      string
+	ShortHash   string
 	IconSVG     string // "check", "plus", "x", "key"
 	IconBg      string // "bg-emerald-50 text-emerald-600", etc.
 }

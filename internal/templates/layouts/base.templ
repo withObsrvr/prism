@@ -108,12 +108,27 @@ templ Base(title string, activeNav string) {
 			});
 		</script>
 		<script>
-			function selectNetwork(id, label, dotClass) {
-				document.getElementById('network-label').textContent = label;
-				var dot = document.getElementById('network-dot');
-				dot.className = 'h-2 w-2 rounded-full flex-shrink-0 ' + dotClass;
+			function applyNetworkUI(net) {
+				var labels = {mainnet: 'Mainnet', testnet: 'Testnet', futurenet: 'Futurenet'};
+				var dots = {mainnet: 'bg-emerald-500', testnet: 'bg-amber-500', futurenet: 'bg-violet-500'};
+				var label = labels[net] || 'Mainnet';
+				var dotClass = dots[net] || 'bg-emerald-500';
+				var labelEl = document.getElementById('network-label');
+				var dotEl = document.getElementById('network-dot');
+				if (labelEl) labelEl.textContent = label;
+				if (dotEl) dotEl.className = 'h-2 w-2 rounded-full flex-shrink-0 ' + dotClass;
 				document.querySelectorAll('[id^="check-"]').forEach(function(el) { el.classList.add('hidden'); });
-				document.getElementById('check-' + id).classList.remove('hidden');
+				var check = document.getElementById('check-' + net);
+				if (check) check.classList.remove('hidden');
+				var current = document.getElementById('network-current');
+				if (current) current.textContent = label;
+			}
+			function currentNetworkFromCookie() {
+				var match = document.cookie.match(/(?:^|; )prism_network=(\w+)/);
+				return match ? match[1] : 'mainnet';
+			}
+			function selectNetwork(id, label, dotClass) {
+				applyNetworkUI(id);
 				document.getElementById('network-dropdown').classList.add('hidden');
 				// Set cookie and swap main content via htmx
 				document.cookie = 'prism_network=' + id + ';path=/;max-age=31536000';
@@ -129,17 +144,11 @@ templ Base(title string, activeNav string) {
 					dropdown.classList.add('hidden');
 				}
 			});
-			// Initialize network selector from cookie on page load
 			(function() {
-				var match = document.cookie.match(/prism_network=(\w+)/);
-				var net = match ? match[1] : 'mainnet';
-				var labels = {mainnet: 'Mainnet', testnet: 'Testnet', futurenet: 'Futurenet'};
-				var dots = {mainnet: 'bg-emerald-500', testnet: 'bg-amber-500', futurenet: 'bg-violet-500'};
-				document.getElementById('network-label').textContent = labels[net] || 'Mainnet';
-				document.getElementById('network-dot').className = 'h-2 w-2 rounded-full flex-shrink-0 ' + (dots[net] || 'bg-emerald-500');
-				document.querySelectorAll('[id^="check-"]').forEach(function(el) { el.classList.add('hidden'); });
-				var check = document.getElementById('check-' + net);
-				if (check) check.classList.remove('hidden');
+				applyNetworkUI(currentNetworkFromCookie());
+				window.addEventListener('pageshow', function() {
+					applyNetworkUI(currentNetworkFromCookie());
+				});
 			})();
 		</script>
 		<!-- Theme toggle logic -->
@@ -243,14 +252,15 @@ templ topNav(active string) {
 			</button>
 			<!-- Network selector -->
 			<div class="relative">
-				<button onclick="document.getElementById('network-dropdown').classList.toggle('hidden')" class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs font-medium text-text-strong hover:bg-surface-subtle transition-colors cursor-pointer">
-					<span id="network-dot" class="h-2 w-2 rounded-full bg-emerald-500"></span>
-					<span id="network-label">Mainnet</span>
+				<button onclick="document.getElementById('network-dropdown').classList.toggle('hidden')" class="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs font-medium text-text-strong hover:bg-surface-subtle transition-colors cursor-pointer" title="Select network" aria-label="Select network">
+					<span id="network-dot" class="h-2 w-2 rounded-full flex-shrink-0 bg-gray-400"></span>
+					<span id="network-label">Network</span>
 					<svg class="h-3 w-3 text-text-muted ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
 				</button>
 				<div id="network-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 rounded-xl border border-border-default bg-surface-card shadow-xl overflow-hidden z-50">
 					<div class="px-4 pt-3 pb-1.5">
 						<span class="text-2xs font-semibold uppercase tracking-wider text-text-muted">Network</span>
+						<div class="mt-1 text-xs text-text-body">Currently <span id="network-current">Mainnet</span></div>
 					</div>
 					<div class="px-2 pb-2">
 						<button onclick="selectNetwork('mainnet', 'Mainnet', 'bg-emerald-500')" class="network-option w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left hover:bg-surface-subtle transition-colors" data-network="mainnet">

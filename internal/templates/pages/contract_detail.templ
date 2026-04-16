@@ -34,10 +34,18 @@ type ContractDetailData struct {
 	PeakInvocations string
 	SuccessRate     string
 	ExportedFunctions []string
+	Narrative       string
+	Context         string
+	FunctionSummary string
+	StorageSummary  string
+	Signals         []ContractHumanSignal
+	Evidence        []ContractHumanEvidence
 }
 
 type ContractFunction struct {
 	Name        string
+	Description string
+	Category    string
 	Calls       string
 	Pct         string
 	AvgCPU      string
@@ -66,6 +74,17 @@ type ContractStorageItem struct {
 	TypeColor string
 	Size     string
 	TTL      string
+}
+
+type ContractHumanSignal struct {
+	Title    string
+	Severity string
+	Summary  string
+}
+
+type ContractHumanEvidence struct {
+	Label string
+	Value string
 }
 
 templ ContractDetail(data ContractDetailData) {

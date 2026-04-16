@@ -8,15 +8,16 @@ import (
 )
 
 // buildContractFragmentData fetches contract detail data for fragment rendering.
-// Returns nil if live data is unavailable or not requested.
+// Returns nil only when live data was not requested.
 func (h *Handlers) buildContractFragmentData(r *http.Request, network, contractID string) *pages.ContractDetailData {
 	if !h.useLiveData(r) {
 		return nil
 	}
 	data, err := h.buildContractDetailData(r, network, contractID)
 	if err != nil {
-		h.Logger.Warn("live contract data failed, falling back to mock", "error", err, "contract", contractID)
-		return nil
+		h.Logger.Warn("live contract data failed", "error", err, "contract", contractID)
+		fallback := unavailableContractDetailData(contractID)
+		return &fallback
 	}
 	return &data
 }

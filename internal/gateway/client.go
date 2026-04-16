@@ -13,12 +13,12 @@ import (
 
 // Cache TTLs per data type.
 const (
-	TTLNetworkStats      = 10 * time.Second
+	TTLNetworkStats       = 10 * time.Second
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
-	TTLRecentList        = 5 * time.Second
-	TTLImmutable         = 5 * time.Minute
-	TTLAccount           = 30 * time.Second
-	TTLContracts         = 2 * time.Minute
+	TTLRecentList         = 5 * time.Second
+	TTLImmutable          = 5 * time.Minute
+	TTLAccount            = 30 * time.Second
+	TTLContracts          = 2 * time.Minute
 )
 
 // Config holds gateway connection settings.
@@ -394,6 +394,31 @@ func (c *Client) GetTransactionFull(ctx context.Context, network string, hash st
 	return &result, nil
 }
 
+// GetSemanticTransaction returns the actor-centric semantic transaction view.
+func (c *Client) GetSemanticTransaction(ctx context.Context, network, hash string, includeDeep bool) (*SemanticTransactionResponse, error) {
+	cacheKey := fmt.Sprintf("%s:tx_semantic:%s:%t", network, hash, includeDeep)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SemanticTransactionResponse), nil
+	}
+
+	path := c.buildURL(network, "/silver/tx/"+hash+"/semantic")
+	if includeDeep {
+		path += "?include_deep=true"
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var result SemanticTransactionResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing tx semantic: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLImmutable)
+	return &result, nil
+}
+
 // GetTransactionDiffs returns balance changes and state changes for a transaction.
 func (c *Client) GetTransactionDiffs(ctx context.Context, network string, hash string) (*TxDiffs, error) {
 	cacheKey := network + ":tx_diffs:" + hash
@@ -654,12 +679,23 @@ func (c *Client) GetEvents(ctx context.Context, network string, limit int) ([]Un
 
 // GetTransfers returns recent token transfers.
 func (c *Client) GetTransfers(ctx context.Context, network string, limit int) ([]TransferEvent, error) {
-	cacheKey := fmt.Sprintf("%s:transfers:%d", network, limit)
+	return c.GetTransfersFiltered(ctx, network, map[string]string{"limit": fmt.Sprintf("%d", limit)})
+}
+
+// GetTransfersFiltered returns transfers with optional query filters such as from_account, to_account,
+// start_time, end_time, source_type, asset_code, cursor, and order.
+func (c *Client) GetTransfersFiltered(ctx context.Context, network string, filters map[string]string) ([]TransferEvent, error) {
+	params := url.Values{}
+	for k, v := range filters {
+		if v != "" {
+			params.Set(k, v)
+		}
+	}
+	cacheKey := fmt.Sprintf("%s:transfers:%s", network, params.Encode())
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.([]TransferEvent), nil
 	}
 
-	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}}
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/transfers")+"?"+params.Encode())
 	if err != nil {
 		return nil, err
@@ -710,6 +746,27 @@ func (c *Client) GetSmartWalletInfo(ctx context.Context, network string, contrac
 	}
 
 	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+// GetSmartWalletDetail returns the wallet-centric detail document for a smart wallet contract.
+func (c *Client) GetSmartWalletDetail(ctx context.Context, network string, contractID string) (*SmartWalletDetail, error) {
+	cacheKey := network + ":smart_wallet_detail:" + contractID
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartWalletDetail), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/smart-wallets/"+contractID))
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartWalletDetail
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart wallet detail: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
 	return &result, nil
 }
 

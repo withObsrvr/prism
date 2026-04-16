@@ -1,0 +1,339 @@
+{
+  "project_aliases": {
+    "blend": ["blend"],
+    "soroswap": ["soroswap"],
+    "redstone": ["redstone"],
+    "crossmint": ["crossmint"],
+    "openzeppelin": ["openzeppelin", "open zeppelin"]
+  },
+  "functions": {
+    "approve": {
+      "phrase": "approved spending",
+      "description": "Updates spending permissions for another actor or contract.",
+      "category": "authorization",
+      "signal": {
+        "title": "Approval action",
+        "severity": "info",
+        "summary": "This transaction updated token or contract spending permissions."
+      }
+    },
+    "transfer": {
+      "phrase": "transferred assets",
+      "description": "Moves assets from one actor to another.",
+      "category": "asset_movement",
+      "signal": {
+        "title": "Value transfer",
+        "severity": "info",
+        "summary": "This transaction moved value between actors."
+      }
+    },
+    "swap": {
+      "phrase": "swapped assets",
+      "description": "Trades one asset for another through a liquidity route.",
+      "category": "dex",
+      "signal": {
+        "title": "DEX interaction",
+        "severity": "info",
+        "summary": "This transaction swapped one asset for another through a protocol route."
+      }
+    },
+    "add_signer": {
+      "phrase": "added a signer",
+      "description": "Adds a signer or approval participant to a wallet or policy.",
+      "category": "wallet_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction changed wallet signer configuration."
+      }
+    },
+    "remove_signer": {
+      "phrase": "removed a signer",
+      "description": "Removes a signer or approval participant from a wallet or policy.",
+      "category": "wallet_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction changed wallet signer configuration."
+      }
+    },
+    "allow_signing_key": {
+      "phrase": "allowed a signing key",
+      "description": "Grants a signing key permission to authorize wallet activity.",
+      "category": "wallet_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction updated wallet signing permissions."
+      }
+    },
+    "revoke_signing_key": {
+      "phrase": "revoked a signing key",
+      "description": "Removes signing authority from a previously allowed key.",
+      "category": "wallet_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction updated wallet signing permissions."
+      }
+    },
+    "pause": {
+      "phrase": "paused the contract",
+      "description": "Temporarily disables or restricts contract activity.",
+      "category": "admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction invoked an administrative control function."
+      }
+    },
+    "unpause": {
+      "phrase": "unpaused the contract",
+      "description": "Restores contract activity after a pause.",
+      "category": "admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction invoked an administrative control function."
+      }
+    },
+    "set_admin": {
+      "phrase": "updated the admin",
+      "description": "Changes which actor controls administrative contract actions.",
+      "category": "admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction invoked an administrative control function."
+      }
+    },
+    "reset_all_circuit_breakers": {
+      "phrase": "reset all circuit breakers",
+      "description": "Clears circuit-breaker protections or emergency limits.",
+      "category": "risk_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction reset all circuit breakers, which looks like an administrative control action."
+      }
+    },
+    "burn": {
+      "phrase": "burned tokens",
+      "description": "Destroys tokens or reduces circulating supply.",
+      "category": "token_supply",
+      "signal": {
+        "title": "Supply change",
+        "severity": "warn",
+        "summary": "This transaction reduced token supply through a burn-style function."
+      }
+    },
+    "mint": {
+      "phrase": "minted tokens",
+      "description": "Creates new tokens or increases circulating supply.",
+      "category": "token_supply",
+      "signal": {
+        "title": "Supply change",
+        "severity": "warn",
+        "summary": "This transaction increased token supply through a mint-style function."
+      }
+    },
+    "mint_to": {
+      "phrase": "minted tokens",
+      "description": "Creates new tokens and assigns them to a recipient.",
+      "category": "token_supply",
+      "signal": {
+        "title": "Supply change",
+        "severity": "warn",
+        "summary": "This transaction minted tokens to a target account or contract."
+      }
+    },
+    "transfer_from": {
+      "phrase": "transferred assets",
+      "description": "Moves assets using an existing approval or delegated allowance.",
+      "category": "asset_movement",
+      "signal": {
+        "title": "Delegated transfer",
+        "severity": "info",
+        "summary": "This transaction moved value using an existing spending approval."
+      }
+    },
+    "set_price": {
+      "phrase": "updated a price",
+      "description": "Updates a price value that other contracts or users may rely on.",
+      "category": "oracle",
+      "signal": {
+        "title": "Price update",
+        "severity": "info",
+        "summary": "This transaction updated a price or rate value."
+      }
+    },
+    "set_revoker": {
+      "phrase": "updated revocation authority",
+      "description": "Changes which actor can revoke balances, permissions, or compliance state.",
+      "category": "compliance_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction changed revocation or compliance authority."
+      }
+    },
+    "change_mint_budget": {
+      "phrase": "updated mint limits",
+      "description": "Changes how much new supply may be minted under current policy.",
+      "category": "token_admin",
+      "signal": {
+        "title": "Administrative action",
+        "severity": "warn",
+        "summary": "This transaction changed token minting limits or budget controls."
+      }
+    },
+    "add_to_blocked_list": {
+      "phrase": "blocked an address",
+      "description": "Adds an address to a blocklist or compliance restriction list.",
+      "category": "compliance_admin",
+      "signal": {
+        "title": "Compliance control",
+        "severity": "warn",
+        "summary": "This transaction added an address to a blocked or restricted list."
+      }
+    },
+    "remove_from_blocked_list": {
+      "phrase": "removed a blocklist restriction",
+      "description": "Removes an address from a blocklist or compliance restriction list.",
+      "category": "compliance_admin",
+      "signal": {
+        "title": "Compliance control",
+        "severity": "warn",
+        "summary": "This transaction removed an address from a blocked or restricted list."
+      }
+    },
+    "add_liquidity": {
+      "phrase": "added liquidity",
+      "description": "Deposits paired assets into a liquidity pool.",
+      "category": "dex",
+      "signal": {
+        "title": "Liquidity action",
+        "severity": "info",
+        "summary": "This transaction added assets to a liquidity pool."
+      }
+    },
+    "remove_liquidity": {
+      "phrase": "removed liquidity",
+      "description": "Withdraws paired assets from a liquidity pool.",
+      "category": "dex",
+      "signal": {
+        "title": "Liquidity action",
+        "severity": "info",
+        "summary": "This transaction removed assets from a liquidity pool."
+      }
+    },
+    "get_reserves": {
+      "phrase": "queried pool reserves",
+      "description": "Reads the current reserve balances held by a pool.",
+      "category": "dex_read",
+      "signal": {
+        "title": "Read-only access",
+        "severity": "info",
+        "summary": "This transaction read pool reserve data without obviously changing state."
+      }
+    },
+    "create_pool": {
+      "phrase": "created a pool",
+      "description": "Creates a new liquidity pool or market pair for assets.",
+      "category": "protocol_factory",
+      "signal": {
+        "title": "Pool creation",
+        "severity": "info",
+        "summary": "This transaction created a new pool or market container."
+      }
+    },
+    "create_vault": {
+      "phrase": "created a vault",
+      "description": "Creates a new vault for pooled assets, positions, or managed funds.",
+      "category": "protocol_factory",
+      "signal": {
+        "title": "Vault creation",
+        "severity": "info",
+        "summary": "This transaction created a new vault structure."
+      }
+    },
+    "get_total_fees": {
+      "phrase": "queried total fees",
+      "description": "Reads aggregate fees collected by a contract, pool, or protocol component.",
+      "category": "protocol_read",
+      "signal": {
+        "title": "Read-only access",
+        "severity": "info",
+        "summary": "This transaction queried fee totals without obviously changing state."
+      }
+    },
+    "get_pool": {
+      "phrase": "looked up a pool",
+      "description": "Fetches pool metadata or a pool identifier for a given asset pair.",
+      "category": "protocol_read",
+      "signal": {
+        "title": "Read-only access",
+        "severity": "info",
+        "summary": "This transaction looked up pool metadata without obviously changing state."
+      }
+    },
+    "create_pair": {
+      "phrase": "created a trading pair",
+      "description": "Creates a new tradable pair or pool relationship between assets.",
+      "category": "protocol_factory",
+      "signal": {
+        "title": "Pair creation",
+        "severity": "info",
+        "summary": "This transaction created a new trading pair or pool relationship."
+      }
+    },
+    "initialize_pool": {
+      "phrase": "initialized a pool",
+      "description": "Sets up a newly created pool with its initial configuration.",
+      "category": "protocol_factory",
+      "signal": {
+        "title": "Pool setup",
+        "severity": "info",
+        "summary": "This transaction initialized a pool before broader use."
+      }
+    },
+    "create_market": {
+      "phrase": "created a market",
+      "description": "Creates a new market structure for trading, lending, or protocol activity.",
+      "category": "protocol_factory",
+      "signal": {
+        "title": "Market creation",
+        "severity": "info",
+        "summary": "This transaction created a new market structure."
+      }
+    }
+  },
+  "overrides": [
+    {
+      "match": {
+        "function_name": "reset_all_circuit_breakers",
+        "project": "blend"
+      },
+      "phrase": "reset all circuit breakers",
+      "category": "risk_admin",
+      "signal": {
+        "title": "Risk controls updated",
+        "severity": "warn",
+        "summary": "This transaction reset all circuit breakers, which looks like a Blend risk-control administration action."
+      }
+    },
+    {
+      "match": {
+        "function_name": "reset_all_circuit_breakers",
+        "contract_id": "CBMXIVKLQ245TZ7SWQUUFVJJBUXYHM7RBABKBFBGDTPBQMABARGCQSMC"
+      },
+      "phrase": "reset all circuit breakers",
+      "category": "risk_admin",
+      "signal": {
+        "title": "Risk controls updated",
+        "severity": "warn",
+        "summary": "This transaction reset all circuit breakers on the target contract, which looks like a risk-control administration action."
+      }
+    }
+  ]
+}
