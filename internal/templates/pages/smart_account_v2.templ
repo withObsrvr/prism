@@ -335,6 +335,14 @@ templ SmartAccountV2(data SmartAccountData) {
 								</div>
 								<div class="pl-[3.75rem] text-xs text-text-body">
 									{ ev.Detail }
+									if ev.CounterpartyLabel != "" {
+										<span class="mx-1 text-text-muted">·</span>
+										<a href={ templ.SafeURL(ev.CounterpartyHref) } class="font-mono text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300">{ ev.CounterpartyLabel }</a>
+									}
+									if ev.RelatedLabel != "" {
+										<span class="mx-1 text-text-muted">·</span>
+										<a href={ templ.SafeURL(ev.RelatedHref) } class="font-mono text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300">{ ev.RelatedLabel }</a>
+									}
 									if ev.TxHash != "" {
 										<span class="mx-1 text-text-muted">·</span>
 										<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300">{ ev.ShortHash }</a>
@@ -389,6 +397,14 @@ templ SmartAccountV2(data SmartAccountData) {
 								</div>
 								<div class="pl-[3.75rem] text-xs text-text-body">
 									{ ev.Detail }
+									if ev.CounterpartyLabel != "" {
+										<span class="mx-1 text-text-muted">·</span>
+										<a href={ templ.SafeURL(ev.CounterpartyHref) } class="font-mono text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300">{ ev.CounterpartyLabel }</a>
+									}
+									if ev.RelatedLabel != "" {
+										<span class="mx-1 text-text-muted">·</span>
+										<a href={ templ.SafeURL(ev.RelatedHref) } class="font-mono text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300">{ ev.RelatedLabel }</a>
+									}
 									if ev.TxHash != "" {
 										<span class="mx-1 text-text-muted">·</span>
 										<a href={ templ.SafeURL("/tx/" + ev.TxHash) } class="font-mono text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300">{ ev.ShortHash }</a>

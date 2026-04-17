@@ -116,15 +116,19 @@ type SmartProtocolSummary struct {
 }
 
 type SecurityEvent struct {
-	Action      string
-	Detail      string
-	Time        string
-	Status      string
-	StatusColor string
-	TxHash      string
-	ShortHash   string
-	IconSVG     string // "check", "plus", "x", "key"
-	IconBg      string // "bg-emerald-50 text-emerald-600", etc.
+	Action           string
+	Detail           string
+	Time             string
+	Status           string
+	StatusColor      string
+	TxHash           string
+	ShortHash        string
+	CounterpartyLabel string
+	CounterpartyHref  string
+	RelatedLabel      string
+	RelatedHref       string
+	IconSVG          string // "check", "plus", "x", "key"
+	IconBg           string // "bg-emerald-50 text-emerald-600", etc.
 }
 
 templ SmartAccount(data SmartAccountData) {

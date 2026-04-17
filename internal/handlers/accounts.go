@@ -773,16 +773,35 @@ func (h *Handlers) buildSmartWalletActivityLog(ctx context.Context, network, con
 			action = "Incoming transfer"
 		}
 		iconSVG, iconBg := smartWalletEventStyle(action, status)
+		counterpartyLabel := ""
+		counterpartyHref := ""
+		relatedLabel := ""
+		relatedHref := ""
+		if t.FromAccount == contractID && t.ToAccount != contractID {
+			counterpartyLabel = gateway.ShortAddress(t.ToAccount)
+			counterpartyHref = smartWalletActorHref(t.ToAccount)
+		} else if t.ToAccount == contractID && t.FromAccount != contractID {
+			counterpartyLabel = gateway.ShortAddress(t.FromAccount)
+			counterpartyHref = smartWalletActorHref(t.FromAccount)
+		}
+		if t.TokenContractID != "" {
+			relatedLabel = gateway.ShortAddress(t.TokenContractID)
+			relatedHref = "/contracts/" + t.TokenContractID
+		}
 		events = append(events, pages.SecurityEvent{
-			Action:      action,
-			Detail:      detail,
-			Time:        formatContractAge(t.Timestamp),
-			Status:      status,
-			StatusColor: statusColor,
-			TxHash:      t.TransactionHash,
-			ShortHash:   gateway.ShortHash(t.TransactionHash),
-			IconSVG:     iconSVG,
-			IconBg:      iconBg,
+			Action:            action,
+			Detail:            detail,
+			Time:              formatContractAge(t.Timestamp),
+			Status:            status,
+			StatusColor:       statusColor,
+			TxHash:            t.TransactionHash,
+			ShortHash:         gateway.ShortHash(t.TransactionHash),
+			CounterpartyLabel: counterpartyLabel,
+			CounterpartyHref:  counterpartyHref,
+			RelatedLabel:      relatedLabel,
+			RelatedHref:       relatedHref,
+			IconSVG:           iconSVG,
+			IconBg:            iconBg,
 		})
 	}
 	return events, windowLabel, nil
@@ -884,6 +903,16 @@ func smartWalletTransferDetail(walletID string, t gateway.TransferEvent, amountL
 	default:
 		return fmt.Sprintf("%s → %s · %s %s", from, to, amountLabel, assetLabel)
 	}
+}
+
+func smartWalletActorHref(id string) string {
+	if id == "" {
+		return "#"
+	}
+	if strings.HasPrefix(id, "C") {
+		return "/contracts/" + id
+	}
+	return "/account/" + id
 }
 
 func smartWalletActionLabel(title, subtype, eventType string) string {
