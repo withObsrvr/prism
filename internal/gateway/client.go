@@ -373,6 +373,27 @@ func (c *Client) GetPayments(ctx context.Context, network string, limit int) ([]
 
 // --- Phase 2: Transaction Detail ---
 
+// GetTransactionReceipt returns the consolidated transaction receipt.
+func (c *Client) GetTransactionReceipt(ctx context.Context, network string, hash string) (*TxReceipt, error) {
+	cacheKey := network + ":tx_receipt:" + hash
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TxReceipt), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tx/"+hash+"/receipt"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result TxReceipt
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing tx receipt: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLImmutable)
+	return &result, nil
+}
+
 // GetTransactionFull returns the full decoded transaction with operations, events, and call graph.
 func (c *Client) GetTransactionFull(ctx context.Context, network string, hash string) (*TxFull, error) {
 	cacheKey := network + ":tx_full:" + hash

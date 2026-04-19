@@ -307,6 +307,66 @@ type TxStateChange struct {
 	After     string `json:"after"`
 }
 
+// TxReceipt matches /silver/tx/{hash}/receipt response.
+type TxReceipt struct {
+	TxHash           string             `json:"tx_hash"`
+	LedgerSequence   int64              `json:"ledger_sequence"`
+	CreatedAt        string             `json:"created_at"`
+	SourceAccount    string             `json:"source_account"`
+	Successful       bool               `json:"successful"`
+	OperationCount   int                `json:"operation_count"`
+	TxType           string             `json:"tx_type"`
+	InvolvedAccounts []string           `json:"involved_accounts"`
+	Full             TxReceiptFull      `json:"full"`
+	Semantic         TxReceiptSemantic  `json:"semantic"`
+	Effects          []TxReceiptEffect  `json:"effects"`
+	Diffs            []TxReceiptDiff    `json:"diffs"`
+	Events           []UnifiedEvent     `json:"events"`
+	MaterializedAt   string             `json:"materialized_at"`
+	SourceVersion    string             `json:"source_version"`
+}
+
+type TxReceiptFull struct {
+	TxHash         string               `json:"tx_hash"`
+	CreatedAt      string               `json:"created_at"`
+	Operations     []TxReceiptOperation `json:"operations"`
+	Successful     bool                 `json:"successful"`
+	SourceAccount  string               `json:"source_account"`
+	LedgerSequence int64                `json:"ledger_sequence"`
+}
+
+type TxReceiptOperation struct {
+	Type           int    `json:"type"`
+	TypeName       string `json:"type_name"`
+	AssetCode      string `json:"asset_code,omitempty"`
+	SourceAccount  string `json:"source_account,omitempty"`
+	ContractID     string `json:"contract_id,omitempty"`
+	FunctionName   string `json:"function_name,omitempty"`
+	IsSorobanOp    bool   `json:"is_soroban_op,omitempty"`
+	Destination    string `json:"destination,omitempty"`
+	Amount         string `json:"amount,omitempty"`
+	OperationIndex int    `json:"operation_index"`
+}
+
+type TxReceiptSemantic struct {
+	TxType      string `json:"tx_type"`
+	Description string `json:"description"`
+}
+
+type TxReceiptEffect struct {
+	AccountID      string `json:"account_id"`
+	Amount         string `json:"amount,omitempty"`
+	EffectType     string `json:"effect_type"`
+	EffectIndex    int    `json:"effect_index"`
+	OperationIndex int    `json:"operation_index"`
+}
+
+type TxReceiptDiff struct {
+	Asset   string `json:"asset"`
+	Delta   string `json:"delta"`
+	Account string `json:"account"`
+}
+
 // --- Phase 2: Operations ---
 
 // Operation matches /bronze/operations response items.

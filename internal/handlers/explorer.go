@@ -953,21 +953,66 @@ func resolveEventAsset(evt gateway.UnifiedEvent) (label string, decimals int) {
 func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash string) (pages.TxReceiptData, error) {
 	ctx := r.Context()
 
-	// Fetch full decoded transaction, diffs, effects, and semantic view.
-	txFull, fullErr := h.Gateway.GetTransactionFull(ctx, network, hash)
-	txDiffs, diffsErr := h.Gateway.GetTransactionDiffs(ctx, network, hash)
-	txEffects, effectsErr := h.Gateway.GetTransactionEffects(ctx, network, hash)
-	semanticTx, semanticErr := h.Gateway.GetSemanticTransaction(ctx, network, hash, true)
-	if effectsErr != nil {
-		h.Logger.Debug("effects unavailable for tx", "hash", hash, "error", effectsErr)
+	// Fetch the consolidated receipt as the single source of truth for the tx page.
+	receipt, err := h.Gateway.GetTransactionReceipt(ctx, network, hash)
+	if err != nil {
+		return pages.TxReceiptData{}, fmt.Errorf("fetching tx receipt: %w", err)
 	}
 
-	if fullErr != nil {
-		return pages.TxReceiptData{}, fmt.Errorf("fetching tx full: %w", fullErr)
+	opsDecoded := make([]gateway.DecodedOperation, 0, len(receipt.Full.Operations))
+	for _, op := range receipt.Full.Operations {
+		opsDecoded = append(opsDecoded, gateway.DecodedOperation{
+			Index:         op.OperationIndex,
+			Type:          op.Type,
+			TypeName:      op.TypeName,
+			SourceAccount: op.SourceAccount,
+			ContractID:    op.ContractID,
+			FunctionName:  op.FunctionName,
+			IsSorobanOp:   op.IsSorobanOp,
+			Destination:   op.Destination,
+			Amount:        op.Amount,
+			AssetCode:     op.AssetCode,
+		})
 	}
 
-	tx := txFull.Transaction
-	summary := txFull.Summary
+	tx := gateway.TxInfo{
+		TxHash:         receipt.TxHash,
+		LedgerSequence: receipt.LedgerSequence,
+		OperationCount: receipt.OperationCount,
+		Successful:     receipt.Successful,
+		ClosedAt:       receipt.CreatedAt,
+		SourceAccount:  receipt.SourceAccount,
+	}
+	summary := gateway.TxSummary{
+		Description: firstNonEmpty(receipt.Semantic.Description, receipt.TxType),
+		Type:        firstNonEmpty(receipt.Semantic.TxType, receipt.TxType),
+	}
+	txFull := &gateway.TxFull{
+		Transaction: tx,
+		Summary:     summary,
+		Operations:  opsDecoded,
+		Events:      receipt.Events,
+	}
+	var semanticTx *gateway.SemanticTransactionResponse
+	if receipt.Semantic.Description != "" || receipt.Semantic.TxType != "" {
+		sourceAccount := receipt.SourceAccount
+		semanticTx = &gateway.SemanticTransactionResponse{
+			Transaction: gateway.SemanticTransactionInfo{
+				TxHash:         receipt.TxHash,
+				LedgerSequence: receipt.LedgerSequence,
+				ClosedAt:       receipt.CreatedAt,
+				Successful:     receipt.Successful,
+				OperationCount: receipt.OperationCount,
+				SourceAccount:  &sourceAccount,
+			},
+			Classification: gateway.SemanticTransactionClassification{
+				TxType: firstNonEmpty(receipt.Semantic.TxType, receipt.TxType),
+			},
+			Operations:   opsDecoded,
+			Events:       receipt.Events,
+			LegacySummary: summary,
+		}
+	}
 
 	normalizedCtx, normErr := h.buildNormalizedTxContext(ctx, network, txFull, semanticTx)
 	if normErr != nil {
@@ -1002,6 +1047,9 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	// Build summary HTML from the summary description.
 	summaryHTML := html.EscapeString(summary.Description)
+	if summaryHTML == "" && len(txFull.Operations) == 1 {
+		summaryHTML = buildOperationSummary(txFull.Operations[0])
+	}
 
 	// Extract flow diagram info from summary.
 	sourceAddr := "—"
@@ -1044,6 +1092,20 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		}
 		if op.SourceAccount != "" {
 			sourceAddr = gateway.ShortAddress(op.SourceAccount)
+		}
+		if op.Destination != "" && destAddr == "—" {
+			destAddr = gateway.ShortAddress(op.Destination)
+		}
+		if op.Amount != "" && sourceAmount == "—" {
+			asset := op.AssetCode
+			if asset == "" {
+				asset = "XLM"
+				sourceAmount = gateway.FormatStroopsToXLM(op.Amount) + " " + asset
+				destAmount = "+" + gateway.FormatStroopsToXLM(op.Amount) + " " + asset
+			} else {
+				sourceAmount = gateway.FormatDecimalAmount(op.Amount) + " " + asset
+				destAmount = "+" + gateway.FormatDecimalAmount(op.Amount) + " " + asset
+			}
 		}
 	}
 
@@ -1108,104 +1170,60 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		})
 	}
 
-	// Supplement with generic contract events for decoded topics/data.
-	if genericResp, err := h.Gateway.GetGenericEvents(ctx, network, "", hash, 20); err == nil {
-		for _, ge := range genericResp.Events {
-			typeColor := "violet"
-			dataHTML := ""
-			if ge.TopicsDecoded != "" {
-				dataHTML = fmt.Sprintf(`<span class="font-mono text-2xs text-text-strong">%s</span>`, html.EscapeString(ge.TopicsDecoded))
-			}
-			if ge.DataDecoded != "" {
-				if dataHTML != "" {
-					dataHTML += ` <span class="text-text-muted mx-1">=</span> `
-				}
-				dataHTML += fmt.Sprintf(`<span class="font-mono text-2xs">%s</span>`, html.EscapeString(ge.DataDecoded))
-			}
-			evts = append(evts, pages.TxEvent{
-				Index:     fmt.Sprintf("%d", len(evts)),
-				Type:      ge.EventType,
-				TypeColor: typeColor,
-				Contract:  gateway.ShortAddress(ge.ContractID),
-				DataHTML:  dataHTML,
-			})
-		}
-	}
-
-	// Build balance changes from diffs.
+	// Build balance changes from receipt diffs.
 	var balChanges []pages.TxBalanceChange
-	if diffsErr == nil && txDiffs != nil {
-		for _, bc := range txDiffs.BalanceChanges {
-			isPositive := true
-			if len(bc.Delta) > 0 && bc.Delta[0] == '-' {
-				isPositive = false
-			}
-			assetType := bc.AssetType
-			typeColor := "gray"
-			if bc.AssetType == "credit_alphanum4" || bc.AssetType == "credit_alphanum12" {
-				assetType = "Classic"
-			}
-			if bc.AssetCode == "" {
-				bc.AssetCode = "XLM"
-				assetType = "Native"
-			}
-			balChanges = append(balChanges, pages.TxBalanceChange{
-				Account:    gateway.ShortAddress(bc.Address),
-				Asset:      bc.AssetCode,
-				AssetType:  assetType,
-				TypeColor:  typeColor,
-				Change:     bc.Delta,
-				IsPositive: isPositive,
-			})
+	for _, bc := range receipt.Diffs {
+		isPositive := true
+		if strings.HasPrefix(bc.Delta, "-") {
+			isPositive = false
 		}
+		asset := bc.Asset
+		assetType := "Classic"
+		if asset == "" || asset == "native" {
+			asset = "XLM"
+			assetType = "Native"
+		}
+		balChanges = append(balChanges, pages.TxBalanceChange{
+			Account:    gateway.ShortAddress(bc.Account),
+			Asset:      asset,
+			AssetType:  assetType,
+			TypeColor:  "gray",
+			Change:     bc.Delta,
+			IsPositive: isPositive,
+		})
 	}
 
-	// Build state changes from diffs.
+	// Receipt currently exposes only flattened balance diffs; state changes are omitted.
 	var stateChanges []pages.TxStateChange
-	if diffsErr == nil && txDiffs != nil {
-		for _, sc := range txDiffs.StateChanges {
-			stateChanges = append(stateChanges, pages.TxStateChange{
-				Action:     sc.Type,
-				Key:        sc.Key,
-				Contract:   sc.EntryType,
-				DetailHTML: fmt.Sprintf(`<span class="text-gray-400">%s</span> → <span class="text-gray-900 font-medium">%s</span>`, html.EscapeString(sc.Before), html.EscapeString(sc.After)),
-			})
-		}
-	}
 
-	// Build effects list.
+	// Build effects list from receipt effects.
 	var effects []pages.TxEffect
-	if effectsErr == nil && txEffects != nil {
-		for i, eff := range txEffects.Effects {
-			asset := ""
-			if eff.Asset != nil {
-				asset = eff.Asset.Code
-			}
-			amount := ""
-			isPositive := false
-			if eff.Amount != "" {
-				amount = gateway.FormatDecimalAmount(eff.Amount)
-			}
-
-			switch eff.EffectTypeString {
-			case "account_credited", "contract_credited",
-				"claimable_balance_claimed", "liquidity_pool_deposited":
-				isPositive = true
-			}
-
-			effects = append(effects, pages.TxEffect{
-				Index:       fmt.Sprintf("%d", i),
-				Type:        eff.EffectTypeString,
-				TypeDisplay: gateway.EffectDisplayName(eff.EffectTypeString),
-				TypeColor:   gateway.EffectTypeColor(eff.EffectTypeString),
-				Account:     gateway.ShortAddress(eff.AccountID),
-				AccountFull: eff.AccountID,
-				Asset:       asset,
-				Amount:      amount,
-				IsPositive:  isPositive,
-				SummaryHTML: buildEffectSummary(eff),
-			})
+	for i, eff := range receipt.Effects {
+		amount := ""
+		if eff.Amount != "" {
+			amount = gateway.FormatDecimalAmount(eff.Amount)
 		}
+		isPositive := strings.Contains(eff.EffectType, "credited") || strings.Contains(eff.EffectType, "created")
+		asset := ""
+		if amount != "" {
+			asset = "XLM"
+		}
+		summary := html.EscapeString(gateway.EffectDisplayName(eff.EffectType))
+		if amount != "" {
+			summary = fmt.Sprintf(`%s <span class="font-semibold">%s %s</span>`, summary, html.EscapeString(amount), html.EscapeString(asset))
+		}
+		effects = append(effects, pages.TxEffect{
+			Index:       fmt.Sprintf("%d", i),
+			Type:        eff.EffectType,
+			TypeDisplay: gateway.EffectDisplayName(eff.EffectType),
+			TypeColor:   gateway.EffectTypeColor(eff.EffectType),
+			Account:     gateway.ShortAddress(eff.AccountID),
+			AccountFull: eff.AccountID,
+			Asset:       asset,
+			Amount:      amount,
+			IsPositive:  isPositive,
+			SummaryHTML: summary,
+		})
 	}
 
 	data := pages.TxReceiptData{
@@ -1234,35 +1252,15 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		EffectiveRate:     effectiveRate,
 		Slippage:          slippage,
 		Route:             route,
-		FeePaid:           gateway.FormatNumber(tx.Fee),
-		FeePaidXLM:        gateway.FormatFeeXLM(tx.Fee),
-		MaxFee: func() string {
-			if tx.MaxFee > 0 {
-				return gateway.FormatNumber(tx.MaxFee)
-			}
-			return ""
-		}(),
-		FeeUSD: "—",
-		SorobanCPU: func() string {
-			if txFull.SorobanResources != nil {
-				return gateway.FormatAbbrev(txFull.SorobanResources.Instructions) + " insn"
-			}
-			return "—"
-		}(),
-		SorobanMem: "—", // Not available from current API
-		SorobanReads: func() string {
-			if txFull.SorobanResources != nil {
-				return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.ReadBytes)/1024)
-			}
-			return "—"
-		}(),
-		SorobanWrites: func() string {
-			if txFull.SorobanResources != nil {
-				return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.WriteBytes)/1024)
-			}
-			return "—"
-		}(),
-		SeqNumber:      fmt.Sprintf("%d", tx.AccountSequence),
+		FeePaid:           "—",
+		FeePaidXLM:        "—",
+		MaxFee:            "",
+		FeeUSD:            "—",
+		SorobanCPU:        "—",
+		SorobanMem:        "—",
+		SorobanReads:      "—",
+		SorobanWrites:     "—",
+		SeqNumber:         "",
 		Operations:     ops,
 		Events:         evts,
 		BalanceChanges: balChanges,
@@ -1270,7 +1268,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		Effects:        effects,
 	}
 
-	if semanticErr == nil && semanticTx != nil {
+	if semanticTx != nil {
 		human := humanize.BuildTxNarrative(semanticTx)
 		data.HumanTitle = human.Title
 		data.HumanNarrative = human.Narrative
@@ -1299,6 +1297,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 				Summary:  sig.Summary,
 			})
 		}
+	}
+	if data.HumanTitle == "" {
+		data.HumanTitle = gateway.OperationDisplayName(firstNonEmpty(summary.Type, receipt.TxType))
+	}
+	if data.HumanNarrative == "" {
+		data.HumanNarrative = summary.Description
 	}
 
 	if normalizedCtx != nil {
