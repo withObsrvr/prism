@@ -98,6 +98,40 @@ func (h *Handlers) TxBalanceChangesFragment(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// TxEffectsFragment returns the effects table.
+func (h *Handlers) TxEffectsFragment(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	network := networkFromRequest(r)
+	shortHash := txShortHash(hash)
+
+	data := h.buildTxFragmentData(r, network, hash, shortHash)
+	if data == nil {
+		mock := mockTxReceiptData(hash, shortHash)
+		data = &mock
+	}
+
+	if err := fragments.TxEffects(data.Effects).Render(r.Context(), w); err != nil {
+		h.renderFragmentError(w, r, "Could not load effects", err)
+	}
+}
+
+// TxTimelineFragment returns the "What Happened" timeline.
+func (h *Handlers) TxTimelineFragment(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	network := networkFromRequest(r)
+	shortHash := txShortHash(hash)
+
+	data := h.buildTxFragmentData(r, network, hash, shortHash)
+	if data == nil {
+		mock := mockTxReceiptData(hash, shortHash)
+		data = &mock
+	}
+
+	if err := fragments.TxTimeline(data.Timeline).Render(r.Context(), w); err != nil {
+		h.renderFragmentError(w, r, "Could not load timeline", err)
+	}
+}
+
 // TxStateChangesFragment returns the Soroban state changes table.
 func (h *Handlers) TxStateChangesFragment(w http.ResponseWriter, r *http.Request) {
 	hash := r.PathValue("hash")

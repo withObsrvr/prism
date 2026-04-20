@@ -54,14 +54,15 @@ type AccountActivity struct {
 }
 
 type AccountContract struct {
-	Name     string
-	Badge    string
+	Name       string
+	Badge      string
 	BadgeColor string
-	Address  string
-	TopFn    string
-	Calls    string
-	Fees     string
-	LastCall string
+	Address    string
+	Href       string
+	TopFn      string
+	Calls      string
+	Fees       string
+	LastCall   string
 }
 
 type AccountOffer struct {
@@ -260,10 +261,10 @@ templ AccountPortfolio(data AccountData) {
 						<div class={ "detail-row flex items-center px-5 py-3", templ.KV("border-b border-border-subtle", i < len(data.Contracts)-1) }>
 							<div class="flex-1">
 								<div class="flex items-center gap-2">
-									<a href="#" class="text-sm font-medium text-text-primary hover:text-violet-600">{ c.Name }</a>
+									<a href={ templ.SafeURL(c.Href) } class="text-sm font-medium text-text-primary hover:text-violet-600">{ c.Name }</a>
 									@components.Badge(c.Badge, c.BadgeColor)
 								</div>
-								<span class="font-mono text-2xs text-text-muted">{ c.Address }</span>
+								<a href={ templ.SafeURL(c.Href) } class="font-mono text-2xs text-emerald-700 dark:text-emerald-400 hover:underline">{ c.Address }</a>
 							</div>
 							<div class="hidden md:block w-28"><span class="font-mono text-xs text-violet-600">{ c.TopFn }</span></div>
 							<div class="w-20 text-right"><span class="font-mono text-sm font-semibold text-text-primary tabular">{ c.Calls }</span></div>

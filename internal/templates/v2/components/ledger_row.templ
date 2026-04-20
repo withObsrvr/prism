@@ -1,0 +1,84 @@
+package componentsv2
+
+import "fmt"
+
+type LedgerMetricChip struct {
+	Label string
+	Kind  string
+}
+
+type LedgerRowData struct {
+	LedgerNumber       string
+	TransactionCount   string
+	Meta               string
+	Chips              []LedgerMetricChip
+	InstructionsPct    int
+	ReadWritePct       int
+	CloseTime          string
+	Age                string
+	SideMeta           string
+}
+
+templ LedgerRow(data LedgerRowData) {
+	<div class="v2-ledger-row">
+		<div>
+			<div class="v2-ledger-left-label">ledger</div>
+			<div class="v2-ledger-left-value">#{ data.LedgerNumber }</div>
+		</div>
+		<div>
+			<div class="v2-ledger-main-top">
+				<span class="v2-ledger-main-count">{ data.TransactionCount }</span>
+				<span class="v2-ledger-main-label">transactions</span>
+				<span class="v2-ledger-main-meta">{ data.Meta }</span>
+			</div>
+			<div class="v2-ledger-chip-row">
+				for _, chip := range data.Chips {
+					@ledgerChip(chip)
+				}
+			</div>
+			<div class="v2-ledger-stats">
+				@inlineStat("instructions", data.InstructionsPct, "var(--v2-gold)")
+				@inlineStat("read / write", data.ReadWritePct, "var(--v2-green)")
+				<div class="v2-inline-stat"><span>close time</span><span>{ data.CloseTime }</span></div>
+			</div>
+		</div>
+		<div class="v2-ledger-side">
+			<div>{ data.Age }</div>
+			<div style="margin-top:6px">{ data.SideMeta }</div>
+		</div>
+	</div>
+}
+
+templ ledgerChip(chip LedgerMetricChip) {
+	<div class="v2-ledger-chip">
+		<span class="v2-ledger-chip-dot" style={ fmt.Sprintf("background:%s", chipColor(chip.Kind)) }></span>
+		<span>{ chip.Label }</span>
+	</div>
+}
+
+templ inlineStat(label string, pct int, color string) {
+	<div class="v2-inline-stat">
+		<span>{ label }</span>
+		<div class="v2-inline-bar"><span class="v2-inline-bar-fill" style={ fmt.Sprintf("width:%d%%;background:%s", pct, color) }></span></div>
+		<span>{ fmt.Sprintf("%d%%", pct) }</span>
+	</div>
+}
+
+func chipColor(kind string) string {
+	switch kind {
+	case "swap":
+		return "var(--v2-teal)"
+	case "call":
+		return "var(--v2-violet)"
+	case "agent":
+		return "var(--v2-orange)"
+	case "deploy":
+		return "var(--v2-gold)"
+	case "confidential":
+		return "var(--v2-blue)"
+	case "classic":
+		return "#d6c29b"
+	default:
+		return "#c5b9a8"
+	}
+}

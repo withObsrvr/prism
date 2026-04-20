@@ -212,6 +212,11 @@ dialog[open] {
     background-size: 200% 100%;
     animation: shimmer 3s ease-in-out infinite;
   }
+  /* When combined with .tx-row, keep the float-up entry animation so the row
+     doesn't stay stuck at opacity:0 (shimmer alone wouldn't run float-up). */
+  .tx-row.glow {
+    animation: float-up .3s ease-out forwards, shimmer 3s ease-in-out infinite .3s;
+  }
 
   /* Tab active underline */
   .tab-active {

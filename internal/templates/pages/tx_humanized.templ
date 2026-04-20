@@ -1,0 +1,135 @@
+package pages
+
+templ TxHumanizedSection(data TxReceiptData) {
+	if data.HumanTitle != "" || data.HumanNarrative != "" || data.SmartWalletDetected || data.SubmitterAddr != "" || data.EffectiveActorAddr != "" {
+		<div class="anim d1 mb-6 rounded-xl border border-border-default bg-surface-card p-5 shadow-sm">
+			<div class="flex flex-wrap items-center gap-2 mb-2">
+				if data.HumanTitle != "" {
+					<h2 class="text-lg font-semibold text-text-primary">{ data.HumanTitle }</h2>
+				}
+				if data.ConfidenceLabel != "" {
+					<span class="rounded-full bg-violet-50 px-2.5 py-1 text-2xs font-semibold text-violet-700 ring-1 ring-violet-200">{ data.ConfidenceLabel }</span>
+				}
+				if data.SemanticTxType != "" {
+					<span class="rounded-full bg-surface-subtle px-2.5 py-1 text-2xs font-medium text-text-body ring-1 ring-border-default">{ data.SemanticTxType }</span>
+				}
+				if data.SmartWalletDetected {
+					<span class="rounded-full bg-violet-50 px-2.5 py-1 text-2xs font-semibold text-violet-700 ring-1 ring-violet-200">Smart Wallet</span>
+					if data.SmartWalletType != "" {
+						<span class="rounded-full bg-surface-subtle px-2.5 py-1 text-2xs font-medium text-text-body ring-1 ring-border-default">{ data.SmartWalletType }</span>
+					}
+				}
+			</div>
+			if data.HumanNarrative != "" {
+				<p class="text-sm leading-6 text-text-body mb-4">{ data.HumanNarrative }</p>
+			}
+			@txActorRoles(data)
+			@txHumanActors(data.HumanActors)
+			@txHumanSignals(data.HumanSignals)
+			@txHumanEvidence(data.HumanEvidence)
+		</div>
+	}
+}
+
+templ txActorRoles(data TxReceiptData) {
+	if data.SubmitterAddr != "" || data.EffectiveActorAddr != "" || data.DownstreamContractAddr != "" || data.SmartWalletDetected {
+		<div class="mb-4">
+			<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Execution model</div>
+			<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+				if data.SubmitterAddr != "" {
+					<a href={ templ.SafeURL("/account/" + data.SubmitterAddr) } class="rounded-lg border border-border-default bg-surface-page px-3 py-2 hover:bg-surface-subtle">
+						<div class="text-2xs uppercase tracking-wider text-text-muted">Submitted by</div>
+						<div class="mt-1 text-sm font-medium text-text-primary">{ data.SubmitterShort }</div>
+					</a>
+				}
+				if data.EffectiveActorAddr != "" {
+					<a href={ templ.SafeURL(data.EffectiveActorHref) } class="rounded-lg border border-border-default bg-surface-page px-3 py-2 hover:bg-surface-subtle">
+						<div class="text-2xs uppercase tracking-wider text-text-muted">Executed by</div>
+						<div class="mt-1 text-sm font-medium text-text-primary">{ data.EffectiveActorShort }</div>
+						if data.EffectiveActorType != "" {
+							<div class="mt-1 text-2xs text-text-body">{ data.EffectiveActorType }</div>
+						}
+					</a>
+				}
+				if data.SmartWalletDetected {
+					<a href={ templ.SafeURL("/account/" + data.SmartWalletContract + "/smart") } class="rounded-lg border border-border-default bg-surface-page px-3 py-2 hover:bg-surface-subtle">
+						<div class="text-2xs uppercase tracking-wider text-text-muted">Wallet family</div>
+						<div class="mt-1 text-sm font-medium text-text-primary">{ data.SmartWalletType }</div>
+						if data.SmartWalletConfidence != "" {
+							<div class="mt-1 text-2xs text-text-body">Confidence { data.SmartWalletConfidence }</div>
+						}
+					</a>
+				}
+				if data.DownstreamContractAddr != "" || data.DownstreamFunctionName != "" {
+					<a href={ templ.SafeURL(data.DownstreamContractHref) } class="rounded-lg border border-border-default bg-surface-page px-3 py-2 hover:bg-surface-subtle">
+						<div class="text-2xs uppercase tracking-wider text-text-muted">Target</div>
+						if data.DownstreamContractShort != "" {
+							<div class="mt-1 text-sm font-medium text-text-primary">{ data.DownstreamContractShort }</div>
+						} else {
+							<div class="mt-1 text-sm font-medium text-text-primary">Delegated call</div>
+						}
+						if data.DownstreamFunctionName != "" {
+							<div class="mt-1 text-2xs text-violet-600">{ data.DownstreamFunctionName }()</div>
+						}
+					</a>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ txHumanActors(actors []TxHumanActor) {
+	if len(actors) > 0 {
+		<div class="mb-4">
+			<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Who was involved</div>
+			<div class="flex flex-wrap gap-2">
+				for _, actor := range actors {
+					<a href={ templ.SafeURL(actor.Href) } class="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-page px-3 py-1.5 text-xs shadow-sm hover:bg-surface-subtle">
+						<span class="font-medium text-text-primary">{ actor.Label }</span>
+						<span class="text-text-muted">·</span>
+						<span class="text-text-body">{ actor.Role }</span>
+					</a>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ txHumanSignals(signals []TxHumanSignal) {
+	if len(signals) > 0 {
+		<div class="mb-4">
+			<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">What stands out</div>
+			<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+				for _, sig := range signals {
+					<div class="rounded-lg border border-border-default bg-surface-page px-3 py-2">
+						<div class="flex items-center gap-2">
+							if sig.Severity == "warn" {
+								<span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+							} else {
+								<span class="inline-block h-2.5 w-2.5 rounded-full bg-violet-500"></span>
+							}
+							<div class="text-sm font-medium text-text-primary">{ sig.Title }</div>
+						</div>
+						<div class="mt-1 text-xs leading-5 text-text-body">{ sig.Summary }</div>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ txHumanEvidence(items []TxHumanEvidence) {
+	if len(items) > 0 {
+		<div>
+			<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Why Prism thinks this</div>
+			<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+				for _, item := range items {
+					<div class="rounded-lg border border-border-default bg-surface-page px-3 py-2">
+						<div class="text-2xs uppercase tracking-wider text-text-muted">{ item.Label }</div>
+						<div class="mt-1 text-sm text-text-primary">{ item.Value }</div>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}

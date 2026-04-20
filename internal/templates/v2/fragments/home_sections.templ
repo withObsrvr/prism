@@ -1,0 +1,132 @@
+package fragmentsv2
+
+import (
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
+)
+
+templ Hero(data vmv2.HeroData) {
+	<section class="v2-home-section v2-hero">
+		<div class="v2-role-row" id="v2-role-row">
+			<span class="v2-role-question">{ data.Eyebrow }</span>
+			<div class="v2-hero-chips">
+				<button type="button" class="v2-hero-chip is-active" data-role="curious">Just curious</button>
+				<button type="button" class="v2-hero-chip" data-role="developer">I'm building on Soroban</button>
+				<button type="button" class="v2-hero-chip" data-role="operator">I run a contract</button>
+				<button type="button" class="v2-hero-chip" data-role="compliance">I'm checking activity</button>
+				<button type="button" class="v2-hero-chip" data-role="user">I sent a transaction</button>
+			</div>
+		</div>
+		<h1 class="v2-hero-headline" id="v2-status-line">@templ.Raw(data.HeadlineHTML)</h1>
+		<div class="v2-hero-body" id="v2-subline">{ data.Body } <a class="v2-linkish" href="#">How this works →</a></div>
+	</section>
+}
+
+templ Prompt(data vmv2.PromptData) {
+	<section class="v2-home-section">
+		@componentsv2.PromptInput(data.Placeholder)
+	</section>
+}
+
+templ Alert(data vmv2.AlertData) {
+	<section class="v2-home-section" style="padding-top:0">
+		@componentsv2.AlertCard(componentsv2.AlertData(data))
+	</section>
+}
+
+templ LedgerFeed(data vmv2.LedgerFeedData, feedJSON string) {
+	<section class="v2-home-section">
+		<div class="v2-section-head">
+			<h2 class="v2-section-title">{ data.Title }</h2>
+			<div class="v2-section-copy">{ data.Copy }</div>
+		</div>
+		<div class="v2-filter-row">
+			<div class="v2-filter-left">
+				<div class="v2-filters" id="v2-feed-filters">
+				for i, filter := range data.Filters {
+					<button type="button" class={ "v2-filter-chip", templ.KV("is-active", filter.Active) } data-filter={ feedFilterValue(filter.Label) }>
+						if filter.DotColor != "" {
+							<span class="v2-filter-chip-dot" style={ "background:" + filter.DotColor }></span>
+						}
+						<span>{ filter.Label }</span>
+						if i == 0 && filter.Active {
+							<span style="font-family:Fraunces,Georgia,serif;font-style:italic;opacity:.86">by ledger</span>
+						}
+					</button>
+				}
+				</div>
+			</div>
+			<div class="v2-filter-note" id="v2-feed-note">{ data.Note }</div>
+		</div>
+		<div id="v2-feed-root" class="v2-ledger-list" data-feed={ feedJSON }>
+			for _, row := range data.Rows {
+				@componentsv2.LedgerRow(componentsv2.LedgerRowData(row))
+			}
+		</div>
+	</section>
+}
+
+func feedFilterValue(label string) string {
+	switch label {
+	case "Everything":
+		return "all"
+	case "All transactions":
+		return "alltx"
+	case "Swaps":
+		return "swap"
+	case "Contract calls":
+		return "call"
+	case "Agent payments":
+		return "agent"
+	case "New deployments":
+		return "deploy"
+	case "Confidential":
+		return "confidential"
+	case "Classic":
+		return "classic"
+	default:
+		return "all"
+	}
+}
+
+templ Attention(data vmv2.AttentionSectionData) {
+	<section class="v2-home-section">
+		<div class="v2-section-head">
+			<h2 class="v2-section-title">{ data.Title }</h2>
+			<div class="v2-section-copy">{ data.Copy }</div>
+		</div>
+		<div class="v2-cards-2x2">
+			for _, card := range data.Cards {
+				@componentsv2.AttentionCard(componentsv2.AttentionCardData(card))
+			}
+		</div>
+	</section>
+}
+
+templ Leaders(data vmv2.LeadersSectionData) {
+	<section class="v2-home-section">
+		<div class="v2-section-head">
+			<h2 class="v2-section-title">{ data.Title }</h2>
+			<div class="v2-section-copy">{ data.Copy }</div>
+		</div>
+		<div class="v2-simple-cards">
+			for _, card := range data.Cards {
+				@componentsv2.LeaderCard(componentsv2.LeaderCardData(card))
+			}
+		</div>
+	</section>
+}
+
+templ Utilization(data vmv2.UtilizationSectionData) {
+	<section class="v2-home-section">
+		<div class="v2-section-head">
+			<h2 class="v2-section-title">{ data.Title }</h2>
+			<div class="v2-section-copy">{ data.Copy }</div>
+		</div>
+		<div class="v2-util-grid">
+			for _, card := range data.Cards {
+				@componentsv2.UtilizationCard(componentsv2.UtilizationCardData(card))
+			}
+		</div>
+	</section>
+}

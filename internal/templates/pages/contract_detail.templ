@@ -34,10 +34,18 @@ type ContractDetailData struct {
 	PeakInvocations string
 	SuccessRate     string
 	ExportedFunctions []string
+	Narrative       string
+	Context         string
+	FunctionSummary string
+	StorageSummary  string
+	Signals         []ContractHumanSignal
+	Evidence        []ContractHumanEvidence
 }
 
 type ContractFunction struct {
 	Name        string
+	Description string
+	Category    string
 	Calls       string
 	Pct         string
 	AvgCPU      string
@@ -66,6 +74,17 @@ type ContractStorageItem struct {
 	TypeColor string
 	Size     string
 	TTL      string
+}
+
+type ContractHumanSignal struct {
+	Title    string
+	Severity string
+	Summary  string
+}
+
+type ContractHumanEvidence struct {
+	Label string
+	Value string
 }
 
 templ ContractDetail(data ContractDetailData) {
@@ -342,14 +361,15 @@ type ContractListData struct {
 }
 
 type ContractListItem struct {
-	Rank       int
-	Name       string
-	Address    string
-	Tag        string
-	TagColor   string
+	Rank        int
+	Name        string
+	Address     string
+	Href        string
+	Tag         string
+	TagColor    string
 	Invocations string
-	Change     string
-	IsPositive bool
+	Change      string
+	IsPositive  bool
 }
 
 templ ContractList(data ContractListData) {
@@ -367,7 +387,7 @@ templ ContractList(data ContractListData) {
 					<div class="hidden md:block w-20 text-right">Change</div>
 				</div>
 				for _, c := range data.Contracts {
-					<a href={ templ.SafeURL("/contracts/" + c.Address) } class="detail-row flex items-center px-5 py-3 border-b border-border-subtle hover:bg-surface-subtle">
+					<a href={ templ.SafeURL(c.Href) } class="detail-row flex items-center px-5 py-3 border-b border-border-subtle hover:bg-surface-subtle">
 						<div class="hidden md:block w-10"><span class="text-xs font-semibold text-text-muted tabular">{ fmt.Sprintf("%d", c.Rank) }</span></div>
 						<div class="flex-1">
 							<div class="flex items-center gap-2">

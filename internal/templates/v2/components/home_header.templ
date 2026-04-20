@@ -1,0 +1,40 @@
+package componentsv2
+
+type HeaderData struct {
+	LedgerNumber string
+	AgeLabel     string
+	Network      string
+}
+
+templ HomeHeader(data HeaderData) {
+	<header class="v2-home-topbar">
+		<div class="v2-home-brand"><span class="v2-home-brand-dot"></span><span>Prism</span></div>
+		<div class="v2-home-grow"></div>
+		<nav class="v2-home-nav">
+			<a href="/v2/home" class="is-active">Home</a>
+			<a href="#">Explore</a>
+			<a href="#">Contracts</a>
+			<a href="#">Agents</a>
+			<a href="#">Docs</a>
+		</nav>
+		<div class="v2-network-select-wrap">
+			<span class="v2-network-select-label">Network</span>
+			<select id="v2-network-select" class="v2-network-select" aria-label="Select network">
+				<option value="mainnet" selected?={ data.Network == "mainnet" }>Mainnet</option>
+				<option value="testnet" selected?={ data.Network == "testnet" }>Testnet</option>
+				<option value="futurenet" selected?={ data.Network == "futurenet" }>Futurenet</option>
+			</select>
+		</div>
+		<div class="v2-home-status-wrap">
+			<div class="v2-home-status">
+				<span class="v2-home-status-dot"></span>
+				<span class="v2-home-status-ledger">Ledger</span>
+				<span class="v2-home-status-value" id="v2-header-ledger">{ data.LedgerNumber }</span>
+				<span id="v2-header-ledger-age">{ data.AgeLabel }</span>
+			</div>
+			<button class="v2-home-status-btn" title="Toggle theme" type="button">
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+			</button>
+		</div>
+	</header>
+}

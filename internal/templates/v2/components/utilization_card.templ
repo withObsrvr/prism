@@ -1,0 +1,20 @@
+package componentsv2
+
+type UtilizationCardData struct {
+	Label     string
+	ValueMain string
+	ValueUnit string
+	Tone      string
+	Body      string
+	BarColor  string
+	BarWidth  string
+}
+
+templ UtilizationCard(data UtilizationCardData) {
+	<div class="v2-simple-card v2-util-card">
+		<div class="v2-simple-card-label">{ data.Label }</div>
+		<div class={ "v2-simple-card-value", data.Tone }>{ data.ValueMain }<small>{ data.ValueUnit }</small></div>
+		<div class="v2-simple-card-body">{ data.Body }</div>
+		<div class="v2-card-rule"><span style={ "width:" + data.BarWidth + ";background:" + data.BarColor }></span></div>
+	</div>
+}

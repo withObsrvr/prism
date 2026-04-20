@@ -13,12 +13,12 @@ import (
 
 // Cache TTLs per data type.
 const (
-	TTLNetworkStats      = 10 * time.Second
+	TTLNetworkStats       = 10 * time.Second
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
-	TTLRecentList        = 5 * time.Second
-	TTLImmutable         = 5 * time.Minute
-	TTLAccount           = 30 * time.Second
-	TTLContracts         = 2 * time.Minute
+	TTLRecentList         = 5 * time.Second
+	TTLImmutable          = 5 * time.Minute
+	TTLAccount            = 30 * time.Second
+	TTLContracts          = 2 * time.Minute
 )
 
 // Config holds gateway connection settings.
@@ -223,6 +223,127 @@ func (c *Client) GetTransactions(ctx context.Context, network string, start, end
 	return resp.Transactions, nil
 }
 
+// GetSilverToken returns metadata for a SAC or custom Soroban token by contract ID.
+// Used to resolve an event's contract_id into a human-readable asset symbol and decimal scale.
+// Token metadata is essentially immutable, so cached aggressively.
+func (c *Client) GetSilverToken(ctx context.Context, network, contractID string) (*Token, error) {
+	if contractID == "" {
+		return nil, fmt.Errorf("gateway: empty contract id")
+	}
+	cacheKey := fmt.Sprintf("%s:silver_token:%s", network, contractID)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*Token), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tokens/"+contractID))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp Token
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver token: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLImmutable)
+	return &resp, nil
+}
+
+// GetSilverLedgerFull returns a composite ledger response with header, transactions, operations,
+// fees, and Soroban stats in a single call. Replaces the 6-call fan-out on the ledger detail page.
+func (c *Client) GetSilverLedgerFull(ctx context.Context, network string, sequence int64) (*LedgerFullResponse, error) {
+	cacheKey := fmt.Sprintf("%s:silver_ledger_full:%d", network, sequence)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*LedgerFullResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/full", sequence)))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp LedgerFullResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver ledger full: %w", err)
+	}
+
+	// A past ledger is immutable, so we can cache it aggressively.
+	c.cache.Set(cacheKey, &resp, TTLImmutable)
+	return &resp, nil
+}
+
+// GetSilverRecentLedgers returns the most recent ledgers from a single serving-backed endpoint.
+// This replaces the bronze/stats + bronze/ledgers multi-call pattern.
+func (c *Client) GetSilverRecentLedgers(ctx context.Context, network string, limit int) (*RecentLedgersResponse, error) {
+	cacheKey := fmt.Sprintf("%s:silver_ledgers_recent:%d", network, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*RecentLedgersResponse), nil
+	}
+
+	params := url.Values{
+		"limit": {fmt.Sprintf("%d", limit)},
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/ledgers/recent")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var resp RecentLedgersResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver recent ledgers: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLRecentList)
+	return &resp, nil
+}
+
+// GetSilverRecentTransactions returns the most recent transactions with decoded summaries
+// from a single serving-backed endpoint. This replaces the bronze/stats + bronze/transactions
+// + silver/tx/batch/decoded multi-call pattern.
+func (c *Client) GetSilverRecentTransactions(ctx context.Context, network string, limit int) (*RecentTransactionsResponse, error) {
+	cacheKey := fmt.Sprintf("%s:silver_txs_recent:%d", network, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*RecentTransactionsResponse), nil
+	}
+
+	params := url.Values{
+		"limit": {fmt.Sprintf("%d", limit)},
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/transactions/recent")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var resp RecentTransactionsResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver recent transactions: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLRecentList)
+	return &resp, nil
+}
+
+// GetSilverLedgerSummary returns the compact per-ledger snapshot used by the ledger-first v2 page.
+func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, sequence int64) (*LedgerSummary, error) {
+	cacheKey := fmt.Sprintf("%s:silver_ledger_summary:%d", network, sequence)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*LedgerSummary), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp LedgerSummary
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver ledger summary: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLImmutable)
+	return &resp, nil
+}
+
 // GetTopContracts returns the most active contracts.
 func (c *Client) GetTopContracts(ctx context.Context, network string, limit int) ([]Contract, error) {
 	cacheKey := fmt.Sprintf("%s:contracts_top:%d", network, limit)
@@ -273,6 +394,27 @@ func (c *Client) GetPayments(ctx context.Context, network string, limit int) ([]
 
 // --- Phase 2: Transaction Detail ---
 
+// GetTransactionReceipt returns the consolidated transaction receipt.
+func (c *Client) GetTransactionReceipt(ctx context.Context, network string, hash string) (*TxReceipt, error) {
+	cacheKey := network + ":tx_receipt:" + hash
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TxReceipt), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tx/"+hash+"/receipt"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result TxReceipt
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing tx receipt: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLImmutable)
+	return &result, nil
+}
+
 // GetTransactionFull returns the full decoded transaction with operations, events, and call graph.
 func (c *Client) GetTransactionFull(ctx context.Context, network string, hash string) (*TxFull, error) {
 	cacheKey := network + ":tx_full:" + hash
@@ -288,6 +430,31 @@ func (c *Client) GetTransactionFull(ctx context.Context, network string, hash st
 	var result TxFull
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("gateway: parsing tx full: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLImmutable)
+	return &result, nil
+}
+
+// GetSemanticTransaction returns the actor-centric semantic transaction view.
+func (c *Client) GetSemanticTransaction(ctx context.Context, network, hash string, includeDeep bool) (*SemanticTransactionResponse, error) {
+	cacheKey := fmt.Sprintf("%s:tx_semantic:%s:%t", network, hash, includeDeep)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SemanticTransactionResponse), nil
+	}
+
+	path := c.buildURL(network, "/silver/tx/"+hash+"/semantic")
+	if includeDeep {
+		path += "?include_deep=true"
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var result SemanticTransactionResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing tx semantic: %w", err)
 	}
 
 	c.cache.Set(cacheKey, &result, TTLImmutable)
@@ -435,6 +602,49 @@ func (c *Client) GetContractAnalytics(ctx context.Context, network string, contr
 	return &result, nil
 }
 
+// GetContractMetadata returns static metadata for a contract.
+func (c *Client) GetContractMetadata(ctx context.Context, network string, contractID string) (*ContractMetadata, error) {
+	cacheKey := network + ":contract_metadata:" + contractID
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*ContractMetadata), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/contracts/"+contractID+"/metadata"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result ContractMetadata
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing contract metadata: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+// GetContractStorage returns a preview of contract storage entries.
+func (c *Client) GetContractStorage(ctx context.Context, network string, contractID string, limit int) (*ContractStorageResponse, error) {
+	cacheKey := fmt.Sprintf("%s:contract_storage:%s:%d", network, contractID, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*ContractStorageResponse), nil
+	}
+
+	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/contracts/"+contractID+"/storage")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var result ContractStorageResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing contract storage: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
 // GetContractRecentCalls returns recent calls for a contract.
 func (c *Client) GetContractRecentCalls(ctx context.Context, network string, contractID string, limit int) ([]ContractRecentCall, error) {
 	cacheKey := fmt.Sprintf("%s:contract_calls:%s:%d", network, contractID, limit)
@@ -511,12 +721,23 @@ func (c *Client) GetEvents(ctx context.Context, network string, limit int) ([]Un
 
 // GetTransfers returns recent token transfers.
 func (c *Client) GetTransfers(ctx context.Context, network string, limit int) ([]TransferEvent, error) {
-	cacheKey := fmt.Sprintf("%s:transfers:%d", network, limit)
+	return c.GetTransfersFiltered(ctx, network, map[string]string{"limit": fmt.Sprintf("%d", limit)})
+}
+
+// GetTransfersFiltered returns transfers with optional query filters such as from_account, to_account,
+// start_time, end_time, source_type, asset_code, cursor, and order.
+func (c *Client) GetTransfersFiltered(ctx context.Context, network string, filters map[string]string) ([]TransferEvent, error) {
+	params := url.Values{}
+	for k, v := range filters {
+		if v != "" {
+			params.Set(k, v)
+		}
+	}
+	cacheKey := fmt.Sprintf("%s:transfers:%s", network, params.Encode())
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.([]TransferEvent), nil
 	}
 
-	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}}
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/transfers")+"?"+params.Encode())
 	if err != nil {
 		return nil, err
@@ -567,6 +788,27 @@ func (c *Client) GetSmartWalletInfo(ctx context.Context, network string, contrac
 	}
 
 	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+// GetSmartWalletDetail returns the wallet-centric detail document for a smart wallet contract.
+func (c *Client) GetSmartWalletDetail(ctx context.Context, network string, contractID string) (*SmartWalletDetail, error) {
+	cacheKey := network + ":smart_wallet_detail:" + contractID
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartWalletDetail), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/smart-wallets/"+contractID))
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartWalletDetail
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart wallet detail: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
 	return &result, nil
 }
 
@@ -869,6 +1111,29 @@ func (c *Client) GetLedgerSoroban(ctx context.Context, network string, sequence 
 	var result LedgerSoroban
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("gateway: parsing ledger soroban: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLImmutable)
+	return &result, nil
+}
+
+// --- Transaction Effects ---
+
+// GetTransactionEffects returns effects for a transaction.
+func (c *Client) GetTransactionEffects(ctx context.Context, network string, hash string) (*TransactionEffectsResponse, error) {
+	cacheKey := network + ":tx_effects:" + hash
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TransactionEffectsResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/effects/transaction/"+hash))
+	if err != nil {
+		return nil, err
+	}
+
+	var result TransactionEffectsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing transaction effects: %w", err)
 	}
 
 	c.cache.Set(cacheKey, &result, TTLImmutable)

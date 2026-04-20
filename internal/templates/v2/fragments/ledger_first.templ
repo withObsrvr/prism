@@ -1,0 +1,44 @@
+package fragmentsv2
+
+import (
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+)
+
+templ LedgerHeader(sequence string) {
+	<div class="v2-section v2-header">
+		<div class="v2-ledger-line">
+			@componentsv2.EditorialLabel("ledger", "v2-ledger-label")
+			@componentsv2.MonoValue("#" + sequence, "v2-ledger-value")
+		</div>
+	</div>
+}
+
+templ LedgerMetric(count string, label string) {
+	<div class="v2-section v2-metric">
+		<div class="v2-hero-line">
+			@componentsv2.MonoValue(count, "v2-hero-value")
+			@componentsv2.EditorialLabel(label, "v2-hero-label")
+		</div>
+	</div>
+}
+
+templ LedgerClassifications(swaps string, calls string, agents string) {
+	<div class="v2-section v2-chips">
+		@componentsv2.ClassificationChip(swaps, "swaps", "swap")
+		@componentsv2.ClassificationChip(calls, "calls", "call")
+		@componentsv2.ClassificationChip(agents, "agents", "agent")
+	</div>
+}
+
+templ LedgerUtilization(instructionPct int, instructionLabel string, rwPct int, rwLabel string) {
+	<div class="v2-section v2-bars">
+		@componentsv2.UtilizationBar("instructions", instructionPct, instructionLabel, "instructions")
+		@componentsv2.UtilizationBar("read / write", rwPct, rwLabel, "readwrite")
+	</div>
+}
+
+templ LedgerSignature(text string) {
+	<div class="v2-section v2-signature">
+		@componentsv2.Signature(text)
+	</div>
+}

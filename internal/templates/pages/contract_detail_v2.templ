@@ -39,6 +39,55 @@ templ ContractDetailV2(data ContractDetailData) {
 				</div>
 			</div>
 
+			if data.Narrative != "" || data.Context != "" || len(data.Signals) > 0 {
+				<div class="anim d1 mb-6 rounded-xl border border-border-default bg-surface-card p-5 shadow-sm">
+					if data.Narrative != "" {
+						<p class="text-sm leading-6 text-text-body mb-2">{ data.Narrative }</p>
+					}
+					if data.Context != "" {
+						<p class="text-xs text-text-muted mb-4">{ data.Context }</p>
+					}
+					if len(data.Signals) > 0 {
+						<div class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+							for _, sig := range data.Signals {
+								<div class="rounded-lg border border-border-default bg-surface-page px-3 py-2">
+									<div class="flex items-center gap-2">
+										if sig.Severity == "warn" {
+											<span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+										} else {
+											<span class="inline-block h-2.5 w-2.5 rounded-full bg-violet-500"></span>
+										}
+										<div class="text-sm font-medium text-text-primary">{ sig.Title }</div>
+									</div>
+									<div class="mt-1 text-xs leading-5 text-text-body">{ sig.Summary }</div>
+								</div>
+							}
+						</div>
+					}
+					if data.FunctionSummary != "" {
+						<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Function surface</div>
+						<p class="text-xs leading-5 text-text-body mb-3">{ data.FunctionSummary }</p>
+					}
+					if data.StorageSummary != "" {
+						<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Storage story</div>
+						<p class="text-xs leading-5 text-text-body mb-4">{ data.StorageSummary }</p>
+					}
+					if len(data.Evidence) > 0 {
+						<div>
+							<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Why Prism thinks this</div>
+							<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+								for _, item := range data.Evidence {
+									<div class="rounded-lg border border-border-default bg-surface-page px-3 py-2">
+										<div class="text-2xs uppercase tracking-wider text-text-muted">{ item.Label }</div>
+										<div class="mt-1 text-sm text-text-primary">{ item.Value }</div>
+									</div>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			}
+
 			<!-- Tabs -->
 			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
 				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Overview</button>

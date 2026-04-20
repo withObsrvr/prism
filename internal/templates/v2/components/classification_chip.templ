@@ -1,0 +1,21 @@
+package componentsv2
+
+templ ClassificationChip(count string, label string, kind string) {
+	<div class={ "v2-chip", chipKind(kind) }>
+		<span class="v2-chip-dot"></span>
+		<span>{ count } { label }</span>
+	</div>
+}
+
+func chipKind(kind string) string {
+	switch kind {
+	case "swap":
+		return "v2-chip--swap"
+	case "call":
+		return "v2-chip--call"
+	case "agent":
+		return "v2-chip--agent"
+	default:
+		return ""
+	}
+}
