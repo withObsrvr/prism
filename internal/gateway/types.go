@@ -309,34 +309,43 @@ type TxStateChange struct {
 
 // TxReceipt matches /silver/tx/{hash}/receipt response.
 type TxReceipt struct {
-	TxHash           string             `json:"tx_hash"`
-	LedgerSequence   int64              `json:"ledger_sequence"`
-	CreatedAt        string             `json:"created_at"`
-	SourceAccount    string             `json:"source_account"`
-	Successful       bool               `json:"successful"`
-	OperationCount   int                `json:"operation_count"`
-	TxType           string             `json:"tx_type"`
-	InvolvedAccounts []string           `json:"involved_accounts"`
-	Full             TxReceiptFull      `json:"full"`
-	Semantic         TxReceiptSemantic  `json:"semantic"`
-	Effects          []TxReceiptEffect  `json:"effects"`
-	Diffs            []TxReceiptDiff    `json:"diffs"`
-	Events           []UnifiedEvent     `json:"events"`
-	MaterializedAt   string             `json:"materialized_at"`
-	SourceVersion    string             `json:"source_version"`
+	TxHash           string                     `json:"tx_hash"`
+	LedgerSequence   int64                      `json:"ledger_sequence"`
+	CreatedAt        string                     `json:"created_at"`
+	SourceAccount    string                     `json:"source_account"`
+	Successful       bool                       `json:"successful"`
+	OperationCount   int                        `json:"operation_count"`
+	TxType           string                     `json:"tx_type"`
+	InvolvedAccounts []string                   `json:"involved_accounts"`
+	Full             TxReceiptFull              `json:"full"`
+	Semantic         SemanticTransactionResponse `json:"semantic"`
+	Effects          []TxReceiptEffect          `json:"effects"`
+	Diffs            []TxReceiptDiff            `json:"diffs"`
+	Events           []UnifiedEvent             `json:"events"`
+	MaterializedAt   string                     `json:"materialized_at"`
+	SourceVersion    string                     `json:"source_version"`
 }
 
 type TxReceiptFull struct {
-	TxHash         string               `json:"tx_hash"`
-	CreatedAt      string               `json:"created_at"`
-	Operations     []TxReceiptOperation `json:"operations"`
-	Successful     bool                 `json:"successful"`
-	SourceAccount  string               `json:"source_account"`
-	LedgerSequence int64                `json:"ledger_sequence"`
+	TxHash                       string               `json:"tx_hash"`
+	CreatedAt                    string               `json:"created_at"`
+	Operations                   []TxReceiptOperation `json:"operations"`
+	Successful                   bool                 `json:"successful"`
+	SourceAccount                string               `json:"source_account"`
+	LedgerSequence               int64                `json:"ledger_sequence"`
+	Fee                          int64                `json:"fee"`
+	MaxFee                       int64                `json:"max_fee"`
+	AccountSequence              int64                `json:"account_sequence"`
+	Summary                      TxSummary            `json:"summary"`
+	Events                       []UnifiedEvent       `json:"events"`
+	SorobanResourcesReadBytes    *int64               `json:"soroban_resources_read_bytes"`
+	SorobanResourcesWriteBytes   *int64               `json:"soroban_resources_write_bytes"`
+	SorobanResourcesInstructions *int64               `json:"soroban_resources_instructions"`
 }
 
 type TxReceiptOperation struct {
 	Type           int    `json:"type"`
+	Index          int    `json:"index,omitempty"`
 	TypeName       string `json:"type_name"`
 	AssetCode      string `json:"asset_code,omitempty"`
 	SourceAccount  string `json:"source_account,omitempty"`
@@ -345,20 +354,22 @@ type TxReceiptOperation struct {
 	IsSorobanOp    bool   `json:"is_soroban_op,omitempty"`
 	Destination    string `json:"destination,omitempty"`
 	Amount         string `json:"amount,omitempty"`
-	OperationIndex int    `json:"operation_index"`
-}
-
-type TxReceiptSemantic struct {
-	TxType      string `json:"tx_type"`
-	Description string `json:"description"`
+	OperationIndex int    `json:"operation_index,omitempty"`
 }
 
 type TxReceiptEffect struct {
-	AccountID      string `json:"account_id"`
-	Amount         string `json:"amount,omitempty"`
-	EffectType     string `json:"effect_type"`
-	EffectIndex    int    `json:"effect_index"`
-	OperationIndex int    `json:"operation_index"`
+	LedgerSequence   int64          `json:"ledger_sequence,omitempty"`
+	TransactionHash  string         `json:"transaction_hash,omitempty"`
+	OperationIndex   int            `json:"operation_index"`
+	EffectIndex      int            `json:"effect_index"`
+	OperationID      int64          `json:"operation_id,omitempty"`
+	EffectType       any            `json:"effect_type,omitempty"`
+	EffectTypeString string         `json:"effect_type_string,omitempty"`
+	AccountID        string         `json:"account_id"`
+	Asset            *EffectAsset   `json:"asset,omitempty"`
+	Amount           string         `json:"amount,omitempty"`
+	Details          map[string]any `json:"details,omitempty"`
+	Timestamp        string         `json:"timestamp,omitempty"`
 }
 
 type TxReceiptDiff struct {

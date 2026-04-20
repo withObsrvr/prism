@@ -961,8 +961,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	opsDecoded := make([]gateway.DecodedOperation, 0, len(receipt.Full.Operations))
 	for _, op := range receipt.Full.Operations {
+		idx := op.OperationIndex
+		if idx == 0 && op.Index > 0 {
+			idx = op.Index
+		}
 		opsDecoded = append(opsDecoded, gateway.DecodedOperation{
-			Index:         op.OperationIndex,
+			Index:         idx,
 			Type:          op.Type,
 			TypeName:      op.TypeName,
 			SourceAccount: op.SourceAccount,
@@ -974,44 +978,94 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			AssetCode:     op.AssetCode,
 		})
 	}
-
-	tx := gateway.TxInfo{
-		TxHash:         receipt.TxHash,
-		LedgerSequence: receipt.LedgerSequence,
-		OperationCount: receipt.OperationCount,
-		Successful:     receipt.Successful,
-		ClosedAt:       receipt.CreatedAt,
-		SourceAccount:  receipt.SourceAccount,
+	if len(opsDecoded) == 0 && len(receipt.Semantic.Operations) > 0 {
+		opsDecoded = append(opsDecoded, receipt.Semantic.Operations...)
 	}
-	summary := gateway.TxSummary{
-		Description: firstNonEmpty(receipt.Semantic.Description, receipt.TxType),
-		Type:        firstNonEmpty(receipt.Semantic.TxType, receipt.TxType),
+
+	txLedger := receipt.LedgerSequence
+	if receipt.Full.LedgerSequence > 0 {
+		txLedger = receipt.Full.LedgerSequence
+	}
+	txClosedAt := firstNonEmpty(receipt.Full.CreatedAt, receipt.CreatedAt)
+	txSource := firstNonEmpty(receipt.Full.SourceAccount, receipt.SourceAccount)
+	tx := gateway.TxInfo{
+		TxHash:          receipt.TxHash,
+		Fee:             receipt.Full.Fee,
+		MaxFee:          receipt.Full.MaxFee,
+		LedgerSequence:  txLedger,
+		OperationCount:  receipt.OperationCount,
+		Successful:      receipt.Successful,
+		ClosedAt:        txClosedAt,
+		SourceAccount:   txSource,
+		AccountSequence: receipt.Full.AccountSequence,
+	}
+	summary := receipt.Full.Summary
+	if legacy := receipt.Semantic.LegacySummary; legacy.Description != "" {
+		if summary.Description == "" || strings.Contains(summary.Description, " asset ") || (summary.Transfer != nil && summary.Transfer.Asset == "asset") {
+			summary = legacy
+		}
+	}
+	if summary.Description == "" {
+		summary.Description = receipt.TxType
+	}
+	if summary.Type == "" {
+		summary.Type = firstNonEmpty(receipt.Semantic.Classification.TxType, receipt.TxType)
+	}
+	events := receipt.Full.Events
+	if len(events) == 0 {
+		events = receipt.Semantic.Events
+	}
+	if len(events) == 0 {
+		events = receipt.Events
 	}
 	txFull := &gateway.TxFull{
 		Transaction: tx,
 		Summary:     summary,
 		Operations:  opsDecoded,
-		Events:      receipt.Events,
+		Events:      events,
+	}
+	if receipt.Full.SorobanResourcesInstructions != nil || receipt.Full.SorobanResourcesReadBytes != nil || receipt.Full.SorobanResourcesWriteBytes != nil {
+		txFull.SorobanResources = &gateway.SorobanResources{}
+		if receipt.Full.SorobanResourcesInstructions != nil {
+			txFull.SorobanResources.Instructions = *receipt.Full.SorobanResourcesInstructions
+		}
+		if receipt.Full.SorobanResourcesReadBytes != nil {
+			txFull.SorobanResources.ReadBytes = *receipt.Full.SorobanResourcesReadBytes
+		}
+		if receipt.Full.SorobanResourcesWriteBytes != nil {
+			txFull.SorobanResources.WriteBytes = *receipt.Full.SorobanResourcesWriteBytes
+		}
 	}
 	var semanticTx *gateway.SemanticTransactionResponse
-	if receipt.Semantic.Description != "" || receipt.Semantic.TxType != "" {
-		sourceAccount := receipt.SourceAccount
-		semanticTx = &gateway.SemanticTransactionResponse{
-			Transaction: gateway.SemanticTransactionInfo{
-				TxHash:         receipt.TxHash,
-				LedgerSequence: receipt.LedgerSequence,
-				ClosedAt:       receipt.CreatedAt,
-				Successful:     receipt.Successful,
-				OperationCount: receipt.OperationCount,
-				SourceAccount:  &sourceAccount,
-			},
-			Classification: gateway.SemanticTransactionClassification{
-				TxType: firstNonEmpty(receipt.Semantic.TxType, receipt.TxType),
-			},
-			Operations:   opsDecoded,
-			Events:       receipt.Events,
-			LegacySummary: summary,
+	if receipt.Semantic.Transaction.TxHash != "" || receipt.Semantic.Classification.TxType != "" || len(receipt.Semantic.Actors) > 0 {
+		semanticCopy := receipt.Semantic
+		if semanticCopy.Transaction.TxHash == "" {
+			sourceAccount := tx.SourceAccount
+			semanticCopy.Transaction = gateway.SemanticTransactionInfo{
+				TxHash:          tx.TxHash,
+				LedgerSequence:  tx.LedgerSequence,
+				ClosedAt:        tx.ClosedAt,
+				Successful:      tx.Successful,
+				Fee:             tx.Fee,
+				OperationCount:  tx.OperationCount,
+				SourceAccount:   &sourceAccount,
+				AccountSequence: &tx.AccountSequence,
+				MaxFee:          &tx.MaxFee,
+			}
 		}
+		if semanticCopy.Classification.TxType == "" {
+			semanticCopy.Classification.TxType = firstNonEmpty(summary.Type, receipt.TxType)
+		}
+		if len(semanticCopy.Operations) == 0 {
+			semanticCopy.Operations = opsDecoded
+		}
+		if len(semanticCopy.Events) == 0 {
+			semanticCopy.Events = events
+		}
+		if semanticCopy.LegacySummary.Description == "" {
+			semanticCopy.LegacySummary = summary
+		}
+		semanticTx = &semanticCopy
 	}
 
 	normalizedCtx, normErr := h.buildNormalizedTxContext(ctx, network, txFull, semanticTx)
@@ -1066,18 +1120,29 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	if summary.Transfer != nil {
 		sourceAddr = gateway.ShortAddress(summary.Transfer.From)
-		amt := gateway.FormatStroopsToXLM(summary.Transfer.Amount)
 		asset := summary.Transfer.Asset
-		if asset == "" || asset == "tokens" {
+		amt := ""
+		if asset == "" || asset == "tokens" || asset == "XLM" {
 			asset = "XLM"
+			amt = gateway.FormatStroopsToXLM(summary.Transfer.Amount)
+		} else {
+			amt = gateway.FormatDecimalAmount(summary.Transfer.Amount)
 		}
 		sourceAmount = amt + " " + asset
 		destAddr = gateway.ShortAddress(summary.Transfer.To)
 		destAmount = "+" + amt + " " + asset
 	}
 	if summary.Swap != nil {
-		sourceAmount = gateway.FormatStroopsToXLM(summary.Swap.AmountIn) + " " + summary.Swap.AssetIn
-		destAmount = "+" + gateway.FormatStroopsToXLM(summary.Swap.AmountOut) + " " + summary.Swap.AssetOut
+		inAmount := gateway.FormatDecimalAmount(summary.Swap.AmountIn)
+		if summary.Swap.AssetIn == "XLM" {
+			inAmount = gateway.FormatStroopsToXLM(summary.Swap.AmountIn)
+		}
+		outAmount := gateway.FormatDecimalAmount(summary.Swap.AmountOut)
+		if summary.Swap.AssetOut == "XLM" {
+			outAmount = gateway.FormatStroopsToXLM(summary.Swap.AmountOut)
+		}
+		sourceAmount = inAmount + " " + summary.Swap.AssetIn
+		destAmount = "+" + outAmount + " " + summary.Swap.AssetOut
 		route = summary.Swap.AssetIn + " → " + summary.Swap.AssetOut
 	}
 	if len(txFull.Operations) > 0 {
@@ -1199,24 +1264,32 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	// Build effects list from receipt effects.
 	var effects []pages.TxEffect
 	for i, eff := range receipt.Effects {
+		effectType := eff.EffectTypeString
+		if effectType == "" {
+			effectType = fmt.Sprint(eff.EffectType)
+		}
 		amount := ""
 		if eff.Amount != "" {
 			amount = gateway.FormatDecimalAmount(eff.Amount)
 		}
-		isPositive := strings.Contains(eff.EffectType, "credited") || strings.Contains(eff.EffectType, "created")
+		isPositive := strings.Contains(effectType, "credited") || strings.Contains(effectType, "created")
 		asset := ""
-		if amount != "" {
-			asset = "XLM"
+		if eff.Asset != nil {
+			asset = eff.Asset.Code
 		}
-		summary := html.EscapeString(gateway.EffectDisplayName(eff.EffectType))
+		summary := html.EscapeString(gateway.EffectDisplayName(effectType))
 		if amount != "" {
-			summary = fmt.Sprintf(`%s <span class="font-semibold">%s %s</span>`, summary, html.EscapeString(amount), html.EscapeString(asset))
+			display := amount
+			if asset != "" {
+				display += " " + asset
+			}
+			summary = fmt.Sprintf(`%s <span class="font-semibold">%s</span>`, summary, html.EscapeString(display))
 		}
 		effects = append(effects, pages.TxEffect{
 			Index:       fmt.Sprintf("%d", i),
-			Type:        eff.EffectType,
-			TypeDisplay: gateway.EffectDisplayName(eff.EffectType),
-			TypeColor:   gateway.EffectTypeColor(eff.EffectType),
+			Type:        effectType,
+			TypeDisplay: gateway.EffectDisplayName(effectType),
+			TypeColor:   gateway.EffectTypeColor(effectType),
 			Account:     gateway.ShortAddress(eff.AccountID),
 			AccountFull: eff.AccountID,
 			Asset:       asset,
@@ -1252,15 +1325,40 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		EffectiveRate:     effectiveRate,
 		Slippage:          slippage,
 		Route:             route,
-		FeePaid:           "—",
-		FeePaidXLM:        "—",
-		MaxFee:            "",
-		FeeUSD:            "—",
-		SorobanCPU:        "—",
-		SorobanMem:        "—",
-		SorobanReads:      "—",
-		SorobanWrites:     "—",
-		SeqNumber:         "",
+		FeePaid:           gateway.FormatNumber(tx.Fee),
+		FeePaidXLM:        gateway.FormatFeeXLM(tx.Fee),
+		MaxFee: func() string {
+			if tx.MaxFee > 0 {
+				return gateway.FormatNumber(tx.MaxFee)
+			}
+			return ""
+		}(),
+		FeeUSD: "—",
+		SorobanCPU: func() string {
+			if txFull.SorobanResources != nil && txFull.SorobanResources.Instructions > 0 {
+				return gateway.FormatAbbrev(txFull.SorobanResources.Instructions) + " insn"
+			}
+			return "—"
+		}(),
+		SorobanMem: "—",
+		SorobanReads: func() string {
+			if txFull.SorobanResources != nil && txFull.SorobanResources.ReadBytes > 0 {
+				return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.ReadBytes)/1024)
+			}
+			return "—"
+		}(),
+		SorobanWrites: func() string {
+			if txFull.SorobanResources != nil && txFull.SorobanResources.WriteBytes > 0 {
+				return fmt.Sprintf("%.1f KB", float64(txFull.SorobanResources.WriteBytes)/1024)
+			}
+			return "—"
+		}(),
+		SeqNumber: func() string {
+			if tx.AccountSequence > 0 {
+				return fmt.Sprintf("%d", tx.AccountSequence)
+			}
+			return ""
+		}(),
 		Operations:     ops,
 		Events:         evts,
 		BalanceChanges: balChanges,
