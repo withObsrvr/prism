@@ -1,0 +1,9 @@
+package componentsv2
+
+templ FooterMeta(items []string) {
+	<footer class="v2-footer-meta">
+		for _, item := range items {
+			<span>@templ.Raw(item)</span>
+		}
+	</footer>
+}

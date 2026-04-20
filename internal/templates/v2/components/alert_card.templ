@@ -1,0 +1,21 @@
+package componentsv2
+
+type AlertData struct {
+	Title string
+	Body  string
+	Meta  string
+	CTA   string
+}
+
+templ AlertCard(data AlertData) {
+	<div class="v2-alert">
+		<div class="v2-alert-icon">⚠</div>
+		<div class="v2-alert-content">
+			<div class="v2-alert-title">{ data.Title }</div>
+			<div class="v2-alert-body">{ data.Body }</div>
+			<div class="v2-alert-meta">{ data.Meta }</div>
+		</div>
+		<a href="#" class="v2-alert-cta">{ data.CTA }</a>
+		<button type="button" class="v2-alert-dismiss">×</button>
+	</div>
+}

@@ -1,0 +1,26 @@
+package componentsv2
+
+import "fmt"
+
+templ UtilizationBar(label string, value int, valueLabel string, kind string) {
+	<div>
+		<div class="v2-editorial v2-bar-label">{ label }</div>
+		<div class="v2-bar-row">
+			<div class="v2-bar-track">
+				<div class={ "v2-bar-fill", barKind(kind) } style={ fmt.Sprintf("width:%d%%", value) }></div>
+			</div>
+			<div class="v2-bar-value">{ valueLabel }</div>
+		</div>
+	</div>
+}
+
+func barKind(kind string) string {
+	switch kind {
+	case "instructions":
+		return "v2-bar-fill--instructions"
+	case "readwrite":
+		return "v2-bar-fill--readwrite"
+	default:
+		return ""
+	}
+}

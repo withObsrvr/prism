@@ -1,0 +1,35 @@
+package pagesv2
+
+import (
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+	fragmentsv2 "github.com/withObsrvr/prism/internal/templates/v2/fragments"
+)
+
+type HomeLedgerFirstData struct {
+	LedgerNumber         string
+	TransactionCount     string
+	TransactionLabel     string
+	SwapCount            string
+	CallCount            string
+	AgentCount           string
+	InstructionPct       int
+	InstructionPctLabel  string
+	ReadWritePct         int
+	ReadWritePctLabel    string
+	Tagline              string
+}
+
+templ HomeLedgerFirst(data HomeLedgerFirstData) {
+	@layoutsv2.Foundation("Prism — Ledger-first v2") {
+		<main class="v2-canvas">
+			<section class="v2-poster">
+				@fragmentsv2.LedgerHeader(data.LedgerNumber)
+				@fragmentsv2.LedgerMetric(data.TransactionCount, data.TransactionLabel)
+				@fragmentsv2.LedgerClassifications(data.SwapCount, data.CallCount, data.AgentCount)
+				@fragmentsv2.LedgerUtilization(data.InstructionPct, data.InstructionPctLabel, data.ReadWritePct, data.ReadWritePctLabel)
+				<div class="v2-spacer"></div>
+				@fragmentsv2.LedgerSignature(data.Tagline)
+			</section>
+		</main>
+	}
+}

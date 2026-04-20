@@ -25,6 +25,8 @@ func (app *Application) Routes() http.Handler {
 
 	// Home — search-first landing page
 	mux.HandleFunc("GET /", h.Home)
+	mux.HandleFunc("GET /v2/home", h.HomeV2)
+	mux.HandleFunc("GET /v2/home/ledger", h.HomeLedgerFirstV2)
 	mux.HandleFunc("GET /search", h.Search)
 
 	// Ledgers

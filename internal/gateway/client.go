@@ -323,6 +323,27 @@ func (c *Client) GetSilverRecentTransactions(ctx context.Context, network string
 	return &resp, nil
 }
 
+// GetSilverLedgerSummary returns the compact per-ledger snapshot used by the ledger-first v2 page.
+func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, sequence int64) (*LedgerSummary, error) {
+	cacheKey := fmt.Sprintf("%s:silver_ledger_summary:%d", network, sequence)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*LedgerSummary), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp LedgerSummary
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver ledger summary: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLImmutable)
+	return &resp, nil
+}
+
 // GetTopContracts returns the most active contracts.
 func (c *Client) GetTopContracts(ctx context.Context, network string, limit int) ([]Contract, error) {
 	cacheKey := fmt.Sprintf("%s:contracts_top:%d", network, limit)

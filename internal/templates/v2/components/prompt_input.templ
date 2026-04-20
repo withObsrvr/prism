@@ -1,0 +1,21 @@
+package componentsv2
+
+templ PromptInput(placeholder string) {
+	<div class="v2-prompt-wrap" id="v2-prompt-wrap">
+		<div class="v2-prompt-label">Ask anything about the network —</div>
+		<div class="v2-prompt-box">
+			<span class="v2-prompt-icon">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"></path><path d="M12 7v5l3 2"></path></svg>
+			</span>
+			<input id="v2-prompt-input" class="v2-prompt-input" placeholder={ placeholder } autocomplete="off"/>
+			<span class="v2-kbd">⌘K</span>
+		</div>
+		<div class="v2-prompt-hints">
+			<button type="button" class="v2-prompt-hint">Which contracts are expiring this week?</button>
+			<button type="button" class="v2-prompt-hint">Show me every agent payment today</button>
+			<button type="button" class="v2-prompt-hint">What is this hash about?</button>
+			<button type="button" class="v2-prompt-hint">Is Soroswap busy?</button>
+		</div>
+		<div id="v2-prompt-results" class="v2-prompt-results" hidden></div>
+	</div>
+}

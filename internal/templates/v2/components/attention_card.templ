@@ -1,0 +1,23 @@
+package componentsv2
+
+type AttentionCardData struct {
+	Kicker   string
+	Value    string
+	Tone     string
+	Body     string
+	BarColor string
+	BarWidth string
+	CTA      string
+}
+
+templ AttentionCard(data AttentionCardData) {
+	<div class={ "v2-card v2-attention-card", data.Tone }>
+		<div class="v2-card-kicker">{ data.Kicker }</div>
+		<div class={ "v2-card-value", data.Tone }>{ data.Value }</div>
+		<div class="v2-card-body">{ data.Body }</div>
+		<div class="v2-card-rule"><span style={ "width:" + data.BarWidth + ";background:" + data.BarColor }></span></div>
+		if data.CTA != "" {
+			<a href="#" class="v2-card-cta">{ data.CTA }</a>
+		}
+	</div>
+}

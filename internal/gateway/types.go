@@ -309,21 +309,21 @@ type TxStateChange struct {
 
 // TxReceipt matches /silver/tx/{hash}/receipt response.
 type TxReceipt struct {
-	TxHash           string                     `json:"tx_hash"`
-	LedgerSequence   int64                      `json:"ledger_sequence"`
-	CreatedAt        string                     `json:"created_at"`
-	SourceAccount    string                     `json:"source_account"`
-	Successful       bool                       `json:"successful"`
-	OperationCount   int                        `json:"operation_count"`
-	TxType           string                     `json:"tx_type"`
-	InvolvedAccounts []string                   `json:"involved_accounts"`
-	Full             TxReceiptFull              `json:"full"`
+	TxHash           string                      `json:"tx_hash"`
+	LedgerSequence   int64                       `json:"ledger_sequence"`
+	CreatedAt        string                      `json:"created_at"`
+	SourceAccount    string                      `json:"source_account"`
+	Successful       bool                        `json:"successful"`
+	OperationCount   int                         `json:"operation_count"`
+	TxType           string                      `json:"tx_type"`
+	InvolvedAccounts []string                    `json:"involved_accounts"`
+	Full             TxReceiptFull               `json:"full"`
 	Semantic         SemanticTransactionResponse `json:"semantic"`
-	Effects          []TxReceiptEffect          `json:"effects"`
-	Diffs            []TxReceiptDiff            `json:"diffs"`
-	Events           []UnifiedEvent             `json:"events"`
-	MaterializedAt   string                     `json:"materialized_at"`
-	SourceVersion    string                     `json:"source_version"`
+	Effects          []TxReceiptEffect           `json:"effects"`
+	Diffs            []TxReceiptDiff             `json:"diffs"`
+	Events           []UnifiedEvent              `json:"events"`
+	MaterializedAt   string                      `json:"materialized_at"`
+	SourceVersion    string                      `json:"source_version"`
 }
 
 type TxReceiptFull struct {
@@ -1170,6 +1170,31 @@ type LedgerSoroban struct {
 	TotalRentCharged int64  `json:"total_rent_charged"`
 	UniqueContracts  int64  `json:"unique_contracts"`
 	GeneratedAt      string `json:"generated_at"`
+}
+
+// LedgerSummary matches /silver/ledger/{seq}/summary.
+type LedgerSummary struct {
+	LedgerSequence   int64                         `json:"ledger_sequence"`
+	TxCount          int64                         `json:"tx_count,omitempty"`
+	TransactionCount int64                         `json:"transaction_count,omitempty"`
+	Swaps            int64                         `json:"swaps,omitempty"`
+	Calls            int64                         `json:"calls,omitempty"`
+	Agents           int64                         `json:"agents,omitempty"`
+	InstructionPct   int                           `json:"instruction_pct,omitempty"`
+	ReadWritePct     int                           `json:"read_write_pct,omitempty"`
+	Classifications  *LedgerSummaryClassifications `json:"classifications,omitempty"`
+	Utilization      *LedgerSummaryUtilization     `json:"utilization,omitempty"`
+}
+
+type LedgerSummaryClassifications struct {
+	Swaps  int64 `json:"swaps,omitempty"`
+	Calls  int64 `json:"calls,omitempty"`
+	Agents int64 `json:"agents,omitempty"`
+}
+
+type LedgerSummaryUtilization struct {
+	InstructionPct int `json:"instruction_pct,omitempty"`
+	ReadWritePct   int `json:"read_write_pct,omitempty"`
 }
 
 // --- Explorer Events ---
