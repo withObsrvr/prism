@@ -3,15 +3,28 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"html"
+	"math"
 	"net/http"
+	"strings"
+	"time"
 
+	"github.com/withObsrvr/prism/internal/gateway"
 	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
 	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
 func (h *Handlers) HomeV2(w http.ResponseWriter, r *http.Request) {
-	data := mockHomeV2Data(networkFromRequest(r))
+	network := networkFromRequest(r)
+	data := mockHomeV2Data(network)
+	if h.useLiveData(r) && network == "testnet" {
+		if live, err := h.buildHomeV2Data(r, network); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live home v2 feed failed, falling back to mock", "network", network, "error", err)
+		}
+	}
 	if err := pagesv2.Home(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render home v2", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -52,31 +65,31 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 			Rows: []vmv2.LedgerRowData{
 				{
 					LedgerNumber: "52,844,201", TransactionCount: "212",
-					Meta:            "across 424 operations · closed by sdf-validator-1",
+					Meta:            "with 424 operations · closed by sdf-validator-1",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "50 swaps", Kind: "swap"}, {Label: "67 calls", Kind: "call"}, {Label: "54 agent payments", Kind: "agent"}, {Label: "33 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}},
 					InstructionsPct: 61, ReadWritePct: 35, CloseTime: "4.9s", Age: "just now", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,200", TransactionCount: "226",
-					Meta:            "across 452 operations · closed by whale-stack",
+					Meta:            "with 452 operations · closed by whale-stack",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "42 swaps", Kind: "swap"}, {Label: "75 calls", Kind: "call"}, {Label: "37 agent payments", Kind: "agent"}, {Label: "67 classic", Kind: "classic"}, {Label: "3 deploys", Kind: "deploy"}, {Label: "1 confidential", Kind: "confidential"}},
 					InstructionsPct: 76, ReadWritePct: 45, CloseTime: "4.9s", Age: "5 seconds ago", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,199", TransactionCount: "187",
-					Meta:            "across 561 operations · closed by publicnode",
+					Meta:            "with 561 operations · closed by publicnode",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "35 swaps", Kind: "swap"}, {Label: "70 calls", Kind: "call"}, {Label: "30 agent payments", Kind: "agent"}, {Label: "52 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}},
 					InstructionsPct: 67, ReadWritePct: 36, CloseTime: "4.9s", Age: "10 seconds ago", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,198", TransactionCount: "199",
-					Meta:            "across 388 operations · closed by lobstr",
+					Meta:            "with 388 operations · closed by lobstr",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "50 swaps", Kind: "swap"}, {Label: "62 calls", Kind: "call"}, {Label: "55 agent payments", Kind: "agent"}, {Label: "32 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}},
 					InstructionsPct: 50, ReadWritePct: 50, CloseTime: "4.9s", Age: "15 seconds ago", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,197", TransactionCount: "197",
-					Meta:            "across 788 operations · closed by coinbase-cloud",
+					Meta:            "with 788 operations · closed by coinbase-cloud",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "53 swaps", Kind: "swap"}, {Label: "66 calls", Kind: "call"}, {Label: "33 agent payments", Kind: "agent"}, {Label: "41 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}},
 					InstructionsPct: 50, ReadWritePct: 38, CloseTime: "4.9s", Age: "20 seconds ago", SideMeta: "5 ledgers / min",
 				},
@@ -166,6 +179,592 @@ func homeV2NetworkConfig(network string) homeV2NetworkCfg {
 	}
 }
 
+func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeData, error) {
+	if h.Gateway == nil {
+		return vmv2.HomeData{}, fmt.Errorf("gateway unavailable")
+	}
+
+	data := mockHomeV2Data(network)
+	if summary, err := h.Gateway.GetHomeSummary(r.Context(), network); err == nil && summary != nil {
+		applyHomeSummaryV2(&data, summary)
+	} else if err != nil {
+		h.Logger.Warn("home v2 home-summary fetch failed", "network", network, "error", err)
+	}
+	recent, err := h.Gateway.GetSilverRecentLedgers(r.Context(), network, 6)
+	if err != nil {
+		return vmv2.HomeData{}, err
+	}
+	if recent == nil || len(recent.Ledgers) == 0 {
+		return vmv2.HomeData{}, fmt.Errorf("no recent ledgers returned")
+	}
+
+	rows := make([]vmv2.LedgerRowData, 0, len(recent.Ledgers))
+	feedLedgers := make([]homeV2FeedLedger, 0, len(recent.Ledgers))
+	feedTxs := make([]homeV2FeedTransaction, 0, len(recent.Ledgers)*3)
+
+	for i, ledger := range recent.Ledgers {
+		summary, err := h.Gateway.GetSilverLedgerFeedSummary(r.Context(), network, ledger.LedgerSequence)
+		if err != nil {
+			h.Logger.Warn("home v2 summary fetch failed", "sequence", ledger.LedgerSequence, "error", err)
+		}
+		var next *gateway.RecentLedger
+		if i+1 < len(recent.Ledgers) {
+			next = &recent.Ledgers[i+1]
+		}
+		row, feedLedger, ledgerTxs := buildHomeV2FeedLedger(network, ledger, next, summary)
+		rows = append(rows, row)
+		feedLedgers = append(feedLedgers, feedLedger)
+		feedTxs = append(feedTxs, ledgerTxs...)
+	}
+
+	if len(rows) > 0 {
+		data.LedgerFeed.Rows = rows
+	}
+	if first := recent.Ledgers[0]; first.LedgerSequence > 0 {
+		data.Header.LedgerNumber = gateway.FormatNumber(first.LedgerSequence)
+		if t, ok := parseGatewayTime(first.ClosedAt); ok {
+			data.Header.AgeLabel = gateway.FormatAge(t)
+		}
+	}
+
+	feedJSON, _ := json.Marshal(homeV2Feed{Ledgers: feedLedgers, Transactions: feedTxs})
+	data.FeedJSON = string(feedJSON)
+	data.FeedLive = true
+	return data, nil
+}
+
+func applyHomeSummaryV2(data *vmv2.HomeData, summary *gateway.HomeSummaryResponse) {
+	if data == nil || summary == nil {
+		return
+	}
+	if summary.Header.LatestLedgerSequence > 0 {
+		data.Header.LedgerNumber = gateway.FormatNumber(summary.Header.LatestLedgerSequence)
+	}
+	if t, ok := parseGatewayTime(summary.Header.LatestLedgerClosedAt); ok {
+		data.Header.AgeLabel = gateway.FormatAge(t)
+	}
+
+	data.Hero = buildHomeV2Hero(summary)
+	data.Alert = buildHomeV2Alert(summary)
+	data.Attention = buildHomeV2Attention(summary)
+	data.Leaders = buildHomeV2Leaders(summary)
+	data.Utilization = buildHomeV2Utilization(summary)
+	applyHomeV2Meta(data, summary)
+}
+
+func buildHomeV2Hero(summary *gateway.HomeSummaryResponse) vmv2.HeroData {
+	networkLabel := "The Stellar network"
+	networkBody := "Stellar"
+	placeholder := ""
+	if strings.EqualFold(summary.Network, "testnet") {
+		networkLabel = `The Stellar <span class="is-green">testnet</span>`
+		networkBody = "Testnet"
+		placeholder = " on testnet"
+	}
+	statusWord := "healthy"
+	if summary.Hero.Health.Status != "" {
+		statusWord = summary.Hero.Health.Status
+	}
+	activityPhrase := "active"
+	if summary.Hero.Health.ActivityBand == "busy" {
+		activityPhrase = "busier than usual"
+	} else if summary.Hero.Health.ActivityBand == "quiet" || summary.Hero.Health.LoadBand == "light" {
+		activityPhrase = "lightly loaded"
+	} else if summary.Hero.Health.ActivityBand == "normal" {
+		activityPhrase = "running normally"
+	}
+	txAvg := gateway.FormatNumber(summary.Hero.Cadence.TxPerLedgerRecentAvg)
+	if summary.Hero.Cadence.TxPerLedgerRecentAvg == 0 {
+		txAvg = gateway.FormatNumber(summary.Hero.LatestLedger.TransactionCount)
+	}
+	contracts := gateway.FormatNumber(summary.Hero.Contracts.Active24h)
+	headline := fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now — %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts)
+	body := fmt.Sprintf(`You’re looking at %s’s Soroban-first explorer%s. Every transaction below is classified and described in one sentence — swaps, contract calls, and classic payments in plain English.`, networkBody, placeholder)
+	return vmv2.HeroData{Eyebrow: "What brings you here?", HeadlineHTML: headline, Body: body}
+}
+
+func buildHomeV2Alert(summary *gateway.HomeSummaryResponse) vmv2.AlertData {
+	count := summary.Alert.AffectedContractCount
+	if count == 0 {
+		count = summary.Hero.TTL.ExpiringContractCount
+	}
+	hours := summary.Alert.WorstRemainingHours
+	if hours == 0 {
+		hours = summary.Hero.TTL.WorstRemainingHours
+	}
+	title := fmt.Sprintf("%s contracts need TTL attention", gateway.FormatNumber(count))
+	if count == 1 {
+		title = "One contract needs TTL attention"
+	}
+	names := summary.Alert.TopContracts
+	body := fmt.Sprintf("%s contracts on %s are nearing expiration, with the worst case under %s remaining.", gateway.FormatNumber(count), summary.Network, humanizeHours(hours))
+	if len(names) > 0 {
+		body = fmt.Sprintf("%s contracts on %s are nearing expiration — including %s — with the worst case under %s remaining.", gateway.FormatNumber(count), summary.Network, strings.Join(names, ", "), humanizeHours(hours))
+	}
+	meta := "Why this matters: contract operators need to extend TTL before it hits zero — otherwise their users see failures."
+	cta := "Review →"
+	return vmv2.AlertData{Title: title, Body: body, Meta: meta, CTA: cta}
+}
+
+func buildHomeV2Attention(summary *gateway.HomeSummaryResponse) vmv2.AttentionSectionData {
+	data := vmv2.AttentionSectionData{
+		Title: "Contracts that might need attention",
+		Copy:  "Smart contracts on Stellar archive their storage after a while unless someone renews it. No other explorer shows you this.",
+	}
+	for _, c := range summary.ContractsNeedingAttention {
+		if len(data.Cards) == 4 {
+			break
+		}
+		name := homeV2FirstNonEmpty(c.ProtocolName, c.ContractName, gateway.ShortAddress(c.ContractID))
+		if c.ContractName != "" && c.ProtocolName != "" && c.ContractName != c.ProtocolName {
+			name = c.ProtocolName + " · " + c.ContractName
+		}
+		barWidth := fmt.Sprintf("%.0f%%", clampFloat(c.RunwayPct, 0, 100))
+		body := fmt.Sprintf("About %s ledgers of runway remain. Status: %s.", gateway.FormatNumber(c.RemainingLedgers), strings.ReplaceAll(c.Status, "_", " "))
+		if c.RemainingHuman != "" {
+			body = fmt.Sprintf("About %s ledgers of runway remain — roughly %s.", gateway.FormatNumber(c.RemainingLedgers), c.RemainingHuman)
+		}
+		data.Cards = append(data.Cards, vmv2.AttentionCardData{
+			Kicker:   name,
+			Value:    fmt.Sprintf("~%s left", homeV2FirstNonEmpty(c.RemainingHuman, humanizeHours(c.RemainingHours))),
+			Tone:     attentionTone(c.Severity),
+			Body:     body,
+			BarColor: attentionBarColor(c.Severity),
+			BarWidth: barWidth,
+			CTA:      "How to extend this →",
+		})
+	}
+	return data
+}
+
+func buildHomeV2Leaders(summary *gateway.HomeSummaryResponse) vmv2.LeadersSectionData {
+	data := vmv2.LeadersSectionData{
+		Title: "Who’s being used the most today",
+		Copy:  "Ranked by how many times each contract was called in the last 24 hours — not dollars, not TVL. The actual activity.",
+	}
+	labels := []string{"Most active", "Runner-up", "Third place", "Fastest growing"}
+	tones := []string{"is-swap", "is-call", "is-deploy", "is-agent"}
+	marks := []string{"S", "B", "P", "x"}
+	for i, leader := range summary.Leaders {
+		if i == 4 {
+			break
+		}
+		entity := homeV2FirstNonEmpty(leader.ProtocolName, leader.ContractName, gateway.ShortAddress(leader.ContractID))
+		body := fmt.Sprintf("%s unique callers in the last 24 hours. Dominant actions: %s.", gateway.FormatNumber(leader.UniqueCallers24h), strings.Join(leader.DominantActions, ", "))
+		if len(leader.DominantActions) == 0 {
+			body = fmt.Sprintf("%s unique callers in the last 24 hours.", gateway.FormatNumber(leader.UniqueCallers24h))
+		}
+		data.Cards = append(data.Cards, vmv2.LeaderCardData{
+			Label:      labels[boundedIndex(i, len(labels))],
+			Value:      gateway.FormatNumber(leader.CallCount24h),
+			Entity:     entity,
+			EntityMark: marks[boundedIndex(i, len(marks))],
+			EntityTone: tones[boundedIndex(i, len(tones))],
+			Body:       body,
+		})
+	}
+	return data
+}
+
+func buildHomeV2Utilization(summary *gateway.HomeSummaryResponse) vmv2.UtilizationSectionData {
+	u := summary.Utilization
+	cards := []vmv2.UtilizationCardData{
+		{
+			Label:     "Instruction budget",
+			ValueMain: formatPercentMain(u.InstructionPct),
+			ValueUnit: "% used",
+			Tone:      utilTone(u.InstructionPct),
+			Body:      fmt.Sprintf("%s of %s instructions at ledger %s.", formatBigUnit(u.InstructionUsed), formatBigUnit(u.InstructionLimit), gateway.FormatNumber(u.SourceLedger)),
+			BarColor:  utilBarColor(u.InstructionPct),
+			BarWidth:  fmt.Sprintf("%.0f%%", clampFloat(u.InstructionPct, 0, 100)),
+		},
+		{
+			Label:     "Read / write",
+			ValueMain: formatPercentMain(u.ReadWritePct),
+			ValueUnit: "% used",
+			Tone:      utilTone(u.ReadWritePct),
+			Body:      fmt.Sprintf("%s of %s moved in and out of ledger storage.", formatBytesHuman(u.ReadWriteUsedBytes), formatBytesHuman(u.ReadWriteLimitBytes)),
+			BarColor:  utilBarColor(u.ReadWritePct),
+			BarWidth:  fmt.Sprintf("%.0f%%", clampFloat(u.ReadWritePct, 0, 100)),
+		},
+		{
+			Label:     "Transaction size",
+			ValueMain: formatPercentMain(u.TxSizePct),
+			ValueUnit: "% used",
+			Tone:      utilTone(u.TxSizePct),
+			Body:      txSizeBody(u),
+			BarColor:  utilBarColor(u.TxSizePct),
+			BarWidth:  fmt.Sprintf("%.0f%%", clampFloat(u.TxSizePct, 0, 100)),
+		},
+	}
+	return vmv2.UtilizationSectionData{Title: "How much of the network is being used", Copy: "Every ledger has limits. When they fill up, fees rise sharply. Here’s where we sit right now.", Cards: cards}
+}
+
+func applyHomeV2Meta(data *vmv2.HomeData, summary *gateway.HomeSummaryResponse) {
+	items := make([]string, 0, 4)
+	if summary.Meta.HistoryStartProtocol > 0 {
+		items = append(items, fmt.Sprintf("Complete history from <b>protocol v%d</b> · no gaps", summary.Meta.HistoryStartProtocol))
+	}
+	if summary.Meta.LookupAvgMS > 0 || summary.Meta.LookupP99MS > 0 {
+		items = append(items, fmt.Sprintf("Lookups averaging <b>%d ms</b> · 99th percentile <b>%d ms</b>", summary.Meta.LookupAvgMS, summary.Meta.LookupP99MS))
+	}
+	if summary.Meta.KnownProtocolCount > 0 {
+		items = append(items, fmt.Sprintf("<b>%s known protocols</b> · named automatically", gateway.FormatNumber(summary.Meta.KnownProtocolCount)))
+	}
+	items = append(items, "Open source — <a href=\"#\">github.com/obsrvr/prism</a>")
+	data.FooterItems = items
+}
+
+func buildHomeV2FeedLedger(network string, recent gateway.RecentLedger, next *gateway.RecentLedger, summary *gateway.LedgerFeedSummary) (vmv2.LedgerRowData, homeV2FeedLedger, []homeV2FeedTransaction) {
+	seq := gateway.FormatNumber(recent.LedgerSequence)
+	age := "just now"
+	if t, ok := parseGatewayTime(recent.ClosedAt); ok {
+		age = gateway.FormatAge(t)
+	}
+	closeTime := "5.0s"
+	if next != nil {
+		if curr, ok := parseGatewayTime(recent.ClosedAt); ok {
+			if prev, ok := parseGatewayTime(next.ClosedAt); ok {
+				delta := curr.Sub(prev).Seconds()
+				if delta > 0 {
+					closeTime = gateway.FormatCloseTime(delta)
+				}
+			}
+		}
+	}
+
+	meta := fmt.Sprintf("with %s operations", gateway.FormatNumber(int64(recent.OperationCount)))
+	chips := []componentsv2.LedgerMetricChip{}
+	feedChips := []homeV2FeedLedgerChip{}
+	instructionsPct := 0
+	readWritePct := 0
+	txCount := int64(recent.SuccessfulTxCount + recent.FailedTxCount)
+	samples := []homeV2FeedTransaction{}
+	allTxs := []homeV2FeedTransaction{}
+
+	if summary != nil {
+		if summary.Totals.TransactionCount > 0 {
+			txCount = summary.Totals.TransactionCount
+		}
+		if summary.Totals.OperationCount > 0 {
+			meta = fmt.Sprintf("with %s operations", gateway.FormatNumber(summary.Totals.OperationCount))
+		}
+		if v := strings.TrimSpace(summary.Ledger.ClosedByValidator); v != "" {
+			meta += " · closed by " + gateway.ShortAddress(v)
+		}
+		chips, feedChips = homeV2FeedChips(summary)
+		instructionsPct = clampPct(percentOf(summary.SorobanUtilization.InstructionsUsed, 100_000_000))
+		readWritePct = clampPct(percentOf(summary.SorobanUtilization.ReadWriteBytesUsed, 3_500_000))
+		for _, tx := range summary.RepresentativeTransactions {
+			mapped := mapHomeV2RepresentativeTx(tx, age)
+			samples = append(samples, mapped)
+			allTxs = append(allTxs, mapped)
+		}
+	}
+
+	if len(chips) == 0 {
+		chips = []componentsv2.LedgerMetricChip{{Label: pluralizeChip(int64(recent.SuccessfulTxCount), "successful tx", "successful txs"), Kind: "classic"}}
+		feedChips = []homeV2FeedLedgerChip{{Label: pluralizeChip(int64(recent.SuccessfulTxCount), "successful tx", "successful txs"), Kind: "classic"}}
+	}
+
+	row := vmv2.LedgerRowData{
+		LedgerNumber:     seq,
+		TransactionCount: gateway.FormatNumber(txCount),
+		Meta:             meta,
+		Chips:            chips,
+		InstructionsPct:  instructionsPct,
+		ReadWritePct:     readWritePct,
+		CloseTime:        closeTime,
+		Age:              age,
+		SideMeta:         homeV2SideMeta(network),
+	}
+	feedLedger := homeV2FeedLedger{
+		LedgerNumber:     seq,
+		TransactionCount: gateway.FormatNumber(txCount),
+		Meta:             meta,
+		Chips:            feedChips,
+		InstructionsPct:  instructionsPct,
+		ReadWritePct:     readWritePct,
+		CloseTime:        closeTime,
+		Age:              age,
+		SideMeta:         homeV2SideMeta(network),
+		Samples:          samples,
+	}
+	return row, feedLedger, allTxs
+}
+
+func homeV2FeedChips(summary *gateway.LedgerFeedSummary) ([]componentsv2.LedgerMetricChip, []homeV2FeedLedgerChip) {
+	if summary == nil {
+		return nil, nil
+	}
+	add := func(items *[]componentsv2.LedgerMetricChip, feedItems *[]homeV2FeedLedgerChip, count int64, singular, plural, kind string) {
+		if count <= 0 {
+			return
+		}
+		label := pluralizeChip(count, singular, plural)
+		*items = append(*items, componentsv2.LedgerMetricChip{Label: label, Kind: kind})
+		*feedItems = append(*feedItems, homeV2FeedLedgerChip{Label: label, Kind: kind})
+	}
+	chips := []componentsv2.LedgerMetricChip{}
+	feedChips := []homeV2FeedLedgerChip{}
+	add(&chips, &feedChips, summary.ClassificationCounts.SwapTxCount, "swap", "swaps", "swap")
+	add(&chips, &feedChips, summary.ClassificationCounts.ContractCallTxCount, "call", "calls", "call")
+	add(&chips, &feedChips, summary.ClassificationCounts.ClassicTxCount, "classic tx", "classic txs", "classic")
+	return chips, feedChips
+}
+
+func mapHomeV2RepresentativeTx(tx gateway.LedgerFeedRepresentativeTransaction, when string) homeV2FeedTransaction {
+	kind := homeV2TxKind(tx)
+	headline := strings.TrimSpace(tx.Summary.Description)
+	if headline == "" {
+		headline = strings.TrimSpace(tx.CategoryLabel)
+	}
+	contextParts := []string{}
+	if tx.Classification.Subtype != "" {
+		contextParts = append(contextParts, tx.Classification.Subtype)
+	}
+	if tx.Summary.FunctionName != "" {
+		contextParts = append(contextParts, tx.Summary.FunctionName+"()")
+	}
+	if tx.Summary.ProtocolLabel != "" {
+		contextParts = append(contextParts, tx.Summary.ProtocolLabel)
+	}
+	if tx.Classification.Confidence != "" {
+		contextParts = append(contextParts, tx.Classification.Confidence+" confidence")
+	}
+	entity := tx.CategoryLabel
+	if tx.Actors != nil && tx.Actors.Primary != nil && tx.Actors.Primary.Label != "" {
+		entity = tx.Actors.Primary.Label
+	}
+	return homeV2FeedTransaction{
+		Kind:     kind,
+		Headline: html.EscapeString(headline),
+		Context:  strings.Join(contextParts, " · "),
+		Entity:   entity,
+		Hash:     gateway.ShortHash(tx.TxHash),
+		When:     when,
+	}
+}
+
+func homeV2TxKind(tx gateway.LedgerFeedRepresentativeTransaction) string {
+	switch tx.Category {
+	case "swap":
+		return "swap"
+	case "contract_call":
+		return "call"
+	case "classic_payment":
+		return "classic"
+	default:
+		switch tx.Classification.TxType {
+		case "swap":
+			return "swap"
+		case "contract_call":
+			return "call"
+		default:
+			return "classic"
+		}
+	}
+}
+
+func homeV2SideMeta(network string) string {
+	switch network {
+	case "testnet":
+		return "testnet cadence"
+	case "futurenet":
+		return "futurenet cadence"
+	default:
+		return "5 ledgers / min"
+	}
+}
+
+func pluralizeChip(count int64, singular, plural string) string {
+	if count == 1 {
+		return fmt.Sprintf("%s %s", gateway.FormatNumber(count), singular)
+	}
+	return fmt.Sprintf("%s %s", gateway.FormatNumber(count), plural)
+}
+
+func percentOf(used, limit int64) int {
+	if used <= 0 || limit <= 0 {
+		return 0
+	}
+	return int(math.Round((float64(used) / float64(limit)) * 100))
+}
+
+func clampPct(v int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > 100 {
+		return 100
+	}
+	return v
+}
+
+func clampFloat(v, low, high float64) float64 {
+	if v < low {
+		return low
+	}
+	if v > high {
+		return high
+	}
+	return v
+}
+
+func homeV2FirstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func boundedIndex(i, n int) int {
+	if n <= 0 {
+		return 0
+	}
+	if i < 0 {
+		return 0
+	}
+	if i >= n {
+		return n - 1
+	}
+	return i
+}
+
+func humanizeHours(hours int64) string {
+	switch {
+	case hours <= 1:
+		return "1 hour"
+	case hours < 24:
+		return fmt.Sprintf("%d hours", hours)
+	case hours%24 == 0:
+		days := hours / 24
+		if days == 1 {
+			return "1 day"
+		}
+		return fmt.Sprintf("%d days", days)
+	default:
+		days := hours / 24
+		rem := hours % 24
+		return fmt.Sprintf("%d days %d hours", days, rem)
+	}
+}
+
+func attentionTone(severity string) string {
+	switch severity {
+	case "bad":
+		return "is-bad"
+	case "warn":
+		return "is-warn"
+	default:
+		return "is-green"
+	}
+}
+
+func attentionBarColor(severity string) string {
+	switch severity {
+	case "bad":
+		return "#ea8c69"
+	case "warn":
+		return "#d6aa45"
+	default:
+		return "#64a86a"
+	}
+}
+
+func utilTone(pct float64) string {
+	if pct >= 60 {
+		return "is-warn"
+	}
+	return ""
+}
+
+func utilBarColor(pct float64) string {
+	if pct >= 60 {
+		return "#d6aa45"
+	}
+	return "#64a86a"
+}
+
+func formatPercentMain(v float64) string {
+	return fmt.Sprintf("%.0f", v)
+}
+
+func formatBigUnit(v int64) string {
+	switch {
+	case v >= 1_000_000_000:
+		return fmt.Sprintf("%.1fB", float64(v)/1_000_000_000)
+	case v >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(v)/1_000_000)
+	case v >= 1_000:
+		return fmt.Sprintf("%.1fK", float64(v)/1_000)
+	default:
+		return gateway.FormatNumber(v)
+	}
+}
+
+func formatBytesHuman(v int64) string {
+	switch {
+	case v >= 1_000_000:
+		return fmt.Sprintf("%.1f MB", float64(v)/1_000_000)
+	case v >= 1_000:
+		return fmt.Sprintf("%.1f KB", float64(v)/1_000)
+	default:
+		return fmt.Sprintf("%d B", v)
+	}
+}
+
+func txSizeBody(u gateway.HomeSummaryUtilization) string {
+	if u.AvgTxSizeBytes > 0 && u.TxSizeLimitBytes > 0 {
+		return fmt.Sprintf("Average transaction is %s of %s allowed.", formatBytesHuman(u.AvgTxSizeBytes), formatBytesHuman(u.TxSizeLimitBytes))
+	}
+	if u.TxSizeLimitBytes > 0 {
+		return fmt.Sprintf("Transaction size limit is %s on this network.", formatBytesHuman(u.TxSizeLimitBytes))
+	}
+	return "Transaction size usage is currently unavailable."
+}
+
+type homeV2FeedPayload struct {
+	Live   bool                    `json:"live"`
+	Header homeV2FeedPayloadHeader `json:"header"`
+	Feed   homeV2Feed              `json:"feed"`
+}
+
+type homeV2FeedPayloadHeader struct {
+	LedgerNumber string `json:"ledgerNumber"`
+	AgeLabel     string `json:"ageLabel"`
+}
+
+func (h *Handlers) HomeV2Feed(w http.ResponseWriter, r *http.Request) {
+	network := networkFromRequest(r)
+	payload := homeV2FeedPayload{Live: false}
+	if h.useLiveData(r) && network == "testnet" {
+		if data, err := h.buildHomeV2Data(r, network); err == nil {
+			var feed homeV2Feed
+			if err := json.Unmarshal([]byte(data.FeedJSON), &feed); err == nil {
+				payload.Live = true
+				payload.Header = homeV2FeedPayloadHeader{LedgerNumber: data.Header.LedgerNumber, AgeLabel: data.Header.AgeLabel}
+				payload.Feed = feed
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func parseGatewayTime(value string) (time.Time, bool) {
+	if value == "" {
+		return time.Time{}, false
+	}
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
+}
+
 type homeV2Feed struct {
 	Ledgers      []homeV2FeedLedger      `json:"ledgers"`
 	Transactions []homeV2FeedTransaction `json:"transactions"`
@@ -223,11 +822,11 @@ func mockHomeV2Feed(network string) homeV2Feed {
 	}
 	return homeV2Feed{
 		Ledgers: []homeV2FeedLedger{
-			{LedgerNumber: base, TransactionCount: "212", Meta: titlePrefix + "across 424 operations · closed by sdf-validator-1", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "67 calls", Kind: "call"}, {Label: "54 agent payments", Kind: "agent"}, {Label: "33 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 61, ReadWritePct: 35, CloseTime: "4.9s", Age: "just now", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[1], txs[0], txs[2]}},
-			{LedgerNumber: decLedger(base, 1), TransactionCount: "226", Meta: titlePrefix + "across 452 operations · closed by whale-stack", Chips: []homeV2FeedLedgerChip{{Label: "42 swaps", Kind: "swap"}, {Label: "75 calls", Kind: "call"}, {Label: "37 agent payments", Kind: "agent"}, {Label: "67 classic", Kind: "classic"}, {Label: "3 deploys", Kind: "deploy"}, {Label: "1 confidential", Kind: "confidential"}}, InstructionsPct: 76, ReadWritePct: 45, CloseTime: "4.9s", Age: "5 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[6], txs[7], txs[5]}},
-			{LedgerNumber: decLedger(base, 2), TransactionCount: "187", Meta: titlePrefix + "across 561 operations · closed by publicnode", Chips: []homeV2FeedLedgerChip{{Label: "35 swaps", Kind: "swap"}, {Label: "70 calls", Kind: "call"}, {Label: "30 agent payments", Kind: "agent"}, {Label: "52 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 67, ReadWritePct: 36, CloseTime: "4.9s", Age: "10 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[3], txs[4], txs[5]}},
-			{LedgerNumber: decLedger(base, 3), TransactionCount: "199", Meta: titlePrefix + "across 388 operations · closed by lobstr", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "62 calls", Kind: "call"}, {Label: "55 agent payments", Kind: "agent"}, {Label: "32 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 50, ReadWritePct: 50, CloseTime: "4.9s", Age: "15 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[2], txs[0], txs[5]}},
-			{LedgerNumber: decLedger(base, 4), TransactionCount: "197", Meta: titlePrefix + "across 788 operations · closed by coinbase-cloud", Chips: []homeV2FeedLedgerChip{{Label: "53 swaps", Kind: "swap"}, {Label: "66 calls", Kind: "call"}, {Label: "33 agent payments", Kind: "agent"}, {Label: "41 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 50, ReadWritePct: 38, CloseTime: "4.9s", Age: "20 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[4], txs[6], txs[1]}},
+			{LedgerNumber: base, TransactionCount: "212", Meta: titlePrefix + "with 424 operations · closed by sdf-validator-1", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "67 calls", Kind: "call"}, {Label: "54 agent payments", Kind: "agent"}, {Label: "33 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 61, ReadWritePct: 35, CloseTime: "4.9s", Age: "just now", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[1], txs[0], txs[2]}},
+			{LedgerNumber: decLedger(base, 1), TransactionCount: "226", Meta: titlePrefix + "with 452 operations · closed by whale-stack", Chips: []homeV2FeedLedgerChip{{Label: "42 swaps", Kind: "swap"}, {Label: "75 calls", Kind: "call"}, {Label: "37 agent payments", Kind: "agent"}, {Label: "67 classic", Kind: "classic"}, {Label: "3 deploys", Kind: "deploy"}, {Label: "1 confidential", Kind: "confidential"}}, InstructionsPct: 76, ReadWritePct: 45, CloseTime: "4.9s", Age: "5 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[6], txs[7], txs[5]}},
+			{LedgerNumber: decLedger(base, 2), TransactionCount: "187", Meta: titlePrefix + "with 561 operations · closed by publicnode", Chips: []homeV2FeedLedgerChip{{Label: "35 swaps", Kind: "swap"}, {Label: "70 calls", Kind: "call"}, {Label: "30 agent payments", Kind: "agent"}, {Label: "52 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 67, ReadWritePct: 36, CloseTime: "4.9s", Age: "10 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[3], txs[4], txs[5]}},
+			{LedgerNumber: decLedger(base, 3), TransactionCount: "199", Meta: titlePrefix + "with 388 operations · closed by lobstr", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "62 calls", Kind: "call"}, {Label: "55 agent payments", Kind: "agent"}, {Label: "32 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 50, ReadWritePct: 50, CloseTime: "4.9s", Age: "15 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[2], txs[0], txs[5]}},
+			{LedgerNumber: decLedger(base, 4), TransactionCount: "197", Meta: titlePrefix + "with 788 operations · closed by coinbase-cloud", Chips: []homeV2FeedLedgerChip{{Label: "53 swaps", Kind: "swap"}, {Label: "66 calls", Kind: "call"}, {Label: "33 agent payments", Kind: "agent"}, {Label: "41 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 50, ReadWritePct: 38, CloseTime: "4.9s", Age: "20 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[4], txs[6], txs[1]}},
 		},
 		Transactions: txs,
 	}

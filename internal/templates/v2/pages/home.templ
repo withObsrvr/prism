@@ -16,7 +16,7 @@ templ Home(data vmv2.HomeData) {
 					@fragmentsv2.Hero(data.Hero)
 					@fragmentsv2.Prompt(data.Prompt)
 					@fragmentsv2.Alert(data.Alert)
-					@fragmentsv2.LedgerFeed(data.LedgerFeed, data.FeedJSON)
+					@fragmentsv2.LedgerFeed(data.LedgerFeed, data.FeedJSON, data.FeedLive)
 					@fragmentsv2.Attention(data.Attention)
 					@fragmentsv2.Leaders(data.Leaders)
 					@fragmentsv2.Utilization(data.Utilization)
@@ -70,6 +70,7 @@ templ Home(data vmv2.HomeData) {
 					const networkSelect = document.getElementById('v2-network-select');
 					if (!root) return;
 					const data = JSON.parse(root.dataset.feed || '{"ledgers":[],"transactions":[]}');
+					let useLiveFeed = root.dataset.live === 'true';
 					let mode = 'all';
 					let tick = 0;
 					const storageKey = 'prism-v2-home-state';
@@ -149,6 +150,7 @@ templ Home(data vmv2.HomeData) {
 						if(headerLedgerAge && data.ledgers && data.ledgers[0]) headerLedgerAge.textContent = data.ledgers[0].age;
 					}
 					function normalizeFeedAges(){
+						if(useLiveFeed) { updateHeaderLedger(); return; }
 						(data.transactions || []).forEach(function(tx, i){ tx.when = shortAge(i); });
 						(data.ledgers || []).forEach(function(ledger, i){ ledger.age = shortAge(i); });
 						updateHeaderLedger();
@@ -175,7 +177,7 @@ templ Home(data vmv2.HomeData) {
 						return {
 							ledgerNumber: String(top + 1),
 							transactionCount: String(185 + Math.floor(Math.random() * 45)),
-							meta: 'across ' + (390 + Math.floor(Math.random() * 260)) + ' operations · closed by ' + pick(['sdf-validator-1','whale-stack','publicnode','lobstr','coinbase-cloud']),
+							meta: 'with ' + (390 + Math.floor(Math.random() * 260)) + ' operations · closed by ' + pick(['sdf-validator-1','whale-stack','publicnode','lobstr','coinbase-cloud']),
 							chips: chips,
 							instructionsPct: 48 + Math.floor(Math.random() * 25),
 							readWritePct: 32 + Math.floor(Math.random() * 26),
@@ -265,11 +267,27 @@ templ Home(data vmv2.HomeData) {
 							});
 						}
 					}
-					function render(){
+					function expandedLedgerNumber(){
+						const row = root.querySelector('.v2-ledger-row.is-expanded');
+						return row ? String(row.dataset.ledger || '') : '';
+					}
+					function reopenExpandedLedger(ledgerNumber){
+						if(!ledgerNumber || mode !== 'all') return;
+						const row = root.querySelector('.v2-ledger-row[data-ledger="' + ledgerNumber.replace(/"/g, '\\"') + '"]');
+						if(!row) return;
+						const ledger = (data.ledgers||[]).find(function(l){ return String(l.ledgerNumber) === ledgerNumber; });
+						if(!ledger) return;
+						row.classList.add('is-expanded');
+						row.insertAdjacentHTML('afterend', renderLedgerDetail(ledger));
+					}
+					function render(options){
+						const opts = options || {};
+						const reopenLedger = opts.reopenLedger || '';
 						normalizeFeedAges();
 						if(mode === 'all'){
 							root.className = 'v2-ledger-list';
 							root.innerHTML = (data.ledgers||[]).map(function(row, i){ return renderLedgerRow(row, i === 0); }).join('');
+							reopenExpandedLedger(reopenLedger);
 							note.textContent = baseFeedNote();
 						} else {
 							const txs = visibleTransactions();
@@ -397,10 +415,53 @@ templ Home(data vmv2.HomeData) {
 						if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); promptInput?.focus(); }
 						if(e.key === 'Escape' && promptResults) promptResults.hidden = true;
 					});
-					setInterval(function(){
+					function applyFeedPayload(payload){
+						if(!payload || !payload.feed) return { applied: false, changed: false };
+						const prevTop = data.ledgers && data.ledgers[0] ? String(data.ledgers[0].ledgerNumber) : '';
+						const nextTop = payload.feed.ledgers && payload.feed.ledgers[0] ? String(payload.feed.ledgers[0].ledgerNumber) : '';
+						useLiveFeed = payload.live === true;
+						if(headerLedger && payload.header && payload.header.ledgerNumber) headerLedger.textContent = payload.header.ledgerNumber;
+						if(headerLedgerAge && payload.header && payload.header.ageLabel) headerLedgerAge.textContent = payload.header.ageLabel;
+						if(!nextTop || nextTop === prevTop) {
+							return { applied: true, changed: false };
+						}
+						const reopenLedger = expandedLedgerNumber();
+						data.ledgers = payload.feed.ledgers || [];
+						data.transactions = payload.feed.transactions || [];
+						render({ reopenLedger: reopenLedger });
+						if(root.firstElementChild) markFresh(root.firstElementChild);
+						return { applied: true, changed: true };
+					}
+					async function refreshFeed(){
+						try {
+							const resp = await fetch('/v2/home/feed', { headers: { 'Accept': 'application/json' } });
+							if(!resp.ok) return false;
+							const payload = await resp.json();
+							if(payload.live) {
+								const result = applyFeedPayload(payload);
+								if(result.changed) {
+									note.textContent = 'live testnet feed synced';
+									setTimeout(function(){
+										if(mode === 'all') note.textContent = baseFeedNote();
+										else if(mode === 'alltx') note.textContent = 'all transactions, newest first';
+										else note.textContent = 'showing only ' + String((toneMap[mode]||mode).toLowerCase());
+									}, 1200);
+								}
+								return result.applied;
+							}
+							return false;
+						} catch (_) {
+							return false;
+						}
+					}
+					setInterval(async function(){
 						tick++;
-						streamInsert();
-					}, 5000);
+						const refreshed = await refreshFeed();
+						if(!refreshed) {
+							useLiveFeed = false;
+							streamInsert();
+						}
+					}, 2000);
 					if(savedState.density) body.setAttribute('data-density', savedState.density);
 					if(savedState.voice) body.setAttribute('data-voice', savedState.voice);
 					document.querySelectorAll('[data-tweak="density"] button').forEach(function(btn){ btn.classList.toggle('is-active', btn.dataset.value === (savedState.density || 'generous')); });

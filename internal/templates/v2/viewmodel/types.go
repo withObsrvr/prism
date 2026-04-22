@@ -99,6 +99,7 @@ type HomeData struct {
 	Alert       AlertData
 	LedgerFeed  LedgerFeedData
 	FeedJSON    string
+	FeedLive    bool
 	Attention   AttentionSectionData
 	Leaders     LeadersSectionData
 	Utilization UtilizationSectionData

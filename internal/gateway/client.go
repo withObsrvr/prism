@@ -15,7 +15,7 @@ import (
 const (
 	TTLNetworkStats       = 10 * time.Second
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
-	TTLRecentList         = 5 * time.Second
+	TTLRecentList         = 2 * time.Second
 	TTLImmutable          = 5 * time.Minute
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
@@ -323,7 +323,7 @@ func (c *Client) GetSilverRecentTransactions(ctx context.Context, network string
 	return &resp, nil
 }
 
-// GetSilverLedgerSummary returns the compact per-ledger snapshot used by the ledger-first v2 page.
+// GetSilverLedgerSummary returns the older compact per-ledger snapshot used by the ledger-first v2 page.
 func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, sequence int64) (*LedgerSummary, error) {
 	cacheKey := fmt.Sprintf("%s:silver_ledger_summary:%d", network, sequence)
 	if v, ok := c.cache.Get(cacheKey); ok {
@@ -341,6 +341,48 @@ func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, seq
 	}
 
 	c.cache.Set(cacheKey, &resp, TTLImmutable)
+	return &resp, nil
+}
+
+// GetSilverLedgerFeedSummary returns the current rich per-ledger summary used by the /v2/home feed.
+func (c *Client) GetSilverLedgerFeedSummary(ctx context.Context, network string, sequence int64) (*LedgerFeedSummary, error) {
+	cacheKey := fmt.Sprintf("%s:silver_ledger_feed_summary:%d", network, sequence)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*LedgerFeedSummary), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp LedgerFeedSummary
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLImmutable)
+	return &resp, nil
+}
+
+// GetHomeSummary returns the aggregated non-feed data used by /v2/home.
+func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSummaryResponse, error) {
+	cacheKey := fmt.Sprintf("%s:home_summary", network)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*HomeSummaryResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/home/summary"))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp HomeSummaryResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("gateway: parsing home summary: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &resp, TTLRecentList)
 	return &resp, nil
 }
 
