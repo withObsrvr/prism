@@ -40,6 +40,7 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 			Eyebrow:      "What brings you here?",
 			HeadlineHTML: cfg.HeadlineHTML,
 			Body:         cfg.HeroBody,
+			RoleCopyJSON: mustJSON(buildMockHomeV2RoleCopy(network)),
 		},
 		Prompt: vmv2.PromptData{Placeholder: cfg.Placeholder},
 		Alert: vmv2.AlertData{
@@ -144,6 +145,19 @@ type homeV2NetworkCfg struct {
 	FeedNote     string
 }
 
+type homeV2HeroRoleCopy struct {
+	Headline string `json:"headline"`
+	Body     string `json:"body"`
+}
+
+func mustJSON(v any) string {
+	body, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(body)
+}
+
 func homeV2NetworkConfig(network string) homeV2NetworkCfg {
 	switch network {
 	case "testnet":
@@ -176,6 +190,111 @@ func homeV2NetworkConfig(network string) homeV2NetworkCfg {
 			FeedCopy:     "By default, each card is a ledger — the five-second heartbeat of Stellar. Pick a classification pill to drill into individual transactions.",
 			FeedNote:     "a new ledger every 5 seconds",
 		}
+	}
+}
+
+func buildMockHomeV2RoleCopy(network string) map[string]homeV2HeroRoleCopy {
+	prefix := "The Stellar network"
+	devPrefix := "Soroban"
+	bodyPrefix := ""
+	switch network {
+	case "testnet":
+		prefix = "The Stellar testnet"
+		devPrefix = "Testnet Soroban"
+		bodyPrefix = "You’re viewing <b>Testnet</b>. "
+	case "futurenet":
+		prefix = "The Stellar futurenet"
+		devPrefix = "Futurenet Soroban"
+		bodyPrefix = "You’re viewing <b>Futurenet</b>. "
+	}
+	return map[string]homeV2HeroRoleCopy{
+		"curious": {
+			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.`, prefix),
+			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
+		},
+		"developer": {
+			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span>. Instruction budget <em>64%% used</em>, read / write <em>60%%</em>, with 2,314 contracts active in the last day.`, devPrefix),
+			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events — and we surface TTL status, which no other explorer does. <a class="v2-linkish" href="#">API docs →</a>`,
+		},
+		"operator": {
+			Headline: `Three contracts need <em>TTL attention</em>. One has <span style="color:var(--v2-orange)">under 17 hours</span> remaining.`,
+			Body:     bodyPrefix + `Operators: paste your contract address and we’ll show runway, recent calls, and the exact restore path. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`,
+		},
+		"compliance": {
+			Headline: `<em>Activity across the network is normal.</em> No anomalous bursts detected in the last hour; agent volume is up <em>22%</em> week-over-week.`,
+			Body:     bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, classic. Paste an address to see its 30-day pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
+		},
+		"user": {
+			Headline: `Your transaction is <span class="is-green">safe to check here</span>. Paste the hash and we’ll tell you what happened in one sentence.`,
+			Body:     bodyPrefix + `No jargon. No hex. Just a plain-English answer. <a class="v2-linkish" href="#">How Prism reads transactions →</a>`,
+		},
+	}
+}
+
+func buildHomeV2RoleCopy(summary *gateway.HomeSummaryResponse) map[string]homeV2HeroRoleCopy {
+	networkLabel := "The Stellar network"
+	devLabel := "Soroban"
+	bodyPrefix := ""
+	if strings.EqualFold(summary.Network, "testnet") {
+		networkLabel = "The Stellar testnet"
+		devLabel = "Testnet Soroban"
+		bodyPrefix = "You’re viewing <b>Testnet</b>. "
+	} else if strings.EqualFold(summary.Network, "futurenet") {
+		networkLabel = "The Stellar futurenet"
+		devLabel = "Futurenet Soroban"
+		bodyPrefix = "You’re viewing <b>Futurenet</b>. "
+	}
+	statusWord := homeV2FirstNonEmpty(summary.Hero.Health.Status, "healthy")
+	activityPhrase := "active"
+	if summary.Hero.Health.ActivityBand == "busy" {
+		activityPhrase = "busier than usual"
+	} else if summary.Hero.Health.ActivityBand == "quiet" || summary.Hero.Health.LoadBand == "light" {
+		activityPhrase = "lightly loaded"
+	} else if summary.Hero.Health.ActivityBand == "normal" {
+		activityPhrase = "running normally"
+	}
+	txAvg := gateway.FormatNumber(summary.Hero.Cadence.TxPerLedgerRecentAvg)
+	if summary.Hero.Cadence.TxPerLedgerRecentAvg == 0 {
+		txAvg = gateway.FormatNumber(summary.Hero.LatestLedger.TransactionCount)
+	}
+	contracts := gateway.FormatNumber(summary.Hero.Contracts.Active24h)
+	expiringContracts := summary.Alert.AffectedContractCount
+	if expiringContracts == 0 {
+		expiringContracts = summary.Hero.TTL.ExpiringContractCount
+	}
+	worstHours := summary.Alert.WorstRemainingHours
+	if worstHours == 0 {
+		worstHours = summary.Hero.TTL.WorstRemainingHours
+	}
+	anomalyText := "No anomalous bursts detected in the last hour"
+	if summary.Hero.Trends.AnomalyDetected {
+		anomalyText = "An anomalous burst was detected recently"
+	}
+	agentTrend := fmt.Sprintf("%.0f%%", summary.Hero.Trends.AgentActivityWoWPct)
+	if summary.Hero.Trends.AgentActivityWoWPct == 0 {
+		agentTrend = "0%"
+	}
+	return map[string]homeV2HeroRoleCopy{
+		"curious": {
+			Headline: fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now — %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts),
+			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
+		},
+		"developer": {
+			Headline: fmt.Sprintf(`%s is <span class="is-green">%s</span>. Instruction budget <em>%s%% used</em>, read / write <em>%s%%</em>, with %s contracts active in the last day.`, devLabel, html.EscapeString(statusWord), formatPercentMain(summary.Utilization.InstructionPct), formatPercentMain(summary.Utilization.ReadWritePct), contracts),
+			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events — and we surface TTL status, which no other explorer does. <a class="v2-linkish" href="#">API docs →</a>`,
+		},
+		"operator": {
+			Headline: fmt.Sprintf(`%s contracts need <em>TTL attention</em>. Worst case has <span style="color:var(--v2-orange)">under %s</span> remaining.`, gateway.FormatNumber(expiringContracts), humanizeHours(worstHours)),
+			Body:     bodyPrefix + `Operators: paste your contract address and we’ll show runway, recent calls, and the exact restore path. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`,
+		},
+		"compliance": {
+			Headline: fmt.Sprintf(`<em>Activity across the network is %s.</em> %s; agent volume is up <em>%s</em> week-over-week.`, html.EscapeString(summary.Hero.Health.ActivityBand), html.EscapeString(anomalyText), html.EscapeString(agentTrend)),
+			Body:     bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, classic. Paste an address to see its 30-day pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
+		},
+		"user": {
+			Headline: fmt.Sprintf(`The network is <span class="is-green">%s</span>. Paste a hash and we’ll tell you what happened in one sentence.`, html.EscapeString(statusWord)),
+			Body:     bodyPrefix + `No jargon. No hex. Just a plain-English answer. <a class="v2-linkish" href="#">How Prism reads transactions →</a>`,
+		},
 	}
 }
 
@@ -280,7 +399,12 @@ func buildHomeV2Hero(summary *gateway.HomeSummaryResponse) vmv2.HeroData {
 	contracts := gateway.FormatNumber(summary.Hero.Contracts.Active24h)
 	headline := fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now — %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts)
 	body := fmt.Sprintf(`You’re looking at %s’s Soroban-first explorer%s. Every transaction below is classified and described in one sentence — swaps, contract calls, and classic payments in plain English.`, networkBody, placeholder)
-	return vmv2.HeroData{Eyebrow: "What brings you here?", HeadlineHTML: headline, Body: body}
+	return vmv2.HeroData{
+		Eyebrow:      "What brings you here?",
+		HeadlineHTML: headline,
+		Body:         body,
+		RoleCopyJSON: mustJSON(buildHomeV2RoleCopy(summary)),
+	}
 }
 
 func buildHomeV2Alert(summary *gateway.HomeSummaryResponse) vmv2.AlertData {

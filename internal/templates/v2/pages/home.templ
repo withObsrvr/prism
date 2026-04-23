@@ -63,6 +63,7 @@ templ Home(data vmv2.HomeData) {
 					const promptWrap = document.getElementById('v2-prompt-wrap');
 					const promptResults = document.getElementById('v2-prompt-results');
 					const roleRow = document.getElementById('v2-role-row');
+					const hero = document.querySelector('.v2-hero');
 					const statusLine = document.getElementById('v2-status-line');
 					const subline = document.getElementById('v2-subline');
 					const headerLedger = document.getElementById('v2-header-ledger');
@@ -77,28 +78,12 @@ templ Home(data vmv2.HomeData) {
 					const toneMap = { swap:'Swaps', call:'Contract calls', agent:'Agent payments', deploy:'Deployments', confidential:'Confidential', classic:'Classic' };
 					const iconMap = { swap:'⇌', call:'ƒ', agent:'α', deploy:'+', confidential:'∎', classic:'▸' };
 					const chipColor = { swap:'var(--v2-teal)', call:'var(--v2-violet)', agent:'var(--v2-orange)', deploy:'var(--v2-gold)', confidential:'var(--v2-blue)', classic:'var(--v2-classic)' };
-					const roleMap = {
-						curious: [
-							'The Stellar network is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.',
-							'You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>'
-						],
-						developer: [
-							'Soroban is <span class="is-green">healthy</span>. Instruction budget <em>64% used</em>, read / write <em>60%</em>, with 2,314 contracts active in the last day.',
-							'Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events — and we surface TTL status, which no other explorer does. <a class="v2-linkish" href="#">API docs →</a>'
-						],
-						operator: [
-							'Three of your ecosystem’s contracts are <em>running out of TTL</em>. One has <span style="color:var(--v2-orange)">under 17 hours</span>.',
-							'Operators: paste your contract address and we’ll show runway, recent calls, and the exact restore path. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>'
-						],
-						compliance: [
-							'<em>Activity across the network is normal.</em> No anomalous bursts detected in the last hour; agent volume is up <em>22%</em> week-over-week.',
-							'Every transaction is classified — DEX swap, contract call, agent payment, classic. Paste an address to see its 30-day pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>'
-						],
-						user: [
-							'Your transaction is <span class="is-green">safe to check here</span>. Paste the hash and we’ll tell you what happened in one sentence.',
-							'No jargon. No hex. Just a plain-English answer. <a class="v2-linkish" href="#">How Prism reads transactions →</a>'
-						]
-					};
+					let roleMap = {};
+					try {
+						roleMap = JSON.parse(hero?.dataset.roleCopy || '{}');
+					} catch (_) {
+						roleMap = {};
+					}
 					const quickAnswers = {
 						'which contracts are expiring this week?': {
 							answer: 'Three high-traffic contracts look closest: Blend\'s pool, Soroswap\'s router, and Phoenix\'s AMM.',
@@ -204,17 +189,8 @@ templ Home(data vmv2.HomeData) {
 					}
 					function setRole(role, persist){
 						const entry = roleMap[role] || roleMap.curious;
-						const network = currentNetwork();
-						if(statusLine) {
-							if(network === 'testnet') statusLine.innerHTML = entry[0].replace('The Stellar network', 'The Stellar testnet').replace('Soroban is', 'Testnet Soroban is');
-							else if(network === 'futurenet') statusLine.innerHTML = entry[0].replace('The Stellar network', 'The Stellar futurenet').replace('Soroban is', 'Futurenet Soroban is');
-							else statusLine.innerHTML = entry[0];
-						}
-						if(subline) {
-							if(network === 'testnet') subline.innerHTML = 'You’re viewing <b>Testnet</b>. ' + entry[1];
-							else if(network === 'futurenet') subline.innerHTML = 'You’re viewing <b>Futurenet</b>. ' + entry[1];
-							else subline.innerHTML = entry[1];
-						}
+						if(statusLine && entry?.headline) statusLine.innerHTML = entry.headline;
+						if(subline && entry?.body) subline.innerHTML = entry.body;
 						roleRow?.querySelectorAll('[data-role]').forEach(function(btn){
 							btn.classList.toggle('is-active', btn.dataset.role === role);
 						});

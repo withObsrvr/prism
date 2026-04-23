@@ -6,7 +6,7 @@ import (
 )
 
 templ Hero(data vmv2.HeroData) {
-	<section class="v2-home-section v2-hero">
+	<section class="v2-home-section v2-hero" data-role-copy={ data.RoleCopyJSON }>
 		<div class="v2-role-row" id="v2-role-row">
 			<span class="v2-role-question">{ data.Eyebrow }</span>
 			<div class="v2-hero-chips">

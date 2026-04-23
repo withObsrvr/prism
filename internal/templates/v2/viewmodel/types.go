@@ -6,6 +6,7 @@ type HeroData struct {
 	Eyebrow      string
 	HeadlineHTML string
 	Body         string
+	RoleCopyJSON string
 }
 
 type PromptData struct {
