@@ -15,7 +15,8 @@ import (
 const (
 	TTLNetworkStats       = 10 * time.Second
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
-	TTLRecentList         = 2 * time.Second
+	TTLRecentList         = 5 * time.Second
+	TTLHomeSummary        = 2 * time.Second
 	TTLImmutable          = 5 * time.Minute
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
@@ -339,6 +340,12 @@ func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, seq
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("gateway: parsing silver ledger summary: %w", err)
 	}
+	if ledgerSummaryLooksEmpty(resp) {
+		var feedResp LedgerFeedSummary
+		if err := json.Unmarshal(body, &feedResp); err == nil && !ledgerFeedSummaryLooksEmpty(feedResp) {
+			resp = ledgerSummaryFromFeedSummary(feedResp)
+		}
+	}
 
 	c.cache.Set(cacheKey, &resp, TTLImmutable)
 	return &resp, nil
@@ -365,6 +372,49 @@ func (c *Client) GetSilverLedgerFeedSummary(ctx context.Context, network string,
 	return &resp, nil
 }
 
+func ledgerSummaryLooksEmpty(v LedgerSummary) bool {
+	return v.TxCount == 0 &&
+		v.TransactionCount == 0 &&
+		v.Swaps == 0 &&
+		v.Calls == 0 &&
+		v.Agents == 0 &&
+		v.InstructionPct == 0 &&
+		v.ReadWritePct == 0 &&
+		v.Classifications == nil &&
+		v.Utilization == nil
+}
+
+func ledgerFeedSummaryLooksEmpty(v LedgerFeedSummary) bool {
+	return v.Ledger.Sequence == 0 &&
+		v.Totals.TransactionCount == 0 &&
+		v.Totals.OperationCount == 0 &&
+		v.ClassificationCounts.SwapTxCount == 0 &&
+		v.ClassificationCounts.ContractCallTxCount == 0 &&
+		v.ClassificationCounts.ClassicTxCount == 0 &&
+		v.SorobanUtilization.InstructionsUsed == 0 &&
+		v.SorobanUtilization.ReadWriteBytesUsed == 0 &&
+		len(v.RepresentativeTransactions) == 0
+}
+
+func ledgerSummaryFromFeedSummary(v LedgerFeedSummary) LedgerSummary {
+	return LedgerSummary{
+		LedgerSequence:   v.Ledger.Sequence,
+		TransactionCount: v.Totals.TransactionCount,
+		Swaps:            v.ClassificationCounts.SwapTxCount,
+		Calls:            v.ClassificationCounts.ContractCallTxCount,
+		InstructionPct:   v.SorobanUtilization.InstructionPct,
+		ReadWritePct:     v.SorobanUtilization.ReadWritePct,
+		Classifications: &LedgerSummaryClassifications{
+			Swaps: v.ClassificationCounts.SwapTxCount,
+			Calls: v.ClassificationCounts.ContractCallTxCount,
+		},
+		Utilization: &LedgerSummaryUtilization{
+			InstructionPct: v.SorobanUtilization.InstructionPct,
+			ReadWritePct:   v.SorobanUtilization.ReadWritePct,
+		},
+	}
+}
+
 // GetHomeSummary returns the aggregated non-feed data used by /v2/home.
 func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSummaryResponse, error) {
 	cacheKey := fmt.Sprintf("%s:home_summary", network)
@@ -382,7 +432,7 @@ func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSumma
 		return nil, fmt.Errorf("gateway: parsing home summary: %w", err)
 	}
 
-	c.cache.Set(cacheKey, &resp, TTLRecentList)
+	c.cache.Set(cacheKey, &resp, TTLHomeSummary)
 	return &resp, nil
 }
 

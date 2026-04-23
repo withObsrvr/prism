@@ -74,6 +74,7 @@ templ Home(data vmv2.HomeData) {
 					let useLiveFeed = root.dataset.live === 'true';
 					let mode = 'all';
 					let tick = 0;
+					let refreshInFlight = false;
 					const storageKey = 'prism-v2-home-state';
 					const toneMap = { swap:'Swaps', call:'Contract calls', agent:'Agent payments', deploy:'Deployments', confidential:'Confidential', classic:'Classic' };
 					const iconMap = { swap:'⇌', call:'ƒ', agent:'α', deploy:'+', confidential:'∎', classic:'▸' };
@@ -409,6 +410,8 @@ templ Home(data vmv2.HomeData) {
 						return { applied: true, changed: true };
 					}
 					async function refreshFeed(){
+						if(refreshInFlight || currentNetwork() !== 'testnet') return false;
+						refreshInFlight = true;
 						try {
 							const resp = await fetch('/v2/home/feed', { headers: { 'Accept': 'application/json' } });
 							if(!resp.ok) return false;
@@ -428,16 +431,21 @@ templ Home(data vmv2.HomeData) {
 							return false;
 						} catch (_) {
 							return false;
+						} finally {
+							refreshInFlight = false;
 						}
 					}
-					setInterval(async function(){
-						tick++;
-						const refreshed = await refreshFeed();
-						if(!refreshed) {
-							useLiveFeed = false;
-							streamInsert();
-						}
-					}, 2000);
+					(function scheduleFeedRefresh(){
+						setTimeout(async function(){
+							tick++;
+							const refreshed = await refreshFeed();
+							if(!refreshed) {
+								useLiveFeed = false;
+								streamInsert();
+							}
+							scheduleFeedRefresh();
+						}, 2000);
+					})();
 					if(savedState.density) body.setAttribute('data-density', savedState.density);
 					if(savedState.voice) body.setAttribute('data-voice', savedState.voice);
 					document.querySelectorAll('[data-tweak="density"] button').forEach(function(btn){ btn.classList.toggle('is-active', btn.dataset.value === (savedState.density || 'generous')); });

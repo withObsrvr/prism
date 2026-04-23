@@ -1243,6 +1243,8 @@ type LedgerFeedSummarySorobanUtilization struct {
 	ReadBytesUsed      int64 `json:"read_bytes_used"`
 	WriteBytesUsed     int64 `json:"write_bytes_used"`
 	ReadWriteBytesUsed int64 `json:"read_write_bytes_used"`
+	InstructionPct     int   `json:"instruction_pct,omitempty"`
+	ReadWritePct       int   `json:"read_write_pct,omitempty"`
 }
 
 type LedgerFeedSummarySampling struct {

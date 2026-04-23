@@ -135,6 +135,11 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 	}
 }
 
+const (
+	homeV2SorobanInstructionLimit = int64(100_000_000)
+	homeV2SorobanReadWriteLimit   = int64(3_500_000)
+)
+
 type homeV2NetworkCfg struct {
 	LedgerNumber string
 	HeadlineHTML string
@@ -148,6 +153,17 @@ type homeV2NetworkCfg struct {
 type homeV2HeroRoleCopy struct {
 	Headline string `json:"headline"`
 	Body     string `json:"body"`
+}
+
+func homeV2RoleNetworkLabels(network string) (string, string, string) {
+	switch {
+	case strings.EqualFold(network, "testnet"):
+		return "The Stellar testnet", "Testnet Soroban", "You’re viewing <b>Testnet</b>. "
+	case strings.EqualFold(network, "futurenet"):
+		return "The Stellar futurenet", "Futurenet Soroban", "You’re viewing <b>Futurenet</b>. "
+	default:
+		return "The Stellar network", "Soroban", ""
+	}
 }
 
 func mustJSON(v any) string {
@@ -194,63 +210,42 @@ func homeV2NetworkConfig(network string) homeV2NetworkCfg {
 }
 
 func buildMockHomeV2RoleCopy(network string) map[string]homeV2HeroRoleCopy {
-	prefix := "The Stellar network"
-	devPrefix := "Soroban"
-	bodyPrefix := ""
-	switch network {
-	case "testnet":
-		prefix = "The Stellar testnet"
-		devPrefix = "Testnet Soroban"
-		bodyPrefix = "You’re viewing <b>Testnet</b>. "
-	case "futurenet":
-		prefix = "The Stellar futurenet"
-		devPrefix = "Futurenet Soroban"
-		bodyPrefix = "You’re viewing <b>Futurenet</b>. "
-	}
+	networkLabel, devLabel, bodyPrefix := homeV2RoleNetworkLabels(network)
 	return map[string]homeV2HeroRoleCopy{
 		"curious": {
-			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.`, prefix),
+			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.`, networkLabel),
 			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
 		},
 		"developer": {
-			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span>. Instruction budget <em>64%% used</em>, read / write <em>60%%</em>, with 2,314 contracts active in the last day.`, devPrefix),
-			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events — and we surface TTL status, which no other explorer does. <a class="v2-linkish" href="#">API docs →</a>`,
+			Headline: fmt.Sprintf(`%s looks <span class="is-green">healthy</span> right now — instruction budget is <em>64%% used</em>, read / write is <em>60%%</em>, and 2,314 contracts were active in the last day.`, devLabel),
+			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events, and we surface TTL status that most explorers miss. <a class="v2-linkish" href="#">API docs →</a>`,
 		},
 		"operator": {
-			Headline: `Three contracts need <em>TTL attention</em>. One has <span style="color:var(--v2-orange)">under 17 hours</span> remaining.`,
-			Body:     bodyPrefix + `Operators: paste your contract address and we’ll show runway, recent calls, and the exact restore path. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`,
+			Headline: `3 contracts need <em>TTL attention</em> right now. The worst case has <span style="color:var(--v2-orange)">under 17 hours</span> remaining.`,
+			Body:     bodyPrefix + `Paste your contract address to see runway, renewal state, and the exact restore path before storage expires. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`,
 		},
 		"compliance": {
-			Headline: `<em>Activity across the network is normal.</em> No anomalous bursts detected in the last hour; agent volume is up <em>22%</em> week-over-week.`,
-			Body:     bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, classic. Paste an address to see its 30-day pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
+			Headline: `<em>Activity looks normal right now.</em> No anomaly burst is flagged, and agent-driven volume is up <em>22%</em> week over week.`,
+			Body:     bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, or classic transfer. Paste an address to review its recent pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
 		},
 		"user": {
-			Headline: `Your transaction is <span class="is-green">safe to check here</span>. Paste the hash and we’ll tell you what happened in one sentence.`,
-			Body:     bodyPrefix + `No jargon. No hex. Just a plain-English answer. <a class="v2-linkish" href="#">How Prism reads transactions →</a>`,
+			Headline: `The network looks <span class="is-green">healthy</span>. Paste a transaction hash and we’ll explain what happened in one sentence.`,
+			Body:     bodyPrefix + `No jargon. No hex. Just a plain-English answer with links to the raw details if you want them. <a class="v2-linkish" href="#">How Prism reads transactions →</a>`,
 		},
 	}
 }
 
 func buildHomeV2RoleCopy(summary *gateway.HomeSummaryResponse) map[string]homeV2HeroRoleCopy {
-	networkLabel := "The Stellar network"
-	devLabel := "Soroban"
-	bodyPrefix := ""
-	if strings.EqualFold(summary.Network, "testnet") {
-		networkLabel = "The Stellar testnet"
-		devLabel = "Testnet Soroban"
-		bodyPrefix = "You’re viewing <b>Testnet</b>. "
-	} else if strings.EqualFold(summary.Network, "futurenet") {
-		networkLabel = "The Stellar futurenet"
-		devLabel = "Futurenet Soroban"
-		bodyPrefix = "You’re viewing <b>Futurenet</b>. "
-	}
+	networkLabel, devLabel, bodyPrefix := homeV2RoleNetworkLabels(summary.Network)
 	statusWord := homeV2FirstNonEmpty(summary.Hero.Health.Status, "healthy")
+	activityBand := homeV2FirstNonEmpty(summary.Hero.Health.ActivityBand, "normal")
 	activityPhrase := "active"
-	if summary.Hero.Health.ActivityBand == "busy" {
+	switch {
+	case summary.Hero.Health.ActivityBand == "busy":
 		activityPhrase = "busier than usual"
-	} else if summary.Hero.Health.ActivityBand == "quiet" || summary.Hero.Health.LoadBand == "light" {
+	case summary.Hero.Health.ActivityBand == "quiet" || summary.Hero.Health.LoadBand == "light":
 		activityPhrase = "lightly loaded"
-	} else if summary.Hero.Health.ActivityBand == "normal" {
+	case summary.Hero.Health.ActivityBand == "normal":
 		activityPhrase = "running normally"
 	}
 	txAvg := gateway.FormatNumber(summary.Hero.Cadence.TxPerLedgerRecentAvg)
@@ -258,6 +253,9 @@ func buildHomeV2RoleCopy(summary *gateway.HomeSummaryResponse) map[string]homeV2
 		txAvg = gateway.FormatNumber(summary.Hero.LatestLedger.TransactionCount)
 	}
 	contracts := gateway.FormatNumber(summary.Hero.Contracts.Active24h)
+	if summary.Hero.Contracts.Active24h == 0 {
+		contracts = "a few"
+	}
 	expiringContracts := summary.Alert.AffectedContractCount
 	if expiringContracts == 0 {
 		expiringContracts = summary.Hero.TTL.ExpiringContractCount
@@ -266,61 +264,95 @@ func buildHomeV2RoleCopy(summary *gateway.HomeSummaryResponse) map[string]homeV2
 	if worstHours == 0 {
 		worstHours = summary.Hero.TTL.WorstRemainingHours
 	}
-	anomalyText := "No anomalous bursts detected in the last hour"
-	if summary.Hero.Trends.AnomalyDetected {
-		anomalyText = "An anomalous burst was detected recently"
+	topNames := make([]string, 0, 2)
+	for _, c := range summary.ContractsNeedingAttention {
+		name := homeV2FirstNonEmpty(c.ProtocolName, c.ContractName)
+		if name != "" {
+			topNames = append(topNames, name)
+		}
+		if len(topNames) == 2 {
+			break
+		}
 	}
-	agentTrend := fmt.Sprintf("%.0f%%", summary.Hero.Trends.AgentActivityWoWPct)
-	if summary.Hero.Trends.AgentActivityWoWPct == 0 {
-		agentTrend = "0%"
+	operatorHeadline := "No urgent <em>TTL risks</em> are visible right now."
+	operatorBody := bodyPrefix + `Paste your contract address to check runway, renewal state, and the restore path if anything changes. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`
+	if expiringContracts > 0 {
+		operatorHeadline = fmt.Sprintf(`%s contracts need <em>TTL attention</em> right now.`, gateway.FormatNumber(expiringContracts))
+		if worstHours > 0 {
+			operatorHeadline = fmt.Sprintf(`%s contracts need <em>TTL attention</em> right now. The worst case has <span style="color:var(--v2-orange)">under %s</span> remaining.`, gateway.FormatNumber(expiringContracts), humanizeHours(worstHours))
+		}
+		if len(topNames) > 0 {
+			operatorBody = bodyPrefix + fmt.Sprintf(`The closest contracts include %s. Paste your contract address to see runway, renewal state, and the exact restore path before storage expires. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`, html.EscapeString(strings.Join(topNames, " and ")))
+		} else {
+			operatorBody = bodyPrefix + `Paste your contract address to see runway, renewal state, and the exact restore path before storage expires. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`
+		}
+	}
+	anomalyText := "No anomaly burst is flagged right now"
+	if summary.Hero.Trends.AnomalyDetected {
+		anomalyText = "An anomaly burst is flagged and worth a closer look"
+	}
+	agentTrendText := "agent trend unavailable"
+	if summary.Hero.Trends.AgentActivityWoWPct != 0 {
+		agentTrendText = fmt.Sprintf("agent-driven volume is up <em>%s</em> week over week", html.EscapeString(fmt.Sprintf("%.0f%%", summary.Hero.Trends.AgentActivityWoWPct)))
+	}
+	mixParts := []string{}
+	if summary.Hero.ActivityMix.SwapTx24h > 0 {
+		mixParts = append(mixParts, gateway.FormatNumber(summary.Hero.ActivityMix.SwapTx24h)+" swaps")
+	}
+	if summary.Hero.ActivityMix.ContractCallTx24h > 0 {
+		mixParts = append(mixParts, gateway.FormatNumber(summary.Hero.ActivityMix.ContractCallTx24h)+" contract calls")
+	}
+	if summary.Hero.ActivityMix.AgentTx24h > 0 {
+		mixParts = append(mixParts, gateway.FormatNumber(summary.Hero.ActivityMix.AgentTx24h)+" agent payments")
+	}
+	complianceBody := bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, or classic transfer. Paste an address to review its recent pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`
+	if len(mixParts) > 0 {
+		complianceBody = bodyPrefix + fmt.Sprintf(`Recent labeled activity includes %s. Paste an address to review its pattern with counterparties and transaction types already classified. <a class="v2-linkish" href="#">Compliance workflows →</a>`, html.EscapeString(strings.Join(mixParts, " · ")))
+	}
+	developerHeadline := fmt.Sprintf(`%s looks <span class="is-green">%s</span> right now — instruction budget is <em>%s%% used</em>, read / write is <em>%s%%</em>, and %s contracts were active in the last day.`, devLabel, html.EscapeString(statusWord), formatPercentMain(summary.Utilization.InstructionPct), formatPercentMain(summary.Utilization.ReadWritePct), contracts)
+	if summary.Utilization.InstructionPct == 0 && summary.Utilization.ReadWritePct == 0 {
+		developerHeadline = fmt.Sprintf(`%s looks <span class="is-green">%s</span> right now, with %s contracts active in the last day.`, devLabel, html.EscapeString(statusWord), contracts)
 	}
 	return map[string]homeV2HeroRoleCopy{
 		"curious": {
 			Headline: fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now — %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts),
-			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
+			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and explained in one sentence — swaps, contract calls, agent payments, and classic payments in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
 		},
 		"developer": {
-			Headline: fmt.Sprintf(`%s is <span class="is-green">%s</span>. Instruction budget <em>%s%% used</em>, read / write <em>%s%%</em>, with %s contracts active in the last day.`, devLabel, html.EscapeString(statusWord), formatPercentMain(summary.Utilization.InstructionPct), formatPercentMain(summary.Utilization.ReadWritePct), contracts),
-			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events — and we surface TTL status, which no other explorer does. <a class="v2-linkish" href="#">API docs →</a>`,
+			Headline: developerHeadline,
+			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events, and we surface TTL state that most explorers miss. <a class="v2-linkish" href="#">API docs →</a>`,
 		},
 		"operator": {
-			Headline: fmt.Sprintf(`%s contracts need <em>TTL attention</em>. Worst case has <span style="color:var(--v2-orange)">under %s</span> remaining.`, gateway.FormatNumber(expiringContracts), humanizeHours(worstHours)),
-			Body:     bodyPrefix + `Operators: paste your contract address and we’ll show runway, recent calls, and the exact restore path. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>`,
+			Headline: operatorHeadline,
+			Body:     operatorBody,
 		},
 		"compliance": {
-			Headline: fmt.Sprintf(`<em>Activity across the network is %s.</em> %s; agent volume is up <em>%s</em> week-over-week.`, html.EscapeString(summary.Hero.Health.ActivityBand), html.EscapeString(anomalyText), html.EscapeString(agentTrend)),
-			Body:     bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, classic. Paste an address to see its 30-day pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
+			Headline: fmt.Sprintf(`<em>Activity looks %s right now.</em> %s, and %s.`, html.EscapeString(activityBand), html.EscapeString(anomalyText), agentTrendText),
+			Body:     complianceBody,
 		},
 		"user": {
-			Headline: fmt.Sprintf(`The network is <span class="is-green">%s</span>. Paste a hash and we’ll tell you what happened in one sentence.`, html.EscapeString(statusWord)),
-			Body:     bodyPrefix + `No jargon. No hex. Just a plain-English answer. <a class="v2-linkish" href="#">How Prism reads transactions →</a>`,
+			Headline: fmt.Sprintf(`The network looks <span class="is-green">%s</span>. Paste a transaction hash and we’ll explain what happened in one sentence.`, html.EscapeString(statusWord)),
+			Body:     bodyPrefix + `No jargon. No hex. Just a plain-English answer with links to the raw details if you want them. <a class="v2-linkish" href="#">How Prism reads transactions →</a>`,
 		},
 	}
 }
 
-func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeData, error) {
+func (h *Handlers) buildHomeV2FeedData(r *http.Request, network string) (homeV2FeedPayloadHeader, []vmv2.LedgerRowData, homeV2Feed, error) {
 	if h.Gateway == nil {
-		return vmv2.HomeData{}, fmt.Errorf("gateway unavailable")
+		return homeV2FeedPayloadHeader{}, nil, homeV2Feed{}, fmt.Errorf("gateway unavailable")
 	}
 
-	data := mockHomeV2Data(network)
-	if summary, err := h.Gateway.GetHomeSummary(r.Context(), network); err == nil && summary != nil {
-		applyHomeSummaryV2(&data, summary)
-	} else if err != nil {
-		h.Logger.Warn("home v2 home-summary fetch failed", "network", network, "error", err)
-	}
 	recent, err := h.Gateway.GetSilverRecentLedgers(r.Context(), network, 6)
 	if err != nil {
-		return vmv2.HomeData{}, err
+		return homeV2FeedPayloadHeader{}, nil, homeV2Feed{}, err
 	}
 	if recent == nil || len(recent.Ledgers) == 0 {
-		return vmv2.HomeData{}, fmt.Errorf("no recent ledgers returned")
+		return homeV2FeedPayloadHeader{}, nil, homeV2Feed{}, fmt.Errorf("no recent ledgers returned")
 	}
 
 	rows := make([]vmv2.LedgerRowData, 0, len(recent.Ledgers))
 	feedLedgers := make([]homeV2FeedLedger, 0, len(recent.Ledgers))
 	feedTxs := make([]homeV2FeedTransaction, 0, len(recent.Ledgers)*3)
-
 	for i, ledger := range recent.Ledgers {
 		summary, err := h.Gateway.GetSilverLedgerFeedSummary(r.Context(), network, ledger.LedgerSequence)
 		if err != nil {
@@ -336,17 +368,41 @@ func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeDa
 		feedTxs = append(feedTxs, ledgerTxs...)
 	}
 
+	header := homeV2FeedPayloadHeader{}
+	if first := recent.Ledgers[0]; first.LedgerSequence > 0 {
+		header.LedgerNumber = gateway.FormatNumber(first.LedgerSequence)
+		if t, ok := parseGatewayTime(first.ClosedAt); ok {
+			header.AgeLabel = gateway.FormatAge(t)
+		}
+	}
+	return header, rows, homeV2Feed{Ledgers: feedLedgers, Transactions: feedTxs}, nil
+}
+
+func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeData, error) {
+	if h.Gateway == nil {
+		return vmv2.HomeData{}, fmt.Errorf("gateway unavailable")
+	}
+
+	data := mockHomeV2Data(network)
+	if summary, err := h.Gateway.GetHomeSummary(r.Context(), network); err == nil && summary != nil {
+		applyHomeSummaryV2(&data, summary)
+	} else if err != nil {
+		h.Logger.Warn("home v2 home-summary fetch failed", "network", network, "error", err)
+	}
+	header, rows, feed, err := h.buildHomeV2FeedData(r, network)
+	if err != nil {
+		return vmv2.HomeData{}, err
+	}
 	if len(rows) > 0 {
 		data.LedgerFeed.Rows = rows
 	}
-	if first := recent.Ledgers[0]; first.LedgerSequence > 0 {
-		data.Header.LedgerNumber = gateway.FormatNumber(first.LedgerSequence)
-		if t, ok := parseGatewayTime(first.ClosedAt); ok {
-			data.Header.AgeLabel = gateway.FormatAge(t)
-		}
+	if header.LedgerNumber != "" {
+		data.Header.LedgerNumber = header.LedgerNumber
 	}
-
-	feedJSON, _ := json.Marshal(homeV2Feed{Ledgers: feedLedgers, Transactions: feedTxs})
+	if header.AgeLabel != "" {
+		data.Header.AgeLabel = header.AgeLabel
+	}
+	feedJSON, _ := json.Marshal(feed)
 	data.FeedJSON = string(feedJSON)
 	data.FeedLive = true
 	return data, nil
@@ -577,8 +633,8 @@ func buildHomeV2FeedLedger(network string, recent gateway.RecentLedger, next *ga
 			meta += " · closed by " + gateway.ShortAddress(v)
 		}
 		chips, feedChips = homeV2FeedChips(summary)
-		instructionsPct = clampPct(percentOf(summary.SorobanUtilization.InstructionsUsed, 100_000_000))
-		readWritePct = clampPct(percentOf(summary.SorobanUtilization.ReadWriteBytesUsed, 3_500_000))
+		instructionsPct = clampPct(percentOf(summary.SorobanUtilization.InstructionsUsed, homeV2SorobanInstructionLimit))
+		readWritePct = clampPct(percentOf(summary.SorobanUtilization.ReadWriteBytesUsed, homeV2SorobanReadWriteLimit))
 		for _, tx := range summary.RepresentativeTransactions {
 			mapped := mapHomeV2RepresentativeTx(tx, age)
 			samples = append(samples, mapped)
@@ -865,13 +921,10 @@ func (h *Handlers) HomeV2Feed(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	payload := homeV2FeedPayload{Live: false}
 	if h.useLiveData(r) && network == "testnet" {
-		if data, err := h.buildHomeV2Data(r, network); err == nil {
-			var feed homeV2Feed
-			if err := json.Unmarshal([]byte(data.FeedJSON), &feed); err == nil {
-				payload.Live = true
-				payload.Header = homeV2FeedPayloadHeader{LedgerNumber: data.Header.LedgerNumber, AgeLabel: data.Header.AgeLabel}
-				payload.Feed = feed
-			}
+		if header, _, feed, err := h.buildHomeV2FeedData(r, network); err == nil {
+			payload.Live = true
+			payload.Header = header
+			payload.Feed = feed
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
