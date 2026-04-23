@@ -16,7 +16,7 @@ templ Home(data vmv2.HomeData) {
 					@fragmentsv2.Hero(data.Hero)
 					@fragmentsv2.Prompt(data.Prompt)
 					@fragmentsv2.Alert(data.Alert)
-					@fragmentsv2.LedgerFeed(data.LedgerFeed, data.FeedJSON)
+					@fragmentsv2.LedgerFeed(data.LedgerFeed, data.FeedJSON, data.FeedLive)
 					@fragmentsv2.Attention(data.Attention)
 					@fragmentsv2.Leaders(data.Leaders)
 					@fragmentsv2.Utilization(data.Utilization)
@@ -63,6 +63,7 @@ templ Home(data vmv2.HomeData) {
 					const promptWrap = document.getElementById('v2-prompt-wrap');
 					const promptResults = document.getElementById('v2-prompt-results');
 					const roleRow = document.getElementById('v2-role-row');
+					const hero = document.querySelector('.v2-hero');
 					const statusLine = document.getElementById('v2-status-line');
 					const subline = document.getElementById('v2-subline');
 					const headerLedger = document.getElementById('v2-header-ledger');
@@ -70,34 +71,20 @@ templ Home(data vmv2.HomeData) {
 					const networkSelect = document.getElementById('v2-network-select');
 					if (!root) return;
 					const data = JSON.parse(root.dataset.feed || '{"ledgers":[],"transactions":[]}');
+					let useLiveFeed = root.dataset.live === 'true';
 					let mode = 'all';
 					let tick = 0;
+					let refreshInFlight = false;
 					const storageKey = 'prism-v2-home-state';
 					const toneMap = { swap:'Swaps', call:'Contract calls', agent:'Agent payments', deploy:'Deployments', confidential:'Confidential', classic:'Classic' };
 					const iconMap = { swap:'⇌', call:'ƒ', agent:'α', deploy:'+', confidential:'∎', classic:'▸' };
 					const chipColor = { swap:'var(--v2-teal)', call:'var(--v2-violet)', agent:'var(--v2-orange)', deploy:'var(--v2-gold)', confidential:'var(--v2-blue)', classic:'var(--v2-classic)' };
-					const roleMap = {
-						curious: [
-							'The Stellar network is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.',
-							'You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>'
-						],
-						developer: [
-							'Soroban is <span class="is-green">healthy</span>. Instruction budget <em>64% used</em>, read / write <em>60%</em>, with 2,314 contracts active in the last day.',
-							'Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events — and we surface TTL status, which no other explorer does. <a class="v2-linkish" href="#">API docs →</a>'
-						],
-						operator: [
-							'Three of your ecosystem’s contracts are <em>running out of TTL</em>. One has <span style="color:var(--v2-orange)">under 17 hours</span>.',
-							'Operators: paste your contract address and we’ll show runway, recent calls, and the exact restore path. <a class="v2-linkish" href="#">TTL monitoring alerts →</a>'
-						],
-						compliance: [
-							'<em>Activity across the network is normal.</em> No anomalous bursts detected in the last hour; agent volume is up <em>22%</em> week-over-week.',
-							'Every transaction is classified — DEX swap, contract call, agent payment, classic. Paste an address to see its 30-day pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>'
-						],
-						user: [
-							'Your transaction is <span class="is-green">safe to check here</span>. Paste the hash and we’ll tell you what happened in one sentence.',
-							'No jargon. No hex. Just a plain-English answer. <a class="v2-linkish" href="#">How Prism reads transactions →</a>'
-						]
-					};
+					let roleMap = {};
+					try {
+						roleMap = JSON.parse(hero?.dataset.roleCopy || '{}');
+					} catch (_) {
+						roleMap = {};
+					}
 					const quickAnswers = {
 						'which contracts are expiring this week?': {
 							answer: 'Three high-traffic contracts look closest: Blend\'s pool, Soroswap\'s router, and Phoenix\'s AMM.',
@@ -149,6 +136,7 @@ templ Home(data vmv2.HomeData) {
 						if(headerLedgerAge && data.ledgers && data.ledgers[0]) headerLedgerAge.textContent = data.ledgers[0].age;
 					}
 					function normalizeFeedAges(){
+						if(useLiveFeed) { updateHeaderLedger(); return; }
 						(data.transactions || []).forEach(function(tx, i){ tx.when = shortAge(i); });
 						(data.ledgers || []).forEach(function(ledger, i){ ledger.age = shortAge(i); });
 						updateHeaderLedger();
@@ -175,7 +163,7 @@ templ Home(data vmv2.HomeData) {
 						return {
 							ledgerNumber: String(top + 1),
 							transactionCount: String(185 + Math.floor(Math.random() * 45)),
-							meta: 'across ' + (390 + Math.floor(Math.random() * 260)) + ' operations · closed by ' + pick(['sdf-validator-1','whale-stack','publicnode','lobstr','coinbase-cloud']),
+							meta: 'with ' + (390 + Math.floor(Math.random() * 260)) + ' operations · closed by ' + pick(['sdf-validator-1','whale-stack','publicnode','lobstr','coinbase-cloud']),
 							chips: chips,
 							instructionsPct: 48 + Math.floor(Math.random() * 25),
 							readWritePct: 32 + Math.floor(Math.random() * 26),
@@ -202,17 +190,8 @@ templ Home(data vmv2.HomeData) {
 					}
 					function setRole(role, persist){
 						const entry = roleMap[role] || roleMap.curious;
-						const network = currentNetwork();
-						if(statusLine) {
-							if(network === 'testnet') statusLine.innerHTML = entry[0].replace('The Stellar network', 'The Stellar testnet').replace('Soroban is', 'Testnet Soroban is');
-							else if(network === 'futurenet') statusLine.innerHTML = entry[0].replace('The Stellar network', 'The Stellar futurenet').replace('Soroban is', 'Futurenet Soroban is');
-							else statusLine.innerHTML = entry[0];
-						}
-						if(subline) {
-							if(network === 'testnet') subline.innerHTML = 'You’re viewing <b>Testnet</b>. ' + entry[1];
-							else if(network === 'futurenet') subline.innerHTML = 'You’re viewing <b>Futurenet</b>. ' + entry[1];
-							else subline.innerHTML = entry[1];
-						}
+						if(statusLine && entry?.headline) statusLine.innerHTML = entry.headline;
+						if(subline && entry?.body) subline.innerHTML = entry.body;
 						roleRow?.querySelectorAll('[data-role]').forEach(function(btn){
 							btn.classList.toggle('is-active', btn.dataset.role === role);
 						});
@@ -265,11 +244,27 @@ templ Home(data vmv2.HomeData) {
 							});
 						}
 					}
-					function render(){
+					function expandedLedgerNumber(){
+						const row = root.querySelector('.v2-ledger-row.is-expanded');
+						return row ? String(row.dataset.ledger || '') : '';
+					}
+					function reopenExpandedLedger(ledgerNumber){
+						if(!ledgerNumber || mode !== 'all') return;
+						const row = root.querySelector('.v2-ledger-row[data-ledger="' + ledgerNumber.replace(/"/g, '\\"') + '"]');
+						if(!row) return;
+						const ledger = (data.ledgers||[]).find(function(l){ return String(l.ledgerNumber) === ledgerNumber; });
+						if(!ledger) return;
+						row.classList.add('is-expanded');
+						row.insertAdjacentHTML('afterend', renderLedgerDetail(ledger));
+					}
+					function render(options){
+						const opts = options || {};
+						const reopenLedger = opts.reopenLedger || '';
 						normalizeFeedAges();
 						if(mode === 'all'){
 							root.className = 'v2-ledger-list';
 							root.innerHTML = (data.ledgers||[]).map(function(row, i){ return renderLedgerRow(row, i === 0); }).join('');
+							reopenExpandedLedger(reopenLedger);
 							note.textContent = baseFeedNote();
 						} else {
 							const txs = visibleTransactions();
@@ -397,10 +392,60 @@ templ Home(data vmv2.HomeData) {
 						if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); promptInput?.focus(); }
 						if(e.key === 'Escape' && promptResults) promptResults.hidden = true;
 					});
-					setInterval(function(){
-						tick++;
-						streamInsert();
-					}, 5000);
+					function applyFeedPayload(payload){
+						if(!payload || !payload.feed) return { applied: false, changed: false };
+						const prevTop = data.ledgers && data.ledgers[0] ? String(data.ledgers[0].ledgerNumber) : '';
+						const nextTop = payload.feed.ledgers && payload.feed.ledgers[0] ? String(payload.feed.ledgers[0].ledgerNumber) : '';
+						useLiveFeed = payload.live === true;
+						if(headerLedger && payload.header && payload.header.ledgerNumber) headerLedger.textContent = payload.header.ledgerNumber;
+						if(headerLedgerAge && payload.header && payload.header.ageLabel) headerLedgerAge.textContent = payload.header.ageLabel;
+						if(!nextTop || nextTop === prevTop) {
+							return { applied: true, changed: false };
+						}
+						const reopenLedger = expandedLedgerNumber();
+						data.ledgers = payload.feed.ledgers || [];
+						data.transactions = payload.feed.transactions || [];
+						render({ reopenLedger: reopenLedger });
+						if(root.firstElementChild) markFresh(root.firstElementChild);
+						return { applied: true, changed: true };
+					}
+					async function refreshFeed(){
+						if(refreshInFlight || currentNetwork() !== 'testnet') return false;
+						refreshInFlight = true;
+						try {
+							const resp = await fetch('/v2/home/feed', { headers: { 'Accept': 'application/json' } });
+							if(!resp.ok) return false;
+							const payload = await resp.json();
+							if(payload.live) {
+								const result = applyFeedPayload(payload);
+								if(result.changed) {
+									note.textContent = 'live testnet feed synced';
+									setTimeout(function(){
+										if(mode === 'all') note.textContent = baseFeedNote();
+										else if(mode === 'alltx') note.textContent = 'all transactions, newest first';
+										else note.textContent = 'showing only ' + String((toneMap[mode]||mode).toLowerCase());
+									}, 1200);
+								}
+								return result.applied;
+							}
+							return false;
+						} catch (_) {
+							return false;
+						} finally {
+							refreshInFlight = false;
+						}
+					}
+					(function scheduleFeedRefresh(){
+						setTimeout(async function(){
+							tick++;
+							const refreshed = await refreshFeed();
+							if(!refreshed) {
+								useLiveFeed = false;
+								streamInsert();
+							}
+							scheduleFeedRefresh();
+						}, 2000);
+					})();
 					if(savedState.density) body.setAttribute('data-density', savedState.density);
 					if(savedState.voice) body.setAttribute('data-voice', savedState.voice);
 					document.querySelectorAll('[data-tweak="density"] button').forEach(function(btn){ btn.classList.toggle('is-active', btn.dataset.value === (savedState.density || 'generous')); });

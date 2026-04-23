@@ -6,7 +6,7 @@ import (
 )
 
 templ Hero(data vmv2.HeroData) {
-	<section class="v2-home-section v2-hero">
+	<section class="v2-home-section v2-hero" data-role-copy={ data.RoleCopyJSON }>
 		<div class="v2-role-row" id="v2-role-row">
 			<span class="v2-role-question">{ data.Eyebrow }</span>
 			<div class="v2-hero-chips">
@@ -34,7 +34,7 @@ templ Alert(data vmv2.AlertData) {
 	</section>
 }
 
-templ LedgerFeed(data vmv2.LedgerFeedData, feedJSON string) {
+templ LedgerFeed(data vmv2.LedgerFeedData, feedJSON string, feedLive bool) {
 	<section class="v2-home-section">
 		<div class="v2-section-head">
 			<h2 class="v2-section-title">{ data.Title }</h2>
@@ -58,12 +58,19 @@ templ LedgerFeed(data vmv2.LedgerFeedData, feedJSON string) {
 			</div>
 			<div class="v2-filter-note" id="v2-feed-note">{ data.Note }</div>
 		</div>
-		<div id="v2-feed-root" class="v2-ledger-list" data-feed={ feedJSON }>
+		<div id="v2-feed-root" class="v2-ledger-list" data-feed={ feedJSON } data-live={ boolString(feedLive) }>
 			for _, row := range data.Rows {
 				@componentsv2.LedgerRow(componentsv2.LedgerRowData(row))
 			}
 		</div>
 	</section>
+}
+
+func boolString(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
 }
 
 func feedFilterValue(label string) string {

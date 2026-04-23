@@ -1172,7 +1172,8 @@ type LedgerSoroban struct {
 	GeneratedAt      string `json:"generated_at"`
 }
 
-// LedgerSummary matches /silver/ledger/{seq}/summary.
+// LedgerSummary matches the older compact /silver/ledger/{seq}/summary shape.
+// Kept for the ledger-first v2 page while the live home feed uses LedgerFeedSummary below.
 type LedgerSummary struct {
 	LedgerSequence   int64                         `json:"ledger_sequence"`
 	TxCount          int64                         `json:"tx_count,omitempty"`
@@ -1195,6 +1196,247 @@ type LedgerSummaryClassifications struct {
 type LedgerSummaryUtilization struct {
 	InstructionPct int `json:"instruction_pct,omitempty"`
 	ReadWritePct   int `json:"read_write_pct,omitempty"`
+}
+
+// LedgerFeedSummary matches the current rich /silver/ledger/{seq}/summary response used by /v2/home.
+type LedgerFeedSummary struct {
+	Ledger                     LedgerFeedSummaryLedger               `json:"ledger"`
+	Totals                     LedgerFeedSummaryTotals               `json:"totals"`
+	ClassificationCounts       LedgerFeedSummaryClassificationCounts `json:"classification_counts"`
+	SorobanUtilization         LedgerFeedSummarySorobanUtilization   `json:"soroban_utilization"`
+	Sampling                   LedgerFeedSummarySampling             `json:"sampling"`
+	RepresentativeTransactions []LedgerFeedRepresentativeTransaction `json:"representative_transactions,omitempty"`
+	Composition                LedgerFeedSummaryComposition          `json:"composition"`
+	Provenance                 LedgerFeedSummaryProvenance           `json:"provenance"`
+}
+
+type LedgerFeedSummaryLedger struct {
+	Sequence          int64  `json:"sequence"`
+	ClosedAt          string `json:"closed_at"`
+	ClosedByNodeID    string `json:"closed_by_node_id,omitempty"`
+	ClosedByValidator string `json:"closed_by_validator,omitempty"`
+	ProtocolVersion   int    `json:"protocol_version"`
+	Hash              string `json:"hash,omitempty"`
+	PreviousHash      string `json:"previous_hash,omitempty"`
+}
+
+type LedgerFeedSummaryTotals struct {
+	TransactionCount   int64 `json:"transaction_count"`
+	SuccessfulTxCount  int64 `json:"successful_tx_count"`
+	FailedTxCount      int64 `json:"failed_tx_count"`
+	OperationCount     int64 `json:"operation_count"`
+	ContractEventCount int64 `json:"contract_event_count"`
+	SorobanOpCount     int64 `json:"soroban_op_count"`
+	TotalFeeCharged    int64 `json:"total_fee_charged"`
+}
+
+type LedgerFeedSummaryClassificationCounts struct {
+	SwapTxCount         int64 `json:"swap_tx_count"`
+	ContractCallTxCount int64 `json:"contract_call_tx_count"`
+	ClassicTxCount      int64 `json:"classic_tx_count"`
+	PaymentTxCount      int64 `json:"payment_tx_count"`
+	SorobanTxCount      int64 `json:"soroban_tx_count"`
+}
+
+type LedgerFeedSummarySorobanUtilization struct {
+	InstructionsUsed   int64 `json:"instructions_used"`
+	ReadBytesUsed      int64 `json:"read_bytes_used"`
+	WriteBytesUsed     int64 `json:"write_bytes_used"`
+	ReadWriteBytesUsed int64 `json:"read_write_bytes_used"`
+	InstructionPct     int   `json:"instruction_pct,omitempty"`
+	ReadWritePct       int   `json:"read_write_pct,omitempty"`
+}
+
+type LedgerFeedSummarySampling struct {
+	Strategy                    string `json:"strategy,omitempty"`
+	SampleCount                 int    `json:"sample_count"`
+	RepresentedTransactionCount int64  `json:"represented_transaction_count"`
+	TotalTransactionCount       int64  `json:"total_transaction_count"`
+}
+
+type LedgerFeedRepresentativeTransaction struct {
+	TxHash         string                                 `json:"tx_hash"`
+	Category       string                                 `json:"category"`
+	CategoryLabel  string                                 `json:"category_label,omitempty"`
+	CoverageCount  int64                                  `json:"coverage_count"`
+	Classification LedgerFeedRepresentativeClassification `json:"classification"`
+	Summary        LedgerFeedRepresentativeSummary        `json:"summary"`
+	Actors         *LedgerFeedRepresentativeActors        `json:"actors,omitempty"`
+}
+
+type LedgerFeedRepresentativeClassification struct {
+	TxType     string `json:"tx_type,omitempty"`
+	Subtype    string `json:"subtype,omitempty"`
+	Confidence string `json:"confidence,omitempty"`
+}
+
+type LedgerFeedRepresentativeSummary struct {
+	Description        string `json:"description,omitempty"`
+	Amount             string `json:"amount,omitempty"`
+	AmountDisplay      string `json:"amount_display,omitempty"`
+	Asset              string `json:"asset,omitempty"`
+	FunctionName       string `json:"function_name,omitempty"`
+	ProtocolLabel      string `json:"protocol_label,omitempty"`
+	ProtocolContractID string `json:"protocol_contract_id,omitempty"`
+}
+
+type LedgerFeedRepresentativeActors struct {
+	Primary   *LedgerFeedRepresentativeActor `json:"primary,omitempty"`
+	Secondary *LedgerFeedRepresentativeActor `json:"secondary,omitempty"`
+}
+
+type LedgerFeedRepresentativeActor struct {
+	ID    string `json:"id,omitempty"`
+	Label string `json:"label,omitempty"`
+	Type  string `json:"type,omitempty"`
+}
+
+type LedgerFeedSummaryComposition struct {
+	DominantTxType      string  `json:"dominant_tx_type,omitempty"`
+	DominantTxTypeCount int64   `json:"dominant_tx_type_count"`
+	SorobanSharePct     float64 `json:"soroban_share_pct"`
+	FailedSharePct      float64 `json:"failed_share_pct"`
+}
+
+type LedgerFeedSummaryProvenance struct {
+	ClassificationSource string `json:"classification_source,omitempty"`
+	UtilizationSource    string `json:"utilization_source,omitempty"`
+	SamplingSource       string `json:"sampling_source,omitempty"`
+	Partial              bool   `json:"partial"`
+}
+
+// HomeSummaryResponse matches /home/summary.
+type HomeSummaryResponse struct {
+	Network                   string                         `json:"network"`
+	GeneratedAt               string                         `json:"generated_at,omitempty"`
+	Header                    HomeSummaryHeader              `json:"header"`
+	Hero                      HomeSummaryHero                `json:"hero"`
+	Alert                     HomeSummaryAlert               `json:"alert"`
+	ContractsNeedingAttention []HomeSummaryAttentionContract `json:"contracts_needing_attention,omitempty"`
+	Leaders                   []HomeSummaryLeader            `json:"leaders,omitempty"`
+	Utilization               HomeSummaryUtilization         `json:"utilization"`
+	Meta                      HomeSummaryMeta                `json:"meta"`
+	Provenance                HomeSummaryProvenance          `json:"provenance"`
+}
+
+type HomeSummaryHeader struct {
+	LatestLedgerSequence int64  `json:"latest_ledger_sequence"`
+	LatestLedgerClosedAt string `json:"latest_ledger_closed_at,omitempty"`
+}
+
+type HomeSummaryHero struct {
+	Health       HomeSummaryHeroHealth       `json:"health"`
+	LatestLedger HomeSummaryHeroLatestLedger `json:"latest_ledger"`
+	Cadence      HomeSummaryHeroCadence      `json:"cadence"`
+	Contracts    HomeSummaryHeroContracts    `json:"contracts"`
+	Soroban      HomeSummaryHeroSoroban      `json:"soroban"`
+	Trends       HomeSummaryHeroTrends       `json:"trends"`
+	TTL          HomeSummaryHeroTTL          `json:"ttl"`
+	ActivityMix  HomeSummaryHeroActivityMix  `json:"activity_mix"`
+}
+
+type HomeSummaryHeroHealth struct {
+	Status       string `json:"status,omitempty"`
+	LoadBand     string `json:"load_band,omitempty"`
+	ActivityBand string `json:"activity_band,omitempty"`
+}
+
+type HomeSummaryHeroLatestLedger struct {
+	Sequence         int64  `json:"sequence"`
+	ClosedAt         string `json:"closed_at,omitempty"`
+	TransactionCount int64  `json:"transaction_count,omitempty"`
+	OperationCount   int64  `json:"operation_count,omitempty"`
+}
+
+type HomeSummaryHeroCadence struct {
+	AvgCloseSeconds       float64 `json:"avg_close_seconds,omitempty"`
+	TxPerLedgerRecentAvg  int64   `json:"tx_per_ledger_recent_avg,omitempty"`
+	OpsPerLedgerRecentAvg int64   `json:"ops_per_ledger_recent_avg,omitempty"`
+}
+
+type HomeSummaryHeroContracts struct {
+	Active24h int64 `json:"active_24h,omitempty"`
+}
+
+type HomeSummaryHeroSoroban struct {
+	InstructionPct float64 `json:"instruction_pct,omitempty"`
+	ReadWritePct   float64 `json:"read_write_pct,omitempty"`
+}
+
+type HomeSummaryHeroTrends struct {
+	TxVs24hAvgPct       float64 `json:"tx_vs_24h_avg_pct,omitempty"`
+	AgentActivityWoWPct float64 `json:"agent_activity_wow_pct,omitempty"`
+	AnomalyDetected     bool    `json:"anomaly_detected"`
+}
+
+type HomeSummaryHeroTTL struct {
+	ExpiringContractCount int64 `json:"expiring_contract_count,omitempty"`
+	WorstRemainingHours   int64 `json:"worst_remaining_hours,omitempty"`
+	WorstRemainingLedgers int64 `json:"worst_remaining_ledgers,omitempty"`
+}
+
+type HomeSummaryHeroActivityMix struct {
+	AgentTx24h        int64 `json:"agent_tx_24h,omitempty"`
+	SwapTx24h         int64 `json:"swap_tx_24h,omitempty"`
+	ContractCallTx24h int64 `json:"contract_call_tx_24h,omitempty"`
+}
+
+type HomeSummaryAlert struct {
+	Type                  string   `json:"type,omitempty"`
+	Severity              string   `json:"severity,omitempty"`
+	AffectedContractCount int64    `json:"affected_contract_count,omitempty"`
+	WorstRemainingHours   int64    `json:"worst_remaining_hours,omitempty"`
+	TopContracts          []string `json:"top_contracts,omitempty"`
+}
+
+type HomeSummaryAttentionContract struct {
+	ContractID       string  `json:"contract_id"`
+	ProtocolName     string  `json:"protocol_name,omitempty"`
+	ContractName     string  `json:"contract_name,omitempty"`
+	Severity         string  `json:"severity,omitempty"`
+	RemainingLedgers int64   `json:"remaining_ledgers,omitempty"`
+	RemainingHours   int64   `json:"remaining_hours,omitempty"`
+	RemainingHuman   string  `json:"remaining_human,omitempty"`
+	RunwayPct        float64 `json:"runway_pct,omitempty"`
+	Status           string  `json:"status,omitempty"`
+}
+
+type HomeSummaryLeader struct {
+	ContractID       string   `json:"contract_id"`
+	ProtocolName     string   `json:"protocol_name,omitempty"`
+	ContractName     string   `json:"contract_name,omitempty"`
+	CallCount24h     int64    `json:"call_count_24h,omitempty"`
+	UniqueCallers24h int64    `json:"unique_callers_24h,omitempty"`
+	DominantActions  []string `json:"dominant_actions,omitempty"`
+	GrowthPct        float64  `json:"growth_pct,omitempty"`
+}
+
+type HomeSummaryUtilization struct {
+	InstructionPct      float64 `json:"instruction_pct,omitempty"`
+	InstructionUsed     int64   `json:"instruction_used,omitempty"`
+	InstructionLimit    int64   `json:"instruction_limit,omitempty"`
+	ReadWritePct        float64 `json:"read_write_pct,omitempty"`
+	ReadWriteUsedBytes  int64   `json:"read_write_used_bytes,omitempty"`
+	ReadWriteLimitBytes int64   `json:"read_write_limit_bytes,omitempty"`
+	TxSizePct           float64 `json:"tx_size_pct,omitempty"`
+	AvgTxSizeBytes      int64   `json:"avg_tx_size_bytes,omitempty"`
+	TxSizeLimitBytes    int64   `json:"tx_size_limit_bytes,omitempty"`
+	SourceLedger        int64   `json:"source_ledger,omitempty"`
+}
+
+type HomeSummaryMeta struct {
+	LatestLedgerAgeSeconds int64 `json:"latest_ledger_age_seconds,omitempty"`
+	LookupAvgMS            int64 `json:"lookup_avg_ms,omitempty"`
+	LookupP99MS            int64 `json:"lookup_p99_ms,omitempty"`
+	KnownProtocolCount     int64 `json:"known_protocol_count,omitempty"`
+	HistoryStartProtocol   int64 `json:"history_start_protocol,omitempty"`
+}
+
+type HomeSummaryProvenance struct {
+	Route         string   `json:"route,omitempty"`
+	DataSource    string   `json:"data_source,omitempty"`
+	Partial       bool     `json:"partial"`
+	GeneratedFrom []string `json:"generated_from,omitempty"`
 }
 
 // --- Explorer Events ---

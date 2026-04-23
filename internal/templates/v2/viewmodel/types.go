@@ -6,6 +6,7 @@ type HeroData struct {
 	Eyebrow      string
 	HeadlineHTML string
 	Body         string
+	RoleCopyJSON string
 }
 
 type PromptData struct {
@@ -99,6 +100,7 @@ type HomeData struct {
 	Alert       AlertData
 	LedgerFeed  LedgerFeedData
 	FeedJSON    string
+	FeedLive    bool
 	Attention   AttentionSectionData
 	Leaders     LeadersSectionData
 	Utilization UtilizationSectionData
