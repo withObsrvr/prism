@@ -580,6 +580,105 @@ type AssetsResponse struct {
 	GeneratedAt string         `json:"generated_at"`
 }
 
+// AssetDetail matches /silver/assets/{asset} — the canonical detail endpoint for
+// native assets, classic assets, and token-contract asset identifiers.
+type AssetDetail struct {
+	CanonicalSlug       string               `json:"canonical_slug,omitempty"`
+	Route               string               `json:"route,omitempty"`
+	AssetCode           string               `json:"asset_code,omitempty"`
+	AssetIssuer         string               `json:"asset_issuer,omitempty"`
+	AssetType           string               `json:"asset_type,omitempty"`
+	DisplayName         string               `json:"display_name,omitempty"`
+	Name                string               `json:"name,omitempty"`
+	Symbol              string               `json:"symbol,omitempty"`
+	ContractID          string               `json:"contract_id,omitempty"`
+	HomeDomain          string               `json:"home_domain,omitempty"`
+	TomlVerified        bool                 `json:"toml_verified,omitempty"`
+	AuthRequired        bool                 `json:"auth_required,omitempty"`
+	AuthRevocable       bool                 `json:"auth_revocable,omitempty"`
+	HolderCount         int64                `json:"holder_count,omitempty"`
+	CirculatingSupply   string               `json:"circulating_supply,omitempty"`
+	Volume24H           string               `json:"volume_24h,omitempty"`
+	Transfers24H        int64                `json:"transfers_24h,omitempty"`
+	Top10Concentration  float64              `json:"top_10_concentration,omitempty"`
+	Top100Concentration float64              `json:"top_100_concentration,omitempty"`
+	LinkedTokenContract string               `json:"linked_token_contract,omitempty"`
+	LinkedTokenType     string               `json:"linked_token_type,omitempty"`
+	LinkedClassicAsset  string               `json:"linked_classic_asset,omitempty"`
+	RecentTransfers     []AssetTransferBrief `json:"recent_transfers,omitempty"`
+	TransferPreview     []AssetTransferBrief `json:"transfer_preview,omitempty"`
+	TopPairs            []AssetPairSummary   `json:"top_pairs,omitempty"`
+	PairsPreview        []AssetPairSummary   `json:"pairs_preview,omitempty"`
+	TopHolders          []AssetHolderSummary `json:"top_holders,omitempty"`
+	HoldersPreview      []AssetHolderSummary `json:"holders_preview,omitempty"`
+	Links               []AssetLinkSummary   `json:"links,omitempty"`
+	LinksPreview        []AssetLinkSummary   `json:"links_preview,omitempty"`
+}
+
+type AssetTransferBrief struct {
+	Timestamp             string `json:"timestamp,omitempty"`
+	TransactionHash       string `json:"transaction_hash,omitempty"`
+	LedgerSequence        int64  `json:"ledger_sequence,omitempty"`
+	SourceType            string `json:"source_type,omitempty"`
+	FromAccount           string `json:"from_account,omitempty"`
+	ToAccount             string `json:"to_account,omitempty"`
+	AssetCode             string `json:"asset_code,omitempty"`
+	TokenContractID       string `json:"token_contract_id,omitempty"`
+	Amount                string `json:"amount,omitempty"`
+	TransactionSuccessful bool   `json:"transaction_successful,omitempty"`
+}
+
+type AssetPairSummary struct {
+	CounterAsset string `json:"counter_asset,omitempty"`
+	CounterCode  string `json:"counter_code,omitempty"`
+	Pool         string `json:"pool,omitempty"`
+	Liquidity    string `json:"liquidity,omitempty"`
+	Volume24H    string `json:"volume_24h,omitempty"`
+}
+
+type AssetHolderSummary struct {
+	Account string  `json:"account,omitempty"`
+	Balance string  `json:"balance,omitempty"`
+	SharePct float64 `json:"share_pct,omitempty"`
+}
+
+type AssetLinkSummary struct {
+	Relation      string `json:"relation,omitempty"`
+	Label         string `json:"label,omitempty"`
+	CanonicalSlug string `json:"canonical_slug,omitempty"`
+	Route         string `json:"route,omitempty"`
+	AssetCode     string `json:"asset_code,omitempty"`
+	AssetIssuer   string `json:"asset_issuer,omitempty"`
+	ContractID    string `json:"contract_id,omitempty"`
+	TokenType     string `json:"token_type,omitempty"`
+}
+
+type AssetLinksResponse struct {
+	Asset string             `json:"asset,omitempty"`
+	Links []AssetLinkSummary `json:"links"`
+}
+
+type AssetPairsResponse struct {
+	Asset string             `json:"asset,omitempty"`
+	Pairs []AssetPairSummary `json:"pairs"`
+}
+
+type AssetHoldersResponse struct {
+	Asset   string               `json:"asset,omitempty"`
+	Holders []AssetHolderSummary `json:"holders"`
+	Count   int                  `json:"count,omitempty"`
+}
+
+type AssetStats struct {
+	Asset               string  `json:"asset,omitempty"`
+	HolderCount         int64   `json:"holder_count,omitempty"`
+	CirculatingSupply   string  `json:"circulating_supply,omitempty"`
+	Volume24H           string  `json:"volume_24h,omitempty"`
+	Transfers24H        int64   `json:"transfers_24h,omitempty"`
+	Top10Concentration  float64 `json:"top_10_concentration,omitempty"`
+	Top100Concentration float64 `json:"top_100_concentration,omitempty"`
+}
+
 // TransferEvent matches /silver/transfers response items.
 type TransferEvent struct {
 	Timestamp             string `json:"timestamp"`

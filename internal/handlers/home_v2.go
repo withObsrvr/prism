@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
 	"math"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
@@ -18,7 +20,7 @@ import (
 func (h *Handlers) HomeV2(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	data := mockHomeV2Data(network)
-	if h.useLiveData(r) && network == "testnet" {
+	if h.useLiveData(r) {
 		if live, err := h.buildHomeV2Data(r, network); err == nil {
 			data = live
 		} else {
@@ -138,6 +140,10 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 const (
 	homeV2SorobanInstructionLimit = int64(100_000_000)
 	homeV2SorobanReadWriteLimit   = int64(3_500_000)
+
+	homeV2HomeSummaryTimeout   = 1500 * time.Millisecond
+	homeV2RecentLedgersTimeout = 2 * time.Second
+	homeV2FeedSummariesTimeout = 1500 * time.Millisecond
 )
 
 type homeV2NetworkCfg struct {
@@ -342,7 +348,9 @@ func (h *Handlers) buildHomeV2FeedData(r *http.Request, network string) (homeV2F
 		return homeV2FeedPayloadHeader{}, nil, homeV2Feed{}, fmt.Errorf("gateway unavailable")
 	}
 
-	recent, err := h.Gateway.GetSilverRecentLedgers(r.Context(), network, 6)
+	recentCtx, recentCancel := context.WithTimeout(r.Context(), homeV2RecentLedgersTimeout)
+	defer recentCancel()
+	recent, err := h.Gateway.GetSilverRecentLedgers(recentCtx, network, 6)
 	if err != nil {
 		return homeV2FeedPayloadHeader{}, nil, homeV2Feed{}, err
 	}
@@ -350,19 +358,34 @@ func (h *Handlers) buildHomeV2FeedData(r *http.Request, network string) (homeV2F
 		return homeV2FeedPayloadHeader{}, nil, homeV2Feed{}, fmt.Errorf("no recent ledgers returned")
 	}
 
+	summaries := make([]*gateway.LedgerFeedSummary, len(recent.Ledgers))
+	summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2FeedSummariesTimeout)
+	defer summaryCancel()
+	var wg sync.WaitGroup
+	for i, ledger := range recent.Ledgers {
+		i, sequence := i, ledger.LedgerSequence
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			summary, err := h.Gateway.GetSilverLedgerFeedSummary(summaryCtx, network, sequence)
+			if err != nil {
+				h.Logger.Warn("home v2 summary fetch failed", "sequence", sequence, "error", err)
+				return
+			}
+			summaries[i] = summary
+		}()
+	}
+	wg.Wait()
+
 	rows := make([]vmv2.LedgerRowData, 0, len(recent.Ledgers))
 	feedLedgers := make([]homeV2FeedLedger, 0, len(recent.Ledgers))
 	feedTxs := make([]homeV2FeedTransaction, 0, len(recent.Ledgers)*3)
 	for i, ledger := range recent.Ledgers {
-		summary, err := h.Gateway.GetSilverLedgerFeedSummary(r.Context(), network, ledger.LedgerSequence)
-		if err != nil {
-			h.Logger.Warn("home v2 summary fetch failed", "sequence", ledger.LedgerSequence, "error", err)
-		}
 		var next *gateway.RecentLedger
 		if i+1 < len(recent.Ledgers) {
 			next = &recent.Ledgers[i+1]
 		}
-		row, feedLedger, ledgerTxs := buildHomeV2FeedLedger(network, ledger, next, summary)
+		row, feedLedger, ledgerTxs := buildHomeV2FeedLedger(network, ledger, next, summaries[i])
 		rows = append(rows, row)
 		feedLedgers = append(feedLedgers, feedLedger)
 		feedTxs = append(feedTxs, ledgerTxs...)
@@ -384,11 +407,13 @@ func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeDa
 	}
 
 	data := mockHomeV2Data(network)
-	if summary, err := h.Gateway.GetHomeSummary(r.Context(), network); err == nil && summary != nil {
+	summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2HomeSummaryTimeout)
+	if summary, err := h.Gateway.GetHomeSummary(summaryCtx, network); err == nil && summary != nil {
 		applyHomeSummaryV2(&data, summary)
 	} else if err != nil {
 		h.Logger.Warn("home v2 home-summary fetch failed", "network", network, "error", err)
 	}
+	summaryCancel()
 	header, rows, feed, err := h.buildHomeV2FeedData(r, network)
 	if err != nil {
 		return vmv2.HomeData{}, err
@@ -920,7 +945,7 @@ type homeV2FeedPayloadHeader struct {
 func (h *Handlers) HomeV2Feed(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	payload := homeV2FeedPayload{Live: false}
-	if h.useLiveData(r) && network == "testnet" {
+	if h.useLiveData(r) {
 		if header, _, feed, err := h.buildHomeV2FeedData(r, network); err == nil {
 			payload.Live = true
 			payload.Header = header

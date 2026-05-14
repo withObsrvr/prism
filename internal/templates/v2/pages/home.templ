@@ -201,9 +201,13 @@ templ Home(data vmv2.HomeData) {
 						const chips = (row.chips||[]).map(ch => `<span class="v2-ledger-chip"><span class="v2-ledger-chip-dot" style="background:${chipColor[ch.kind]||'var(--v2-classic)'}"></span><span>${esc(ch.label)}</span></span>`).join('');
 						return `<div class="v2-ledger-row ${isNew ? 'is-new' : ''}" data-ledger="${esc(row.ledgerNumber)}"><div><div class="v2-ledger-left-label">ledger</div><div class="v2-ledger-left-value">#${esc(row.ledgerNumber)}</div></div><div><div class="v2-ledger-main-top"><span class="v2-ledger-main-count">${esc(row.transactionCount)}</span><span class="v2-ledger-main-label">transactions</span><span class="v2-ledger-main-meta">${esc(row.meta)}</span></div><div class="v2-ledger-chip-row">${chips}</div><div class="v2-ledger-stats"><div class="v2-inline-stat"><span>instructions</span><div class="v2-inline-bar"><span class="v2-inline-bar-fill" style="width:${row.instructionsPct}%;background:var(--v2-gold)"></span></div><span>${row.instructionsPct}%</span></div><div class="v2-inline-stat"><span>read / write</span><div class="v2-inline-bar"><span class="v2-inline-bar-fill" style="width:${row.readWritePct}%;background:var(--v2-green)"></span></div><span>${row.readWritePct}%</span></div><div class="v2-inline-stat"><span>close time</span><span>${esc(row.closeTime)}</span></div></div></div><div class="v2-ledger-side"><div>${esc(row.age)}</div><div>${esc(row.sideMeta)}</div></div></div>`;
 					}
+					function ledgerDetailHref(ledger){
+						const sequence = String(ledger?.ledgerNumber || '').replace(/,/g, '').trim();
+						return sequence ? `/v2/ledger/${encodeURIComponent(sequence)}` : '/v2/home/ledger';
+					}
 					function renderLedgerDetail(ledger){
 						const samples = (ledger.samples||[]).map(tx => `<div class="v2-ledger-sample-row ${tx.kind}"><span class="v2-ledger-sample-glyph" style="background:${chipColor[tx.kind]||'var(--v2-classic)'}">${iconMap[tx.kind]||'•'}</span><span class="v2-ledger-sample-kind">${esc(toneMap[tx.kind]||tx.kind)}</span><div class="v2-ledger-sample-text">${tx.headline}</div><div class="v2-ledger-sample-hash">${esc(tx.hash)}</div></div>`).join('');
-						return `<div class="v2-ledger-detail"><div class="v2-ledger-detail-head">One of each dominant kind — representative transactions from this ledger</div>${samples}<a href="#" class="v2-ledger-detail-link">Open ledger detail →</a></div>`;
+						return `<div class="v2-ledger-detail"><div class="v2-ledger-detail-head">One of each dominant kind — representative transactions from this ledger</div>${samples}<a href="${ledgerDetailHref(ledger)}" class="v2-ledger-detail-link">Open ledger detail →</a></div>`;
 					}
 					function renderTxCard(tx, isNew){
 						return `<div class="v2-feed-card ${tx.kind} ${isNew ? 'is-new' : ''}"><div class="v2-feed-card-mark" style="background:${chipColor[tx.kind]||'var(--v2-classic)'}">${iconMap[tx.kind]||'•'}</div><div><div class="v2-feed-card-headline">${tx.headline}</div><div class="v2-feed-card-context">${esc(tx.context)}</div><div class="v2-feed-card-tags"><span class="v2-feed-card-tag">${esc(toneMap[tx.kind]||tx.kind)}</span><span class="v2-feed-card-entity">${esc(tx.entity)}</span><span class="v2-feed-card-hash">${esc(tx.hash)}</span></div></div><div class="v2-feed-card-age">${esc(tx.when)}</div></div>`;
@@ -410,7 +414,7 @@ templ Home(data vmv2.HomeData) {
 						return { applied: true, changed: true };
 					}
 					async function refreshFeed(){
-						if(refreshInFlight || currentNetwork() !== 'testnet') return false;
+						if(refreshInFlight) return false;
 						refreshInFlight = true;
 						try {
 							const resp = await fetch('/v2/home/feed', { headers: { 'Accept': 'application/json' } });
@@ -419,7 +423,7 @@ templ Home(data vmv2.HomeData) {
 							if(payload.live) {
 								const result = applyFeedPayload(payload);
 								if(result.changed) {
-									note.textContent = 'live testnet feed synced';
+									note.textContent = 'live feed synced';
 									setTimeout(function(){
 										if(mode === 'all') note.textContent = baseFeedNote();
 										else if(mode === 'alltx') note.textContent = 'all transactions, newest first';

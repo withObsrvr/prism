@@ -17,6 +17,8 @@ const (
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
 	TTLRecentList         = 5 * time.Second
 	TTLHomeSummary        = 2 * time.Second
+	TTLHomeSummaryFailure = 10 * time.Second
+	TTLLedgerFeedFailure  = 30 * time.Second
 	TTLImmutable          = 5 * time.Minute
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
@@ -351,21 +353,32 @@ func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, seq
 	return &resp, nil
 }
 
+// ledgerFeedNegativeEntry is cached briefly on per-ledger summary failures to
+// avoid repeated 30s waits for the same recent ledgers while the serving
+// endpoint is unhealthy or lagging.
+type ledgerFeedNegativeEntry struct{ err error }
+
 // GetSilverLedgerFeedSummary returns the current rich per-ledger summary used by the /v2/home feed.
 func (c *Client) GetSilverLedgerFeedSummary(ctx context.Context, network string, sequence int64) (*LedgerFeedSummary, error) {
 	cacheKey := fmt.Sprintf("%s:silver_ledger_feed_summary:%d", network, sequence)
 	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*ledgerFeedNegativeEntry); isNeg {
+			return nil, neg.err
+		}
 		return v.(*LedgerFeedSummary), nil
 	}
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
 	if err != nil {
+		c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: err}, TTLLedgerFeedFailure)
 		return nil, err
 	}
 
 	var resp LedgerFeedSummary
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
+		wrapped := fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
+		c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: wrapped}, TTLLedgerFeedFailure)
+		return nil, wrapped
 	}
 
 	c.cache.Set(cacheKey, &resp, TTLImmutable)
@@ -415,21 +428,31 @@ func ledgerSummaryFromFeedSummary(v LedgerFeedSummary) LedgerSummary {
 	}
 }
 
+// homeSummaryNegativeEntry is cached briefly on home-summary failures so one
+// slow gateway endpoint cannot stall every home-page/fragment request.
+type homeSummaryNegativeEntry struct{ err error }
+
 // GetHomeSummary returns the aggregated non-feed data used by /v2/home.
 func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSummaryResponse, error) {
 	cacheKey := fmt.Sprintf("%s:home_summary", network)
 	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*homeSummaryNegativeEntry); isNeg {
+			return nil, neg.err
+		}
 		return v.(*HomeSummaryResponse), nil
 	}
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/home/summary"))
 	if err != nil {
+		c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: err}, TTLHomeSummaryFailure)
 		return nil, err
 	}
 
 	var resp HomeSummaryResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing home summary: %w", err)
+		wrapped := fmt.Errorf("gateway: parsing home summary: %w", err)
+		c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: wrapped}, TTLHomeSummaryFailure)
+		return nil, wrapped
 	}
 
 	c.cache.Set(cacheKey, &resp, TTLHomeSummary)
@@ -784,6 +807,108 @@ func (c *Client) GetAssets(ctx context.Context, network string, limit int, sortB
 	}
 
 	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+// GetAssetDetail returns the canonical asset detail endpoint used for native assets,
+// classic assets, and token-contract asset identifiers such as C... .
+func (c *Client) GetAssetDetail(ctx context.Context, network, asset string) (*AssetDetail, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_detail:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetDetail), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetDetail
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset detail: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+func (c *Client) GetAssetLinks(ctx context.Context, network, asset string) (*AssetLinksResponse, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_links:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetLinksResponse), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/links"))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetLinksResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset links: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+func (c *Client) GetAssetPairs(ctx context.Context, network, asset string) (*AssetPairsResponse, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_pairs:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetPairsResponse), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/pairs"))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetPairsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset pairs: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetAssetHolders(ctx context.Context, network, asset string) (*AssetHoldersResponse, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_holders:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetHoldersResponse), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/holders"))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetHoldersResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset holders: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetAssetStats(ctx context.Context, network, asset string) (*AssetStats, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_stats:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetStats), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/stats"))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetStats
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset stats: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
 	return &result, nil
 }
 

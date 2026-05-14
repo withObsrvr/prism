@@ -11,6 +11,8 @@ import (
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
+const homeFragmentGatewayTimeout = 3 * time.Second
+
 // ── Fragment 1: Network Pulse ──
 
 // HomeNetworkPulseFragment returns the 5-metric Network Pulse grid.
@@ -38,7 +40,8 @@ func (h *Handlers) HomeNetworkPulseFragment(w http.ResponseWriter, r *http.Reque
 
 // buildHomeNetworkPulse fetches network stats for the 5-metric pulse grid.
 func (h *Handlers) buildHomeNetworkPulse(r *http.Request, network string) (pages.HomeData, error) {
-	ctx := r.Context()
+	ctx, cancel := context.WithTimeout(r.Context(), homeFragmentGatewayTimeout)
+	defer cancel()
 
 	// Bronze stats for accurate latest ledger and 24h counts.
 	bronze, err := h.Gateway.GetBronzeNetworkStats(ctx, network)
@@ -118,7 +121,8 @@ func (h *Handlers) HomeRecentTxsFragment(w http.ResponseWriter, r *http.Request)
 // It prefers the single-call serving endpoint (silver/transactions/recent), and falls back to
 // the legacy bronze/stats + bronze/transactions + silver/tx/batch/decoded pattern if it fails.
 func (h *Handlers) buildHomeRecentTxs(r *http.Request, network string) ([]pages.HomeTx, error) {
-	ctx := r.Context()
+	ctx, cancel := context.WithTimeout(r.Context(), homeFragmentGatewayTimeout)
+	defer cancel()
 
 	// Try the new single-call serving endpoint first.
 	if resp, err := h.Gateway.GetSilverRecentTransactions(ctx, network, 6); err == nil {
@@ -346,7 +350,8 @@ func (h *Handlers) HomeRecentLedgersFragment(w http.ResponseWriter, r *http.Requ
 // It prefers the single-call serving endpoint (silver/ledgers/recent) and falls back to
 // the legacy bronze/stats + bronze/ledgers pattern if it fails.
 func (h *Handlers) buildHomeLedgers(r *http.Request, network string) ([]pages.HomeLedger, error) {
-	ctx := r.Context()
+	ctx, cancel := context.WithTimeout(r.Context(), homeFragmentGatewayTimeout)
+	defer cancel()
 
 	// Try the new single-call serving endpoint first.
 	if resp, err := h.Gateway.GetSilverRecentLedgers(ctx, network, 6); err == nil {
@@ -423,7 +428,8 @@ func (h *Handlers) HomeTrendingContractsFragment(w http.ResponseWriter, r *http.
 // buildHomeContracts fetches top contracts and enriches with names and tags
 // from the semantic contracts registry.
 func (h *Handlers) buildHomeContracts(r *http.Request, network string) ([]pages.HomeContract, error) {
-	ctx := r.Context()
+	ctx, cancel := context.WithTimeout(r.Context(), homeFragmentGatewayTimeout)
+	defer cancel()
 
 	contracts, err := h.Gateway.GetTopContracts(ctx, network, 5)
 	if err != nil {
@@ -552,7 +558,8 @@ func (h *Handlers) HomeSidebarFragment(w http.ResponseWriter, r *http.Request) {
 
 // buildHomeSidebar fetches top assets and fee stats for the sidebar.
 func (h *Handlers) buildHomeSidebar(r *http.Request, network string) (pages.HomeData, error) {
-	ctx := r.Context()
+	ctx, cancel := context.WithTimeout(r.Context(), homeFragmentGatewayTimeout)
+	defer cancel()
 
 	data := pages.HomeData{Network: network}
 

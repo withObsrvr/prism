@@ -32,6 +32,7 @@ func (app *Application) Routes() http.Handler {
 
 	// Ledgers
 	mux.HandleFunc("GET /ledger/{sequence}", h.LedgerDetail)
+	mux.HandleFunc("GET /v2/ledger/{sequence}", h.LedgerDetailV2)
 
 	// Transactions
 	mux.HandleFunc("GET /tx/{hash}", h.TransactionReceipt)
@@ -141,6 +142,9 @@ func (app *Application) Routes() http.Handler {
 
 	// Asset directory fragments
 	mux.HandleFunc("GET /fragments/assets/table", h.AssetTableFragment)
+	mux.HandleFunc("GET /fragments/assets/{slug}/links", h.AssetLinksFragment)
+	mux.HandleFunc("GET /fragments/assets/{slug}/holders", h.AssetHoldersFragment)
+	mux.HandleFunc("GET /fragments/assets/{slug}/pairs", h.AssetPairsFragment)
 
 	// Events firehose fragments
 	mux.HandleFunc("GET /fragments/events/stream", h.EventsStreamFragment)

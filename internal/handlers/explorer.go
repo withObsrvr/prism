@@ -14,6 +14,7 @@ import (
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/humanize"
 	"github.com/withObsrvr/prism/internal/templates/pages"
+	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
 // Home renders the search-first landing page shell.
@@ -266,19 +267,28 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 // detectSmartRedirect returns a redirect URL if the query unambiguously matches
 // a single entity type. Returns "" if ambiguous or unknown.
 func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query string) string {
-	q := query
+	q := strings.TrimSpace(query)
 	// G + 55 chars = Stellar account address
 	if len(q) == 56 && q[0] == 'G' {
 		return "/account/" + q
 	}
-	// C + 55 chars = Stellar contract or smart wallet address
+	// C + 55 chars = Stellar contract, token contract, or smart wallet address
 	if len(q) == 56 && q[0] == 'C' {
 		if h.Gateway != nil {
 			if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, q); err == nil && info != nil && info.IsSmartWallet {
 				return "/account/" + q + "/smart"
 			}
+			if _, err := h.Gateway.GetAssetDetail(ctx, network, q); err == nil {
+				return "/assets/" + q
+			}
 		}
 		return "/contracts/" + q
+	}
+	if q == "XLM" || strings.Contains(q, ":") {
+		return "/assets/" + q
+	}
+	if code, issuer, canonical := parseAssetSlug(q); code != "" && issuer != "" && canonical != "" {
+		return "/assets/" + canonical
 	}
 	// 64 hex chars = transaction hash
 	if len(q) == 64 && isHex(q) {
@@ -312,6 +322,75 @@ func isNumeric(s string) bool {
 	return true
 }
 
+func searchResultHref(sr gateway.SearchResult) string {
+	if route, ok := searchResultStringDetail(sr, "route"); ok && route != "" {
+		return route
+	}
+	switch sr.Type {
+	case "account":
+		return "/account/" + sr.ID
+	case "contract":
+		return "/contracts/" + sr.ID
+	case "transaction":
+		return "/tx/" + sr.ID
+	case "ledger":
+		return "/ledger/" + sr.ID
+	case "smart_wallet":
+		return "/account/" + sr.ID + "/smart"
+	case "token":
+		if slug := assetSearchSlug(sr); slug != "" {
+			return "/assets/" + slug
+		}
+		return "/assets/" + sr.ID
+	case "asset":
+		if slug := assetSearchSlug(sr); slug != "" {
+			return "/assets/" + slug
+		}
+		return "/assets/" + sr.ID
+	default:
+		return "/"
+	}
+}
+
+func assetSearchSlug(sr gateway.SearchResult) string {
+	if slug, ok := searchResultStringDetail(sr, "canonical_slug"); ok && slug != "" {
+		return slug
+	}
+	if sr.ID == "" {
+		return ""
+	}
+	if strings.HasPrefix(sr.ID, "C") || strings.Contains(sr.ID, ":") {
+		return sr.ID
+	}
+	if strings.Contains(sr.ID, "-") {
+		code, issuer, canonical := parseAssetSlug(sr.ID)
+		if canonical != "" {
+			return canonical
+		}
+		if code != "" && issuer != "" {
+			return assetSlug(code, issuer)
+		}
+	}
+	if issuer, ok := searchResultStringDetail(sr, "asset_issuer", "issuer"); ok && issuer != "" {
+		return assetSlug(sr.ID, issuer)
+	}
+	return sr.ID
+}
+
+func searchResultStringDetail(sr gateway.SearchResult, keys ...string) (string, bool) {
+	for _, key := range keys {
+		if sr.Details == nil {
+			continue
+		}
+		if v, ok := sr.Details[key]; ok {
+			if s, ok := v.(string); ok && s != "" {
+				return s, true
+			}
+		}
+	}
+	return "", false
+}
+
 func (h *Handlers) buildSearchData(r *http.Request, network, query string) (pages.SearchData, error) {
 	ctx := r.Context()
 
@@ -327,43 +406,36 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 		iconHTML := ""
 		badge := sr.Type
 		badgeColor := "gray"
-		href := "/"
+		href := searchResultHref(sr)
 
 		switch sr.Type {
 		case "account":
 			iconBg = "bg-gray-100"
 			badge = "Account"
-			href = "/account/" + sr.ID
 		case "contract":
 			iconBg = "bg-violet-100"
 			badge = "Contract"
 			badgeColor = "violet"
-			href = "/contracts/" + sr.ID
 		case "transaction":
 			iconBg = "bg-cyan-100"
 			badge = "Transaction"
 			badgeColor = "cyan"
-			href = "/tx/" + sr.ID
 		case "ledger":
 			iconBg = "bg-emerald-100"
 			badge = "Ledger"
 			badgeColor = "emerald"
-			href = "/ledger/" + sr.ID
 		case "asset":
 			iconBg = "bg-blue-100"
 			badge = "Asset"
 			badgeColor = "blue"
-			href = "/assets/" + sr.ID
 		case "token":
 			iconBg = "bg-cyan-100"
 			badge = "Token"
 			badgeColor = "cyan"
-			href = "/contracts/" + sr.ID
 		case "smart_wallet":
 			iconBg = "bg-violet-100"
 			badge = "Smart Wallet"
 			badgeColor = "violet"
-			href = "/account/" + sr.ID + "/smart"
 		}
 
 		groups[sr.Type] = append(groups[sr.Type], pages.SearchResultItem{
@@ -413,6 +485,12 @@ func (h *Handlers) buildSearchData(r *http.Request, network, query string) (page
 		case "contract":
 			detectedHref = "/contracts/" + top.ID
 			detectedDesc = "Starts with C + alphanumeric characters. Redirecting to contract view."
+		case "token":
+			detectedHref = searchResultHref(top)
+			detectedDesc = "Contract matched a token result. Redirecting to token asset view."
+		case "asset":
+			detectedHref = searchResultHref(top)
+			detectedDesc = "Asset result matched. Redirecting to asset detail view."
 		case "transaction":
 			detectedHref = "/tx/" + top.ID
 			detectedDesc = "64-character hex string detected. Redirecting to transaction receipt."
@@ -453,8 +531,12 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 			label = "Account " + gateway.ShortAddress(query)
 		case len(query) == 56 && query[0] == 'C' && strings.Contains(redirect, "/smart"):
 			label = "Smart Wallet " + gateway.ShortAddress(query)
+		case len(query) == 56 && query[0] == 'C' && strings.Contains(redirect, "/assets/"):
+			label = "Token " + gateway.ShortAddress(query)
 		case len(query) == 56 && query[0] == 'C':
 			label = "Contract " + gateway.ShortAddress(query)
+		case query == "XLM" || strings.Contains(query, ":"):
+			label = "Asset " + query
 		case len(query) == 64 && isHex(query):
 			label = "Transaction " + gateway.ShortHash(query)
 		case isNumeric(query):
@@ -494,35 +576,28 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := 0; i < limit; i++ {
 		sr := results.Results[i]
-		href := "/"
+		href := searchResultHref(sr)
 		badge := sr.Type
 		badgeColor := "gray"
 		switch sr.Type {
 		case "account":
-			href = "/account/" + sr.ID
 			badge = "Account"
 		case "contract":
-			href = "/contracts/" + sr.ID
 			badge = "Contract"
 			badgeColor = "violet"
 		case "transaction":
-			href = "/tx/" + sr.ID
 			badge = "Tx"
 			badgeColor = "cyan"
 		case "ledger":
-			href = "/ledger/" + sr.ID
 			badge = "Ledger"
 			badgeColor = "emerald"
 		case "asset":
-			href = "/assets/" + sr.ID
 			badge = "Asset"
 			badgeColor = "blue"
 		case "token":
-			href = "/contracts/" + sr.ID
 			badge = "Token"
 			badgeColor = "cyan"
 		case "smart_wallet":
-			href = "/account/" + sr.ID + "/smart"
 			badge = "Wallet"
 			badgeColor = "violet"
 		}
@@ -565,6 +640,30 @@ func (h *Handlers) LedgerDetail(w http.ResponseWriter, r *http.Request) {
 
 	if err := pages.LedgerDetail(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render ledger detail", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// LedgerDetailV2 renders the v2 combined ledger detail page.
+func (h *Handlers) LedgerDetailV2(w http.ResponseWriter, r *http.Request) {
+	sequence := r.PathValue("sequence")
+	network := networkFromRequest(r)
+
+	var data pages.LedgerDetailData
+	if h.useLiveData(r) {
+		if live, err := h.buildLedgerDetailData(r, network, sequence); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live ledger v2 data failed, falling back to mock", "error", err)
+		}
+	}
+	if data.Sequence == "" {
+		data = mockLedgerDetailData(sequence)
+	}
+	enrichLedgerDetailV2(&data)
+
+	if err := pagesv2.LedgerDetail(data, network).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render ledger detail v2", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -846,7 +945,73 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		data.Transactions = []pages.LedgerTx{}
 	}
 
+	enrichLedgerDetailV2(&data)
 	return data, nil
+}
+
+func enrichLedgerDetailV2(data *pages.LedgerDetailData) {
+	if data == nil {
+		return
+	}
+	if data.ActivityTag == "" {
+		if data.SorobanCalls != "—" && data.SorobanCalls != "0" {
+			data.ActivityTag = "Soroban-heavy"
+		} else {
+			data.ActivityTag = "Classic ledger"
+		}
+	}
+	if data.Narrative == "" {
+		data.Narrative = fmt.Sprintf("Ledger %s closed with %s transactions and %s operations.", data.Sequence, data.TxCount, data.OpCount)
+	}
+	if data.SubNarrative == "" {
+		data.SubNarrative = fmt.Sprintf("Closed in %s. %s Soroban calls emitted %s events; %s transactions succeeded and %s failed.", data.CloseTime, data.SorobanCalls, data.EventsEmitted, data.TxSuccess, data.TxFailed)
+	}
+	if len(data.SpotlightCards) == 0 {
+		data.SpotlightCards = []pages.LedgerSpotlightCard{
+			{Kicker: "New deployments", Value: "—", Body: "Contract deployments detected in this ledger appear here when available.", Tone: "deploy"},
+			{Kicker: "TTL extensions", Value: "—", Body: "State archival extensions and restores surface here.", Tone: "ttl"},
+			{Kicker: "Failed invocations", Value: data.TxFailed, Body: "Soroban failures and reverts are separated from normal transaction noise.", Tone: "failed"},
+			{Kicker: "Events emitted", Value: data.EventsEmitted, Body: "CAP-67 and contract events emitted during execution.", Tone: "events"},
+			{Kicker: "State changes", Value: data.StateWrites, Body: "Contract storage write footprint for this ledger.", Tone: "state"},
+			{Kicker: "Agent payments", Value: "—", Body: "x402 and machine-payment activity appears here when classified.", Tone: "agent"},
+		}
+	}
+	if len(data.ChangedAccounts) == 0 {
+		items := []pages.LedgerChangedAccount{}
+		for i, tx := range data.Transactions {
+			if i >= 4 {
+				break
+			}
+			items = append(items, pages.LedgerChangedAccount{
+				Name:    firstNonEmpty(tx.OpType, "Transaction source"),
+				Address: tx.ShortHash,
+				Touched: "1 tx",
+				Deltas:  []string{"−" + tx.Fee + " stroops fee", tx.Ops + " operations applied", strings.TrimSpace(stripHTML(tx.Summary))},
+			})
+		}
+		if len(items) == 0 {
+			items = append(items, pages.LedgerChangedAccount{Name: "Ledger participants", Address: "transaction set", Touched: data.TxCount + " txs", Deltas: []string{"fees paid", "balances and sequence numbers updated", "contract state touched"}})
+		}
+		data.ChangedAccounts = items
+	}
+}
+
+func stripHTML(s string) string {
+	out := make([]rune, 0, len(s))
+	inTag := false
+	for _, r := range s {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				out = append(out, r)
+			}
+		}
+	}
+	return html.UnescapeString(string(out))
 }
 
 // TransactionReceipt renders a single transaction page.
