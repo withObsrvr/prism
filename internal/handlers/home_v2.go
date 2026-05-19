@@ -48,7 +48,7 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 		Alert: vmv2.AlertData{
 			Title: "Three contracts are running out of room",
 			Body:  "Blend’s lending pool, Soroswap’s router, and Phoenix’s AMM have under four days of persistent-storage life left. If nobody extends them, they’ll be archived and stop responding.",
-			Meta:  "Why this matters: contract operators need to extend TTL before it hits zero — otherwise their users see failures.",
+			Meta:  "Why this matters: contract operators need to extend TTL before it hits zero, otherwise their users see failures.",
 			CTA:   "Review →",
 		},
 		LedgerFeed: vmv2.LedgerFeedData{
@@ -105,18 +105,18 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 			Cards: []vmv2.AttentionCardData{
 				{Kicker: "Blend · Lending Pool", Value: "~17 hours left", Tone: "is-bad", Body: "About 12,418 ledgers before the pool’s persistent state is archived. Users won’t be able to deposit, borrow, or repay until it’s restored.", BarColor: "#ea8c69", BarWidth: "12%", CTA: "How to extend this →"},
 				{Kicker: "Soroswap · Router", Value: "~2 days 16 hours", Tone: "is-warn", Body: "Roughly 46,902 ledgers of life remain. Still comfortable, but worth renewing this week.", BarColor: "#d6aa45", BarWidth: "42%", CTA: "Remind me →"},
-				{Kicker: "Phoenix · AMM", Value: "~4 days 12 hours", Tone: "is-warn", Body: "About 78,340 ledgers remaining — within our expiring-soon window.", BarColor: "#d6aa45", BarWidth: "68%", CTA: "Remind me →"},
+				{Kicker: "Phoenix · AMM", Value: "~4 days 12 hours", Tone: "is-warn", Body: "About 78,340 ledgers remaining, within our expiring-soon window.", BarColor: "#d6aa45", BarWidth: "68%", CTA: "Remind me →"},
 				{Kicker: "Aquabot · Rewards", Value: "~14 days", Tone: "is-green", Body: "248,110 ledgers of runway. Healthy.", BarColor: "#64a86a", BarWidth: "92%", CTA: ""},
 			},
 		},
 		Leaders: vmv2.LeadersSectionData{
 			Title: "Who’s being used the most today",
-			Copy:  "Ranked by how many times each contract was called in the last 24 hours — not dollars, not TVL. The actual activity.",
+			Copy:  "Ranked by how many times each contract was called in the last 24 hours, not dollars, not TVL. The actual activity.",
 			Cards: []vmv2.LeaderCardData{
-				{Label: "Most active", Value: "84,201", Entity: "Soroswap · Router", EntityMark: "S", EntityTone: "is-swap", Body: "412 different people and contracts called it — mostly swaps and pool deposits."},
-				{Label: "Runner-up", Value: "52,318", Entity: "Blend · Lending Pool", EntityMark: "B", EntityTone: "is-call", Body: "187 unique callers — deposits and borrows dominated the mix."},
+				{Label: "Most active", Value: "84,201", Entity: "Soroswap · Router", EntityMark: "S", EntityTone: "is-swap", Body: "412 different people and contracts called it, mostly swaps and pool deposits."},
+				{Label: "Runner-up", Value: "52,318", Entity: "Blend · Lending Pool", EntityMark: "B", EntityTone: "is-call", Body: "187 unique callers, deposits and borrows dominated the mix."},
 				{Label: "Third place", Value: "31,052", Entity: "Phoenix · AMM", EntityMark: "P", EntityTone: "is-deploy", Body: "143 unique callers. Volume down slightly from yesterday."},
-				{Label: "Fastest growing", Value: "28,918", Entity: "x402 · Gateway", EntityMark: "x", EntityTone: "is-agent", Body: "1,204 unique agents — up 3× in a week. Mostly per-API-call micropayments."},
+				{Label: "Fastest growing", Value: "28,918", Entity: "x402 · Gateway", EntityMark: "x", EntityTone: "is-agent", Body: "1,204 unique agents, up 3× in a week. Mostly per-API-call micropayments."},
 			},
 		},
 		Utilization: vmv2.UtilizationSectionData{
@@ -132,7 +132,7 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 			"Complete history from <b>protocol v20</b> · no gaps",
 			"Lookups averaging <b>94 ms</b> · 99th percentile <b>312 ms</b>",
 			"<b>412 known protocols</b> · named automatically",
-			"Open source — <a href=\"#\">github.com/obsrvr/prism</a>",
+			"Open source, <a href=\"#\">github.com/obsrvr/prism</a>",
 		},
 	}
 }
@@ -185,17 +185,17 @@ func homeV2NetworkConfig(network string) homeV2NetworkCfg {
 	case "testnet":
 		return homeV2NetworkCfg{
 			LedgerNumber: "14,284,112",
-			HeadlineHTML: `The Stellar <span class="is-green">testnet</span> is healthy and lightly loaded right now — a good place to ship changes, test flows, and inspect Soroban behavior safely.`,
+			HeadlineHTML: `The Stellar <span class="is-green">testnet</span> is healthy and lightly loaded right now, a good place to ship changes, test flows, and inspect Soroban behavior safely.`,
 			HeroBody:     "You’re looking at Stellar’s Soroban-first explorer on testnet. Use it to validate contract calls, inspect events, and sanity-check app behavior before mainnet.",
 			Placeholder:  "Paste a testnet hash, address, contract, or ask a question…",
 			FeedTitle:    "What just happened on Testnet",
-			FeedCopy:     "Each card is still a ledger — but here the emphasis is development flow: contract calls, deployments, and agent-style testing traffic.",
+			FeedCopy:     "Each card is still a ledger, but here the emphasis is development flow: contract calls, deployments, and agent-style testing traffic.",
 			FeedNote:     "testnet ledgers streaming every 5 seconds",
 		}
 	case "futurenet":
 		return homeV2NetworkCfg{
 			LedgerNumber: "8,104,552",
-			HeadlineHTML: `The Stellar <span class="is-green">futurenet</span> is active right now — expect sharper protocol edges, experimental traffic, and faster-moving assumptions.`,
+			HeadlineHTML: `The Stellar <span class="is-green">futurenet</span> is active right now, expect sharper protocol edges, experimental traffic, and faster-moving assumptions.`,
 			HeroBody:     "This is the place to inspect upcoming behavior, try features earlier, and watch how contracts behave before those changes settle elsewhere.",
 			Placeholder:  "Paste a futurenet hash, address, contract, or ask a question…",
 			FeedTitle:    "What just happened on Futurenet",
@@ -205,11 +205,11 @@ func homeV2NetworkConfig(network string) homeV2NetworkCfg {
 	default:
 		return homeV2NetworkCfg{
 			LedgerNumber: "52,844,201",
-			HeadlineHTML: `The Stellar network is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.`,
-			HeroBody:     "You’re looking at Stellar’s Soroban-first explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English.",
+			HeadlineHTML: `The Stellar network is <span class="is-green">healthy</span> and <em>busier than usual</em> right now, 187 transactions every 5 seconds, with 2,314 smart contracts active today.`,
+			HeroBody:     "You’re looking at Stellar’s Soroban-first explorer. Every transaction below is classified and described in one sentence, swaps, contract calls, agent payments, and classic payments, all in plain English.",
 			Placeholder:  "Paste a hash, an address, or ask a question…",
 			FeedTitle:    "What just happened",
-			FeedCopy:     "By default, each card is a ledger — the five-second heartbeat of Stellar. Pick a classification pill to drill into individual transactions.",
+			FeedCopy:     "By default, each card is a ledger, the five-second heartbeat of Stellar. Pick a classification pill to drill into individual transactions.",
 			FeedNote:     "a new ledger every 5 seconds",
 		}
 	}
@@ -219,11 +219,11 @@ func buildMockHomeV2RoleCopy(network string) map[string]homeV2HeroRoleCopy {
 	networkLabel, devLabel, bodyPrefix := homeV2RoleNetworkLabels(network)
 	return map[string]homeV2HeroRoleCopy{
 		"curious": {
-			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span> and <em>busier than usual</em> right now — 187 transactions every 5 seconds, with 2,314 smart contracts active today.`, networkLabel),
-			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence — swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
+			Headline: fmt.Sprintf(`%s is <span class="is-green">healthy</span> and <em>busier than usual</em> right now, 187 transactions every 5 seconds, with 2,314 smart contracts active today.`, networkLabel),
+			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and described in one sentence, swaps, contract calls, agent payments, and classic payments, all in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
 		},
 		"developer": {
-			Headline: fmt.Sprintf(`%s looks <span class="is-green">healthy</span> right now — instruction budget is <em>64%% used</em>, read / write is <em>60%%</em>, and 2,314 contracts were active in the last day.`, devLabel),
+			Headline: fmt.Sprintf(`%s looks <span class="is-green">healthy</span> right now, instruction budget is <em>64%% used</em>, read / write is <em>60%%</em>, and 2,314 contracts were active in the last day.`, devLabel),
 			Body:     bodyPrefix + `Jump to any contract by pasting its C… address. We decode function names, sub-calls, and events, and we surface TTL status that most explorers miss. <a class="v2-linkish" href="#">API docs →</a>`,
 		},
 		"operator": {
@@ -232,7 +232,7 @@ func buildMockHomeV2RoleCopy(network string) map[string]homeV2HeroRoleCopy {
 		},
 		"compliance": {
 			Headline: `<em>Activity looks normal right now.</em> No anomaly burst is flagged, and agent-driven volume is up <em>22%</em> week over week.`,
-			Body:     bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, or classic transfer. Paste an address to review its recent pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
+			Body:     bodyPrefix + `Every transaction is classified, DEX swap, contract call, agent payment, or classic transfer. Paste an address to review its recent pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`,
 		},
 		"user": {
 			Headline: `The network looks <span class="is-green">healthy</span>. Paste a transaction hash and we’ll explain what happened in one sentence.`,
@@ -311,18 +311,18 @@ func buildHomeV2RoleCopy(summary *gateway.HomeSummaryResponse) map[string]homeV2
 	if summary.Hero.ActivityMix.AgentTx24h > 0 {
 		mixParts = append(mixParts, gateway.FormatNumber(summary.Hero.ActivityMix.AgentTx24h)+" agent payments")
 	}
-	complianceBody := bodyPrefix + `Every transaction is classified — DEX swap, contract call, agent payment, or classic transfer. Paste an address to review its recent pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`
+	complianceBody := bodyPrefix + `Every transaction is classified, DEX swap, contract call, agent payment, or classic transfer. Paste an address to review its recent pattern with counterparties labeled. <a class="v2-linkish" href="#">Compliance workflows →</a>`
 	if len(mixParts) > 0 {
 		complianceBody = bodyPrefix + fmt.Sprintf(`Recent labeled activity includes %s. Paste an address to review its pattern with counterparties and transaction types already classified. <a class="v2-linkish" href="#">Compliance workflows →</a>`, html.EscapeString(strings.Join(mixParts, " · ")))
 	}
-	developerHeadline := fmt.Sprintf(`%s looks <span class="is-green">%s</span> right now — instruction budget is <em>%s%% used</em>, read / write is <em>%s%%</em>, and %s contracts were active in the last day.`, devLabel, html.EscapeString(statusWord), formatPercentMain(summary.Utilization.InstructionPct), formatPercentMain(summary.Utilization.ReadWritePct), contracts)
+	developerHeadline := fmt.Sprintf(`%s looks <span class="is-green">%s</span> right now, instruction budget is <em>%s%% used</em>, read / write is <em>%s%%</em>, and %s contracts were active in the last day.`, devLabel, html.EscapeString(statusWord), formatPercentMain(summary.Utilization.InstructionPct), formatPercentMain(summary.Utilization.ReadWritePct), contracts)
 	if summary.Utilization.InstructionPct == 0 && summary.Utilization.ReadWritePct == 0 {
 		developerHeadline = fmt.Sprintf(`%s looks <span class="is-green">%s</span> right now, with %s contracts active in the last day.`, devLabel, html.EscapeString(statusWord), contracts)
 	}
 	return map[string]homeV2HeroRoleCopy{
 		"curious": {
-			Headline: fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now — %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts),
-			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and explained in one sentence — swaps, contract calls, agent payments, and classic payments in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
+			Headline: fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now, %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts),
+			Body:     bodyPrefix + `You’re looking at Stellar’s <b>Soroban-first</b> explorer. Every transaction below is classified and explained in one sentence, swaps, contract calls, agent payments, and classic payments in plain English. <a class="v2-linkish" href="#">How this works →</a>`,
 		},
 		"developer": {
 			Headline: developerHeadline,
@@ -478,8 +478,8 @@ func buildHomeV2Hero(summary *gateway.HomeSummaryResponse) vmv2.HeroData {
 		txAvg = gateway.FormatNumber(summary.Hero.LatestLedger.TransactionCount)
 	}
 	contracts := gateway.FormatNumber(summary.Hero.Contracts.Active24h)
-	headline := fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now — %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts)
-	body := fmt.Sprintf(`You’re looking at %s’s Soroban-first explorer%s. Every transaction below is classified and described in one sentence — swaps, contract calls, and classic payments in plain English.`, networkBody, placeholder)
+	headline := fmt.Sprintf(`%s is <span class="is-green">%s</span> and <em>%s</em> right now, %s transactions every 5 seconds, with %s smart contracts active today.`, networkLabel, html.EscapeString(statusWord), html.EscapeString(activityPhrase), txAvg, contracts)
+	body := fmt.Sprintf(`You’re looking at %s’s Soroban-first explorer%s. Every transaction below is classified and described in one sentence, swaps, contract calls, and classic payments in plain English.`, networkBody, placeholder)
 	return vmv2.HeroData{
 		Eyebrow:      "What brings you here?",
 		HeadlineHTML: headline,
@@ -504,9 +504,9 @@ func buildHomeV2Alert(summary *gateway.HomeSummaryResponse) vmv2.AlertData {
 	names := summary.Alert.TopContracts
 	body := fmt.Sprintf("%s contracts on %s are nearing expiration, with the worst case under %s remaining.", gateway.FormatNumber(count), summary.Network, humanizeHours(hours))
 	if len(names) > 0 {
-		body = fmt.Sprintf("%s contracts on %s are nearing expiration — including %s — with the worst case under %s remaining.", gateway.FormatNumber(count), summary.Network, strings.Join(names, ", "), humanizeHours(hours))
+		body = fmt.Sprintf("%s contracts on %s are nearing expiration, including %s, with the worst case under %s remaining.", gateway.FormatNumber(count), summary.Network, strings.Join(names, ", "), humanizeHours(hours))
 	}
-	meta := "Why this matters: contract operators need to extend TTL before it hits zero — otherwise their users see failures."
+	meta := "Why this matters: contract operators need to extend TTL before it hits zero, otherwise their users see failures."
 	cta := "Review →"
 	return vmv2.AlertData{Title: title, Body: body, Meta: meta, CTA: cta}
 }
@@ -527,7 +527,7 @@ func buildHomeV2Attention(summary *gateway.HomeSummaryResponse) vmv2.AttentionSe
 		barWidth := fmt.Sprintf("%.0f%%", clampFloat(c.RunwayPct, 0, 100))
 		body := fmt.Sprintf("About %s ledgers of runway remain. Status: %s.", gateway.FormatNumber(c.RemainingLedgers), strings.ReplaceAll(c.Status, "_", " "))
 		if c.RemainingHuman != "" {
-			body = fmt.Sprintf("About %s ledgers of runway remain — roughly %s.", gateway.FormatNumber(c.RemainingLedgers), c.RemainingHuman)
+			body = fmt.Sprintf("About %s ledgers of runway remain, roughly %s.", gateway.FormatNumber(c.RemainingLedgers), c.RemainingHuman)
 		}
 		data.Cards = append(data.Cards, vmv2.AttentionCardData{
 			Kicker:   name,
@@ -545,7 +545,7 @@ func buildHomeV2Attention(summary *gateway.HomeSummaryResponse) vmv2.AttentionSe
 func buildHomeV2Leaders(summary *gateway.HomeSummaryResponse) vmv2.LeadersSectionData {
 	data := vmv2.LeadersSectionData{
 		Title: "Who’s being used the most today",
-		Copy:  "Ranked by how many times each contract was called in the last 24 hours — not dollars, not TVL. The actual activity.",
+		Copy:  "Ranked by how many times each contract was called in the last 24 hours, not dollars, not TVL. The actual activity.",
 	}
 	labels := []string{"Most active", "Runner-up", "Third place", "Fastest growing"}
 	tones := []string{"is-swap", "is-call", "is-deploy", "is-agent"}
@@ -616,7 +616,7 @@ func applyHomeV2Meta(data *vmv2.HomeData, summary *gateway.HomeSummaryResponse) 
 	if summary.Meta.KnownProtocolCount > 0 {
 		items = append(items, fmt.Sprintf("<b>%s known protocols</b> · named automatically", gateway.FormatNumber(summary.Meta.KnownProtocolCount)))
 	}
-	items = append(items, "Open source — <a href=\"#\">github.com/obsrvr/prism</a>")
+	items = append(items, "Open source, <a href=\"#\">github.com/obsrvr/prism</a>")
 	data.FooterItems = items
 }
 

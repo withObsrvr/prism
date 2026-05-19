@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/withObsrvr/prism/internal/events"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
@@ -60,13 +64,15 @@ func mockHomeData(network string) pages.HomeData {
 
 // mockLedgerDetailData returns hardcoded ledger detail data.
 func mockLedgerDetailData(sequence string) pages.LedgerDetailData {
+	prevSequence, prevRaw := mockAdjacentSequence(sequence, -1)
+	nextSequence, nextRaw := mockAdjacentSequence(sequence, 1)
 	return pages.LedgerDetailData{
-		Sequence:        sequence,
-		SequenceRaw:     sequence,
-		PrevSequence:    "5,104,937",
-		PrevSequenceRaw: "5104937",
-		NextSequence:    "5,104,939",
-		NextSequenceRaw: "5104939",
+		Sequence:        formatMockSequence(sequence),
+		SequenceRaw:     strings.ReplaceAll(sequence, ",", ""),
+		PrevSequence:    prevSequence,
+		PrevSequenceRaw: prevRaw,
+		NextSequence:    nextSequence,
+		NextSequenceRaw: nextRaw,
 		ClosedAt:        "Mar 2, 2026 · 14:32:18 UTC",
 		CloseTime:       "5.1s",
 		Hash:            "a1b2c3d4e5f6...7890abcdef12",
@@ -471,18 +477,19 @@ func mockAssetDirectoryData() pages.AssetDirectoryData {
 // mockAccountData returns hardcoded account portfolio data.
 func mockAccountData() pages.AccountData {
 	return pages.AccountData{
-		Address:      "GABC7DEF8GHI9JKL0MNO1PQR2STU3VWX4YZ567890ABCDEFGHIJKLMNOP",
-		ShortAddress: "GABC...MNOP",
-		TotalValue:   "$58,247",
-		TotalCents:   ".82",
-		XLMBalance:   "124,500.00 XLM",
-		Trustlines:   "12",
-		ActiveOffers: "1",
-		Subentries:   "14",
-		CreatedAt:    "Jan 15, 2024",
-		HomeDomain:   "stellar.org",
-		IsFunded:     true,
-		SignerCount:  "1",
+		Address:        "GABC7DEF8GHI9JKL0MNO1PQR2STU3VWX4YZ567890ABCDEFGHIJKLMNOP",
+		ShortAddress:   "GABC...MNOP",
+		TotalValue:     "$58,247",
+		TotalCents:     ".82",
+		XLMBalance:     "124,500.00 XLM",
+		Trustlines:     "12",
+		ActiveOffers:   "1",
+		Subentries:     "14",
+		CreatedAt:      "Jan 15, 2024",
+		HomeDomain:     "stellar.org",
+		SequenceNumber: "214,041,928,194,121",
+		IsFunded:       true,
+		SignerCount:    "1",
 		Balances: []pages.AccountBalance{
 			{Code: "XLM", Name: "Stellar Lumens", BgColor: "bg-gray-900", Type: "Native", TypeColor: "gray", Balance: "124,500.00", ValueUSD: "$12,078.50"},
 			{Code: "USDC", Name: "USD Coin", Issuer: "Centre", BgColor: "bg-blue-600", Type: "Classic", TypeColor: "gray", Balance: "25,000.00", ValueUSD: "$25,000.00"},
@@ -591,4 +598,36 @@ func mockFirehoseEvents() []pages.FirehoseEvent {
 		result[i] = fe
 	}
 	return result
+}
+
+func mockAdjacentSequence(sequence string, delta int64) (string, string) {
+	raw := strings.ReplaceAll(sequence, ",", "")
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return sequence, raw
+	}
+	n += delta
+	if n < 0 {
+		n = 0
+	}
+	return formatMockSequence(fmt.Sprintf("%d", n)), fmt.Sprintf("%d", n)
+}
+
+func formatMockSequence(sequence string) string {
+	raw := strings.ReplaceAll(sequence, ",", "")
+	n := len(raw)
+	if n <= 3 {
+		return raw
+	}
+	pre := n % 3
+	if pre == 0 {
+		pre = 3
+	}
+	var b strings.Builder
+	b.WriteString(raw[:pre])
+	for i := pre; i < n; i += 3 {
+		b.WriteString(",")
+		b.WriteString(raw[i : i+3])
+	}
+	return b.String()
 }

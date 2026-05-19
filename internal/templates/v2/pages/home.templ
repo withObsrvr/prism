@@ -1,463 +1,120 @@
 package pagesv2
 
 import (
+	"fmt"
+	"strings"
 	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
 	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
-	fragmentsv2 "github.com/withObsrvr/prism/internal/templates/v2/fragments"
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
 templ Home(data vmv2.HomeData) {
-	@layoutsv2.Base("Prism — Home v2") {
-		<div class="v2-home-page">
-			<div class="v2-home-shell">
-				@componentsv2.HomeHeader(data.Header)
-				<main class="v2-home-main">
-					@fragmentsv2.Hero(data.Hero)
-					@fragmentsv2.Prompt(data.Prompt)
-					@fragmentsv2.Alert(data.Alert)
-					@fragmentsv2.LedgerFeed(data.LedgerFeed, data.FeedJSON, data.FeedLive)
-					@fragmentsv2.Attention(data.Attention)
-					@fragmentsv2.Leaders(data.Leaders)
-					@fragmentsv2.Utilization(data.Utilization)
-					@componentsv2.FooterMeta(data.FooterItems)
-				</main>
-				<button id="v2-tweaks-toggle" class="v2-tweaks-fab" type="button">Tweaks</button>
-				<div id="v2-tweaks" class="v2-tweaks-panel">
-					<div class="v2-tweaks-head">Tweaks <span>Humanized</span></div>
-					<div class="v2-tweak-row">
-						<div class="v2-tweak-label">Theme</div>
-						<div class="v2-tweak-seg" data-tweak="theme">
-							<button type="button" class="is-active" data-value="light">Light</button>
-							<button type="button" data-value="dark">Dark</button>
-						</div>
-					</div>
-					<div class="v2-tweak-row">
-						<div class="v2-tweak-label">Voice</div>
-						<div class="v2-tweak-seg" data-tweak="voice">
-							<button type="button" data-value="brief">Brief</button>
-							<button type="button" class="is-active" data-value="warm">Warm</button>
-							<button type="button" data-value="teach">Teaching</button>
-						</div>
-					</div>
-					<div class="v2-tweak-row">
-						<div class="v2-tweak-label">Feed density</div>
-						<div class="v2-tweak-seg" data-tweak="density">
-							<button type="button" class="is-active" data-value="generous">Generous</button>
-							<button type="button" data-value="balanced">Balanced</button>
-						</div>
-					</div>
-				</div>
-			</div>
-			<script>
-				(function(){
-					const doc = document.documentElement;
-					const body = document.body;
-					const root = document.getElementById('v2-feed-root');
-					const filters = document.getElementById('v2-feed-filters');
-					const note = document.getElementById('v2-feed-note');
-					const themeBtn = document.querySelector('.v2-home-status-btn');
-					const tweaksToggle = document.getElementById('v2-tweaks-toggle');
-					const tweaks = document.getElementById('v2-tweaks');
-					const promptInput = document.getElementById('v2-prompt-input');
-					const promptWrap = document.getElementById('v2-prompt-wrap');
-					const promptResults = document.getElementById('v2-prompt-results');
-					const roleRow = document.getElementById('v2-role-row');
-					const hero = document.querySelector('.v2-hero');
-					const statusLine = document.getElementById('v2-status-line');
-					const subline = document.getElementById('v2-subline');
-					const headerLedger = document.getElementById('v2-header-ledger');
-					const headerLedgerAge = document.getElementById('v2-header-ledger-age');
-					const networkSelect = document.getElementById('v2-network-select');
-					if (!root) return;
-					const data = JSON.parse(root.dataset.feed || '{"ledgers":[],"transactions":[]}');
-					let useLiveFeed = root.dataset.live === 'true';
-					let mode = 'all';
-					let tick = 0;
-					let refreshInFlight = false;
-					const storageKey = 'prism-v2-home-state';
-					const toneMap = { swap:'Swaps', call:'Contract calls', agent:'Agent payments', deploy:'Deployments', confidential:'Confidential', classic:'Classic' };
-					const iconMap = { swap:'⇌', call:'ƒ', agent:'α', deploy:'+', confidential:'∎', classic:'▸' };
-					const chipColor = { swap:'var(--v2-teal)', call:'var(--v2-violet)', agent:'var(--v2-orange)', deploy:'var(--v2-gold)', confidential:'var(--v2-blue)', classic:'var(--v2-classic)' };
-					let roleMap = {};
-					try {
-						roleMap = JSON.parse(hero?.dataset.roleCopy || '{}');
-					} catch (_) {
-						roleMap = {};
-					}
-					const quickAnswers = {
-						'which contracts are expiring this week?': {
-							answer: 'Three high-traffic contracts look closest: Blend\'s pool, Soroswap\'s router, and Phoenix\'s AMM.',
-							meta: 'Based on the TTL panel below',
-							rows: ['Blend · Lending Pool', 'Soroswap · Router', 'Phoenix · AMM']
-						},
-						'show me every agent payment today?': {
-							answer: 'Switching the feed to agent payments gives you the clearest view of machine-to-machine spend.',
-							meta: 'Filtered from the live activity feed',
-							rows: ['openai-proxy-a12', 'anthropic-relay-7b', 'x402 gateway calls']
-						},
-						'show me every agent payment today': {
-							answer: 'Switching the feed to agent payments gives you the clearest view of machine-to-machine spend.',
-							meta: 'Filtered from the live activity feed',
-							rows: ['openai-proxy-a12', 'anthropic-relay-7b', 'x402 gateway calls']
-						},
-						'what is this hash about?': {
-							answer: 'Paste a transaction hash and Prism will explain the transaction in one sentence, then link to raw details.',
-							meta: 'Hash lookups route to transaction detail',
-							rows: ['Transaction summary', 'Ledger placement', 'Classifier confidence']
-						},
-						'is soroswap busy?': {
-							answer: 'Yes — Soroswap is still one of the busiest protocols on the network today by calls.',
-							meta: 'See “Who’s being used the most today”',
-							rows: ['84,201 calls', '412 unique callers', 'Mostly swaps and pool deposits']
-						}
-					};
-					const liveTxSeeds = [
-						{ kind:'swap', headline:'Someone swapped <b>860 XLM</b> for <b>197.12 USDC</b>', context:'via the Soroswap router · low slippage', entity:'a trader on Soroswap' },
-						{ kind:'call', headline:'Blend processed another collateral update', context:'two sub-calls · borrower adjusted position', entity:'submit() on Blend V2' },
-						{ kind:'agent', headline:'An agent paid <b>$0.03 USDC</b> for an API call', context:'x402 micro-payment · machine-to-machine request', entity:'gateway relay' },
-						{ kind:'deploy', headline:'A fresh Soroban contract was deployed', context:'WASM uploaded and initialized in one transaction', entity:'a developer' },
-						{ kind:'confidential', headline:'A confidential transfer proof was accepted', context:'zero-knowledge verifier confirmed the proof', entity:'an anonymous sender' },
-						{ kind:'classic', headline:'Someone sent <b>215 XLM</b> to a wallet', context:'classic payment · no contract involved', entity:'a classic payment' }
-					];
-					function esc(s){ return String(s).replace(/[&<>\"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-					function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
-					function humanAgeFromSeconds(s){
-						if(s <= 3) return 'just now';
-						if(s < 60) return s + ' seconds ago';
-						if(s < 90) return 'about a minute ago';
-						if(s < 3600) return Math.round(s / 60) + ' minutes ago';
-						return 'over an hour ago';
-					}
-					function shortAge(i){ return humanAgeFromSeconds(i * 5); }
-					function makeHash(){ return Math.random().toString(16).slice(2, 10) + '…' + Math.random().toString(16).slice(2, 6); }
-					function updateHeaderLedger(){
-						if(headerLedger && data.ledgers && data.ledgers[0]) headerLedger.textContent = data.ledgers[0].ledgerNumber;
-						if(headerLedgerAge && data.ledgers && data.ledgers[0]) headerLedgerAge.textContent = data.ledgers[0].age;
-					}
-					function normalizeFeedAges(){
-						if(useLiveFeed) { updateHeaderLedger(); return; }
-						(data.transactions || []).forEach(function(tx, i){ tx.when = shortAge(i); });
-						(data.ledgers || []).forEach(function(ledger, i){ ledger.age = shortAge(i); });
-						updateHeaderLedger();
-					}
-					function makeLiveTx(){
-						const seed = pick(liveTxSeeds);
-						return { kind: seed.kind, headline: seed.headline, context: seed.context, entity: seed.entity, hash: makeHash(), when: 'just now' };
-					}
-					function chipLabel(kind, count){
-						const labels = { swap:'swaps', call:'calls', agent:'agent payments', deploy:'deploys', confidential:'confidential', classic:'classic' };
-						return count + ' ' + labels[kind];
-					}
-					function makeLiveLedger(seedTxs){
-						const top = parseInt((data.ledgers && data.ledgers[0] && data.ledgers[0].ledgerNumber) || '52844201', 10);
-						const counts = {
-							swap: 32 + Math.floor(Math.random() * 22),
-							call: 56 + Math.floor(Math.random() * 24),
-							agent: 24 + Math.floor(Math.random() * 28),
-							classic: 28 + Math.floor(Math.random() * 30),
-							deploy: Math.floor(Math.random() * 4),
-							confidential: Math.floor(Math.random() * 3)
-						};
-						const chips = Object.keys(counts).filter(function(kind){ return counts[kind] > 0; }).map(function(kind){ return { kind: kind, label: chipLabel(kind, counts[kind]) }; });
-						return {
-							ledgerNumber: String(top + 1),
-							transactionCount: String(185 + Math.floor(Math.random() * 45)),
-							meta: 'with ' + (390 + Math.floor(Math.random() * 260)) + ' operations · closed by ' + pick(['sdf-validator-1','whale-stack','publicnode','lobstr','coinbase-cloud']),
-							chips: chips,
-							instructionsPct: 48 + Math.floor(Math.random() * 25),
-							readWritePct: 32 + Math.floor(Math.random() * 26),
-							closeTime: '4.9s',
-							age: 'just now',
-							sideMeta: '5 ledgers / min',
-							samples: seedTxs
-						};
-					}
-					function readState(){
-						try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (_) { return {}; }
-					}
-					function writeState(patch){
-						const next = Object.assign({}, readState(), patch);
-						localStorage.setItem(storageKey, JSON.stringify(next));
-						return next;
-					}
-					function currentNetwork(){ return networkSelect?.value || 'mainnet'; }
-					function baseFeedNote(){
-						const n = currentNetwork();
-						if(n === 'testnet') return 'testnet ledgers streaming every 5 seconds';
-						if(n === 'futurenet') return 'futurenet ledgers streaming every 5 seconds';
-						return 'a new ledger every 5 seconds';
-					}
-					function setRole(role, persist){
-						const entry = roleMap[role] || roleMap.curious;
-						if(statusLine && entry?.headline) statusLine.innerHTML = entry.headline;
-						if(subline && entry?.body) subline.innerHTML = entry.body;
-						roleRow?.querySelectorAll('[data-role]').forEach(function(btn){
-							btn.classList.toggle('is-active', btn.dataset.role === role);
-						});
-						if(persist !== false) writeState({ role: role });
-					}
-					function renderLedgerRow(row, isNew){
-						const chips = (row.chips||[]).map(ch => `<span class="v2-ledger-chip"><span class="v2-ledger-chip-dot" style="background:${chipColor[ch.kind]||'var(--v2-classic)'}"></span><span>${esc(ch.label)}</span></span>`).join('');
-						return `<div class="v2-ledger-row ${isNew ? 'is-new' : ''}" data-ledger="${esc(row.ledgerNumber)}"><div><div class="v2-ledger-left-label">ledger</div><div class="v2-ledger-left-value">#${esc(row.ledgerNumber)}</div></div><div><div class="v2-ledger-main-top"><span class="v2-ledger-main-count">${esc(row.transactionCount)}</span><span class="v2-ledger-main-label">transactions</span><span class="v2-ledger-main-meta">${esc(row.meta)}</span></div><div class="v2-ledger-chip-row">${chips}</div><div class="v2-ledger-stats"><div class="v2-inline-stat"><span>instructions</span><div class="v2-inline-bar"><span class="v2-inline-bar-fill" style="width:${row.instructionsPct}%;background:var(--v2-gold)"></span></div><span>${row.instructionsPct}%</span></div><div class="v2-inline-stat"><span>read / write</span><div class="v2-inline-bar"><span class="v2-inline-bar-fill" style="width:${row.readWritePct}%;background:var(--v2-green)"></span></div><span>${row.readWritePct}%</span></div><div class="v2-inline-stat"><span>close time</span><span>${esc(row.closeTime)}</span></div></div></div><div class="v2-ledger-side"><div>${esc(row.age)}</div><div>${esc(row.sideMeta)}</div></div></div>`;
-					}
-					function ledgerDetailHref(ledger){
-						const sequence = String(ledger?.ledgerNumber || '').replace(/,/g, '').trim();
-						return sequence ? `/v2/ledger/${encodeURIComponent(sequence)}` : '/v2/home/ledger';
-					}
-					function renderLedgerDetail(ledger){
-						const samples = (ledger.samples||[]).map(tx => `<div class="v2-ledger-sample-row ${tx.kind}"><span class="v2-ledger-sample-glyph" style="background:${chipColor[tx.kind]||'var(--v2-classic)'}">${iconMap[tx.kind]||'•'}</span><span class="v2-ledger-sample-kind">${esc(toneMap[tx.kind]||tx.kind)}</span><div class="v2-ledger-sample-text">${tx.headline}</div><div class="v2-ledger-sample-hash">${esc(tx.hash)}</div></div>`).join('');
-						return `<div class="v2-ledger-detail"><div class="v2-ledger-detail-head">One of each dominant kind — representative transactions from this ledger</div>${samples}<a href="${ledgerDetailHref(ledger)}" class="v2-ledger-detail-link">Open ledger detail →</a></div>`;
-					}
-					function renderTxCard(tx, isNew){
-						return `<div class="v2-feed-card ${tx.kind} ${isNew ? 'is-new' : ''}"><div class="v2-feed-card-mark" style="background:${chipColor[tx.kind]||'var(--v2-classic)'}">${iconMap[tx.kind]||'•'}</div><div><div class="v2-feed-card-headline">${tx.headline}</div><div class="v2-feed-card-context">${esc(tx.context)}</div><div class="v2-feed-card-tags"><span class="v2-feed-card-tag">${esc(toneMap[tx.kind]||tx.kind)}</span><span class="v2-feed-card-entity">${esc(tx.entity)}</span><span class="v2-feed-card-hash">${esc(tx.hash)}</span></div></div><div class="v2-feed-card-age">${esc(tx.when)}</div></div>`;
-					}
-					function renderPromptResults(q){
-						if(!promptResults) return;
-						const key = String(q || '').trim().toLowerCase();
-						if(!key){ promptResults.hidden = true; promptResults.innerHTML = ''; return; }
-						const hit = quickAnswers[key];
-						if(hit){
-							const hitRows = hit.rows.map(function(r){ return '<div class="v2-prompt-result-row"><span class="v2-prompt-result-tag">match</span><div>' + esc(r) + '</div></div>'; }).join('');
-						promptResults.innerHTML = '<div class="v2-prompt-answer"><div class="v2-prompt-answer-label">Answer</div><div class="v2-prompt-answer-body">' + hit.answer + '</div><div class="v2-prompt-answer-meta">' + hit.meta + '</div></div>' + hitRows;
-							promptResults.hidden = false;
-							return;
-						}
-						const rows = (data.transactions||[]).filter(tx => [tx.entity, tx.context, tx.headline].join(' ').toLowerCase().includes(key)).slice(0,4);
-						if(!rows.length){ promptResults.hidden = true; promptResults.innerHTML = ''; return; }
-						promptResults.innerHTML = rows.map(function(tx){ return '<div class="v2-prompt-result-row"><span class="v2-prompt-result-tag">' + esc(tx.kind) + '</span><div><div>' + tx.headline + '</div><div class="v2-prompt-result-sub">' + esc(tx.entity) + ' · ' + esc(tx.when) + '</div></div></div>'; }).join('');
-						promptResults.hidden = false;
-					}
-					function visibleTransactions(){
-						return mode === 'alltx' ? (data.transactions || []) : (data.transactions || []).filter(function(tx){ return tx.kind === mode; });
-					}
-					function collapseExpandedLedger(){
-						root.querySelectorAll('.v2-ledger-detail').forEach(function(el){ el.remove(); });
-						root.querySelectorAll('.v2-ledger-row').forEach(function(el){ el.classList.remove('is-expanded'); });
-					}
-					function syncVisibleAges(){
-						if(mode === 'all'){
-							root.querySelectorAll('.v2-ledger-row').forEach(function(row, i){
-								const ageEl = row.querySelector('.v2-ledger-side div:first-child');
-								if(ageEl && data.ledgers[i]) ageEl.textContent = data.ledgers[i].age;
-							});
-						} else {
-							visibleTransactions().slice(0, root.querySelectorAll('.v2-feed-card').length).forEach(function(tx, i){
-								const ageEl = root.querySelectorAll('.v2-feed-card-age')[i];
-								if(ageEl) ageEl.textContent = tx.when;
-							});
-						}
-					}
-					function expandedLedgerNumber(){
-						const row = root.querySelector('.v2-ledger-row.is-expanded');
-						return row ? String(row.dataset.ledger || '') : '';
-					}
-					function reopenExpandedLedger(ledgerNumber){
-						if(!ledgerNumber || mode !== 'all') return;
-						const row = root.querySelector('.v2-ledger-row[data-ledger="' + ledgerNumber.replace(/"/g, '\\"') + '"]');
-						if(!row) return;
-						const ledger = (data.ledgers||[]).find(function(l){ return String(l.ledgerNumber) === ledgerNumber; });
-						if(!ledger) return;
-						row.classList.add('is-expanded');
-						row.insertAdjacentHTML('afterend', renderLedgerDetail(ledger));
-					}
-					function render(options){
-						const opts = options || {};
-						const reopenLedger = opts.reopenLedger || '';
-						normalizeFeedAges();
-						if(mode === 'all'){
-							root.className = 'v2-ledger-list';
-							root.innerHTML = (data.ledgers||[]).map(function(row, i){ return renderLedgerRow(row, i === 0); }).join('');
-							reopenExpandedLedger(reopenLedger);
-							note.textContent = baseFeedNote();
-						} else {
-							const txs = visibleTransactions();
-							root.className = 'v2-feed-cards';
-							root.innerHTML = txs.map(function(tx, i){ return renderTxCard(tx, i === 0); }).join('');
-							note.textContent = mode === 'alltx' ? 'all transactions, newest first' : 'showing only ' + String((toneMap[mode]||mode).toLowerCase());
-						}
-					}
-					function markFresh(el){
-						if(!el) return;
-						el.classList.add('is-fresh');
-						setTimeout(function(){ el.classList.remove('is-fresh'); }, 2200);
-					}
-					function streamInsert(){
-						const newTx = makeLiveTx();
-						const extraTx = makeLiveTx();
-						data.transactions.unshift(newTx);
-						data.transactions.splice(1, 0, extraTx);
-						data.transactions = data.transactions.slice(0, 18);
-						const newLedger = makeLiveLedger([newTx, extraTx, makeLiveTx()]);
-						data.ledgers.unshift(newLedger);
-						data.ledgers = data.ledgers.slice(0, 7);
-						normalizeFeedAges();
-						if(mode === 'all'){
-							collapseExpandedLedger();
-							root.className = 'v2-ledger-list';
-							root.insertAdjacentHTML('afterbegin', renderLedgerRow(data.ledgers[0], true));
-							markFresh(root.firstElementChild);
-							while(root.querySelectorAll('.v2-ledger-row').length > data.ledgers.length){
-								root.querySelector('.v2-ledger-row:last-of-type')?.remove();
-							}
-							syncVisibleAges();
-							note.textContent = 'new ledger inserted just now';
-						} else {
-							const matches = mode === 'alltx' || newTx.kind === mode;
-							if(matches){
-								root.className = 'v2-feed-cards';
-								root.insertAdjacentHTML('afterbegin', renderTxCard(newTx, true));
-								markFresh(root.firstElementChild);
-								const maxCards = visibleTransactions().length;
-								while(root.querySelectorAll('.v2-feed-card').length > maxCards){
-									root.querySelector('.v2-feed-card:last-of-type')?.remove();
-								}
-								syncVisibleAges();
-								note.textContent = mode === 'alltx' ? 'new transaction inserted just now' : 'new ' + (toneMap[mode]||mode).toLowerCase() + ' inserted just now';
-							} else {
-								syncVisibleAges();
-								note.textContent = '1 new transaction outside current filter';
-							}
-						}
-						updateHeaderLedger();
-						setTimeout(function(){
-							if(mode === 'all') note.textContent = baseFeedNote();
-							else if(mode === 'alltx') note.textContent = 'all transactions, newest first';
-							else note.textContent = 'showing only ' + String((toneMap[mode]||mode).toLowerCase());
-						}, 1600);
-					}
-					function setMode(nextMode, persist){
-						mode = nextMode || 'all';
-						filters?.querySelectorAll('[data-filter]').forEach(function(el){ el.classList.toggle('is-active', el.dataset.filter === mode); });
-						if(persist !== false) writeState({ filter: mode });
-						render();
-					}
-					filters?.addEventListener('click', function(e){
-						const btn = e.target.closest('[data-filter]');
-						if(!btn) return;
-						setMode(btn.dataset.filter || 'all');
-					});
-					root.addEventListener('click', function(e){
-						if(mode !== 'all') return;
-						const row = e.target.closest('.v2-ledger-row');
-						if(!row) return;
-						const ledger = (data.ledgers||[]).find(l => String(l.ledgerNumber) === row.dataset.ledger);
-						if(!ledger) return;
-						const next = row.nextElementSibling;
-						if(next && next.classList.contains('v2-ledger-detail')) { next.remove(); row.classList.remove('is-expanded'); return; }
-						root.querySelectorAll('.v2-ledger-detail').forEach(el => el.remove());
-						root.querySelectorAll('.v2-ledger-row').forEach(el => el.classList.remove('is-expanded'));
-						row.classList.add('is-expanded');
-						row.insertAdjacentHTML('afterend', renderLedgerDetail(ledger));
-					});
-					function setTheme(theme, persist){
-						doc.setAttribute('data-theme', theme);
-						document.querySelectorAll('[data-tweak="theme"] button').forEach(btn => btn.classList.toggle('is-active', btn.dataset.value === theme));
-						if(persist !== false) writeState({ theme: theme });
-					}
-					const savedState = readState();
-					setTheme(savedState.theme || 'light', false);
-					themeBtn?.addEventListener('click', () => setTheme(doc.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
-					tweaksToggle?.addEventListener('click', ()=> tweaks.classList.toggle('is-open'));
-					document.querySelectorAll('.v2-tweak-seg').forEach(seg => seg.addEventListener('click', function(e){
-						const btn = e.target.closest('button[data-value]');
-						if(!btn) return;
-						seg.querySelectorAll('button').forEach(el => el.classList.toggle('is-active', el === btn));
-						const tweak = seg.dataset.tweak;
-						if(tweak === 'theme') setTheme(btn.dataset.value);
-						if(tweak === 'density') { body.setAttribute('data-density', btn.dataset.value); writeState({ density: btn.dataset.value }); }
-						if(tweak === 'voice') { body.setAttribute('data-voice', btn.dataset.value); writeState({ voice: btn.dataset.value }); }
-					}));
-					networkSelect?.addEventListener('change', function(){
-						const value = networkSelect.value;
-						writeState({ network: value });
-						fetch('/api/network', {
-							method: 'PUT',
-							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-							body: 'network=' + encodeURIComponent(value)
-						}).then(function(){ window.location.reload(); });
-					});
-					roleRow?.querySelectorAll('[data-role]').forEach(function(btn){
-						btn.addEventListener('click', function(){ setRole(btn.dataset.role || 'curious'); });
-					});
-					promptWrap?.querySelectorAll('.v2-prompt-hint').forEach(btn => btn.addEventListener('click', function(){
-						if(!promptInput) return;
-						promptInput.value = btn.textContent.trim();
-						promptInput.focus();
-						renderPromptResults(promptInput.value);
-					}));
-					promptInput?.addEventListener('input', function(){ renderPromptResults(promptInput.value); });
-					promptInput?.addEventListener('focus', function(){ renderPromptResults(promptInput.value); });
-					document.addEventListener('click', function(e){
-						if(promptWrap && !promptWrap.contains(e.target)) { if(promptResults) promptResults.hidden = true; }
-						if(tweaks && tweaksToggle && !tweaks.contains(e.target) && !tweaksToggle.contains(e.target)) tweaks.classList.remove('is-open');
-					});
-					document.addEventListener('keydown', function(e){
-						if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); promptInput?.focus(); }
-						if(e.key === 'Escape' && promptResults) promptResults.hidden = true;
-					});
-					function applyFeedPayload(payload){
-						if(!payload || !payload.feed) return { applied: false, changed: false };
-						const prevTop = data.ledgers && data.ledgers[0] ? String(data.ledgers[0].ledgerNumber) : '';
-						const nextTop = payload.feed.ledgers && payload.feed.ledgers[0] ? String(payload.feed.ledgers[0].ledgerNumber) : '';
-						useLiveFeed = payload.live === true;
-						if(headerLedger && payload.header && payload.header.ledgerNumber) headerLedger.textContent = payload.header.ledgerNumber;
-						if(headerLedgerAge && payload.header && payload.header.ageLabel) headerLedgerAge.textContent = payload.header.ageLabel;
-						if(!nextTop || nextTop === prevTop) {
-							return { applied: true, changed: false };
-						}
-						const reopenLedger = expandedLedgerNumber();
-						data.ledgers = payload.feed.ledgers || [];
-						data.transactions = payload.feed.transactions || [];
-						render({ reopenLedger: reopenLedger });
-						if(root.firstElementChild) markFresh(root.firstElementChild);
-						return { applied: true, changed: true };
-					}
-					async function refreshFeed(){
-						if(refreshInFlight) return false;
-						refreshInFlight = true;
-						try {
-							const resp = await fetch('/v2/home/feed', { headers: { 'Accept': 'application/json' } });
-							if(!resp.ok) return false;
-							const payload = await resp.json();
-							if(payload.live) {
-								const result = applyFeedPayload(payload);
-								if(result.changed) {
-									note.textContent = 'live feed synced';
-									setTimeout(function(){
-										if(mode === 'all') note.textContent = baseFeedNote();
-										else if(mode === 'alltx') note.textContent = 'all transactions, newest first';
-										else note.textContent = 'showing only ' + String((toneMap[mode]||mode).toLowerCase());
-									}, 1200);
-								}
-								return result.applied;
-							}
-							return false;
-						} catch (_) {
-							return false;
-						} finally {
-							refreshInFlight = false;
-						}
-					}
-					(function scheduleFeedRefresh(){
-						setTimeout(async function(){
-							tick++;
-							const refreshed = await refreshFeed();
-							if(!refreshed) {
-								useLiveFeed = false;
-								streamInsert();
-							}
-							scheduleFeedRefresh();
-						}, 2000);
-					})();
-					if(savedState.density) body.setAttribute('data-density', savedState.density);
-					if(savedState.voice) body.setAttribute('data-voice', savedState.voice);
-					document.querySelectorAll('[data-tweak="density"] button').forEach(function(btn){ btn.classList.toggle('is-active', btn.dataset.value === (savedState.density || 'generous')); });
-					document.querySelectorAll('[data-tweak="voice"] button').forEach(function(btn){ btn.classList.toggle('is-active', btn.dataset.value === (savedState.voice || 'warm')); });
-					setRole(savedState.role || 'curious', false);
-					setMode(savedState.filter || 'all', false);
-				})();
-			</script>
-		</div>
+	@layoutsv2.Base("Prism: Stellar's Soroban-first explorer") {
+		<header class="ph-top"><div class="ph-top-inner">
+			<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
+			<nav class="ph-nav"><a class="active" href="/v2/home">Home</a><a href="#activity">Explore</a><a href="#contracts">Contracts</a><a href="#activity">Agents</a><a href="#why">Docs</a></nav>
+			<div class="ph-right"><div class="ph-heartbeat"><span class="dot"></span><span>live</span><span class="sep">·</span><span>last ledger <b id="ph-heartbeat-age">{ shortHeaderAge(data.Header.AgeLabel) }</b></span><span class="sep">·</span><span><b id="ph-heartbeat-tx">{ topTxCount(data) }</b> tx/5s</span></div>@componentsv2.NetworkSelector(data.Header.Network)</div>
+		</div></header>
+		<main class="ph-page">
+			<section class="ph-hero"><h1>@templ.Raw(heroHeadline(data))</h1><p class="ph-hero-sub">You're looking at Stellar's Soroban-first explorer. Every transaction below is classified and described in one sentence: swaps, contract calls, agent payments, and classic payments, all in plain English. <a href="#why">How this works →</a></p>
+				<div class="ph-search-wrap"><div class="ph-search-label">Ask anything about the network</div><div class="ph-search"><span class="ph-search-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"></circle><path d="M12 12l4 4"></path></svg></span><input id="ph-search-input" placeholder={ firstNonEmptyHome(data.Prompt.Placeholder, "Paste a tx hash, address, contract, or plain-English question") }/><span class="ph-search-shortcut">⌘K</span></div><div class="ph-tryline"><span class="label">Try</span><button class="ph-trychip">Which contracts are expiring this week?</button><button class="ph-trychip">Show me every agent payment today</button><button class="ph-trychip">What is this hash about?</button><button class="ph-trychip">Is Soroswap busy?</button></div></div>
+			</section>
+			<div class="ph-alert"><div class="ph-alert-icon">!</div><div class="ph-alert-body"><div class="ph-alert-title">{ firstNonEmptyHome(data.Alert.Title, "Three contracts are running out of room") }</div><div class="ph-alert-desc">{ firstNonEmptyHome(data.Alert.Body, "Blend's lending pool, Soroswap's router, and Phoenix's AMM have under four days of persistent-storage life left.") }</div><div class="ph-alert-why">{ firstNonEmptyHome(data.Alert.Meta, "Why this matters: contract operators need to extend TTL before it hits zero, otherwise their users see failures.") }</div><a class="ph-alert-cta" href="#contracts">{ firstNonEmptyHome(data.Alert.CTA, "Review →") }</a></div><button class="ph-alert-close" type="button" aria-label="Dismiss storage warning" onclick="this.closest('.ph-alert').remove()">×</button></div>
+			<section id="activity" class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">What just happened</h2><p class="ph-sec-sub">Each card is a ledger, Stellar's 5-second heartbeat, with everything that settled inside it. Pick a classification to drill into individual transactions instead. <b>5 ledgers per minute</b>, always.</p></div><div class="ph-sec-toolbar"><button class="ph-sec-pill active">Everything by ledger</button><button class="ph-sec-pill">All transactions</button><button class="ph-sec-pill">Swaps</button><button class="ph-sec-pill">Contract calls</button><button class="ph-sec-pill">Agent payments</button><button class="ph-sec-pill">New deployments</button><button class="ph-sec-pill">Confidential</button><button class="ph-sec-pill">Classic</button></div><div id="ph-ledger-root" class="ph-ledgers" data-feed={ data.FeedJSON } data-live={ boolStringHome(data.FeedLive) }>
+				for _, row := range data.LedgerFeed.Rows {
+					@phLedger(row)
+				}
+			</div></section>
+			<section class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">Contracts that might need attention</h2><p class="ph-sec-sub">Smart contracts on Stellar archive their storage after a while unless someone renews it. <b>No other explorer shows you this.</b></p></div><div class="ph-grid-4">
+				for _, card := range data.Attention.Cards {
+					@attentionCard(card)
+				}
+			</div></section>
+			<section id="contracts" class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">Today's most active contracts</h2><p class="ph-sec-sub">Ranked by how many times each contract was called in the last 24 hours, not dollars or TVL. The actual activity.</p></div><div class="ph-grid-4">
+				for i, card := range data.Leaders.Cards {
+					@activeCard(card, i)
+				}
+			</div></section>
+			<section class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">How much of the network is being used</h2><p class="ph-sec-sub">Every ledger has limits. When they fill up, fees rise sharply. Here's where we sit right now.</p></div><div class="ph-grid-3">
+				for _, card := range data.Utilization.Cards {
+					@gaugeCard(card)
+				}
+			</div></section>
+			<section id="why" class="ph-why"><div class="ph-why-head"><div class="ph-why-eyebrow">Why Prism</div><h3 class="ph-why-h">Built to be the explorer Soroban developers can actually rely on.</h3></div><div class="ph-why-grid"><div class="ph-why-card"><div class="ph-why-stat">protocol v20 →</div><div class="ph-why-label">Complete history from launch, no gaps. Every ledger, every event, every state change.</div></div><div class="ph-why-card"><div class="ph-why-stat">94 ms <span style="color: var(--ph-text-3); font-weight: 500;">avg</span></div><div class="ph-why-label">Lookup latency on any tx, account, or contract. <b>99th percentile 312 ms</b>.</div></div><div class="ph-why-card"><div class="ph-why-stat">412 protocols</div><div class="ph-why-label">Named automatically. Calls into Soroswap, Blend, Phoenix, x402, and 408 others get human labels, not just raw addresses.</div></div><div class="ph-why-card"><div class="ph-why-stat serif">Open source</div><div class="ph-why-label"><a href="https://github.com/withObsrvr/prism" style="color: var(--ph-accent-ink); border-bottom: 1px dotted currentColor;"><code>github.com/withObsrvr/prism</code></a> · self-host the explorer, audit the classifier, contribute back.</div></div></div></section>
+		</main>
+		<script>
+			(function(){
+				document.querySelectorAll('.ph-trychip').forEach(function(b){b.addEventListener('click',function(){var i=document.getElementById('ph-search-input'); if(i){i.value=b.textContent; i.focus();}})});
+				var root = document.getElementById('ph-ledger-root');
+				if(!root) return;
+				var ageEl = document.getElementById('ph-heartbeat-age');
+				var txEl = document.getElementById('ph-heartbeat-tx');
+				var inFlight = false;
+				function esc(s){ return String(s == null ? '' : s).replace(/[&<>\"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]; }); }
+				function cls(k){ return ({swap:'swap', call:'call', agent:'agent', classic:'classic', deploy:'deploy', confidential:'confid'})[k] || 'classic'; }
+				function seq(v){ return String(v || '').replace(/,/g,'').trim(); }
+				function renderLedger(row, isNew){
+					var chips = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
+					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+esc(row.meta)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-cap"><div class="ph-ledger-cap-row"><span class="k">instructions</span><span class="v">'+esc(row.instructionsPct)+'%</span></div><div class="ph-ledger-cap-row"><span class="k">read/write</span><span class="v">'+esc(row.readWritePct)+'%</span></div></div></a>';
+				}
+				function normalizeAges(rows){ (rows || []).forEach(function(row, i){ if(!row.age || root.dataset.live !== 'true') row.age = i === 0 ? 'just now' : (i * 5) + ' seconds ago'; }); }
+				function applyFeed(feed, isPoll){
+					var ledgers = (feed && feed.ledgers) || [];
+					if(!ledgers.length) return;
+					normalizeAges(ledgers);
+					var current = root.querySelector('.ph-ledger-num');
+					var currentSeq = current ? current.textContent.replace('#','') : '';
+					var incomingSeq = ledgers[0].ledgerNumber || '';
+					root.innerHTML = ledgers.map(function(row, i){ return renderLedger(row, isPoll && i === 0 && incomingSeq !== currentSeq); }).join('');
+					if(txEl) txEl.textContent = ledgers[0].transactionCount || txEl.textContent;
+					if(ageEl) ageEl.textContent = String(ledgers[0].age || 'just now');
+				}
+				try { applyFeed(JSON.parse(root.dataset.feed || '{}'), false); } catch(_) {}
+				function refresh(){
+					if(inFlight) return;
+					inFlight = true;
+					fetch('/v2/home/feed', { headers: { Accept: 'application/json' } }).then(function(r){ return r.ok ? r.json() : null; }).then(function(payload){
+						if(payload && payload.feed){ root.dataset.live = payload.live ? 'true' : 'false'; applyFeed(payload.feed, true); if(payload.header && ageEl) ageEl.textContent = String(payload.header.ageLabel || ageEl.textContent); }
+					}).catch(function(){}).finally(function(){ inFlight = false; });
+				}
+				setInterval(refresh, 5000);
+			})();
+		</script>
 	}
 }
+
+templ phLedger(row vmv2.LedgerRowData) {
+	<a class="ph-ledger" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>
+		<div class="ph-ledger-id"><span class="ph-ledger-num">#{ row.LedgerNumber }</span><span class="ph-ledger-when">{ row.Age }</span></div>
+		<div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>{ row.TransactionCount } transactions</b> { row.Meta }</div><div class="ph-ledger-chips">
+			for _, chip := range row.Chips {
+				<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
+			}
+		</div></div>
+		<div class="ph-ledger-cap"><div class="ph-ledger-cap-row"><span class="k">instructions</span><span class="v">{ fmt.Sprintf("%d%%", row.InstructionsPct) }</span></div><div class="ph-ledger-cap-row"><span class="k">read/write</span><span class="v">{ fmt.Sprintf("%d%%", row.ReadWritePct) }</span></div></div>
+	</a>
+}
+
+templ attentionCard(card vmv2.AttentionCardData) { <div class={ "ph-attn", templ.KV("urgent", card.Tone=="urgent" || card.Tone=="warn") }><div class="ph-attn-name">{ card.Kicker }</div><div class="ph-attn-runway">{ card.Value }</div><div class="ph-attn-desc">{ card.Body }</div><a href="#contracts" class={ "ph-attn-cta", templ.KV("calm", card.Tone=="calm") }>{ firstNonEmptyHome(card.CTA, "Review →") }</a></div> }
+
+templ activeCard(card vmv2.LeaderCardData, i int) {
+	<div class={ "ph-active", templ.KV("growing", i==3 || strings.Contains(strings.ToLower(card.Label), "grow")) }>
+		<div class="ph-active-head"><div class="ph-active-logo">{ firstRune(card.EntityMark, card.Entity) }</div><div class="ph-active-name">{ card.Entity }</div></div>
+		if i==3 || strings.Contains(strings.ToLower(card.Label), "grow") {
+			<div class="ph-active-growing-tag">↑ growing</div>
+		}
+		<div class="ph-active-num">{ card.Value }<span class="ph-active-num-unit">calls</span></div><div class="ph-active-desc">{ card.Body }</div>
+	</div>
+}
+
+templ gaugeCard(card vmv2.UtilizationCardData) { <div class={ "ph-gauge", templ.KV("warn", card.Tone=="warn") }><div class="ph-gauge-name">{ card.Label }</div><div class={ "ph-gauge-pct", templ.KV("warn", card.Tone=="warn") }>{ card.ValueMain }{ card.ValueUnit }</div><div class="ph-gauge-bar"><span style={ "width: " + firstNonEmptyHome(card.BarWidth, "50%") }></span></div><div class="ph-gauge-desc">{ card.Body }</div></div> }
+
+func firstNonEmptyHome(v string, fallback string) string { if strings.TrimSpace(v)!="" { return v }; return fallback }
+func boolStringHome(v bool) string { if v { return "true" }; return "false" }
+func networkTitle(v string) string { if strings.EqualFold(v,"testnet") { return "Testnet" }; if strings.EqualFold(v,"futurenet") { return "Futurenet" }; return "Mainnet" }
+func shortHeaderAge(v string) string { v=strings.TrimSpace(strings.TrimSuffix(v,"ago")); if v=="" { return "2s" }; return v }
+func topTxCount(data vmv2.HomeData) string { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0].TransactionCount }; return "187" }
+func heroHeadline(data vmv2.HomeData) string { return fmt.Sprintf("The Stellar network is healthy and <em>busier than usual</em> right now: <b>%s</b> transactions every 5 seconds, with <b>2,314</b> smart contracts active today.", topTxCount(data)) }
+func chipClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "agent"; case "classic": return "classic"; case "deploy": return "deploy"; case "confidential": return "confid"; default: return "classic" } }
+func firstRune(mark string, fallback string) string { if strings.TrimSpace(mark)!="" { return string([]rune(mark)[0]) }; if strings.TrimSpace(fallback)!="" { return string([]rune(fallback)[0]) }; return "•" }
+var _ componentsv2.HeaderData

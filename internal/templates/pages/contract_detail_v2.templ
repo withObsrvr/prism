@@ -2,176 +2,289 @@ package pages
 
 import (
 	"fmt"
+	"strings"
 	"github.com/withObsrvr/prism/internal/templates/components"
 	"github.com/withObsrvr/prism/internal/templates/layouts"
 )
 
 templ ContractDetailV2(data ContractDetailData) {
-	@layouts.Base(data.Name + " — Prism", "contracts") {
-		<main class="mx-auto max-w-[1320px] px-4 md:px-8 py-6">
+	@layouts.Base(data.Name + " · Prism", "contracts") {
+		<main class="min-h-screen bg-[oklch(0.975_0.008_77)] text-[oklch(0.22_0.018_275)] dark:bg-surface-page dark:text-text-primary">
+			<div class="mx-auto max-w-[1380px] px-4 py-6 md:px-8 lg:px-10">
+				<nav class="mb-5 flex min-w-0 items-center gap-2 text-xs text-[oklch(0.48_0.018_275)]">
+					<a class="rounded-md px-1 py-1 hover:text-[oklch(0.30_0.12_165)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500" href="/contracts">Contracts</a>
+					<span>/</span>
+					<span class="mono min-w-0 break-all text-[oklch(0.36_0.02_275)]">{ data.Address }</span>
+				</nav>
 
-			<!-- Header -->
-			<div class="anim mt-4 mb-5">
-				@components.BackNav("Back to Contracts", "/contracts")
-				<div class="flex items-center gap-3 mb-2">
-					<span class="text-2xl font-bold text-text-primary">{ data.Name }</span>
-					if data.IsVerified {
-						<svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-					}
-					for _, tag := range data.Tags {
-						@components.Badge(tag, "violet")
-					}
-				</div>
-				<div class="flex items-center gap-1.5 mb-3">
-					<span class="font-mono text-xs text-text-muted">{ data.Address }</span>
-					@components.CopyButton(data.Address)
-				</div>
-				<div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-text-body">
-					<span>Invocations <span class="font-semibold text-text-primary tabular">{ data.TotalInvocations }</span></span>
-					<span class="text-text-muted">&middot;</span>
-					<span>Last called <span class="font-semibold text-text-primary">{ data.LastInvoked }</span></span>
-					<span class="text-text-muted">&middot;</span>
-					<span>Deployed <span class="font-semibold text-text-primary">{ data.DeployedAt }</span></span>
-					<span class="text-text-muted">&middot;</span>
-					<span>Functions <span class="font-semibold text-text-primary">{ data.FunctionsCount }</span></span>
-					<span class="text-text-muted">&middot;</span>
-					<span>State <span class="font-semibold text-text-primary">{ data.StateSize }</span></span>
-				</div>
-			</div>
-
-			if data.Narrative != "" || data.Context != "" || len(data.Signals) > 0 {
-				<div class="anim d1 mb-6 rounded-xl border border-border-default bg-surface-card p-5 shadow-sm">
-					if data.Narrative != "" {
-						<p class="text-sm leading-6 text-text-body mb-2">{ data.Narrative }</p>
-					}
-					if data.Context != "" {
-						<p class="text-xs text-text-muted mb-4">{ data.Context }</p>
-					}
-					if len(data.Signals) > 0 {
-						<div class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-							for _, sig := range data.Signals {
-								<div class="rounded-lg border border-border-default bg-surface-page px-3 py-2">
-									<div class="flex items-center gap-2">
-										if sig.Severity == "warn" {
-											<span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-										} else {
-											<span class="inline-block h-2.5 w-2.5 rounded-full bg-violet-500"></span>
-										}
-										<div class="text-sm font-medium text-text-primary">{ sig.Title }</div>
-									</div>
-									<div class="mt-1 text-xs leading-5 text-text-body">{ sig.Summary }</div>
-								</div>
-							}
-						</div>
-					}
-					if data.FunctionSummary != "" {
-						<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Function surface</div>
-						<p class="text-xs leading-5 text-text-body mb-3">{ data.FunctionSummary }</p>
-					}
-					if data.StorageSummary != "" {
-						<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Storage story</div>
-						<p class="text-xs leading-5 text-text-body mb-4">{ data.StorageSummary }</p>
-					}
-					if len(data.Evidence) > 0 {
-						<div>
-							<div class="mb-2 text-2xs font-semibold uppercase tracking-wider text-text-muted">Why Prism thinks this</div>
-							<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-								for _, item := range data.Evidence {
-									<div class="rounded-lg border border-border-default bg-surface-page px-3 py-2">
-										<div class="text-2xs uppercase tracking-wider text-text-muted">{ item.Label }</div>
-										<div class="mt-1 text-sm text-text-primary">{ item.Value }</div>
-									</div>
+				<section class="mb-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]">
+					<div class="overflow-hidden rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] shadow-sm dark:border-border-default dark:bg-surface-card">
+						<div class="border-b border-[oklch(0.89_0.014_77)] px-5 py-4 dark:border-border-subtle md:px-7">
+							<div class="flex flex-wrap items-center gap-2">
+								<span class="rounded-full bg-[oklch(0.58_0.15_292)] px-2.5 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[oklch(0.98_0.006_292)]">Soroban contract</span>
+								if data.IsVerified || data.IsSourceVerified {
+									<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">Verified source</span>
+								} else {
+									<span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">Source not verified</span>
+								}
+								for _, tag := range data.Tags {
+									@components.TypeBadge(tag, "violet")
 								}
 							</div>
 						</div>
-					}
-				</div>
-			}
 
-			<!-- Tabs -->
-			<div class="anim d1 flex gap-6 border-b border-border-default text-sm font-medium text-text-muted mb-6">
-				<button class="border-b-2 border-text-primary pb-3 text-text-primary font-semibold">Overview</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Invocations</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Storage</button>
-				<button class="pb-3.5 hover:text-text-primary transition-colors">Code</button>
-			</div>
-
-			<!-- Contract Info: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/contract/" + data.Address + "/info" } hx-trigger="load" hx-swap="outerHTML">
-				@contractDetailSkeleton(4)
-			</div>
-
-			<!-- Functions: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/contract/" + data.Address + "/functions" } hx-trigger="load" hx-swap="outerHTML">
-				@contractTableSkeleton(5)
-			</div>
-
-			<!-- Recent Invocations: loaded via htmx fragment -->
-			<div hx-get={ "/fragments/contract/" + data.Address + "/invocations" } hx-trigger="load" hx-swap="outerHTML">
-				@contractTableSkeleton(5)
-			</div>
-
-			<!-- Storage -->
-			if len(data.StorageItems) > 0 {
-				<div class="anim d3 mb-8">
-					<h3 class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-2">Storage Entries ({ fmt.Sprintf("%s", data.StorageEntries) })</h3>
-					<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
-						<table class="w-full text-left">
-							<thead>
-								<tr class="text-2xs font-mono text-text-muted uppercase tracking-widest bg-surface-subtle">
-									<th class="px-5 py-3 font-medium">Key</th>
-									<th class="px-4 py-3 font-medium">Type</th>
-									<th class="px-4 py-3 font-medium text-right">Size</th>
-									<th class="px-4 py-3 font-medium text-right">TTL</th>
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-border-subtle">
-								for _, s := range data.StorageItems {
-									<tr>
-										<td class="px-5 py-3"><span class="font-mono text-xs text-text-primary">{ s.Key }</span></td>
-										<td class="px-4 py-3">
-											@components.TypeBadge(s.Type, s.TypeColor)
-										</td>
-										<td class="px-4 py-3 text-right text-xs text-text-strong">{ s.Size }</td>
-										<td class="px-4 py-3 text-right text-xs text-text-strong">{ s.TTL }</td>
-									</tr>
+						<div class="grid gap-6 px-5 py-6 md:grid-cols-[96px_minmax(0,1fr)] md:px-7 md:py-7">
+							<div class="flex h-20 w-20 items-center justify-center rounded-2xl border border-[oklch(0.84_0.026_292)] bg-[oklch(0.97_0.012_292)] text-[oklch(0.50_0.16_292)] dark:border-violet-800/70 dark:bg-violet-950/20 dark:text-violet-400 md:h-24 md:w-24">
+								<svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 15.5a7 7 0 1 0 0 14"></path><path d="M34 15.5a7 7 0 1 1 0 14"></path><path d="M18 24h12"></path><path d="M24 10v6"></path><path d="M24 32v6"></path></svg>
+							</div>
+							<div class="min-w-0">
+								<div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[oklch(0.50_0.018_275)]">
+									<span>Deployed <b class="font-semibold text-[oklch(0.28_0.018_275)] dark:text-text-strong">{ data.DeployedAt }</b></span>
+									<span class="hidden text-[oklch(0.72_0.012_77)] sm:inline">•</span>
+									<span>Last called <b class="font-semibold text-[oklch(0.28_0.018_275)] dark:text-text-strong">{ data.LastInvoked }</b></span>
+									<span class="hidden text-[oklch(0.72_0.012_77)] sm:inline">•</span>
+									<span class="mono">Ledger { data.DeployLedger }</span>
+								</div>
+								<h1 class="mb-3 text-3xl font-bold leading-tight tracking-[-0.035em] text-[oklch(0.18_0.018_275)] dark:text-text-primary md:text-5xl">{ data.Name }</h1>
+								if data.Narrative != "" {
+									<p class="max-w-[72ch] text-base leading-7 text-[oklch(0.38_0.018_275)] dark:text-text-body">{ data.Narrative }</p>
+								} else {
+									<p class="max-w-[72ch] text-base leading-7 text-[oklch(0.38_0.018_275)] dark:text-text-body">Prism recognized this as a deployed Soroban contract. Review its function surface, storage footprint, and recent calls before interacting with it.</p>
 								}
-							</tbody>
-						</table>
+								<div class="mt-5 flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-[oklch(0.86_0.016_77)] bg-[oklch(0.98_0.006_77)] p-2 dark:border-border-default dark:bg-surface-page/60">
+									<span class="px-2 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[oklch(0.52_0.018_275)]">Contract id</span>
+									<code class="mono min-w-0 flex-1 break-all text-xs text-[oklch(0.24_0.018_275)] dark:text-text-strong">{ data.Address }</code>
+									@components.CopyButton(data.Address)
+								</div>
+								<div class="mt-5 flex flex-wrap gap-2">
+									<a class="inline-flex min-h-10 items-center rounded-lg bg-[oklch(0.20_0.018_275)] px-4 text-sm font-semibold text-[oklch(0.98_0.006_77)] shadow-xs hover:bg-[oklch(0.28_0.018_275)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:bg-text-primary dark:text-surface-card" href="#functions">Read functions</a>
+									<a class="inline-flex min-h-10 items-center rounded-lg border border-[oklch(0.84_0.016_77)] bg-[oklch(0.995_0.004_77)] px-4 text-sm font-semibold text-[oklch(0.32_0.018_275)] hover:bg-[oklch(0.97_0.008_77)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-border-default dark:bg-surface-card dark:text-text-strong" href="#invocations">Inspect calls</a>
+									<a class="inline-flex min-h-10 items-center rounded-lg border border-[oklch(0.84_0.016_77)] bg-[oklch(0.995_0.004_77)] px-4 text-sm font-semibold text-[oklch(0.32_0.018_275)] hover:bg-[oklch(0.97_0.008_77)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-border-default dark:bg-surface-card dark:text-text-strong" href="#code">Source evidence</a>
+								</div>
+							</div>
+						</div>
 					</div>
-				</div>
-			}
 
+					<aside class="rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] p-5 shadow-sm dark:border-border-default dark:bg-surface-card">
+						<div class="mb-4 flex items-center justify-between gap-4">
+							<h2 class="text-sm font-bold text-[oklch(0.22_0.018_275)] dark:text-text-primary">Evidence summary</h2>
+							<span class="mono rounded-full bg-[oklch(0.96_0.010_77)] px-2 py-1 text-[0.66rem] text-[oklch(0.48_0.018_275)] dark:bg-surface-subtle dark:text-text-muted">live</span>
+						</div>
+						<div class="space-y-3">
+							@contractFact("Invocations", data.TotalInvocations, "All observed calls")
+							@contractFact("Functions", data.FunctionsCount, "Exported entrypoints")
+							@contractFact("State size", data.StateSize, data.StorageEntries + " entries")
+							@contractFact("Success rate", data.SuccessRate, "Recent execution")
+						</div>
+						<div class="mt-5 border-t border-[oklch(0.89_0.014_77)] pt-4 dark:border-border-subtle">
+							@contractSideRow("Creator", data.Creator, data.CreatorHref)
+							@contractSideRow("Wasm hash", data.WASMHash, "")
+							@contractSideRow("Wasm size", data.WASMSize, "")
+						</div>
+					</aside>
+				</section>
+
+				<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+					<div class="min-w-0 space-y-8">
+						<section class="rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] p-5 shadow-sm dark:border-border-default dark:bg-surface-card md:p-6">
+							@contractSectionHead("Why Prism classified it this way", firstNonEmptyContract(data.Context, "Signals combine source metadata, call history, storage shape, and function names."))
+							<div class="mt-4 grid gap-3 md:grid-cols-3">
+								if len(data.Signals) > 0 {
+									for _, sig := range data.Signals {
+										<article class="rounded-xl border border-[oklch(0.88_0.014_77)] bg-[oklch(0.985_0.006_77)] p-4 dark:border-border-default dark:bg-surface-page/50">
+											<div class="mb-2 flex items-center gap-2">
+												<span class={ "h-2.5 w-2.5 rounded-full", templ.KV("bg-amber-500", sig.Severity == "warn"), templ.KV("bg-violet-500", sig.Severity != "warn") }></span>
+												<h3 class="text-sm font-semibold text-[oklch(0.22_0.018_275)] dark:text-text-primary">{ sig.Title }</h3>
+											</div>
+											<p class="text-sm leading-6 text-[oklch(0.44_0.018_275)] dark:text-text-body">{ sig.Summary }</p>
+										</article>
+									}
+								} else {
+									@contractSignalFallback("Source", contractSourceCopy(data))
+									@contractSignalFallback("Activity", "Invocation history is shown with status, caller, and transaction evidence.")
+									@contractSignalFallback("State", "Storage entries and TTLs reveal what this contract keeps on ledger.")
+								}
+							</div>
+							if data.FunctionSummary != "" || data.StorageSummary != "" || len(data.Evidence) > 0 {
+								<div class="mt-5 grid gap-4 border-t border-[oklch(0.89_0.014_77)] pt-5 dark:border-border-subtle md:grid-cols-2">
+									if data.FunctionSummary != "" {
+										@contractProofBlock("Function surface", data.FunctionSummary)
+									}
+									if data.StorageSummary != "" {
+										@contractProofBlock("Storage story", data.StorageSummary)
+									}
+									for _, item := range data.Evidence {
+										@contractProofBlock(item.Label, item.Value)
+									}
+								</div>
+							}
+						</section>
+
+						<section class="rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] p-5 shadow-sm dark:border-border-default dark:bg-surface-card md:p-6">
+							@contractSectionHead("Activity composition", "Recent contract load, storage weight, and execution reliability.")
+							<div class="mt-5 grid gap-3 sm:grid-cols-3">
+								@contractMeter("Avg/day", data.AvgInvocations, contractMetricWidth(data.AvgInvocations, "56"), "bg-violet-500")
+								@contractMeter("Peak/day", data.PeakInvocations, contractMetricWidth(data.PeakInvocations, "78"), "bg-cyan-500")
+								@contractMeter("Success", data.SuccessRate, contractSuccessWidth(data.SuccessRate), "bg-emerald-500")
+							</div>
+							<div class="mt-5 h-24 overflow-hidden rounded-xl border border-[oklch(0.88_0.014_77)] bg-[oklch(0.985_0.006_77)] p-4 dark:border-border-default dark:bg-surface-page/50">
+								@components.MiniSparkline(data.ActivityPoints, 300, 80, "violet")
+							</div>
+						</section>
+
+						<section id="functions" class="scroll-mt-24">
+							@contractTableShell("Function surface", fmt.Sprintf("%d functions shown", len(contractFunctionsForDisplay(data)))) {
+								<thead><tr class="bg-[oklch(0.965_0.008_77)] text-left text-[0.65rem] uppercase tracking-[0.1em] text-[oklch(0.52_0.018_275)] dark:bg-surface-subtle dark:text-text-muted"><th class="px-4 py-3 font-semibold">Function</th><th class="px-4 py-3 font-semibold">Interpretation</th><th class="px-4 py-3 text-right font-semibold">24h calls</th></tr></thead>
+								<tbody class="divide-y divide-[oklch(0.90_0.012_77)] dark:divide-border-subtle">
+									for _, fn := range contractFunctionsForDisplay(data) {
+										<tr class="hover:bg-[oklch(0.98_0.006_77)] dark:hover:bg-surface-subtle/60">
+											<td class="px-4 py-3 align-top"><div class="mono text-sm font-medium text-[oklch(0.42_0.16_292)] dark:text-violet-400">{ fn.Name }</div><div class="mt-1 text-[0.68rem] uppercase tracking-[0.08em] text-[oklch(0.55_0.018_275)]">{ firstNonEmptyContract(fn.Category, "entrypoint") }</div></td>
+											<td class="px-4 py-3 text-sm leading-6 text-[oklch(0.38_0.018_275)] dark:text-text-body">{ firstNonEmptyContract(fn.Description, "Exported function detected in the contract interface.") }</td>
+											<td class="mono px-4 py-3 text-right text-sm tabular text-[oklch(0.24_0.018_275)] dark:text-text-strong">{ firstNonEmptyContract(fn.Calls24h, fn.Calls) }</td>
+										</tr>
+									}
+								</tbody>
+							}
+						</section>
+
+						<section id="invocations" class="scroll-mt-24">
+							@contractInvocationList(data)
+						</section>
+
+						<section id="storage" class="scroll-mt-24">
+							@contractStorageTable(data)
+						</section>
+					</div>
+
+					<aside class="space-y-5 lg:sticky lg:top-20 lg:self-start">
+						<div class="rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] p-5 shadow-sm dark:border-border-default dark:bg-surface-card">
+							<h2 class="mb-4 text-sm font-bold text-[oklch(0.22_0.018_275)] dark:text-text-primary">Audit checklist</h2>
+							<div class="space-y-3">
+								@contractChecklist("Source", contractSourceCopy(data), data.IsVerified || data.IsSourceVerified)
+								@contractChecklist("Admin risk", "Check whether upgrades are controlled by a signer set or timelock.", false)
+								@contractChecklist("Storage", data.StorageEntries + " entries, " + data.StateSize + " total", true)
+							</div>
+						</div>
+						<div id="code" class="scroll-mt-24 rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] p-5 shadow-sm dark:border-border-default dark:bg-surface-card">
+							<h2 class="mb-4 text-sm font-bold text-[oklch(0.22_0.018_275)] dark:text-text-primary">Code evidence</h2>
+							@contractCodeRow("Wasm hash", data.WASMHash)
+							@contractCodeRow("Wasm size", data.WASMSize)
+							@contractCodeRow("Deploy ledger", data.DeployLedger)
+							if data.CodePreview != "" {
+								<pre class="mt-4 max-h-64 overflow-auto rounded-xl bg-[oklch(0.20_0.018_275)] p-4 text-xs leading-6 text-[oklch(0.92_0.008_77)]"><code>{ data.CodePreview }</code></pre>
+							}
+						</div>
+					</aside>
+				</div>
+			</div>
 		</main>
 	}
 }
 
-templ contractDetailSkeleton(n int) {
-	<div class="mb-8">
-		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
-			for i := 0; i < n; i++ {
-				<div class="flex items-center px-5 py-2.5 border-b border-border-subtle">
-					<div class="h-3.5 w-24 rounded bg-surface-subtle animate-pulse"></div>
-					<div class="h-3.5 w-48 rounded bg-surface-subtle animate-pulse ml-4"></div>
-				</div>
-			}
-		</div>
+templ contractFact(label string, value string, hint string) {
+	<div class="rounded-xl border border-[oklch(0.88_0.014_77)] bg-[oklch(0.985_0.006_77)] px-3 py-3 dark:border-border-default dark:bg-surface-page/50">
+		<div class="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[oklch(0.52_0.018_275)]">{ label }</div>
+		<div class="mono mt-1 text-lg font-semibold tabular text-[oklch(0.22_0.018_275)] dark:text-text-primary">{ firstNonEmptyContract(value, "unknown") }</div>
+		<div class="mt-1 text-xs text-[oklch(0.50_0.018_275)] dark:text-text-muted">{ hint }</div>
 	</div>
 }
 
-templ contractTableSkeleton(n int) {
-	<div class="mb-8">
-		<div class="rounded-xl border border-border-default bg-surface-card shadow-sm overflow-hidden">
-			for i := 0; i < n; i++ {
-				<div class={ "flex items-center gap-4 px-5 py-3", templ.KV("bg-surface-subtle", i%2 == 1) }>
-					<div class="flex-1 space-y-1.5">
-						<div class="h-3.5 w-32 rounded bg-surface-subtle animate-pulse"></div>
-						<div class="h-3 w-24 rounded bg-surface-subtle animate-pulse"></div>
-					</div>
-					<div class="h-3.5 w-14 rounded bg-surface-subtle animate-pulse"></div>
-					<div class="h-3.5 w-14 rounded bg-surface-subtle animate-pulse"></div>
-				</div>
-			}
-		</div>
+templ contractSideRow(label string, value string, href string) {
+	<div class="grid grid-cols-[96px_minmax(0,1fr)] gap-3 py-2 text-sm">
+		<span class="text-[oklch(0.52_0.018_275)] dark:text-text-muted">{ label }</span>
+		if href != "" {
+			<a class="mono min-w-0 break-all text-emerald-700 hover:underline dark:text-emerald-400" href={ templ.SafeURL(href) }>{ firstNonEmptyContract(value, "unknown") }</a>
+		} else {
+			<span class="mono min-w-0 break-all text-[oklch(0.28_0.018_275)] dark:text-text-strong">{ firstNonEmptyContract(value, "unknown") }</span>
+		}
 	</div>
+}
+
+templ contractSectionHead(title string, sub string) {
+	<div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+		<div><h2 class="text-xl font-bold tracking-[-0.02em] text-[oklch(0.22_0.018_275)] dark:text-text-primary">{ title }</h2><p class="mt-1 max-w-[70ch] text-sm leading-6 text-[oklch(0.46_0.018_275)] dark:text-text-body">{ sub }</p></div>
+	</div>
+}
+
+templ contractSignalFallback(title string, body string) {
+	<article class="rounded-xl border border-[oklch(0.88_0.014_77)] bg-[oklch(0.985_0.006_77)] p-4 dark:border-border-default dark:bg-surface-page/50">
+		<div class="mb-2 flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-violet-500"></span><h3 class="text-sm font-semibold text-[oklch(0.22_0.018_275)] dark:text-text-primary">{ title }</h3></div>
+		<p class="text-sm leading-6 text-[oklch(0.44_0.018_275)] dark:text-text-body">{ body }</p>
+	</article>
+}
+
+templ contractProofBlock(label string, value string) {
+	<div><div class="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[oklch(0.52_0.018_275)]">{ label }</div><p class="mt-1 text-sm leading-6 text-[oklch(0.38_0.018_275)] dark:text-text-body">{ value }</p></div>
+}
+
+templ contractMeter(label string, value string, width string, color string) {
+	<div class="rounded-xl border border-[oklch(0.88_0.014_77)] bg-[oklch(0.985_0.006_77)] p-4 dark:border-border-default dark:bg-surface-page/50">
+		<div class="flex items-baseline justify-between gap-3"><span class="text-xs font-semibold text-[oklch(0.50_0.018_275)]">{ label }</span><span class="mono text-sm font-semibold tabular">{ firstNonEmptyContract(value, "unknown") }</span></div>
+		<div class="mt-3 h-1.5 rounded-full bg-[oklch(0.90_0.012_77)] dark:bg-surface-subtle"><div class={ "h-1.5 rounded-full", color } style={ width }></div></div>
+	</div>
+}
+
+templ contractTableShell(title string, sub string) {
+	<div class="overflow-hidden rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] shadow-sm dark:border-border-default dark:bg-surface-card">
+		<div class="flex flex-wrap items-end justify-between gap-3 border-b border-[oklch(0.89_0.014_77)] px-5 py-4 dark:border-border-subtle"><div><h2 class="text-lg font-bold tracking-[-0.02em]">{ title }</h2><p class="mt-1 text-sm text-[oklch(0.50_0.018_275)] dark:text-text-muted">{ sub }</p></div></div>
+		<div class="overflow-x-auto"><table class="w-full min-w-[640px]">{ children... }</table></div>
+	</div>
+}
+
+templ contractInvocationList(data ContractDetailData) {
+	<div class="overflow-hidden rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] shadow-sm dark:border-border-default dark:bg-surface-card">
+		<div class="border-b border-[oklch(0.89_0.014_77)] px-5 py-4 dark:border-border-subtle"><h2 class="text-lg font-bold tracking-[-0.02em]">Recent invocations</h2><p class="mt-1 text-sm text-[oklch(0.50_0.018_275)] dark:text-text-muted">Transaction evidence for recent calls into this contract.</p></div>
+		if len(data.Invocations) > 0 {
+			<div class="divide-y divide-[oklch(0.90_0.012_77)] dark:divide-border-subtle">
+				for _, inv := range data.Invocations {
+					<a class="grid gap-3 px-5 py-4 hover:bg-[oklch(0.98_0.006_77)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-emerald-500 dark:hover:bg-surface-subtle/60 md:grid-cols-[minmax(0,1fr)_120px_96px]" href={ templ.SafeURL("/tx/" + inv.TxHash) }>
+						<div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><span class="mono rounded bg-[oklch(0.96_0.010_292)] px-1.5 py-0.5 text-xs font-semibold text-violet-700 dark:bg-violet-950/30 dark:text-violet-400">{ firstNonEmptyContract(inv.Function, "call") }</span><span class={ "rounded-full px-2 py-0.5 text-[0.66rem] font-semibold", templ.KV("bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400", strings.EqualFold(inv.Status, "Success")), templ.KV("bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400", !strings.EqualFold(inv.Status, "Success")) }>{ firstNonEmptyContract(inv.Status, "observed") }</span></div><p class="mt-2 text-sm leading-6 text-[oklch(0.36_0.018_275)] dark:text-text-body">{ firstNonEmptyContract(inv.Summary, "Contract invocation recorded by Prism.") }</p><div class="mono mt-1 truncate text-xs text-emerald-700 dark:text-emerald-400">{ firstNonEmptyContract(inv.ShortHash, inv.TxHash) }</div></div>
+						<div class="mono text-sm text-[oklch(0.34_0.018_275)] dark:text-text-strong">{ firstNonEmptyContract(inv.Caller, "unknown caller") }</div>
+						<div class="text-right text-sm text-[oklch(0.50_0.018_275)] dark:text-text-muted">{ inv.Age }</div>
+					</a>
+				}
+			</div>
+		} else {
+			<div class="px-5 py-10 text-center"><h3 class="text-sm font-semibold">No recent invocations</h3><p class="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-[oklch(0.46_0.018_275)] dark:text-text-body">Prism has not observed recent calls for this contract on the selected network.</p></div>
+		}
+	</div>
+}
+
+templ contractStorageTable(data ContractDetailData) {
+	if len(data.StorageItems) > 0 {
+		@contractTableShell("Storage entries", data.StorageEntries + " entries tracked") {
+			<thead><tr class="bg-[oklch(0.965_0.008_77)] text-left text-[0.65rem] uppercase tracking-[0.1em] text-[oklch(0.52_0.018_275)] dark:bg-surface-subtle dark:text-text-muted"><th class="px-4 py-3 font-semibold">Key</th><th class="px-4 py-3 font-semibold">Type</th><th class="px-4 py-3 text-right font-semibold">Size</th><th class="px-4 py-3 text-right font-semibold">TTL</th></tr></thead>
+			<tbody class="divide-y divide-[oklch(0.90_0.012_77)] dark:divide-border-subtle">
+				for _, s := range data.StorageItems {
+					<tr class="hover:bg-[oklch(0.98_0.006_77)] dark:hover:bg-surface-subtle/60"><td class="mono px-4 py-3 text-xs text-[oklch(0.24_0.018_275)] dark:text-text-strong">{ s.Key }</td><td class="px-4 py-3">@components.TypeBadge(s.Type, s.TypeColor)</td><td class="mono px-4 py-3 text-right text-xs tabular">{ s.Size }</td><td class="mono px-4 py-3 text-right text-xs tabular">{ s.TTL }</td></tr>
+				}
+			</tbody>
+		}
+	} else {
+		<div class="overflow-hidden rounded-[1.25rem] border border-[oklch(0.86_0.018_77)] bg-[oklch(0.995_0.004_77)] shadow-sm dark:border-border-default dark:bg-surface-card">
+			<div class="border-b border-[oklch(0.89_0.014_77)] px-5 py-4 dark:border-border-subtle"><h2 class="text-lg font-bold tracking-[-0.02em]">Storage entries</h2><p class="mt-1 text-sm text-[oklch(0.50_0.018_275)] dark:text-text-muted">{ data.StorageEntries } entries tracked</p></div>
+			<div class="px-5 py-10 text-center"><h3 class="text-sm font-semibold">No storage sample available</h3><p class="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-[oklch(0.46_0.018_275)] dark:text-text-body">Storage will appear here when the gateway returns contract data for this network.</p></div>
+		</div>
+	}
+}
+
+templ contractChecklist(label string, body string, ok bool) {
+	<div class="flex gap-3"><span class={ "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold", templ.KV("bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400", ok), templ.KV("bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400", !ok) }>{ contractCheckMark(ok) }</span><div><div class="text-sm font-semibold">{ label }</div><p class="mt-1 text-sm leading-6 text-[oklch(0.46_0.018_275)] dark:text-text-body">{ body }</p></div></div>
+}
+
+templ contractCodeRow(label string, value string) {
+	<div class="border-t border-[oklch(0.89_0.014_77)] py-3 first:border-t-0 dark:border-border-subtle"><div class="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[oklch(0.52_0.018_275)]">{ label }</div><div class="mt-1 flex items-center gap-2"><code class="mono min-w-0 flex-1 break-all text-xs text-[oklch(0.26_0.018_275)] dark:text-text-strong">{ firstNonEmptyContract(value, "unknown") }</code>@components.CopyButton(value)</div></div>
+}
+
+func firstNonEmptyContract(v string, fallback string) string { if strings.TrimSpace(v) != "" && strings.TrimSpace(v) != "—" { return v }; return fallback }
+func contractSourceCopy(data ContractDetailData) string { if data.IsVerified || data.IsSourceVerified { return "Source and wasm metadata are available for review." }; return "Source verification is not present, inspect calls and storage before trusting behavior." }
+func contractSuccessWidth(v string) string { cleaned := strings.TrimSpace(strings.TrimSuffix(v, "%")); if cleaned == "" || cleaned == "—" { return "width: 0%" }; return "width: " + cleaned + "%" }
+func contractMetricWidth(v string, fallback string) string { cleaned := strings.TrimSpace(v); if cleaned == "" || cleaned == "—" { return "width: 0%" }; return "width: " + fallback + "%" }
+func contractCheckMark(ok bool) string { if ok { return "✓" }; return "!" }
+func contractFunctionsForDisplay(data ContractDetailData) []ContractFunction {
+	if len(data.Functions) > 0 { return data.Functions }
+	out := make([]ContractFunction, 0, len(data.ExportedFunctions))
+	for _, name := range data.ExportedFunctions { out = append(out, ContractFunction{Name: name, Category: "entrypoint", Description: "Exported function detected in the contract interface.", Calls24h: "—"}) }
+	if len(out) == 0 { out = append(out, ContractFunction{Name: "No exported functions loaded", Category: "empty", Description: "Function metadata was not available from the gateway.", Calls24h: "—"}) }
+	return out
 }

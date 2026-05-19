@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/humanize"
+	prismsearch "github.com/withObsrvr/prism/internal/search"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
@@ -245,6 +247,10 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
+	if explore := exploreRedirectForQuery(query); explore != "" {
+		http.Redirect(w, r, explore, http.StatusSeeOther)
+		return
+	}
 
 	var data pages.SearchData
 	if h.useLiveData(r) {
@@ -268,37 +274,39 @@ func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
 // a single entity type. Returns "" if ambiguous or unknown.
 func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query string) string {
 	q := strings.TrimSpace(query)
-	// G + 55 chars = Stellar account address
-	if len(q) == 56 && q[0] == 'G' {
-		return "/account/" + q
+	cls := prismsearch.Classify(q)
+	if !cls.Known() {
+		if strings.EqualFold(q, "XLM") || strings.Contains(q, ":") {
+			return "/assets/" + q
+		}
+		if code, issuer, canonical := parseAssetSlug(q); code != "" && issuer != "" && canonical != "" {
+			return "/assets/" + canonical
+		}
+		return ""
 	}
-	// C + 55 chars = Stellar contract, token contract, or smart wallet address
-	if len(q) == 56 && q[0] == 'C' {
+	if cls.Type == prismsearch.ClassContract {
 		if h.Gateway != nil {
 			if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, q); err == nil && info != nil && info.IsSmartWallet {
-				return "/account/" + q + "/smart"
+				return "/v2/account/" + q
 			}
 			if _, err := h.Gateway.GetAssetDetail(ctx, network, q); err == nil {
 				return "/assets/" + q
 			}
 		}
-		return "/contracts/" + q
 	}
-	if q == "XLM" || strings.Contains(q, ":") {
-		return "/assets/" + q
+	return cls.URL()
+}
+
+func exploreRedirectForQuery(query string) string {
+	parsed, confidence := prismsearch.Parse(query)
+	if confidence < 0.45 {
+		return ""
 	}
-	if code, issuer, canonical := parseAssetSlug(q); code != "" && issuer != "" && canonical != "" {
-		return "/assets/" + canonical
+	qs := parsed.QueryString()
+	if qs == "" {
+		return ""
 	}
-	// 64 hex chars = transaction hash
-	if len(q) == 64 && isHex(q) {
-		return "/tx/" + q
-	}
-	// Pure number = ledger sequence
-	if isNumeric(q) {
-		return "/ledger/" + q
-	}
-	return ""
+	return "/v2/explore?" + qs
 }
 
 func isHex(s string) bool {
@@ -1014,6 +1022,11 @@ func stripHTML(s string) string {
 	return html.UnescapeString(string(out))
 }
 
+const (
+	txPageGatewayTimeout  = 5 * time.Second
+	txDiffsGatewayTimeout = 1500 * time.Millisecond
+)
+
 // TransactionReceipt renders a single transaction page.
 func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 	hash := r.PathValue("hash")
@@ -1025,10 +1038,13 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 
 	var data pages.TxReceiptData
 	if h.useLiveData(r) {
-		if live, err := h.buildTxReceiptData(r, network, hash, shortHash); err == nil {
+		liveCtx, cancel := context.WithTimeout(r.Context(), txPageGatewayTimeout)
+		defer cancel()
+		started := time.Now()
+		if live, err := h.buildTxReceiptData(r.Clone(liveCtx), network, hash, shortHash); err == nil {
 			data = live
 		} else {
-			h.Logger.Warn("live tx shell data failed, falling back to mock", "error", err)
+			h.Logger.Warn("live tx shell data failed, falling back to mock", "hash", shortHash, "duration", time.Since(started), "error", err)
 		}
 	}
 	if data.Hash == "" {
@@ -1036,7 +1052,11 @@ func (h *Handlers) TransactionReceipt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := pages.TransactionReceiptV2(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render transaction receipt", "error", err)
+		if isClientGone(err) || errors.Is(r.Context().Err(), context.Canceled) {
+			h.Logger.Warn("transaction receipt client disconnected during render", "hash", shortHash, "error", err)
+			return
+		}
+		h.Logger.Error("render transaction receipt", "hash", shortHash, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -1047,8 +1067,17 @@ func (h *Handlers) TransactionReceiptV2(w http.ResponseWriter, r *http.Request) 
 	if len(hash) > 12 {
 		shortHash = hash[:6] + "..." + hash[len(hash)-4:]
 	}
-	data := mockTxReceiptData(hash, shortHash)
-	pages.TransactionReceiptV2(data).Render(r.Context(), w)
+	network := networkFromRequest(r)
+
+	data := pages.TxReceiptData{Hash: hash, ShortHash: shortHash}
+	if err := pagesv2.TransactionReceiptShell(data, network).Render(r.Context(), w); err != nil {
+		if isClientGone(err) || errors.Is(r.Context().Err(), context.Canceled) {
+			h.Logger.Warn("v2 transaction receipt client disconnected during render", "hash", shortHash, "error", err)
+			return
+		}
+		h.Logger.Error("render v2 transaction receipt", "hash", shortHash, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func (h *Handlers) TransactionReceiptV3(w http.ResponseWriter, r *http.Request) {
@@ -1119,10 +1148,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	ctx := r.Context()
 
 	// Fetch the consolidated receipt as the single source of truth for the tx page.
+	stageStart := time.Now()
 	receipt, err := h.Gateway.GetTransactionReceipt(ctx, network, hash)
 	if err != nil {
 		return pages.TxReceiptData{}, fmt.Errorf("fetching tx receipt: %w", err)
 	}
+	h.Logger.Debug("tx receipt stage complete", "hash", shortHash, "stage", "receipt", "duration", time.Since(stageStart))
 
 	opsDecoded := make([]gateway.DecodedOperation, 0, len(receipt.Full.Operations))
 	for _, op := range receipt.Full.Operations {
@@ -1423,8 +1454,43 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		})
 	}
 
-	// Receipt currently exposes only flattened balance diffs; state changes are omitted.
+	// Build state changes. The materialized receipt currently exposes flattened balance diffs;
+	// ask the tx diffs endpoint for ledger-entry state changes so v2 can choose a
+	// state/lifecycle hero instead of incorrectly rendering an empty value flow.
 	var stateChanges []pages.TxStateChange
+	if h.Gateway != nil {
+		diffStart := time.Now()
+		diffCtx, diffCancel := context.WithTimeout(ctx, txDiffsGatewayTimeout)
+		defer diffCancel()
+		if diffs, err := h.Gateway.GetTransactionDiffs(diffCtx, network, hash); err == nil && diffs != nil {
+			h.Logger.Debug("tx receipt stage complete", "hash", shortHash, "stage", "diffs", "duration", time.Since(diffStart), "balance_changes", len(diffs.BalanceChanges), "state_changes", len(diffs.StateChanges))
+			if len(diffs.BalanceChanges) > 0 && len(balChanges) == 0 {
+				for _, bc := range diffs.BalanceChanges {
+					isPositive := !strings.HasPrefix(bc.Delta, "-")
+					asset := bc.AssetCode
+					assetType := bc.AssetType
+					if asset == "" || asset == "native" {
+						asset = "XLM"
+					}
+					if assetType == "" {
+						assetType = "Classic"
+					}
+					balChanges = append(balChanges, pages.TxBalanceChange{Account: gateway.ShortAddress(bc.Address), Asset: asset, AssetType: assetType, TypeColor: "gray", Change: bc.Delta, IsPositive: isPositive})
+				}
+			}
+			for _, sc := range diffs.StateChanges {
+				before := strings.TrimSpace(sc.Before)
+				after := strings.TrimSpace(sc.After)
+				detail := ""
+				if before != "" || after != "" {
+					detail = fmt.Sprintf(`<span class="text-gray-400 line-through">%s</span> → <span class="text-gray-900 font-medium">%s</span>`, html.EscapeString(firstNonEmpty(before, "not previously set")), html.EscapeString(firstNonEmpty(after, "removed")))
+				}
+				stateChanges = append(stateChanges, pages.TxStateChange{Action: strings.Title(sc.Type), Key: sc.Key, Contract: sc.EntryType, DetailHTML: detail})
+			}
+		} else if err != nil {
+			h.Logger.Debug("tx diffs unavailable", "hash", hash, "error", err)
+		}
+	}
 
 	// Build effects list from receipt effects.
 	var effects []pages.TxEffect
@@ -1640,6 +1706,14 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	return data, nil
+}
+
+func isClientGone(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "context canceled") || strings.Contains(msg, "broken pipe") || strings.Contains(msg, "connection reset") || strings.Contains(msg, "i/o timeout")
 }
 
 func dedupeHumanEvidence(items []pages.TxHumanEvidence) []pages.TxHumanEvidence {

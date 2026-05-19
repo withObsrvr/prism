@@ -1570,9 +1570,11 @@ type ExplorerEvent struct {
 	ContractSymbol  *string `json:"contract_symbol"`
 	LedgerSequence  int64   `json:"ledger_sequence"`
 	TransactionHash string  `json:"transaction_hash"`
-	ClosedAt        string  `json:"closed_at"`
-	Successful      bool    `json:"successful"`
-	Topic0          *string `json:"topic0"`
+	ClosedAt                 string  `json:"closed_at"`
+	Successful               bool    `json:"successful"` // Deprecated API alias; use TransactionSuccessful for UI status.
+	TransactionSuccessful    *bool   `json:"transaction_successful"`
+	InSuccessfulContractCall *bool   `json:"in_successful_contract_call"`
+	Topic0                   *string `json:"topic0"`
 	Topic1          *string `json:"topic1"`
 	Topic2          *string `json:"topic2"`
 	Topic3          *string `json:"topic3"`
@@ -1580,7 +1582,16 @@ type ExplorerEvent struct {
 	Data            *string `json:"data"`
 	DataDecoded     *string `json:"data_decoded"`
 	EventIndex      int     `json:"event_index"`
-	OperationIndex  int     `json:"operation_index"`
+	OperationIndex           int     `json:"operation_index"`
+}
+
+// PublicSuccessful returns the transaction-scoped event status for explorer UI.
+// It falls back to the deprecated successful field for compatibility with older Gateway responses.
+func (e ExplorerEvent) PublicSuccessful() bool {
+	if e.TransactionSuccessful != nil {
+		return *e.TransactionSuccessful
+	}
+	return e.Successful
 }
 
 // --- Transaction Effects ---

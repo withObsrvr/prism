@@ -9,6 +9,7 @@ import (
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/humanize"
 	"github.com/withObsrvr/prism/internal/templates/pages"
+	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
 func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +18,22 @@ func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
+	data, ok := h.contractDetailDataForRequest(w, r)
+	if !ok {
+		return
+	}
+	pages.ContractDetail(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) ContractDetailV2(w http.ResponseWriter, r *http.Request) {
+	data, ok := h.contractDetailDataForRequest(w, r)
+	if !ok {
+		return
+	}
+	pagesv2.ContractDetail(data, networkFromRequest(r)).Render(r.Context(), w)
+}
+
+func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.Request) (pages.ContractDetailData, bool) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
@@ -25,7 +42,7 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
 			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
 			http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
-			return
+			return pages.ContractDetailData{}, false
 		}
 	}
 
@@ -42,7 +59,7 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 		data = mockContractDetailData()
 	}
 
-	pages.ContractDetailV2(data).Render(r.Context(), w)
+	return data, true
 }
 
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {

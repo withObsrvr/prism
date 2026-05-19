@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/withObsrvr/prism/internal/templates/fragments"
 	"github.com/withObsrvr/prism/internal/templates/pages"
+	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
 // ── Transaction Receipt Fragments ──
@@ -15,9 +18,12 @@ func (h *Handlers) buildTxFragmentData(r *http.Request, network, hash, shortHash
 	if !h.useLiveData(r) {
 		return nil
 	}
-	data, err := h.buildTxReceiptData(r, network, hash, shortHash)
+	ctx, cancel := context.WithTimeout(r.Context(), txPageGatewayTimeout)
+	defer cancel()
+	started := time.Now()
+	data, err := h.buildTxReceiptData(r.Clone(ctx), network, hash, shortHash)
 	if err != nil {
-		h.Logger.Warn("live tx data failed, falling back to mock", "error", err, "hash", shortHash)
+		h.Logger.Warn("live tx data failed, falling back to mock", "error", err, "hash", shortHash, "duration", time.Since(started))
 		return nil
 	}
 	return &data
@@ -28,6 +34,57 @@ func txShortHash(hash string) string {
 		return hash[:4] + "…" + hash[len(hash)-4:]
 	}
 	return hash
+}
+
+// TxV2HeroFragment returns the v2 transaction hero/archetype section.
+func (h *Handlers) TxV2HeroFragment(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	network := networkFromRequest(r)
+	shortHash := txShortHash(hash)
+
+	data := h.buildTxFragmentData(r, network, hash, shortHash)
+	if data == nil {
+		mock := mockTxReceiptData(hash, shortHash)
+		data = &mock
+	}
+
+	if err := pagesv2.TxReceiptHeroFragment(*data).Render(r.Context(), w); err != nil {
+		h.renderFragmentError(w, r, "Could not load transaction hero", err)
+	}
+}
+
+// TxV2DetailFragment returns the v2 transaction operations/events/balance/raw section.
+func (h *Handlers) TxV2DetailFragment(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	network := networkFromRequest(r)
+	shortHash := txShortHash(hash)
+
+	data := h.buildTxFragmentData(r, network, hash, shortHash)
+	if data == nil {
+		mock := mockTxReceiptData(hash, shortHash)
+		data = &mock
+	}
+
+	if err := pagesv2.TxReceiptDetailFragment(*data).Render(r.Context(), w); err != nil {
+		h.renderFragmentError(w, r, "Could not load transaction details", err)
+	}
+}
+
+// TxV2SidebarFragment returns the v2 transaction summary sidebar.
+func (h *Handlers) TxV2SidebarFragment(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	network := networkFromRequest(r)
+	shortHash := txShortHash(hash)
+
+	data := h.buildTxFragmentData(r, network, hash, shortHash)
+	if data == nil {
+		mock := mockTxReceiptData(hash, shortHash)
+		data = &mock
+	}
+
+	if err := pagesv2.TxReceiptSidebarFragment(*data).Render(r.Context(), w); err != nil {
+		h.renderFragmentError(w, r, "Could not load transaction sidebar", err)
+	}
 }
 
 // TxOverviewFragment returns the transaction key-value overview.

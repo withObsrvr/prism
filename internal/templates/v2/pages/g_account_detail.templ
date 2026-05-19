@@ -1,0 +1,227 @@
+package pagesv2
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+)
+
+type gaTrustline struct { Code, Name, Issuer, Balance, Limit, Liabilities, USD, Status string; Native, Sponsored bool; Flag string }
+type gaSigner struct { Name, Detail, Key, Type, Weight, LastUsed, Tone string; Primary bool }
+type gaActivityRow struct { Ago, Kind, Summary, To, Amount, Tone, Hash string }
+type gaOffer struct { ID, Side, Give, Get, Amount, Price, Filled string }
+type gaClaimable struct { Amount, Status, Claimant, Predicate, Created, ID, Tone string }
+type gaDataEntry struct { Key, Value, Base64 string }
+type gaSorobanAuth struct { Ago, Contract, Address, Fn, Args, Outcome, Error string }
+
+templ GAccountDetail(data legacy.AccountData, network string) {
+	@layoutsv2.LedgerBase("Account " + data.ShortAddress + " — Prism") {
+		<header class="ph-top"><div class="ph-top-inner"><a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a><div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.Address }/><span class="px-tx-search-shortcut">⌘K</span></div><div class="ph-right">@componentsv2.NetworkSelector(network)</div></div></header>
+		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><a>Accounts</a><span class="sep">/</span><span class="cur mono">{ gaAccountName(data) }</span></div></nav>
+		<div class="px-tx-page"><div class="px-tx-page-inner">
+			<main class="px-tx-main">
+				@gaIdentity(data)
+				@gaGlance(data)
+				<section class="px-tx-section">
+					<div class="px-tx-section-head"><div><h2>Account internals</h2><span class="px-tx-section-sub">Trustlines, signers, on-chain activity, and Stellar-specific entries.</span></div></div>
+					<div class="px-tx-detail" data-ga-tabs-root>
+						<div class="px-tx-tabs" role="tablist" aria-label="Account internals">
+							@gaTab("trustlines", "Trustlines", gaTrustlineCount(data), true)
+							@gaTab("signers", "Signers", data.SignerCount, false)
+							@gaTab("activity", "Activity", gaActivityCount(data), false)
+							@gaTab("offers", "Offers · DEX", gaOffersCount(data), false)
+							@gaTab("claimable", "Claimable", gaMockOnlyCount(data, "4"), false)
+							@gaTab("data", "Data", gaMockOnlyCount(data, "6"), false)
+							@gaTab("soroban", "Soroban auth", gaMockOnlyCount(data, "47"), false)
+						</div>
+						<div class="px-tx-detail-body">
+							<div data-ga-panel="trustlines">@gaTrustlines(data)</div>
+							<div data-ga-panel="signers" hidden>@gaSigners(data)</div>
+							<div data-ga-panel="activity" hidden>@gaActivity(data)</div>
+							<div data-ga-panel="offers" hidden>@gaOffers(data)</div>
+							<div data-ga-panel="claimable" hidden>@gaClaimables(data)</div>
+							<div data-ga-panel="data" hidden>@gaDataEntries(data)</div>
+							<div data-ga-panel="soroban" hidden>@gaSorobanAuths(data)</div>
+						</div>
+					</div>
+				</section>
+			</main>
+			@gaRightRail(data)
+		</div></div>
+		@gaTabsScript()
+	}
+}
+
+templ gaTab(id string, label string, count string, active bool) {
+	<button class={ "px-tx-tab", templ.KV("active", active) } type="button" data-ga-tab={ id } aria-selected={ fmt.Sprintf("%t", active) }>{ label } <span class="px-tx-tab-c">{ count }</span></button>
+}
+
+templ gaIdentity(data legacy.AccountData) {
+	<section class="px-tx-section px-cn-id px-ga-id"><div class="px-cn-id-grid"><div class="px-cn-id-icon"><div class="px-cn-icon-shape px-ga-icon"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="currentColor" stroke-width="1.5"></circle><path d="M21 12.5 C20 10.5 18 9.5 16 9.5 C12.4 9.5 10 12.4 10 16 C10 19.6 12.4 22.5 16 22.5 C19.2 22.5 21.5 20 21.5 16.8 L16.5 16.8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><div class="px-cn-verified px-ga-verified"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3 3 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg><span>{ gaVerifiedLabel(data) }</span></div></div><div class="px-cn-id-meta"><div class="px-cn-id-row1"><span class="px-cn-tag protocol px-ga-tag-acc">Classic Account</span><span class="px-cn-tag kind">ed25519 keypair</span><span class="px-cn-tag wasm">Multi-signer · { data.SignerCount } keys</span><span class="px-cn-tag wasm px-ga-tag-thresh">Thresholds { gaThresholdSummary(data) }</span><span class="px-cn-tag live"><span class="px-cn-pulse"></span>Active · last op { gaLastOp(data) }</span></div><h1 class="px-cn-h1"><span class="px-cn-h1-name">{ gaAccountName(data) }</span><span class="px-cn-h1-version">{ gaAccountSubtitle(data) }</span></h1><p class="px-cn-id-blurb">A classic Stellar account, the kind that's existed since 2015. It holds <b>{ gaTrustlineCount(data) } trustlines</b> and <b>{ gaTotalValue(data) }</b> across them, governed by <b>{ data.SignerCount } signers</b> with weighted thresholds. Sequence number <span class="mono">{ gaSequence(data) }</span>. { gaReserveSentence(data) }</p><div class="px-cn-addr"><span class="k">Address</span><code>{ gaChunk(data.Address) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.Address } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button><span class="px-ga-muxed">+ muxed sub-accounts (M…)</span></div><div class="px-cn-actions"><button class="px-tx-btn primary">Watch this account</button><button class="px-tx-btn">Send to address</button><a class="px-tx-btn" href={ templ.SafeURL("https://stellar.expert/explorer/public/account/" + data.Address) } target="_blank" rel="noopener">Stellar.expert ↗</a><button class="px-tx-btn">Audit trail (CSV)</button></div></div></div></section>
+}
+
+templ gaGlance(data legacy.AccountData) {
+	<section class="px-tx-section"><div class="px-tx-section-head"><h2>At a glance</h2><span class="px-tx-section-sub">Balances, signing setup, and account anchors.</span></div><div class="px-ac-glance"><div class="px-ac-gcard"><div class="px-ac-gtitle">XLM balance</div><div class="px-ac-gvalue">{ gaXLMAmount(data) }<span class="px-ga-unit">XLM</span></div><div class="px-ac-gsub">{ gaXLMSub(data) }</div><ul class="px-ac-gbreak"><li><span class="t">Available</span><span class="v mono">{ gaXLMAmount(data) }</span></li><li><span class="t">Reserved</span><span class="v mono">{ gaReservedXLM(data) }</span></li><li><span class="t">Sponsored by</span><span class="v">{ gaSponsorName(data) }</span></li></ul></div><div class="px-ac-gcard"><div class="px-ac-gtitle">Trustlines</div><div class="px-ac-gvalue">{ gaTrustlineCount(data) }<span class="px-ga-of"> open</span></div><div class="px-ac-gsub">{ gaTotalValue(data) } total · { gaAuthFlagCount() } with auth flags</div><div class="px-ga-trustchips">
+		for _, chip := range gaTrustChips(data) {
+			<span class={ "px-ga-tchip", templ.KV("more", strings.HasPrefix(chip, "+")) }>{ chip }</span>
+		}
+	</div></div><div class="px-ac-gcard"><div class="px-ac-gtitle">Signers · thresholds</div><div class="px-ac-gvalue px-ac-gvalue-sm">{ data.SignerCount } keys <span class="of">· low/med/high { gaThresholdSummary(data) }</span></div><div class="px-ga-thresh">
+		for _, row := range gaSignerRows(data) {
+			<div class="px-ga-thresh-row"><span class="lbl">{ row.Name }</span><span class="px-ga-weightbar"><span style={ "width: " + gaWeightPct(row.Weight) }></span></span><span class="w mono">w { row.Weight }</span></div>
+		}
+	</div></div><div class="px-ac-gcard"><div class="px-ac-gtitle">Account info</div><div class="px-ga-info-rows"><div class="px-ga-info-row"><span class="k">Sequence</span><span class="v mono">{ gaSequence(data) }</span></div><div class="px-ga-info-row"><span class="k">Home domain</span><span class="v">{ firstNonEmpty(data.HomeDomain, "unknown") }</span></div><div class="px-ga-info-row"><span class="k">Created</span><span class="v">{ firstNonEmpty(data.CreatedAt, "unknown") }</span></div><div class="px-ga-info-row"><span class="k">Total ops</span><span class="v mono">{ gaActivityCount(data) } loaded</span></div><div class="px-ga-info-row"><span class="k">Inflation dest.</span><span class="v"><span class="px-ga-muted">none</span></span></div></div></div></div></section>
+}
+
+templ gaTrustlines(data legacy.AccountData) {
+	<div class="px-ga-trust"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span>A <b>trustline</b> is the explicit opt-in this account holds for one issued asset. Each costs a 0.5 XLM reserve unless sponsored. Issuers can require authorization (<code>AUTH_REQUIRED</code>) before balances move.</span></div><table class="px-ga-trusttable"><thead><tr><th>Asset</th><th>Issuer</th><th class="r">Balance</th><th class="r">Liabilities</th><th class="r">Limit</th><th class="r">USD value</th><th>Status</th></tr></thead><tbody>
+		for _, l := range gaTrustlinesData(data) {
+			<tr class={ templ.KV("native", l.Native) }><td><div class="px-ga-trustcell"><span class={ "px-ga-trustsym", templ.KV("native", l.Native) }>{ gaInitial(l.Code) }</span><div><div class="px-ga-trustcode"><b>{ l.Code }</b></div><div class="px-ga-trustname">{ l.Name }</div></div></div></td><td class="px-ga-trustissuer">
+				if l.Native {
+					<span class="px-ga-muted">—</span>
+				} else {
+					<span class="mono">{ l.Issuer }</span>
+				}
+			</td><td class="r mono">{ l.Balance }</td><td class="r mono px-ga-liab">{ l.Liabilities }</td><td class="r mono px-ga-limit">{ l.Limit }</td><td class="r mono">{ l.USD }</td><td><div class="px-ga-trustflags"><span class={ "px-ga-flag", gaFlagClass(l.Status) }>{ l.Status }</span>
+				if l.Flag != "" {
+					<span class="px-ga-issuerflag">{ l.Flag }</span>
+				}
+				if l.Sponsored {
+					<span class="px-ga-flag sp">Sponsored</span>
+				}
+			</div></td></tr>
+		}
+	</tbody></table></div>
+}
+
+templ gaSigners(data legacy.AccountData) {
+	<div class="px-ga-signers"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span>Classic accounts use <b>weighted signers</b> plus <b>thresholds</b>. The summed signer weights on a transaction must meet or exceed the operation category's threshold.</span></div><div class="px-ga-thresholds"><h4>Operation thresholds</h4><div class="px-ga-thresh-grid">
+		for _, t := range gaThresholdCells(data) {
+			<div class="px-ga-thresh-cell"><div class="px-ga-thresh-name">{ t.Label }</div><div class="px-ga-thresh-weight">{ t.Value }</div><div class="px-ga-thresh-desc">{ gaThresholdDesc(t.Label) }</div></div>
+		}
+	</div></div><table class="px-ac-signertable"><thead><tr><th>Signer</th><th>Type</th><th>Public key</th><th class="r">Weight</th><th class="r">Last used</th></tr></thead><tbody>
+		for _, s := range gaSignerRows(data) {
+			<tr><td><div class="px-ac-sigcell"><span class={ "px-ac-sigicon", "px-ga-sigicon-" + s.Tone }>{ gaInitial(s.Name) }</span><div><div class="px-ac-signame"><b>{ s.Name }</b> if s.Primary {
+							<span class="px-ac-sigprimary">Primary</span>
+						}</div><div class="px-ac-sigwho">{ s.Detail }</div></div></div></td><td><span class={ "px-ga-sigtype", s.Tone }>{ s.Type }</span></td><td class="mono px-ac-sigkey">{ s.Key }</td><td class="r"><span class={ "px-ga-weightpill", templ.KV("hi", s.Weight != "1") }>{ s.Weight }</span></td><td class="r mono">{ s.LastUsed }</td></tr>
+		}
+	</tbody></table></div>
+}
+
+templ gaActivity(data legacy.AccountData) {
+	<div class="px-cn-calls"><div class="px-cn-calls-filters"><span class="px-cn-callfilter active">All <span class="c">{ gaActivityCount(data) }</span></span><span class="px-cn-callfilter">Payments</span><span class="px-cn-callfilter">DEX</span><span class="px-cn-callfilter">Trustlines</span><span class="px-cn-callfilter">Soroban</span><span class="px-cn-callfilter ml">Watch live <span class="px-cn-pulse"></span></span></div><div class="px-cn-calltable px-ga-optable">
+		for _, o := range gaActivityRows(data) {
+			<a class={ "px-ga-oprow", o.Tone } href={ templ.SafeURL(gaTxHref(o.Hash)) }><span class="px-cn-callago"><span class="dot"></span><span>{ o.Ago } ago</span></span><span class={ "px-ga-optype", "k-" + o.Kind }>{ gaPrettyKind(o.Kind) }</span><span class="px-ga-opbody">{ o.Summary }</span><span class="px-ga-opto mono">{ o.To }</span><span class="px-ga-opamt mono">{ o.Amount }</span></a>
+		}
+	</div></div>
+}
+
+templ gaOffers(data legacy.AccountData) {
+	<div class="px-ga-offers"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span>Open offers on the <b>Stellar DEX</b>. Partial fills update the remaining amount automatically.</span></div>
+		if len(gaOfferRows(data)) == 0 {
+			@gaEmptyState("No offer data", "The gateway did not return open DEX offers for this account.")
+		} else {
+			<table class="px-ga-offertable"><thead><tr><th>ID</th><th>Side</th><th>Give</th><th>Get</th><th class="r">Amount</th><th class="r">Price</th><th>Filled</th></tr></thead><tbody>
+				for _, o := range gaOfferRows(data) {
+					<tr><td class="mono">#{ o.ID }</td><td><span class={ "px-ga-offerside", o.Side }>{ o.Side }</span></td><td class="mono">{ o.Give }</td><td class="mono">{ o.Get }</td><td class="r mono">{ o.Amount }</td><td class="r mono">{ o.Price }</td><td><div class="px-ga-fillbar"><span style={ "width: " + o.Filled }></span></div><span class="px-ga-fillpct">{ o.Filled }</span></td></tr>
+				}
+			</tbody></table>
+		}
+	</div>
+}
+
+templ gaClaimables(data legacy.AccountData) {
+	<div class="px-ga-claimables"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span><b>Claimable balances</b> let you send a payment that the recipient has not opted into yet. The asset is locked until the claimant accepts or a predicate allows it.</span></div>
+		if len(gaClaimableRows(data)) == 0 {
+			@gaEmptyState("No claimable balance data", "The gateway did not return claimable balances for this account.")
+		} else {
+			<div class="px-ga-claimlist">
+				for _, c := range gaClaimableRows(data) {
+					<div class="px-ga-claim"><div class="px-ga-claim-head"><span class="px-ga-claim-amt mono">{ c.Amount }</span><span class={ "px-ga-claim-status", c.Tone }>{ c.Status }</span></div><div class="px-ga-claim-meta"><div><span class="k">Claimant</span><span class="v mono">{ c.Claimant }</span></div><div><span class="k">Predicate</span><span class="v">{ c.Predicate }</span></div><div><span class="k">Created</span><span class="v">{ c.Created }</span></div><div><span class="k">ID</span><span class="v mono">{ c.ID }</span></div></div></div>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ gaDataEntries(data legacy.AccountData) {
+	<div class="px-ga-data"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span><b>Data entries</b> attach up to 64 key/value pairs to the account. They often hold federation hints, application config, or compliance markers.</span></div>
+		if len(gaDataRows(data)) == 0 {
+			@gaEmptyState("No data entries", "The gateway did not return account data entries for this account.")
+		} else {
+			<div class="px-ga-datatable">
+				for _, e := range gaDataRows(data) {
+					<div class="px-ga-datarow"><div class="px-ga-datakey mono">{ e.Key }</div><div class="px-ga-dataval">{ e.Value }</div><div class="px-ga-datab64 mono">{ e.Base64 }</div></div>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ gaSorobanAuths(data legacy.AccountData) {
+	<div class="px-ga-soroban"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span>When this G-account is named as an authorizer in a Soroban transaction, the host calls <code>require_auth</code>. For classic accounts, that auth is a standard ed25519 signature.</span></div>
+		if len(gaSorobanRows(data)) == 0 {
+			@gaEmptyState("No Soroban auth data", "The gateway did not return require_auth history for this account.")
+		} else {
+			<table class="px-ga-soroban-table"><thead><tr><th>When</th><th>Contract</th><th>Function</th><th>Arguments</th><th>Outcome</th></tr></thead><tbody>
+				for _, a := range gaSorobanRows(data) {
+					<tr class={ templ.KV("fail", a.Outcome == "fail") }><td class="mono px-ga-muted">{ a.Ago } ago</td><td><div class="px-ga-soroban-c"><b>{ a.Contract }</b><span class="mono px-ga-muted">{ a.Address }</span></div></td><td class="mono">{ a.Fn }</td><td class="mono px-ga-soroban-args">{ a.Args }</td><td>
+						if a.Outcome == "ok" {
+							<span class="px-ga-soroban-ok">✓ Authorized</span>
+						} else {
+							<span class="px-ga-soroban-fail">× { a.Error }</span>
+						}
+					</td></tr>
+				}
+			</tbody></table>
+		}
+	</div>
+}
+
+templ gaEmptyState(title string, body string) {
+	<div class="px-ga-empty"><b>{ title }</b><span>{ body }</span></div>
+}
+
+templ gaRightRail(data legacy.AccountData) { <aside class="px-tx-side"><div class="px-tx-side-card"><h4>Account facts</h4><dl class="px-tx-facts"><dt>Type</dt><dd>Classic ed25519 account</dd><dt>Created</dt><dd>{ firstNonEmpty(data.CreatedAt, "unknown") }</dd><dt>Total ops</dt><dd>{ gaActivityCount(data) } loaded · recent window</dd><dt>Sequence</dt><dd class="mono">{ gaSequence(data) }</dd><dt>Home domain</dt><dd>{ firstNonEmpty(data.HomeDomain, "unknown") }</dd><dt>Subentries</dt><dd>{ data.Subentries }</dd></dl></div><div class="px-tx-side-card"><h4>Reserves & sponsorship</h4><dl class="px-tx-facts"><dt>Base reserve</dt><dd>1.0 XLM</dd><dt>Trustline reserves</dt><dd>{ gaReserveTrustlines(data) } XLM</dd><dt>Signer reserves</dt><dd>{ data.SignerCount } signer entries</dd><dt>Sponsor</dt><dd>{ gaSponsorName(data) }</dd><dt>Net XLM lock</dt><dd class="mono">{ gaReservedXLM(data) } XLM</dd></dl></div><div class="px-tx-side-card"><h4>Compare account types</h4><ul class="px-ac-compare"><li><span class="px-ac-compare-name"><b>Classic G-account</b><span class="px-ac-compare-tag">this account</span></span><span class="px-ac-compare-desc">ed25519 keypair. Trustlines, signers, thresholds. Native to Stellar Classic.</span></li><li><span class="px-ac-compare-name"><b>Smart account (C-address)</b></span><span class="px-ac-compare-desc">Contract that implements <code>CustomAccountInterface</code>. Programmable auth.</span></li><li><span class="px-ac-compare-name"><b>Muxed (M-address)</b></span><span class="px-ac-compare-desc">A G-account with a 64-bit memo ID baked into the address.</span></li></ul></div></aside> }
+
+templ gaTabsScript() { <script>(function(){if(window.__prismGATabsBound)return;window.__prismGATabsBound=true;function activate(root,name){if(!root)return;root.querySelectorAll('[data-ga-tab]').forEach(function(tab){var on=tab.getAttribute('data-ga-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-ga-panel]').forEach(function(panel){var on=panel.getAttribute('data-ga-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-ga-tab]');if(!tab)return;e.preventDefault();activate(tab.closest('[data-ga-tabs-root]'),tab.getAttribute('data-ga-tab'));});})();</script> }
+
+func gaAccountName(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return data.HomeDomain }; return data.ShortAddress }
+func gaAccountSubtitle(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return "Hot wallet" }; return "Classic Stellar account" }
+func gaVerifiedLabel(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return "Federation match" }; return "G-address" }
+func gaTotalValue(data legacy.AccountData) string { if strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" { return data.TotalValue }; return "tracked balances" }
+func gaXLMAmount(data legacy.AccountData) string { v:=strings.TrimSpace(strings.TrimSuffix(data.XLMBalance," XLM")); if v=="" { return "—" }; return v }
+func gaXLMSub(data legacy.AccountData) string { if strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" { return "part of " + data.TotalValue + " total" }; return "native balance from account entry" }
+func gaTrustlineCount(data legacy.AccountData) string { if data.Trustlines!="" { return data.Trustlines }; n:=0; for _,b:=range data.Balances { if !strings.EqualFold(b.Code,"XLM") { n++ } }; return fmt.Sprintf("%d", n) }
+func gaActivityCount(data legacy.AccountData) string { if len(data.Activities)>0 { return fmt.Sprintf("%d", len(data.Activities)) }; return "10" }
+func gaLastOp(data legacy.AccountData) string { if len(data.Activities)>0 { return data.Activities[0].Time }; return "4s ago" }
+func gaSequence(data legacy.AccountData) string { if strings.TrimSpace(data.SequenceNumber)!="" { return data.SequenceNumber }; return "unknown" }
+func gaReserveSentence(data legacy.AccountData) string { if data.Subentries!="" { return "Base reserve and subentry reserves are visible, so the XLM lock can be audited." }; return "Reserve details are estimated until the account subentries load." }
+func gaThresholdSummary(data legacy.AccountData) string { if len(data.Thresholds)>=3 { return data.Thresholds[0].Value + "/" + data.Thresholds[1].Value + "/" + data.Thresholds[2].Value }; return "1/2/3" }
+func gaReservedXLM(data legacy.AccountData) string { return "0.00" }
+func gaSponsorName(data legacy.AccountData) string { if gaIsMock(data) { return "none detected" }; return "not returned" }
+func gaReserveTrustlines(data legacy.AccountData) string { return fmt.Sprintf("%.1f", float64(len(gaTrustlinesData(data))-1)*0.5) }
+func gaAuthFlagCount() string { return "0" }
+func gaIsMock(data legacy.AccountData) bool { return data.Address == "GABC7DEF8GHI9JKL0MNO1PQR2STU3VWX4YZ567890ABCDEFGHIJKLMNOP" }
+func gaMockOnlyCount(data legacy.AccountData, v string) string { if gaIsMock(data) { return v }; return "0" }
+func gaOffersCount(data legacy.AccountData) string { if len(data.Offers)>0 { return fmt.Sprintf("%d", len(data.Offers)) }; if gaIsMock(data) { return firstNonEmpty(data.ActiveOffers, "0") }; return "0" }
+func gaChunk(v string) string { v=strings.TrimSpace(v); if len(v)<=12 { return v }; parts:=[]string{}; for len(v)>8 { parts=append(parts, v[:8]); v=v[8:] }; if v!="" { parts=append(parts,v) }; return strings.Join(parts,"·") }
+func gaTrustChips(data legacy.AccountData) []string { out:=[]string{"X"}; for _,b:=range data.Balances { if strings.EqualFold(b.Code,"XLM") { continue }; if len(out)>=5 { break }; if b.Code!="" { out=append(out, strings.ToUpper(string([]rune(b.Code)[0]))) } }; if len(out)==1 && gaIsMock(data) { out=[]string{"X","U","E","y","A"} }; extra:="+0"; if data.Trustlines!="" { extra="+"+data.Trustlines }; out=append(out,extra); return out }
+func gaWeightPct(w string) string { n,_:=strconv.Atoi(w); if n<=0 { n=1 }; if n>3 { n=3 }; return fmt.Sprintf("%d%%", n*33) }
+func gaInitial(v string) string { v=strings.TrimSpace(v); if v=="" { return "G" }; return strings.ToUpper(string([]rune(v)[0])) }
+func gaFlagClass(v string) string { switch strings.ToLower(v) { case "authorized": return "ok"; case "native": return "native"; default: return "warn" } }
+func gaPrettyKind(v string) string { return strings.Title(strings.ReplaceAll(v,"_"," ")) }
+func gaThresholdDesc(v string) string { switch strings.ToLower(v) { case "low": return "bump_sequence, allow_trust, inflation and home-domain changes"; case "medium": return "payment, manage_offer, change_trust, manage_data, most operations"; default: return "set_options on signers, master weight, or thresholds" } }
+func gaTxHref(hash string) string { if strings.TrimSpace(hash)=="" { return "#" }; return "/v2/tx/" + hash }
+
+func gaTrustlinesData(data legacy.AccountData) []gaTrustline { out:=[]gaTrustline{{Code:"XLM",Name:"Stellar Lumens",Issuer:"Native",Balance:gaXLMAmount(data),Limit:"—",Liabilities:"—",USD:"—",Status:"Native",Native:true}}; for _,b:=range data.Balances { if strings.EqualFold(b.Code,"XLM") { continue }; out=append(out, gaTrustline{Code:firstNonEmpty(b.Code,"ASSET"),Name:firstNonEmpty(b.Name,b.Code),Issuer:firstNonEmpty(b.Issuer,"unknown issuer"),Balance:firstNonEmpty(b.Balance,"0"),Limit:"Unlimited",Liabilities:"—",USD:firstNonEmpty(b.ValueUSD,"—"),Status:"Authorized"}) }; return out }
+func gaSignerRows(data legacy.AccountData) []gaSigner { out:=[]gaSigner{}; for i,s:=range data.Signers { name:="Signer"; tone:="add"; primary:=s.IsSelf; if primary||i==0 { name="Master key"; tone="master" }; out=append(out, gaSigner{Name:name,Detail:firstNonEmpty(s.Type,"ed25519 signer"),Key:s.Address,Type:firstNonEmpty(s.Type,"ed25519"),Weight:firstNonEmpty(s.Weight,"1"),LastUsed:"recent",Tone:tone,Primary:primary}) }; if len(out)>0 || !gaIsMock(data) { return out }; return []gaSigner{{"Master key","The keypair the account was created with",data.ShortAddress,"ed25519 master","1","4s ago","master",true},{"Operations key","Added signer", "GBHSM7K…42QP", "ed25519 added", "2", "11m ago", "add", false},{"Treasury key","Cold storage signer", "GACOLD2…X09M", "ed25519 added", "2", "2 days ago", "add", false}} }
+func gaThresholdCells(data legacy.AccountData) []legacy.AccountThreshold { if len(data.Thresholds)>=3 { return data.Thresholds }; return []legacy.AccountThreshold{{Label:"Low",Value:"1"},{Label:"Medium",Value:"2"},{Label:"High",Value:"3"}} }
+func gaActivityRows(data legacy.AccountData) []gaActivityRow { out:=[]gaActivityRow{}; for _,a:=range data.Activities { kind:=strings.ToLower(a.Badge); if kind=="contract" { kind="soroban" }; out=append(out, gaActivityRow{Ago:firstNonEmpty(a.Time,"recent"),Kind:kind,Summary:a.Summary,To:"—",Amount:a.Badge,Tone:kind,Hash:a.TxHash}) }; if len(out)>0 || !gaIsMock(data) { return out }; return []gaActivityRow{{"4s","payment","Sent 2,000 USDC","GFND…22XQ","−2,000.00 USDC","",""},{"47s","path_payment","Path payment USDC → EURC","GVEN…0884","−500 USDC → +458 EURC","",""},{"2m","manage_offer","Updated DEX offer","—","Sell 10K AQUA @ 0.0014 USDC","",""},{"23m","soroban","Authorized Blend.deposit","CBLD…99PP","via require_auth","soroban",""}} }
+func gaOfferRows(data legacy.AccountData) []gaOffer { out:=[]gaOffer{}; for _,o:=range data.Offers { out=append(out, gaOffer{ID:o.OfferID, Side:strings.ToLower(o.Side), Give:o.Pair, Get:o.PriceUnit, Amount:o.Amount, Price:o.Price, Filled:"—"}) }; if len(out)>0 || !gaIsMock(data) { return out }; return []gaOffer{{"208,441","sell","AQUA","USDC","100,000","0.00068","41%"},{"208,440","sell","AQUA","XLM","200,000","0.0028","18%"},{"208,438","buy","USDC","XLM","10,000","0.244","92%"}} }
+func gaClaimableRows(data legacy.AccountData) []gaClaimable { if !gaIsMock(data) { return nil }; return []gaClaimable{{"5,000 yXLM","Pending claim","GREC…3320","Anytime","1h 12m ago","00000000ed4f…b321","pending"},{"12,500 USDC","Timelocked","GVEN…0884","Not before May 1, 2026","2 days ago","00000000ec22…fa11","timelock"},{"2,400 USDC","Expired · reclaimable","GREF…81FA","Before Apr 22","14 days ago","00000000ea12…0098","expired"}} }
+func gaDataRows(data legacy.AccountData) []gaDataEntry { if !gaIsMock(data) { return nil }; return []gaDataEntry{{"config.fees.tier","premium","cHJlbWl1bQ=="},{"config.region","us-east-1","dXMtZWFzdC0x"},{"stellar.toml.version","2.4.1","Mi40LjE="},{"ops.last_audit","2026-04-18","MjAyNi0wNC0xOA=="}} }
+func gaSorobanRows(data legacy.AccountData) []gaSorobanAuth { if !gaIsMock(data) { return nil }; return []gaSorobanAuth{{"23m","Blend lending pool","CBLD…99PP","deposit","USDC, 5,000","ok",""},{"1h 4m","Soroswap router","CSWP…1A2B","swap_exact_tokens_for_tokens","USDC → AQUA","ok",""},{"2d 4h","Soroswap router","CSWP…1A2B","swap_exact_tokens_for_tokens","AQUA → USDC","fail","min_out not met"}} }

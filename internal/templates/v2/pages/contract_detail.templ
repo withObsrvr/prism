@@ -1,0 +1,128 @@
+package pagesv2
+
+import (
+	"fmt"
+	"strings"
+
+	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+)
+
+templ ContractDetail(data legacy.ContractDetailData, network string) {
+	@layoutsv2.LedgerBase(data.Name + " — Prism") {
+		<header class="ph-top">
+			<div class="ph-top-inner">
+				<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
+				<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.Address } aria-label="Search Prism"/><span class="px-tx-search-shortcut">⌘K</span></div>
+				<div class="ph-right">@componentsv2.NetworkSelector(network)</div>
+			</div>
+		</header>
+		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><a href="/contracts">Contracts</a><span class="sep">/</span><span class="cur mono">{ cnShort(data.Address) }</span></div></nav>
+		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
+			@contractIdentity(data)
+			@contractTrustStrip(data)
+			@contractActivity(data)
+			<section class="px-tx-detail"><div class="px-tx-detail-inner">
+				<div class="px-tx-tabs"><button class="px-tx-tab active">Interface <span class="px-tx-tab-c">{ cnFirst(data.FunctionsCount, fmt.Sprintf("%d", len(cnFunctions(data)))) }</span></button><button class="px-tx-tab">Recent calls <span class="px-tx-tab-c">{ cnFirst(data.TotalInvocations, "0") }</span></button><button class="px-tx-tab">Storage</button><button class="px-tx-tab">Code</button></div>
+				<div class="px-tx-detail-body">
+					@contractFunctions(data)
+					@contractCalls(data)
+					@contractStorage(data)
+				</div>
+			</div></section>
+		</main><aside class="px-tx-side">
+			@sideCard("Contract") { @sideRow("Address", cnShort(data.Address)) @sideRow("Deployed", cnFirst(data.DeployedAt, "unknown")) @sideRow("Ledger", cnFirst(data.DeployLedger, "unknown")) @sideRow("Creator", cnFirst(data.Creator, "unknown")) @sideRow("Functions", cnFirst(data.FunctionsCount, fmt.Sprintf("%d", len(cnFunctions(data))))) @sideRow("Storage", cnFirst(data.StorageEntries, "unknown")) }
+			@sideCard("Code") { @sideRow("Wasm hash", cnShort(data.WASMHash)) @sideRow("Wasm size", cnFirst(data.WASMSize, "unknown")) @sideRow("Source", cnSourceLabel(data)) }
+			<div class="px-tx-side-card soft"><h4>Why Prism thinks this</h4><p class="px-tx-side-body">{ cnFirst(data.Context, "Prism combines source metadata, exported functions, recent calls, and storage shape to classify this contract.") }</p></div>
+			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/contracts/" + data.Address) }><span class="px-tx-rel-h mono">Legacy contract</span><span class="px-tx-rel-s">current production page</span></a><a class="px-tx-related-row" href="/events"><span class="px-tx-rel-h mono">Events</span><span class="px-tx-rel-s">stream contract activity</span></a></div></div>
+		</aside></div></div>
+	}
+}
+
+templ contractIdentity(data legacy.ContractDetailData) {
+	<section class="px-tx-section px-cn-id">
+		<div class="px-cn-id-grid">
+			<div class="px-cn-id-icon"><div class="px-cn-icon-shape"><svg viewBox="0 0 32 32" fill="none"><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.5"></circle><circle cx="21" cy="21" r="6" stroke="currentColor" stroke-width="1.5"></circle><path d="M15.5 15.5L18 18" stroke="currentColor" stroke-width="1.5"></path></svg></div><div class="px-cn-verified"><span>{ cnSourceLabel(data) }</span></div></div>
+			<div class="px-cn-id-meta">
+				<div class="px-cn-id-row1"><span class="px-cn-tag protocol">Soroban</span><span class="px-cn-tag kind">Contract</span><span class="px-cn-tag wasm">Wasm</span><span class="px-cn-tag live"><span class="px-cn-pulse"></span>{ cnLiveLabel(data) }</span>
+					for _, tag := range data.Tags {
+						<span class="px-cn-tag kind">{ tag }</span>
+					}
+				</div>
+				<h1 class="px-cn-h1"><span class="px-cn-h1-name">{ data.Name }</span></h1>
+				<p class="px-cn-id-blurb">{ cnFirst(data.Narrative, "Prism recognized this as a deployed Soroban contract. Start with the plain-language summary, then inspect the interface, calls, storage, and Wasm evidence below.") }</p>
+				<div class="px-cn-addr"><span class="k">Address</span><code>{ data.Address }</code><button class="px-cn-copy" data-copy={ data.Address } title="Copy contract address"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="6" height="6" rx="1"></rect><path d="M4 8v1a1 1 0 001 1h5a1 1 0 001-1V4a1 1 0 00-1-1H9"></path></svg></button></div>
+				<div class="px-cn-actions"><a class="px-tx-btn primary" href="#interface">Read function</a><a class="px-tx-btn" href="#calls">Recent calls</a><a class="px-tx-btn" href="#storage">Storage</a><button class="px-tx-btn" data-copy={ data.Address }>Copy link</button></div>
+			</div>
+		</div>
+	</section>
+}
+
+templ contractTrustStrip(data legacy.ContractDetailData) {
+	<section class="px-cn-trust">
+		@trustItem("ok", "Source", cnSourceEvidence(data))
+		@trustItem("ok", "Age", "Deployed " + cnFirst(data.DeployedAt, "at an unknown time"))
+		@trustItem("ok", "Interface", cnFirst(data.FunctionsCount, fmt.Sprintf("%d", len(cnFunctions(data)))) + " exported functions")
+		@trustItem("warn", "Upgrade review", "Check admin controls before relying on this contract")
+	</section>
+}
+
+templ trustItem(tone string, title string, body string) {
+	<div class={ "px-cn-trust-item", tone }><span class="px-cn-trust-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg></span><div><div class="k">{ title }</div><div class="v">{ body }</div></div></div>
+}
+
+templ contractActivity(data legacy.ContractDetailData) {
+	<section class="px-tx-section">
+		<div class="px-tx-section-head"><h2>Activity</h2><span class="px-tx-section-sub">Recent calls, state weight, and reliability</span></div>
+		<div class="px-cn-stats">
+			@contractStat("Invocations", cnFirst(data.TotalInvocations, "unknown"), "observed total", "var(--ph-violet)")
+			@contractStat("Average / day", cnFirst(data.AvgInvocations, "unknown"), "7 day window", "var(--ph-teal)")
+			@contractStat("Peak / day", cnFirst(data.PeakInvocations, "unknown"), "highest recent day", "var(--ph-amber)")
+			@contractStat("Success rate", cnFirst(data.SuccessRate, "unknown"), "recent execution", "var(--ph-green)")
+		</div>
+	</section>
+}
+
+templ contractStat(k string, v string, d string, color string) {
+	<div class="px-cn-stat"><span class="k">{ k }</span><span class="v">{ v }</span><span class="d muted">{ d }</span><svg class="px-cn-spark" viewBox="0 0 200 36" preserveAspectRatio="none"><path d="M0,30 L18,22 L36,24 L54,15 L72,18 L90,10 L108,13 L126,8 L144,16 L162,11 L180,6 L200,9 L200,36 L0,36 Z" fill={ color } opacity="0.10"></path><path d="M0,30 L18,22 L36,24 L54,15 L72,18 L90,10 L108,13 L126,8 L144,16 L162,11 L180,6 L200,9" fill="none" stroke={ color } stroke-width="1.4"></path></svg></div>
+}
+
+templ contractFunctions(data legacy.ContractDetailData) {
+	<section id="interface" class="px-cn-panel"><div class="px-tx-section-head"><h2>Interface</h2><span class="px-tx-section-sub">Exported contract functions</span></div><div class="px-cn-fns"><div class="px-cn-fns-head"><span>Function</span><span>Meaning</span><span>Calls</span><span>Risk</span></div>
+		for _, fn := range cnFunctions(data) {
+			<article class="px-cn-fn"><div><code>{ fn.Name }</code><span>{ cnFirst(fn.Category, "entrypoint") }</span></div><p>{ cnFirst(fn.Description, "Exported function detected in the contract interface.") }</p><b>{ cnFirst(fn.Calls24h, cnFirst(fn.Calls, "—")) }</b><em>normal</em></article>
+		}
+	</div></section>
+}
+
+templ contractCalls(data legacy.ContractDetailData) {
+	<section id="calls" class="px-cn-panel"><div class="px-tx-section-head"><h2>Recent calls</h2><span class="px-tx-section-sub">Transaction evidence for recent invocations</span></div><div class="px-cn-calls">
+		if len(data.Invocations) > 0 {
+			for _, inv := range data.Invocations {
+				<a class="px-cn-call" href={ templ.SafeURL("/v2/tx/" + inv.TxHash) }><span class="fn mono">{ cnFirst(inv.Function, "call") }</span><span class="summary">{ cnFirst(inv.Summary, "Contract invocation recorded by Prism.") }</span><span class="caller mono">{ cnFirst(inv.Caller, "unknown") }</span><span class="age">{ inv.Age }</span></a>
+			}
+		} else {
+			<div class="px-cn-empty"><b>No recent invocations</b><p>Prism has not observed recent calls for this contract on the selected network.</p></div>
+		}
+	</div></section>
+}
+
+templ contractStorage(data legacy.ContractDetailData) {
+	<section id="storage" class="px-cn-panel"><div class="px-tx-section-head"><h2>Storage</h2><span class="px-tx-section-sub">{ cnFirst(data.StorageEntries, "0") } entries tracked</span></div><div class="px-cn-storage">
+		if len(data.StorageItems) > 0 {
+			for _, s := range data.StorageItems {
+				<div class="px-cn-store"><code>{ s.Key }</code><span>{ s.Type }</span><b>{ s.Size }</b><em>{ s.TTL }</em></div>
+			}
+		} else {
+			<div class="px-cn-empty"><b>No storage sample available</b><p>Storage entries will appear here when the gateway returns data for this network.</p></div>
+		}
+	</div></section>
+}
+
+func cnFirst(v string, fallback string) string { if strings.TrimSpace(v) != "" && strings.TrimSpace(v) != "—" { return v }; return fallback }
+func cnShort(v string) string { if len(v) <= 14 || v == "—" { return cnFirst(v, "unknown") }; return v[:6] + "..." + v[len(v)-4:] }
+func cnSourceLabel(data legacy.ContractDetailData) string { if data.IsVerified || data.IsSourceVerified { return "Verified" }; return "Unverified" }
+func cnSourceEvidence(data legacy.ContractDetailData) string { if data.IsVerified || data.IsSourceVerified { return "Wasm metadata is available for review" }; return "Source verification has not been confirmed" }
+func cnLiveLabel(data legacy.ContractDetailData) string { if cnFirst(data.LastInvoked, "") != "" { return "Live · " + data.LastInvoked }; return "No recent call data" }
+func cnFunctions(data legacy.ContractDetailData) []legacy.ContractFunction { if len(data.Functions) > 0 { return data.Functions }; out := make([]legacy.ContractFunction, 0, len(data.ExportedFunctions)); for _, name := range data.ExportedFunctions { out = append(out, legacy.ContractFunction{Name:name, Category:"entrypoint", Description:"Exported function detected in the contract interface.", Calls24h:"—"}) }; if len(out)==0 { out = append(out, legacy.ContractFunction{Name:"No exported functions loaded", Category:"empty", Description:"Function metadata was not available from the gateway.", Calls24h:"—"}) }; return out }

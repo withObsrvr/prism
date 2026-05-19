@@ -1,0 +1,327 @@
+package pagesv2
+
+import (
+	"fmt"
+	"strings"
+
+	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+	txv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
+)
+
+templ TransactionReceipt(data legacy.TxReceiptData, network string) {
+	@layoutsv2.LedgerBase("Transaction " + data.ShortHash + " — Prism") {
+		<header class="ph-top">
+			<div class="ph-top-inner">
+				<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
+				<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.ShortHash }/><span class="px-tx-search-shortcut">⌘K</span></div>
+				<div class="ph-right">@componentsv2.NetworkSelector(network)</div>
+			</div>
+		</header>
+		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><a href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }>Ledger { data.Ledger }</a><span class="sep">/</span><span class="cur mono">Tx { data.ShortHash }</span></div></nav>
+		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
+			@txHeroHeader(txv2.BuildTxHero(data), data)
+			@txHeroViz(txv2.BuildTxHero(data), data)
+			@txDetailTabs(data)
+		</main><aside class="px-tx-side">
+			@sideCard("Transaction") { @sideRow("Hash", data.ShortHash) @sideRow("Ledger", data.Ledger) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
+			@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
+			<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) }>View contract <span class="mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</span> →</a></div>
+			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
+		</aside></div></div>
+	}
+}
+
+templ TransactionReceiptShell(data legacy.TxReceiptData, network string) {
+	@layoutsv2.LedgerBase("Transaction " + data.ShortHash + " — Prism") {
+		<header class="ph-top">
+			<div class="ph-top-inner">
+				<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
+				<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.ShortHash }/><span class="px-tx-search-shortcut">⌘K</span></div>
+				<div class="ph-right">@componentsv2.NetworkSelector(network)</div>
+			</div>
+		</header>
+		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><span class="cur mono">Tx { data.ShortHash }</span></div></nav>
+		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
+			<div hx-get={ templ.SafeURL("/fragments/tx/v2/" + data.Hash + "/hero") } hx-trigger="load" hx-swap="outerHTML">
+				@TxReceiptHeroSkeleton(data)
+			</div>
+			<div hx-get={ templ.SafeURL("/fragments/tx/v2/" + data.Hash + "/detail") } hx-trigger="load" hx-swap="outerHTML">
+				@TxReceiptDetailSkeleton()
+			</div>
+		</main><aside class="px-tx-side" hx-get={ templ.SafeURL("/fragments/tx/v2/" + data.Hash + "/sidebar") } hx-trigger="load" hx-swap="outerHTML">
+			@TxReceiptSidebarSkeleton(data)
+		</aside></div></div>
+	}
+}
+
+templ TxReceiptHeroFragment(data legacy.TxReceiptData) {
+	<div>
+		@txHeroHeader(txv2.BuildTxHero(data), data)
+		@txHeroViz(txv2.BuildTxHero(data), data)
+	</div>
+}
+
+templ TxReceiptDetailFragment(data legacy.TxReceiptData) {
+	@txDetailTabs(data)
+}
+
+templ txDetailTabs(data legacy.TxReceiptData) {
+	<section class="px-tx-detail" data-px-tx-tabs-root><div class="px-tx-detail-inner">
+		<div class="px-tx-tabs" role="tablist" aria-label="Transaction receipt sections">
+			<button class="px-tx-tab active" type="button" role="tab" aria-selected="true" data-px-tx-tab="operations">Operations <span class="px-tx-tab-c">{ data.OpsCount }</span></button>
+			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="events">Events <span class="px-tx-tab-c">{ data.EventsCount }</span></button>
+			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="balances">Balance changes <span class="px-tx-tab-c">{ fmt.Sprintf("%d", len(data.BalanceChanges)) }</span></button>
+			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="raw">Raw XDR</button>
+		</div>
+		<div class="px-tx-detail-body">
+			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="operations">@txOperations(data)</div>
+			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="events" hidden>@txEvents(data)</div>
+			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="balances" hidden>@txBalances(data)</div>
+			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="raw" hidden>@txRaw(data)</div>
+		</div>
+	</div></section>
+	@txTabsScript()
+}
+
+templ txTabsScript() {
+	<script>
+		(function(){
+			if (window.__prismTxTabsBound) return;
+			window.__prismTxTabsBound = true;
+			function activate(root, name){
+				if (!root || !name) return;
+				root.querySelectorAll('[data-px-tx-tab]').forEach(function(tab){
+					var active = tab.getAttribute('data-px-tx-tab') === name;
+					tab.classList.toggle('active', active);
+					tab.setAttribute('aria-selected', active ? 'true' : 'false');
+				});
+				root.querySelectorAll('[data-px-tx-panel]').forEach(function(panel){
+					panel.hidden = panel.getAttribute('data-px-tx-panel') !== name;
+				});
+			}
+			document.addEventListener('click', function(event){
+				var tab = event.target.closest('[data-px-tx-tab]');
+				if (tab) {
+					event.preventDefault();
+					activate(tab.closest('[data-px-tx-tabs-root]'), tab.getAttribute('data-px-tx-tab'));
+					return;
+				}
+				var opener = event.target.closest('[data-px-tx-open-tab]');
+				if (opener) {
+					event.preventDefault();
+					var root = document.querySelector('[data-px-tx-tabs-root]');
+					activate(root, opener.getAttribute('data-px-tx-open-tab'));
+					if (root) root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			});
+		})();
+	</script>
+}
+
+templ TxReceiptSidebarFragment(data legacy.TxReceiptData) {
+	<aside class="px-tx-side">
+		@sideCard("Transaction") { @sideRow("Hash", data.ShortHash) @sideRow("Ledger", data.Ledger) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
+		@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
+		<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) }>View contract <span class="mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</span> →</a></div>
+		<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
+	</aside>
+}
+
+templ TxReceiptHeroSkeleton(data legacy.TxReceiptData) {
+	<section class="px-tx-headline"><div class="px-tx-headline-inner">
+		<div class="px-tx-headline-top"><span class="px-tx-status"><span class="px-tx-status-dot"></span><span>Loading transaction</span></span><span class="px-tx-meta mono">{ data.ShortHash }</span></div>
+		<h1 class="px-tx-h1">Decoding transaction…</h1>
+		<p class="px-tx-sub">Prism is fetching the receipt, semantic summary, events, and balance changes.</p>
+	</div></section>
+	<section class="px-tx-section"><div class="px-tx-section-head"><h2>Building receipt</h2><span class="px-tx-section-sub">Sections load independently, so the page is usable immediately.</span></div></section>
+}
+
+templ TxReceiptDetailSkeleton() {
+	<section class="px-tx-detail"><div class="px-tx-detail-inner"><div class="px-tx-tabs"><button class="px-tx-tab active">Operations</button><button class="px-tx-tab">Events</button><button class="px-tx-tab">Balance changes</button><button class="px-tx-tab">Raw XDR</button></div><div class="px-tx-detail-body"><div class="px-tx-ops"><article class="px-tx-op"><div class="px-tx-op-head"><span class="px-tx-op-num">…</span><div class="px-tx-op-titles"><h3>Loading operations</h3><p>Waiting on gateway data</p></div></div></article></div></div></div></section>
+}
+
+templ TxReceiptSidebarSkeleton(data legacy.TxReceiptData) {
+	@sideCard("Transaction") { @sideRow("Hash", data.ShortHash) @sideRow("Ledger", "loading") @sideRow("Operations", "loading") @sideRow("Events", "loading") }
+	@sideCard("Status") { @sideRow("Gateway", "loading sections") }
+}
+
+templ txQuickItem(k string, v string, mono bool) { <div class="px-tx-quick-item"><span class="k">{ k }</span><span class={ "v", templ.KV("mono", mono) }>{ v }</span></div> }
+
+templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
+	<section class={ "px-tx-headline", "px-tx-hero-" + string(hero.Kind) }><div class="px-tx-headline-inner">
+		<div class="px-tx-headline-top">
+			<span class="px-tx-status"><span class={ "px-tx-status-dot", templ.KV("ok", data.Status == "success") }></span><span>{ hero.Status }</span></span>
+			for _, tag := range hero.Tags {
+				<span class={ "px-tx-tag", templ.KV("soroban", strings.EqualFold(tag, "Soroban")) }>{ tag }</span>
+			}
+			<span class="px-tx-meta">Closed in ledger <span class="mono">{ data.Ledger }</span> · { firstNonEmpty(data.TimestampRelative, data.Timestamp) }</span>
+		</div>
+		<h1 class="px-tx-h1">@templ.Raw(hero.TitleHTML)</h1>
+		<p class="px-tx-sub">@templ.Raw(hero.SubtitleHTML)</p>
+		<div class="px-tx-quick">
+			@txQuickItem("From", txSourceLabel(data), false)
+			@txQuickItem("Contract", txContractLabel(data), false)
+			@txQuickItem("Function", txFunctionLabel(data), false)
+			@txQuickItem("Fee", txFeeLabel(data), true)
+		</div>
+		<div class="px-tx-actions"><a class="px-tx-btn primary" href={ templ.SafeURL("/account/" + txSourceFull(data)) }>Watch this address</a><button class="px-tx-btn" data-share={ txShareURL(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)">Copy link</button><button class="px-tx-btn">JSON</button><button class="px-tx-btn" type="button" data-px-tx-open-tab="raw">Raw XDR</button><button class="px-tx-btn">Replay in sandbox</button></div>
+	</div></section>
+}
+
+templ txHeroViz(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
+	switch hero.Kind {
+		case txv2.TxHeroFailure:
+			@txFailureHero(hero)
+		case txv2.TxHeroLifecycle:
+			@txLifecycleHero(hero)
+		case txv2.TxHeroStateChange:
+			@txStateChangeHero(hero)
+		case txv2.TxHeroValueFlow:
+			@txFlow(data)
+		default:
+			@txGenericCallHero(hero)
+	}
+}
+
+templ txStateChangeHero(hero txv2.TxHeroModel) {
+	<section class="px-tx-section px-hero-card px-hero-state"><div class="px-tx-section-head"><h2>What changed</h2><span class="px-tx-section-sub">Contract storage written by this transaction</span></div>
+		<div class="px-hero-rel"><span class="px-tx-avatar">{ avatarInitial(hero.StateChange.Caller) }</span><div><b>{ hero.StateChange.Caller }</b><div class="muted mono">caller</div></div><span class="px-hero-arrow">→ wrote storage →</span><div><b>{ hero.StateChange.Contract }</b><div class="muted mono">{ hero.StateChange.Function }()</div></div></div>
+		<div class="px-hero-summary">@templ.Raw(hero.StateChange.SummaryHTML)</div>
+		@txStateEntries(hero.StateChange.Entries)
+		@txHeroFoot(hero.Meta)
+	</section>
+}
+
+templ txLifecycleHero(hero txv2.TxHeroModel) {
+	<section class="px-tx-section px-hero-card px-hero-life"><div class="px-tx-section-head"><h2>What was { hero.Lifecycle.Verb }</h2><span class="px-tx-section-sub">On-chain entity lifecycle changes</span></div>
+		<div class="px-hero-rel"><span class="px-tx-avatar">{ avatarInitial(hero.Lifecycle.Actor) }</span><div><b>{ hero.Lifecycle.Actor }</b><div class="muted mono">caller</div></div><span class="px-hero-arrow">→ { hero.Lifecycle.Verb } →</span><div><b>{ hero.Lifecycle.Entity }</b><div class="muted mono">entity</div></div></div>
+		<div class="px-hero-summary">@templ.Raw(hero.Lifecycle.SummaryHTML)</div>
+		@txStateEntries(hero.Lifecycle.Entries)
+		@txHeroFoot(hero.Meta)
+	</section>
+}
+
+templ txFailureHero(hero txv2.TxHeroModel) {
+	<section class="px-tx-section px-hero-card px-hero-fail"><div class="px-tx-section-head"><h2>Why it failed</h2><span class="px-tx-section-sub">Where execution stopped, and what the error was</span></div>
+		<div class="px-hero-fail-banner"><span class="glyph">×</span><div><b>Execution reverted</b><div class="mono muted">{ hero.Failure.ErrorCode }</div><p>@templ.Raw(hero.Failure.SummaryHTML)</p></div></div>
+		<div class="px-hero-stack">
+			for _, frame := range hero.Failure.Frames {
+				<div class={ "px-hero-frame", templ.KV("failed", frame.Failed) }><b>{ frame.Name }</b><span class="mono muted">{ frame.Detail }</span><em>{ frame.Status }</em></div>
+			}
+		</div>
+		@txHeroFoot(hero.Meta)
+	</section>
+}
+
+templ txGenericCallHero(hero txv2.TxHeroModel) {
+	<section class="px-tx-section px-hero-card px-hero-generic"><div class="px-tx-section-head"><h2>What was called</h2><span class="px-tx-section-sub">Contract execution summary</span></div>
+		<div class="px-hero-summary">@templ.Raw(hero.GenericCall.SummaryHTML)</div>
+		@txHeroFoot(hero.Meta)
+	</section>
+}
+
+templ txStateEntries(entries []txv2.TxStateEntry) {
+	if len(entries) > 0 {
+		<div class="px-hero-entries">
+			for _, e := range entries {
+				<article class="px-hero-entry"><div class="head"><b>{ e.Key }</b><span>{ e.ChangeType }</span></div><div class="ba"><div><span class="k">before</span><span class="v">@templ.Raw(e.Before)</span></div><div><span class="k">after</span><span class="v">@templ.Raw(e.After)</span></div></div></article>
+			}
+		</div>
+	}
+}
+
+templ txHeroFoot(meta txv2.TxHeroMeta) {
+	<div class="px-tx-flow-foot"><div class="px-tx-flow-foot-item"><span class="k">Fee</span><span class="v mono">{ meta.Fee }</span></div><div class="px-tx-flow-foot-item"><span class="k">Resources</span><span class="v mono">{ meta.Resources }</span></div><div class="px-tx-flow-foot-item"><span class="k">Ledger</span><span class="v mono">{ meta.Ledger }</span></div><div class="px-tx-flow-foot-item"><span class="k">Status</span><span class="v">{ meta.Status }</span></div></div>
+}
+
+templ txFlow(data legacy.TxReceiptData) {
+	<section class="px-tx-section"><div class="px-tx-section-head"><h2>What moved</h2><span class="px-tx-section-sub">Net balance changes after this transaction settled</span></div><div class="px-tx-flow"><div class="px-tx-flow-card">
+		<div class="px-tx-flow-side"><div class="px-tx-party"><div class="px-tx-avatar">{ avatarInitial(data.SourceAddr) }</div><div><div class="px-tx-party-name">{ txSourceName(data) }</div><div class="px-tx-party-addr mono">{ data.SourceAddr }</div></div></div><div class="px-tx-deltas"><div class="px-tx-delta out"><span class="amt">{ firstNonEmpty(data.SourceAmount, "—") }</span><span class="usd">sent</span></div><div class="px-tx-delta in"><span class="amt">{ firstNonEmpty(data.DestAmount, "—") }</span><span class="usd">received</span></div></div></div>
+		<div class="px-tx-flow-mid"><div class="px-tx-flow-rail"><span class="px-tx-flow-pin start"></span><span class="px-tx-flow-line"></span><span class="px-tx-flow-pin end"></span></div><div class="px-tx-flow-via"><div class="px-tx-flow-protocol"><div class="px-tx-flow-logo">≈</div><div><div class="px-tx-flow-name">{ firstNonEmpty(data.ContractName, "Protocol") }</div><div class="px-tx-flow-pool mono">{ firstNonEmpty(data.Route, data.ContractAddr) }</div></div></div><div class="px-tx-flow-rate"><span class="k">Effective rate</span><span class="v"><span class="mono">{ firstNonEmpty(data.EffectiveRate, "—") }</span></span></div></div></div>
+		<div class="px-tx-flow-side"><div class="px-tx-party right"><div class="px-tx-avatar pool">≈</div><div><div class="px-tx-party-name">{ firstNonEmpty(data.ContractName, "Contract") }</div><div class="px-tx-party-addr mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</div></div></div><div class="px-tx-deltas"><div class="px-tx-delta in"><span class="amt">{ invertSigned(data.SourceAmount) }</span><span class="usd">pool in</span></div><div class="px-tx-delta out"><span class="amt">{ invertSigned(data.DestAmount) }</span><span class="usd">pool out</span></div></div></div>
+	</div><div class="px-tx-flow-foot"><div class="px-tx-flow-foot-item"><span class="k">Slippage</span><span class="v">{ firstNonEmpty(data.Slippage, "—") }</span></div><div class="px-tx-flow-foot-item"><span class="k">Path</span><span class="v mono">{ firstNonEmpty(data.Route, "—") }</span></div><div class="px-tx-flow-foot-item"><span class="k">Fee</span><span class="v mono">{ txFeeLabel(data) }</span></div><div class="px-tx-flow-foot-item"><span class="k">Status</span><span class="v">{ txStatusLabel(data.Status) }</span></div></div></div></section>
+}
+
+templ txOperations(data legacy.TxReceiptData) {
+	<div class="px-tx-ops">
+		for _, op := range data.Operations {
+			<article class="px-tx-op">
+				<div class="px-tx-op-head">
+					<span class="px-tx-op-num">#{ op.Index }</span>
+					<div class="px-tx-op-titles">
+						<h3>
+							{ op.Type }
+							if op.Function != "" {
+								<code>{ op.Function }</code>
+							}
+						</h3>
+						<p>{ op.Contract }</p>
+					</div>
+					<span class="px-tx-op-status ok">{ firstNonEmpty(op.Status, "success") }</span>
+				</div>
+				<div class="px-tx-op-body"><div class="px-tx-args">
+					<div class="px-tx-arg"><span class="k">summary</span><span class="v">@templ.Raw(op.SummaryHTML)</span></div>
+					if op.DetailHTML != "" {
+						<div class="px-tx-arg"><span class="k">detail</span><span class="v">@templ.Raw(op.DetailHTML)</span></div>
+					}
+					if op.Contract != "" {
+						<div class="px-tx-arg"><span class="k">contract</span><span class="v mono">{ op.Contract }</span></div>
+					}
+				</div></div>
+			</article>
+		}
+	</div>
+}
+
+templ txEvents(data legacy.TxReceiptData) {
+	<div class="px-tx-events">
+		<div class="px-tx-events-note"><b>{ data.EventsCount } events</b> emitted. Prism groups protocol events with operations to explain what happened in plain language.</div>
+		for _, ev := range data.Events {
+			<article class={ "px-tx-event", "px-tx-event-" + strings.ToLower(ev.Type) }>
+				<div class="px-tx-event-head"><span class="px-tx-event-num">#{ ev.Index }</span><code class="px-tx-event-name">{ ev.Type }</code><span class="px-tx-event-from">from <b>{ ev.Contract }</b></span></div>
+				<div class="px-tx-event-summary">@templ.Raw(ev.DataHTML)</div>
+			</article>
+		}
+	</div>
+}
+
+templ txBalances(data legacy.TxReceiptData) {
+	<div class="px-tx-balance"><div class="px-tx-balance-table">
+		<div class="px-tx-bal-row px-tx-bal-th"><span>Account</span><span>Asset</span><span class="r">Before</span><span class="r">After</span><span class="r">Change</span></div>
+		for _, b := range data.BalanceChanges {
+			<div class="px-tx-bal-row">
+				<span><b>{ b.Account }</b></span>
+				<span><span class="mono">{ b.Asset }</span>
+					if b.IsFee {
+						<span class="muted"> · fee</span>
+					}
+					if b.IsPool {
+						<span class="muted"> · pool</span>
+					}
+				</span>
+				<span class="r mono">—</span><span class="r mono">—</span>
+				<span class={ "r mono", templ.KV("delta-in", b.IsPositive), templ.KV("delta-out", !b.IsPositive) }>{ b.Change }</span>
+			</div>
+		}
+	</div></div>
+}
+
+templ txRaw(data legacy.TxReceiptData) { <div class="px-tx-raw"><div class="px-tx-raw-tabs"><button class="active">Decoded</button><button>Base64</button><button>Soroban-RPC trace</button></div><pre class="px-tx-raw-pre">{ txRawText(data) }</pre></div> }
+
+func txStatusLabel(v string) string { if strings.EqualFold(v, "failed") { return "Failed" }; return "Successful" }
+func txSubtype(data legacy.TxReceiptData) string { v := strings.TrimSpace(data.SemanticSubtype); if v == "" { v = data.SemanticTxType }; return strings.ReplaceAll(strings.ReplaceAll(v, "_", " · "), "dex", "DeFi") }
+func txHeadlineHTML(data legacy.TxReceiptData) string { if strings.TrimSpace(data.HeroTitle) != "" { return headlineFromTitle(data.HeroTitle) }; if data.SummaryHTML != "" { return data.SummaryHTML }; return `<span class="px-tx-actor">Transaction</span> <span class="px-tx-verb">` + data.ShortHash + `</span>` }
+func headlineFromTitle(s string) string { parts := strings.Split(s, " "); if len(parts) == 0 { return s }; out := `<span class="px-tx-actor">` + parts[0] + `</span>`; for _, p := range parts[1:] { cls := "px-tx-verb"; if strings.ContainsAny(p, "0123456789") || strings.EqualFold(p, "XLM") || strings.EqualFold(p, "USDC") { cls = "px-tx-amt" }; out += ` <span class="` + cls + `">` + p + `</span>` }; return out }
+func txNarrativeHTML(data legacy.TxReceiptData) string { if data.AISummaryHTML != "" { return data.AISummaryHTML }; if data.HumanNarrative != "" { return data.HumanNarrative }; if data.SummaryHTML != "" { return data.SummaryHTML }; return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }
+func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
+func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
+func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetected && data.SmartWalletContractShort != "" { return data.SmartWalletContractShort }; return firstNonEmpty(data.EffectiveActorShort, "Source") }
+func txContractLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.ContractName, "Contract") + " " + firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }
+func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }
+func txFeeLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.FeePaidXLM, firstNonEmpty(data.FeePaid, "—")) }
+func txShareURL(data legacy.TxReceiptData) string { return "https://prism.withobsrvr.com/tx/v2/" + data.Hash }
+func avatarInitial(v string) string { v = strings.TrimSpace(v); if v == "" { return "•" }; return strings.ToUpper(string([]rune(v)[0])) }
+func invertSigned(v string) string { v = strings.TrimSpace(v); if strings.HasPrefix(v, "−") { return "+" + strings.TrimPrefix(v, "−") }; if strings.HasPrefix(v, "-") { return "+" + strings.TrimPrefix(v, "-") }; if strings.HasPrefix(v, "+") { return "−" + strings.TrimPrefix(v, "+") }; if v == "" { return "—" }; return v }
+func txRawText(data legacy.TxReceiptData) string { if data.EnvelopeXDR != "" { return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  source: " + firstNonEmpty(data.SourceAddrFull, data.SourceAddr) + "\n  fee: " + firstNonEmpty(data.FeePaid, "—") + " stroops\n  sequence: " + firstNonEmpty(data.SeqNumber, "—") + "\n  xdr: " + data.EnvelopeXDR + "\n}" }; return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  ledger: " + data.LedgerRaw + "\n  operations: " + data.OpsCount + "\n  events: " + data.EventsCount + "\n}" }

@@ -28,7 +28,11 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /v2/home", h.HomeV2)
 	mux.HandleFunc("GET /v2/home/feed", h.HomeV2Feed)
 	mux.HandleFunc("GET /v2/home/ledger", h.HomeLedgerFirstV2)
+	mux.HandleFunc("GET /v2/explore", h.ExploreV2)
 	mux.HandleFunc("GET /search", h.Search)
+	mux.HandleFunc("GET /search/suggest", h.SearchSuggest)
+	mux.HandleFunc("GET /search/submit", h.SearchSubmit)
+	mux.HandleFunc("POST /search/submit", h.SearchSubmit)
 
 	// Ledgers
 	mux.HandleFunc("GET /ledger/{sequence}", h.LedgerDetail)
@@ -36,6 +40,7 @@ func (app *Application) Routes() http.Handler {
 
 	// Transactions
 	mux.HandleFunc("GET /tx/{hash}", h.TransactionReceipt)
+	mux.HandleFunc("GET /v2/tx/{hash}", h.TransactionReceiptV2)
 	mux.HandleFunc("GET /tx/v3/{hash}", h.TransactionReceiptV3)
 	mux.HandleFunc("GET /tx/v2/{hash}", h.TransactionReceiptV2)
 	mux.HandleFunc("GET /tx/v1/{hash}", h.TransactionReceiptV1)
@@ -67,12 +72,15 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /contracts", h.ContractList)
 	mux.HandleFunc("GET /contracts/{id}", h.ContractDetail)
 	mux.HandleFunc("GET /contracts/{id}/events", h.ContractEvents)
+	mux.HandleFunc("GET /v2/contract/{id}", h.ContractDetailV2)
+	mux.HandleFunc("GET /v2/contracts/{id}", h.ContractDetailV2)
 
 	// ─────────────────────────────────────────────
 	// Account routes
 	// ─────────────────────────────────────────────
 
 	mux.HandleFunc("GET /account/{id}", h.AccountPortfolio)
+	mux.HandleFunc("GET /v2/account/{id}", h.GAccountDetailV2)
 	mux.HandleFunc("GET /account/{id}/smart", h.SmartAccountDashboard)
 
 	// ─────────────────────────────────────────────
@@ -112,6 +120,9 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /fragments/home/sidebar", h.HomeSidebarFragment)
 
 	// Transaction detail fragments
+	mux.HandleFunc("GET /fragments/tx/v2/{hash}/hero", h.TxV2HeroFragment)
+	mux.HandleFunc("GET /fragments/tx/v2/{hash}/detail", h.TxV2DetailFragment)
+	mux.HandleFunc("GET /fragments/tx/v2/{hash}/sidebar", h.TxV2SidebarFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/overview", h.TxOverviewFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/operations", h.TxOperationsFragment)
 	mux.HandleFunc("GET /fragments/tx/{hash}/events", h.TxEventsFragment)

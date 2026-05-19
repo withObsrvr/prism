@@ -1,0 +1,24 @@
+package componentsv2
+
+templ NetworkSelector(network string) {
+	<label class="ph-network-select" aria-label="Network selector">
+		<span class={ "dot", networkDotClass(network) } aria-hidden="true"></span>
+		<span class="sr-only">Network</span>
+		<select aria-label="Select network" onchange="document.cookie='prism_network='+this.value+';path=/;max-age=31536000;SameSite=Lax'; window.location.reload()">
+			<option value="mainnet" selected?={ network == "mainnet" }>Mainnet</option>
+			<option value="testnet" selected?={ network == "testnet" }>Testnet</option>
+			<option value="futurenet" selected?={ network == "futurenet" }>Futurenet</option>
+		</select>
+	</label>
+}
+
+func networkDotClass(network string) string {
+	switch network {
+	case "testnet":
+		return "testnet"
+	case "futurenet":
+		return "futurenet"
+	default:
+		return "mainnet"
+	}
+}

@@ -77,6 +77,8 @@ func (c *Client) buildURL(network, path string) string {
 
 // doRequest executes an HTTP request with authentication.
 func (c *Client) doRequest(ctx context.Context, method, rawURL string) ([]byte, error) {
+	start := time.Now()
+	endpoint := gatewayLogEndpoint(rawURL)
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gateway: creating request: %w", err)
@@ -86,23 +88,43 @@ func (c *Client) doRequest(ctx context.Context, method, rawURL string) ([]byte, 
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("gateway: request failed: %w", err)
+		c.logger.Warn("gateway request failed", "method", method, "endpoint", endpoint, "duration", time.Since(start), "error", err)
+		return nil, fmt.Errorf("gateway: request failed %s %s after %s: %w", method, endpoint, time.Since(start), err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("gateway: reading response: %w", err)
+		c.logger.Warn("gateway response read failed", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", time.Since(start), "error", err)
+		return nil, fmt.Errorf("gateway: reading response %s %s after %s: %w", method, endpoint, time.Since(start), err)
 	}
 
 	if resp.StatusCode >= 400 {
+		c.logger.Warn("gateway returned error", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", time.Since(start), "body", string(body))
 		return nil, &APIError{
 			StatusCode: resp.StatusCode,
 			Message:    string(body),
 		}
 	}
 
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		c.logger.Warn("slow gateway request", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", elapsed, "bytes", len(body))
+	} else {
+		c.logger.Debug("gateway request", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", elapsed, "bytes", len(body))
+	}
+
 	return body, nil
+}
+
+func gatewayLogEndpoint(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	if u.RawQuery != "" {
+		return u.Path + "?" + u.RawQuery
+	}
+	return u.Path
 }
 
 // Health checks gateway connectivity.
