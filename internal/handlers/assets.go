@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -207,6 +208,8 @@ func (h *Handlers) buildAssetDirectoryData(r *http.Request, network string) (pag
 	}
 
 	rows := make([]pages.AssetRow, 0, len(resp.Assets))
+	activeFilter := cleanAssetDirectoryFilter(r.URL.Query())
+	searchQuery := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	var (
 		classicCount int64
 		sep41Count   int64
@@ -244,7 +247,7 @@ func (h *Handlers) buildAssetDirectoryData(r *http.Request, network string) (pag
 			initial = "?"
 		}
 
-		rows = append(rows, pages.AssetRow{
+		row := pages.AssetRow{
 			Rank:       i + 1,
 			Code:       code,
 			Slug:       assetSlug(code, a.AssetIssuer),
@@ -262,7 +265,12 @@ func (h *Handlers) buildAssetDirectoryData(r *http.Request, network string) (pag
 			Volume:     "$" + gateway.FormatAbbrev(parseVolume(a.Volume24H)),
 			TypeBadge:  typeBadge,
 			TypeColor:  typeColor,
-		})
+		}
+		if !assetDirectoryRowMatches(row, activeFilter, searchQuery) {
+			continue
+		}
+		row.Rank = len(rows) + 1
+		rows = append(rows, row)
 	}
 
 	if classicCount == 0 && sep41Count == 0 {
@@ -277,13 +285,49 @@ func (h *Handlers) buildAssetDirectoryData(r *http.Request, network string) (pag
 		VolumeChange:  "Live snapshot",
 		Trustlines:    gateway.FormatNumber(trustlines),
 		DEXLiquidity:  "—",
-		ActiveFilter:  "all",
+		ActiveFilter:  activeFilter,
 		CurrentPage:   1,
 		TotalPages:    1,
 		Assets:        rows,
 	}
 
 	return data, nil
+}
+
+func cleanAssetDirectoryFilter(q url.Values) string {
+	if q.Get("verified") == "1" {
+		return "verified"
+	}
+	switch strings.ToLower(strings.TrimSpace(q.Get("type"))) {
+	case "classic":
+		return "classic"
+	case "sep41", "sep-41":
+		return "sep41"
+	default:
+		return "all"
+	}
+}
+
+func assetDirectoryRowMatches(row pages.AssetRow, activeFilter string, searchQuery string) bool {
+	switch activeFilter {
+	case "classic":
+		if row.TypeBadge != "Classic" && row.TypeBadge != "Native" {
+			return false
+		}
+	case "sep41":
+		if row.TypeBadge != "SEP-41" {
+			return false
+		}
+	case "verified":
+		if !row.IsVerified {
+			return false
+		}
+	}
+	if searchQuery == "" {
+		return true
+	}
+	haystack := strings.ToLower(row.Code + " " + row.Name + " " + row.Issuer + " " + row.TypeBadge)
+	return strings.Contains(haystack, searchQuery)
 }
 
 func (h *Handlers) AssetDetail(w http.ResponseWriter, r *http.Request) {

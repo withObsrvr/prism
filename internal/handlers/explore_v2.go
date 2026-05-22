@@ -22,6 +22,7 @@ func (h *Handlers) ExploreV2(w http.ResponseWriter, r *http.Request) {
 	if h.useLiveData(r) {
 		data = exploreV2ShellData(network, filters)
 	}
+	data.LiveHref = exploreLiveURL(r)
 	if err := pagesv2.Explore(data).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render explore v2", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -278,7 +279,7 @@ func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
 		Contract:     derefString(e.ContractID),
 		TxHash:       e.TransactionHash,
 		Ledger:       gateway.FormatNumber(e.LedgerSequence),
-		Events:       strconv.Itoa(maxInt(1, e.EventIndex+1)),
+		Events:       "1",
 		Status:       status,
 		StatusTone:   statusTone,
 		Asset:        asset,
@@ -542,11 +543,17 @@ func extractAmountFromText(text string) string {
 	return ""
 }
 
-func maxInt(a int, b int) int {
-	if a > b {
-		return a
+func exploreLiveURL(r *http.Request) string {
+	q := url.Values{}
+	for key, values := range r.URL.Query() {
+		for _, value := range values {
+			q.Add(key, value)
+		}
 	}
-	return b
+	if q.Encode() == "" {
+		return "/v2/explore/live"
+	}
+	return "/v2/explore/live?" + q.Encode()
 }
 
 func exploreMoreURL(r *http.Request, cursor string) string {

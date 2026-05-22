@@ -12,6 +12,7 @@ type ExploreData struct {
 	HasMore      bool
 	NextCursor   string
 	NextHref     string
+	LiveHref     string
 	Loading      bool
 }
 

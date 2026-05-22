@@ -27,7 +27,7 @@ templ ExploreHeartbeat(data vmv2.ExploreHeaderData, loading bool) {
 templ ExploreMain(data vmv2.ExploreData) {
 	<main class="px-ex-app" id="main-content"
 		if data.Loading {
-			hx-get={ exploreLiveHref(data.Filters) } hx-trigger="load" hx-swap="outerHTML"
+			hx-get={ data.LiveHref } hx-trigger="load" hx-swap="outerHTML"
 		}
 	>
 		<section class="px-ex-control" aria-labelledby="explore-title">
@@ -121,7 +121,7 @@ templ exploreRow(row vmv2.ExploreRow) {
 		<span class="px-ex-time" role="cell"><b>{ row.When }</b><small>{ row.Age }</small></span>
 		<span class="px-ex-meaning" role="cell"><strong>{ row.Headline }</strong><small><span class={ "px-ex-topic", exploreTopicClass(row.Topic) }>{ exploreLabel(row.Topic, "event") }</span> from <code>{ exploreShort(row.From) }</code></small></span>
 		<span class="px-ex-protocol" role="cell"><b>{ exploreLabel(row.Protocol, "Unknown") }</b><small>{ exploreLabel(row.Function, exploreLabel(row.Asset, "contract event")) }</small></span>
-		<span class="px-ex-evidence" role="cell"><code>{ exploreShort(row.TxHash) }</code><small>Ledger { row.Ledger } · { row.Events } event</small></span>
+		<span class="px-ex-evidence" role="cell"><code>{ exploreShort(row.TxHash) }</code><small>Ledger { row.Ledger } · { exploreEventLabel(row.Events) }</small></span>
 		<span class={ "px-ex-status", row.StatusTone } role="cell">{ row.Status }</span>
 	</a>
 }
@@ -140,7 +140,7 @@ templ exploreFilterChip(key string, value string, filters vmv2.ExploreFilters) {
 
 func exploreHeartbeatLedger(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "syncing" }; return data.LedgerNumber }
 func exploreHeartbeatAge(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "latest ledger" }; return data.AgeLabel }
-func exploreLiveHref(f vmv2.ExploreFilters) string { v := url.Values{}; if f.Scope != "" && f.Scope != "all" { v.Set("scope", f.Scope) }; if f.Topic != "" { v.Set("topic", f.Topic) }; if f.Fn != "" { v.Set("fn", f.Fn) }; if f.Asset != "" { v.Set("asset", f.Asset) }; if f.Time != "" && f.Time != "1h" { v.Set("time", f.Time) }; if f.Status != "" { v.Set("status", f.Status) }; if f.Q != "" { v.Set("q", f.Q) }; if v.Encode() == "" { return "/v2/explore/live" }; return "/v2/explore/live?" + v.Encode() }
+func exploreEventLabel(count string) string { count = strings.TrimSpace(count); if count == "" { return "event" }; if count == "1" { return "1 event" }; return count + " events" }
 func hasExploreFilters(f vmv2.ExploreFilters) bool { return strings.TrimSpace(f.Topic) != "" || strings.TrimSpace(f.Fn) != "" || strings.TrimSpace(f.Asset) != "" || strings.TrimSpace(f.Status) != "" || strings.TrimSpace(f.Q) != "" || (f.Scope != "" && f.Scope != "all") || (f.Time != "" && f.Time != "1h") }
 func shouldShowExploreChip(key string, value string) bool { value = strings.TrimSpace(value); if value == "" { return false }; return !(key == "scope" && value == "all") && !(key == "time" && value == "1h") }
 func exploreRemoveFilterHref(key string, f vmv2.ExploreFilters) string { v := url.Values{}; if f.Scope != "" && f.Scope != "all" && key != "scope" { v.Set("scope", f.Scope) }; if f.Topic != "" && key != "topic" { v.Set("topic", f.Topic) }; if f.Fn != "" && key != "fn" { v.Set("fn", f.Fn) }; if f.Asset != "" && key != "asset" { v.Set("asset", f.Asset) }; if f.Time != "" && f.Time != "1h" && key != "time" { v.Set("time", f.Time) }; if f.Status != "" && key != "status" { v.Set("status", f.Status) }; if f.Q != "" && key != "q" { v.Set("q", f.Q) }; if v.Encode() == "" { return "/v2/explore" }; return "/v2/explore?" + v.Encode() }

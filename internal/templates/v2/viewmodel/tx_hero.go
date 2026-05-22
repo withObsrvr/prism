@@ -222,7 +222,7 @@ func classifyTxHero(f txHeroFacts) TxHeroKind {
 
 func buildValueFlowHero(f txHeroFacts) *TxValueFlowHero {
 	d := f.Data
-	return &TxValueFlowHero{FromLabel: firstNonEmpty(f.Actor, "Source"), FromAddress: d.SourceAddr, ToLabel: firstNonEmpty(d.DestAddr, "Destination"), ToAddress: d.DestAddr, Protocol: firstNonEmpty(d.ContractName, f.Contract), Route: d.Route, SentAmount: d.SourceAmount, Received: d.DestAmount, Rate: d.EffectiveRate, Slippage: d.Slippage}
+	return &TxValueFlowHero{FromLabel: firstNonEmpty(f.Actor, "Source"), FromAddress: d.SourceAddr, ToLabel: "Destination", ToAddress: d.DestAddr, Protocol: firstNonEmpty(d.ContractName, f.Contract), Route: d.Route, SentAmount: d.SourceAmount, Received: d.DestAmount, Rate: d.EffectiveRate, Slippage: d.Slippage}
 }
 
 func buildStateChangeHero(f txHeroFacts) *TxStateChangeHero {

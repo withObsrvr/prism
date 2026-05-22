@@ -34,7 +34,7 @@ templ LedgerDetail(data legacy.LedgerDetailData, network string) {
 				@sectionHead("What was inside", data.OpCount + " operations · classified by Prism's interpretation layer")
 				<div class="px-lg-comp"><div class="px-lg-comp-bar">
 					for _, op := range breakdown(data) {
-						<span class={ "px-lg-comp-seg", compClass(op.Color) } style={ "flex: " + op.Count } title={ op.Name + " · " + op.Count }><span class="n">{ op.Count }</span><span class="lab">{ shortOpName(op.Name) }</span></span>
+						<span class={ "px-lg-comp-seg", compClass(op.Color) } style={ "flex: " + op.Count } title={ op.Name + " · " + op.Count }><span class="n">{ op.Count }</span></span>
 					}
 				</div></div>
 				<div class="px-lg-comp-caption"><span class="px-lg-comp-caption-item"><b>{ data.TxSuccess }</b> of { data.TxCount } successful</span><span class="px-lg-comp-caption-sep">·</span><span class="px-lg-comp-caption-item"><b>{ data.EventsEmitted }</b> events emitted</span><span class="px-lg-comp-caption-sep">·</span><span class="px-lg-comp-caption-item"><b>{ touchedAddressCount(data) }</b> unique addresses touched</span></div>

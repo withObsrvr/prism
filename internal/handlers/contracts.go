@@ -41,7 +41,11 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 	if h.useLiveData(r) {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
 			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
-			http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
+			prefix := ""
+			if strings.HasPrefix(r.URL.Path, "/v2/") {
+				prefix = "/v2"
+			}
+			http.Redirect(w, r, prefix+"/account/"+id+"/smart", http.StatusSeeOther)
 			return pages.ContractDetailData{}, false
 		}
 	}

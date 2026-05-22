@@ -363,6 +363,8 @@ func tlDotClass(color string) string {
 	}
 }
 
+func isFullContractID(value string) bool { return len(strings.TrimSpace(value)) == 56 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(value)), "C") }
+
 func tlBadgeClass(color string) string {
 	switch color {
 	case "cyan":
@@ -401,7 +403,7 @@ templ TxStateChanges(changes []pages.TxStateChange) {
 								<span class="font-mono text-xs text-text-primary">{ sc.Key }</span>
 							</td>
 							<td class="px-4 py-3 hidden md:table-cell">
-								if strings.HasPrefix(sc.Contract, "C") {
+								if isFullContractID(sc.Contract) {
 									<a href={ templ.SafeURL("/contracts/" + sc.Contract) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ sc.Contract }</a>
 								} else {
 									<span class="text-xs text-text-strong">{ sc.Contract }</span>

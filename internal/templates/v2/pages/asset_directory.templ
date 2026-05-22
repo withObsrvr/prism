@@ -34,7 +34,7 @@ templ AssetDirectory(data legacy.AssetDirectoryData, network string) {
 					<label><span>Search assets</span><input name="q" type="search" placeholder="USDC, XLM, issuer address, or domain" autocomplete="off"/></label>
 					<button type="submit">Search</button>
 				</form>
-				<div class="px-asset-filterbar" role="tablist" aria-label="Asset type"><a class="active" href="/v2/assets">All</a><a href="/v2/assets?type=classic">Classic</a><a href="/v2/assets?type=sep41"><span class="dot violet"></span>SEP-41</a><a href="/v2/assets?verified=1"><span class="dot green"></span>Verified</a></div>
+				<div class="px-asset-filterbar" role="tablist" aria-label="Asset type"><a class={ templ.KV("active", data.ActiveFilter == "all") } href="/v2/assets">All</a><a class={ templ.KV("active", data.ActiveFilter == "classic") } href="/v2/assets?type=classic">Classic</a><a class={ templ.KV("active", data.ActiveFilter == "sep41") } href="/v2/assets?type=sep41"><span class="dot violet"></span>SEP-41</a><a class={ templ.KV("active", data.ActiveFilter == "verified") } href="/v2/assets?verified=1"><span class="dot green"></span>Verified</a></div>
 			</section>
 			<section class="px-asset-body" aria-labelledby="asset-table-title">
 				<div class="px-asset-main">
