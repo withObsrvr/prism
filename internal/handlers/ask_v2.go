@@ -43,7 +43,7 @@ func (h *Handlers) AskV2(w http.ResponseWriter, r *http.Request) {
 
 func renderAskPage(w http.ResponseWriter, q string, m intent.Match, res intent.Result, network string) {
 	fmt.Fprint(w, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ask Prism</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/css/v2-unified.css"></head><body><div class="px-ask-app">`)
-	renderAskTop(w, network)
+	renderAskTop(w, network, q)
 	fmt.Fprint(w, `<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Home</a><span class="sep">/</span><span class="cur">Ask</span></div></nav>`)
 	fmt.Fprint(w, `<div class="px-ask-page"><div class="px-ask-page-inner"><main class="px-ask-main">`)
 	renderAskBar(w, q)
@@ -55,8 +55,10 @@ func renderAskPage(w http.ResponseWriter, q string, m intent.Match, res intent.R
 	fmt.Fprint(w, `</div></div></div></body></html>`)
 }
 
-func renderAskTop(w http.ResponseWriter, network string) {
-	fmt.Fprint(w, `<header class="ph-top"><div class="ph-top-inner"><a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"/></svg></span><span class="ph-name">prism</span></a><nav class="ph-nav"><a href="/v2/explore">Explore</a><a class="active" href="/v2/ask?q=Is%20Soroswap%20busy%3F">Ask</a><a href="/v2/home#why">Docs</a></nav><div class="ph-right"><div class="ph-net"><span class="dot"></span><span>`)
+func renderAskTop(w http.ResponseWriter, network string, q string) {
+	fmt.Fprint(w, `<header class="ph-top"><div class="ph-top-inner"><a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"/></svg></span><span class="ph-name">prism</span></a><nav class="ph-nav"><a href="/v2/explore">Explore</a><a class="active" href="/v2/ask?q=`)
+	fmt.Fprint(w, html.EscapeString(url.QueryEscape(q)))
+	fmt.Fprint(w, `">Ask</a><a href="/v2/home#why">Docs</a></nav><div class="ph-right"><div class="ph-net"><span class="dot"></span><span>`)
 	fmt.Fprint(w, html.EscapeString(networkLabel(network)))
 	fmt.Fprint(w, `</span></div></div></div></header>`)
 }

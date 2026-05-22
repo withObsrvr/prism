@@ -19,7 +19,7 @@ templ Explore(data vmv2.ExploreData) {
 }
 
 templ ExploreHeartbeat(data vmv2.ExploreHeaderData, loading bool) {
-	<div id="px-ex-heartbeat" class="ph-heartbeat" hx-get="/v2/explore/header" hx-trigger="every 5s" hx-swap="outerHTML">
+	<div id="px-ex-heartbeat" class="ph-heartbeat" hx-get="/v2/explore/header" hx-trigger={ exploreHeartbeatTrigger(loading) } hx-swap="outerHTML">
 		<span class="dot"></span><span>live</span><span class="sep">·</span><span>ledger <b>{ exploreHeartbeatLedger(data, loading) }</b></span><span class="sep">·</span><span>{ exploreHeartbeatAge(data, loading) }</span>
 	</div>
 }
@@ -138,6 +138,7 @@ templ exploreFilterChip(key string, value string, filters vmv2.ExploreFilters) {
 	}
 }
 
+func exploreHeartbeatTrigger(loading bool) string { if loading { return "load, every 5s" }; return "every 5s" }
 func exploreHeartbeatLedger(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "syncing" }; return data.LedgerNumber }
 func exploreHeartbeatAge(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "latest ledger" }; return data.AgeLabel }
 func exploreEventLabel(count string) string { count = strings.TrimSpace(count); if count == "" { return "event" }; if count == "1" { return "1 event" }; return count + " events" }

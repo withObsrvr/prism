@@ -576,7 +576,7 @@ func (h *Handlers) validateHomeV2TTLAttention(r *http.Request, network string, d
 		copy.RemainingLedgers = remaining
 		copy.RemainingHours = int64(math.Ceil(float64(remaining) * 5 / 3600))
 		copy.RemainingHuman = humanizeLedgerRunway(remaining)
-		copy.RunwayPct = float64(remaining) / 1000
+		copy.RunwayPct = homeV2RunwayPctFromLedgers(remaining)
 		name := homeV2FirstNonEmpty(copy.ProtocolName, copy.ContractName, gateway.ShortAddress(copy.ContractID))
 		if copy.ContractName != "" && copy.ProtocolName != "" && copy.ContractName != copy.ProtocolName {
 			name = copy.ProtocolName + " · " + copy.ContractName
@@ -648,6 +648,12 @@ func nearestPersistentStorageRunway(entries []gateway.ContractStorageEntry, curr
 func humanizeLedgerRunway(ledgers int64) string {
 	hours := int64(math.Ceil(float64(ledgers) * 5 / 3600))
 	return humanizeHours(hours)
+}
+
+func homeV2RunwayPctFromLedgers(ledgers int64) float64 {
+	// Home summary runway_pct is a percentage, where 100,000 ledgers of runway is 100%.
+	// Keep the same semantics for locally validated TTL rows before formatting as %.0f%%.
+	return float64(percentOf(ledgers, 100_000))
 }
 
 func buildHomeV2Leaders(summary *gateway.HomeSummaryResponse) vmv2.LeadersSectionData {
