@@ -539,11 +539,14 @@ type ContractStorageResponse struct {
 }
 
 type ContractStorageEntry struct {
-	Key        string `json:"key"`
-	KeyHash    string `json:"key_hash"`
-	Type       string `json:"type"`
-	Durability string `json:"durability"`
-	SizeBytes  int64  `json:"size_bytes"`
+	Key                string `json:"key"`
+	KeyHash            string `json:"key_hash"`
+	Type               string `json:"type"`
+	Durability         string `json:"durability"`
+	SizeBytes          int64  `json:"size_bytes"`
+	LiveUntilLedgerSeq int64  `json:"live_until_ledger_seq"`
+	TTLRemaining       int64  `json:"ttl_remaining"`
+	Expired            bool   `json:"expired"`
 }
 
 // ContractRecentCalls matches /silver/contracts/{id}/recent-calls response.
@@ -634,12 +637,12 @@ type AssetIdentity struct {
 }
 
 type AssetIssuerInfo struct {
-	AccountID        string `json:"account_id,omitempty"`
-	HomeDomain       string `json:"home_domain,omitempty"`
-	AuthRequired     bool   `json:"auth_required,omitempty"`
-	AuthRevocable    bool   `json:"auth_revocable,omitempty"`
-	AuthImmutable    bool   `json:"auth_immutable,omitempty"`
-	AuthClawback     bool   `json:"auth_clawback_enabled,omitempty"`
+	AccountID     string `json:"account_id,omitempty"`
+	HomeDomain    string `json:"home_domain,omitempty"`
+	AuthRequired  bool   `json:"auth_required,omitempty"`
+	AuthRevocable bool   `json:"auth_revocable,omitempty"`
+	AuthImmutable bool   `json:"auth_immutable,omitempty"`
+	AuthClawback  bool   `json:"auth_clawback_enabled,omitempty"`
 }
 
 type AssetTransferBrief struct {

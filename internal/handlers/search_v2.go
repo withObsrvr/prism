@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/intent"
 	prismsearch "github.com/withObsrvr/prism/internal/search"
 )
 
@@ -24,7 +25,11 @@ func (h *Handlers) SearchSuggest(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed, confidence := prismsearch.Parse(q)
 	matches := prismsearch.DefaultRegistry().Search(q, 6)
+	intentMatch, hasIntent := intent.DefaultRegistry().Match(q)
 	fmt.Fprint(w, `<div class="v2-suggest-panel">`)
+	if hasIntent && intentMatch.Confidence >= 0.65 {
+		fmt.Fprintf(w, `<a class="v2-suggest-row primary" href="/v2/ask?q=%s"><span><b>Answer this question</b><small>%s</small></span><strong>Ask</strong></a>`, html.EscapeString(url.QueryEscape(q)), html.EscapeString(questionIntentSummary(intentMatch)))
+	}
 	if qs := parsed.QueryString(); confidence >= 0.45 && qs != "" {
 		fmt.Fprintf(w, `<a class="v2-suggest-row primary" href="/v2/explore?%s"><span><b>Explore this activity</b><small>%s</small></span><strong>Run</strong></a>`, html.EscapeString(qs), html.EscapeString(exploreIntentSummary(parsed)))
 	}
@@ -50,6 +55,10 @@ func (h *Handlers) SearchSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	if redirect := h.detectSmartRedirect(r.Context(), networkFromRequest(r), q); redirect != "" {
 		hxOrRedirect(w, r, redirect)
+		return
+	}
+	if match, ok := intent.DefaultRegistry().Match(q); ok && match.Confidence >= 0.65 {
+		hxOrRedirect(w, r, "/v2/ask?q="+url.QueryEscape(q))
 		return
 	}
 	parsed, confidence := prismsearch.Parse(q)
@@ -123,6 +132,17 @@ func directSuggestionLabel(q, redirect string) string {
 		return "Ledger #" + q
 	default:
 		return "Direct result"
+	}
+}
+
+func questionIntentSummary(m intent.Match) string {
+	switch m.ID {
+	case intent.ExpiringContracts:
+		return "Contracts near TTL expiration · " + m.Slots["time"]
+	case intent.ProtocolBusy:
+		return "Protocol activity · " + m.Slots["protocol"] + " · " + m.Slots["time"]
+	default:
+		return "Deterministic answer with evidence"
 	}
 }
 

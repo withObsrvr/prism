@@ -410,6 +410,7 @@ func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeDa
 	summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2HomeSummaryTimeout)
 	if summary, err := h.Gateway.GetHomeSummary(summaryCtx, network); err == nil && summary != nil {
 		applyHomeSummaryV2(&data, summary)
+		h.validateHomeV2TTLAttention(r, network, &data, summary)
 	} else if err != nil {
 		h.Logger.Warn("home v2 home-summary fetch failed", "network", network, "error", err)
 	}
@@ -541,6 +542,112 @@ func buildHomeV2Attention(summary *gateway.HomeSummaryResponse) vmv2.AttentionSe
 		})
 	}
 	return data
+}
+
+func (h *Handlers) validateHomeV2TTLAttention(r *http.Request, network string, data *vmv2.HomeData, summary *gateway.HomeSummaryResponse) {
+	if h == nil || h.Gateway == nil || data == nil || summary == nil || len(summary.ContractsNeedingAttention) == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2200*time.Millisecond)
+	defer cancel()
+
+	validated := vmv2.AttentionSectionData{
+		Title: "Persistent storage that might need attention",
+		Copy:  "Prism only shows TTL warnings here after checking gateway storage rows and excluding temporary entries, which often expire by design.",
+	}
+	validatedCount := int64(0)
+	var worstRemaining int64
+	validatedNames := []string{}
+	for _, c := range summary.ContractsNeedingAttention {
+		storage, err := h.Gateway.GetContractStorage(ctx, network, c.ContractID, 100)
+		if err != nil || storage == nil {
+			h.Logger.Warn("home v2 TTL validation failed", "network", network, "contract", c.ContractID, "error", err)
+			continue
+		}
+		remaining := nearestPersistentStorageRunway(storage.Entries, summary.Header.LatestLedgerSequence)
+		if remaining <= 0 {
+			continue
+		}
+		validatedCount++
+		if worstRemaining == 0 || remaining < worstRemaining {
+			worstRemaining = remaining
+		}
+		copy := c
+		copy.RemainingLedgers = remaining
+		copy.RemainingHours = int64(math.Ceil(float64(remaining) * 5 / 3600))
+		copy.RemainingHuman = humanizeLedgerRunway(remaining)
+		copy.RunwayPct = float64(remaining) / 1000
+		name := homeV2FirstNonEmpty(copy.ProtocolName, copy.ContractName, gateway.ShortAddress(copy.ContractID))
+		if copy.ContractName != "" && copy.ProtocolName != "" && copy.ContractName != copy.ProtocolName {
+			name = copy.ProtocolName + " · " + copy.ContractName
+		}
+		if len(validatedNames) < 3 {
+			validatedNames = append(validatedNames, name)
+		}
+		if len(validated.Cards) < 4 {
+			validated.Cards = append(validated.Cards, vmv2.AttentionCardData{
+				Kicker:   name,
+				Value:    fmt.Sprintf("~%s left", copy.RemainingHuman),
+				Tone:     attentionTone(copy.Severity),
+				Body:     fmt.Sprintf("Nearest persistent storage entry has about %s ledgers of runway, roughly %s.", gateway.FormatNumber(copy.RemainingLedgers), copy.RemainingHuman),
+				BarColor: attentionBarColor(copy.Severity),
+				BarWidth: fmt.Sprintf("%.0f%%", clampFloat(copy.RunwayPct, 0, 100)),
+				CTA:      "Review storage →",
+				Href:     homeV2ContractHref(copy.ContractID),
+			})
+		}
+	}
+	if validatedCount == 0 {
+		validated.Copy = "Gateway currently reports no persistent storage entries in the expiring window after validation. Temporary entries are excluded because they often expire by design."
+		data.Alert = vmv2.AlertData{
+			Title: "No validated persistent TTL risk right now",
+			Body:  "The gateway summary contained near-expiration rows, but validation showed they were temporary storage or stale TTL rows rather than persistent storage requiring operator action.",
+			Meta:  "Why this matters: temporary entries can expire normally; persistent entries are the ones operators usually need to extend or restore.",
+			CTA:   "Review →",
+		}
+	} else {
+		title := fmt.Sprintf("%s persistent storage entries need TTL attention", gateway.FormatNumber(validatedCount))
+		if validatedCount == 1 {
+			title = "One persistent storage entry needs TTL attention"
+		}
+		body := fmt.Sprintf("%s validated persistent storage entries on %s are nearing expiration after excluding temporary storage. The closest runway is about %s.", gateway.FormatNumber(validatedCount), network, humanizeLedgerRunway(worstRemaining))
+		if len(validatedNames) > 0 {
+			body = fmt.Sprintf("%s validated persistent storage entries on %s are nearing expiration, including %s. The closest runway is about %s.", gateway.FormatNumber(validatedCount), network, strings.Join(validatedNames, ", "), humanizeLedgerRunway(worstRemaining))
+		}
+		data.Alert = vmv2.AlertData{
+			Title: title,
+			Body:  body,
+			Meta:  "Why this matters: persistent storage should be extended before it expires; temporary storage is excluded from this warning because it often expires by design.",
+			CTA:   "Review →",
+		}
+	}
+	data.Attention = validated
+}
+
+func nearestPersistentStorageRunway(entries []gateway.ContractStorageEntry, currentLedger int64) int64 {
+	var nearest int64
+	for _, e := range entries {
+		text := strings.ToLower(e.Type + " " + e.Durability)
+		if !strings.Contains(text, "persistent") {
+			continue
+		}
+		remaining := e.TTLRemaining
+		if e.LiveUntilLedgerSeq > 0 && currentLedger > 0 {
+			remaining = e.LiveUntilLedgerSeq - currentLedger
+		}
+		if remaining <= 0 {
+			continue
+		}
+		if nearest == 0 || remaining < nearest {
+			nearest = remaining
+		}
+	}
+	return nearest
+}
+
+func humanizeLedgerRunway(ledgers int64) string {
+	hours := int64(math.Ceil(float64(ledgers) * 5 / 3600))
+	return humanizeHours(hours)
 }
 
 func buildHomeV2Leaders(summary *gateway.HomeSummaryResponse) vmv2.LeadersSectionData {

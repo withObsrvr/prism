@@ -19,7 +19,7 @@ templ Explore(data vmv2.ExploreData) {
 }
 
 templ ExploreHeartbeat(data vmv2.ExploreHeaderData, loading bool) {
-	<div id="px-ex-heartbeat" class="ph-heartbeat" hx-get="/v2/explore/header" hx-trigger="load, every 5s" hx-swap="outerHTML">
+	<div id="px-ex-heartbeat" class="ph-heartbeat" hx-get="/v2/explore/header" hx-trigger="every 5s" hx-swap="outerHTML">
 		<span class="dot"></span><span>live</span><span class="sep">·</span><span>ledger <b>{ exploreHeartbeatLedger(data, loading) }</b></span><span class="sep">·</span><span>{ exploreHeartbeatAge(data, loading) }</span>
 	</div>
 }
