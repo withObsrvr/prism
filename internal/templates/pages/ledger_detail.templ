@@ -48,6 +48,12 @@ type LedgerDetailData struct {
 	FeeP99       string
 	SurgeActive  bool
 	SurgePct     string
+	// V2 presentation enrichments
+	Narrative       string
+	SubNarrative    string
+	ActivityTag     string
+	SpotlightCards  []LedgerSpotlightCard
+	ChangedAccounts []LedgerChangedAccount
 }
 
 type OpBreakdownItem struct {
@@ -59,16 +65,30 @@ type OpBreakdownItem struct {
 }
 
 type LedgerTx struct {
-	Index   string
-	Status  string // "ok" or "failed"
-	Hash    string
+	Index     string
+	Status    string // "ok" or "failed"
+	Hash      string
 	ShortHash string
-	OpType  string
-	OpColor string // "violet", "cyan", "emerald", "gray"
-	Summary string
-	Ops     string
-	Fee     string
-	IsFailed bool
+	OpType    string
+	OpColor   string // "violet", "cyan", "emerald", "gray"
+	Summary   string
+	Ops       string
+	Fee       string
+	IsFailed  bool
+}
+
+type LedgerSpotlightCard struct {
+	Kicker string
+	Value  string
+	Body   string
+	Tone   string
+}
+
+type LedgerChangedAccount struct {
+	Name    string
+	Address string
+	Touched string
+	Deltas  []string
 }
 
 templ LedgerDetail(data LedgerDetailData) {

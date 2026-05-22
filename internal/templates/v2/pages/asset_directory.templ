@@ -1,0 +1,168 @@
+package pagesv2
+
+import (
+	"fmt"
+	"strings"
+	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+)
+
+templ AssetDirectory(data legacy.AssetDirectoryData, network string) {
+	@layoutsv2.Base("Assets, Prism") {
+		@componentsv2.MainHeader("assets", network) {
+			<div class="ph-heartbeat"><span class="dot"></span><span>live</span><span class="sep">·</span><span>{ data.TotalAssets } assets</span></div>
+		}
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Assets"}})
+		<main class="px-asset-app" id="main-content">
+			<section class="px-asset-hero" aria-labelledby="asset-title">
+				<div class="px-asset-copy">
+					<div class="px-asset-kicker">Asset directory</div>
+					<h1 id="asset-title">The network is carrying <b>{ data.NetworkVolume }</b> in asset volume today.</h1>
+					<p>Classic trustlines and Soroban tokens sit in one evidence view. Start with the economic shape, then open the issuer, holder base, markets, and recent transfers that support it.</p>
+				</div>
+				<aside class="px-asset-ledger" aria-label="Network asset facts">
+					<div class="px-asset-ledger-row"><span>Total assets</span><b class="mono">{ data.TotalAssets }</b></div>
+					<div class="px-asset-ledger-row"><span>Classic</span><b class="mono">{ data.ClassicCount }</b></div>
+					<div class="px-asset-ledger-row"><span>SEP-41</span><b class="mono violet">{ data.SEP41Count }</b></div>
+					<div class="px-asset-ledger-row"><span>Active trustlines</span><b class="mono">{ data.Trustlines }</b></div>
+					<div class="px-asset-ledger-note">Liquidity estimate: <strong>{ data.DEXLiquidity }</strong>. { data.VolumeChange }</div>
+				</aside>
+			</section>
+			<section class="px-asset-controls" aria-label="Asset filters">
+				<form class="px-asset-search" action="/v2/assets" method="GET">
+					<label><span>Search assets</span><input name="q" type="search" placeholder="USDC, XLM, issuer address, or domain" autocomplete="off"/></label>
+					<button type="submit">Search</button>
+				</form>
+				<div class="px-asset-filterbar" role="tablist" aria-label="Asset type"><a class={ templ.KV("active", data.ActiveFilter == "all") } href="/v2/assets">All</a><a class={ templ.KV("active", data.ActiveFilter == "classic") } href="/v2/assets?type=classic">Classic</a><a class={ templ.KV("active", data.ActiveFilter == "sep41") } href="/v2/assets?type=sep41"><span class="dot violet"></span>SEP-41</a><a class={ templ.KV("active", data.ActiveFilter == "verified") } href="/v2/assets?verified=1"><span class="dot green"></span>Verified</a></div>
+			</section>
+			<section class="px-asset-body" aria-labelledby="asset-table-title">
+				<div class="px-asset-main">
+					<div class="px-asset-section-head"><div><div class="px-asset-kicker">Evidence table</div><h2 id="asset-table-title">Assets ranked by activity</h2></div><span>{ fmt.Sprintf("%d shown", len(data.Assets)) }</span></div>
+					<div class="px-asset-table" role="table" aria-label="Assets">
+						<div class="px-asset-thead" role="row"><span>Asset</span><span>Price</span><span>24h</span><span>Volume</span><span>Supply</span><span>Holders</span><span>Type</span></div>
+						for _, asset := range data.Assets {
+							@assetDirectoryRow(asset)
+						}
+					</div>
+				</div>
+				<aside class="px-asset-side" aria-label="How to read this page">
+					<div class="px-asset-side-card"><h3>What Prism checks</h3><p>Verification, issuer concentration, live transfer activity, Soroban wrapper presence, and market depth are kept visible so a token never becomes just a ticker.</p></div>
+					<div class="px-asset-side-card"><h3>Fast reads</h3><div class="px-asset-rule"><span style="width: 64%"></span></div><p><b>Verified</b> means the identity signal is inspectable. <b>SEP-41</b> marks a Soroban token contract or wrapper. Large holder counts do not imply safety.</p></div>
+				</aside>
+			</section>
+		</main>
+	}
+}
+
+templ assetDirectoryRow(asset legacy.AssetRow) {
+	<a class="px-asset-row" role="row" href={ templ.SafeURL(assetV2Href(asset)) }>
+		<span class="px-asset-name" role="cell"><span class={ "px-asset-mark", assetTypeTone(asset) }>{ assetInitial(asset) }</span><span><strong>{ asset.Code }</strong><small>{ assetNameLine(asset) }</small></span></span>
+		<span class="mono num" role="cell">{ asset.Price }</span>
+		<span class={ "px-asset-change mono", templ.KV("down", !asset.IsUp) } role="cell">{ asset.Change }</span>
+		<span class="mono num" role="cell">{ asset.Volume }</span>
+		<span class="mono num muted" role="cell">{ asset.Supply }</span>
+		<span class="mono num" role="cell">{ asset.Holders }</span>
+		<span class={ "px-asset-type", assetTypeTone(asset) } role="cell">{ asset.TypeBadge }</span>
+	</a>
+}
+
+templ AssetDetail(data legacy.AssetPreviewData, network string) {
+	@layoutsv2.Base(data.Code + ", Asset, Prism") {
+		@componentsv2.MainHeader("assets", network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Assets", Href: "/v2/assets"}, {Label: data.Code, Mono: true}})
+		<main class="px-asset-app px-asset-detail" id="main-content">
+			<section class="px-ad-hero" aria-labelledby="asset-detail-title">
+				<div class="px-ad-id"><span class={ "px-ad-mark", assetPreviewTone(data) }>{ assetPreviewInitial(data) }</span><div class="px-ad-title"><div class="px-asset-kicker">Asset</div><h1 id="asset-detail-title">{ assetDisplayName(data) }</h1><div class="px-ad-code"><span class="mono">{ data.Code }</span><span class={ "px-asset-type", assetPreviewTone(data) }>{ data.TypeBadge }</span></div></div></div>
+				<div class="px-ad-summary"><p>@templ.Raw(assetDetailSentence(data))</p><div class="px-ad-hero-facts"><div><span>Issuer</span><b class="mono">{ assetIssuerLine(data) }</b></div><div><span>Verification</span><b>{ verifiedLabel(data.TomlVerified) }</b></div><div><span>Trust flags</span><b>{ authFlags(data) }</b></div></div><div class="px-ad-actions"><a href={ templ.SafeURL("/v2/explore?asset=" + data.Code) }>Explore transfers</a><a href={ templ.SafeURL("/assets/" + data.Slug) }>Open classic view</a></div></div>
+			</section>
+			<section class="px-ad-stats" aria-label="Asset stats">
+				@assetStat("Classic holders", data.ClassicHolders, "accounts holding the classic asset")
+				@assetStat("Trustlines", data.Trustlines, "authorized balances and trustlines")
+				@assetStat("Circulating supply", data.CirculatingSupply, "classic asset supply")
+				@assetStat("24h transfers", data.ClassicTransfers24h, "classic transfer activity")
+				@assetStat("24h volume", data.ClassicVolume24h, "classic movement volume")
+				@assetStat("Top 10", data.Top10Pct, "holder concentration")
+			</section>
+			<section class="px-ad-grid">
+				<main class="px-ad-main">
+					<section class="px-ad-panel"><div class="px-ad-panel-head"><div><div class="px-asset-kicker">Issuer and trust</div><h2>Identity signals</h2></div></div><div class="px-ad-kv">@assetKV("Home domain", firstOrDash(data.HomeDomain), false)@assetKV("Issuer", firstOrDash(data.IssuerAddr), true)@assetKV("Decimals", firstOrDash(data.Decimals), true)@assetKV("stellar.toml", verifiedLabel(data.TomlVerified), false)@assetKV("Auth flags", authFlags(data), false)@assetKV("Clawback", boolLabel(data.AuthClawback), false)</div></section>
+					if data.HasSAC {
+						<section class="px-ad-panel px-ad-sac"><div class="px-ad-panel-head"><div><div class="px-asset-kicker">Stellar Asset Contract</div><h2>SAC / SEP-41 representation</h2></div></div><div class="px-ad-kv">@assetKV("Contract", firstOrDash(data.SACContractID), true)@assetKV("Name", firstOrDash(data.SACName), false)@assetKV("Symbol", firstOrDash(firstNonEmptyAsset(data.SACSymbol, data.Code)), true)@assetKV("Decimals", firstOrDash(data.SACDecimals), true)@assetKV("SAC holders", firstOrDash(data.SACHolderCount), true)@assetKV("Total transfers", firstOrDash(data.SACTransferCount), true)@assetKV("SAC supply", firstOrDash(data.SACSupply), true)@assetKV("24h SAC transfers", firstOrDash(data.SACTransfers24h), true)@assetKV("24h SAC volume", firstOrDash(data.SACVolume24h), true)@assetKV("First seen", firstOrDash(data.SACFirstSeen), false)@assetKV("Last activity", firstOrDash(data.SACLastActivity), false)</div></section>
+					}
+					<section class="px-ad-panel">
+						<div class="px-ad-panel-head"><div><div class="px-asset-kicker">Markets</div><h2>Pairs and liquidity</h2></div></div>
+						if len(data.Pairs) == 0 {
+							<div class="px-ad-empty">No market pairs reported by the gateway for this asset.</div>
+						} else {
+							<div class="px-ad-pairs">
+								for _, pair := range data.Pairs {
+									<div class="px-ad-pair"><span><b>{ data.Code }/{ pair.CounterCode }</b><small>{ pair.Pool }</small></span><span class="mono">{ pair.Liquidity }<small>{ pair.Volume24h } 24h</small></span></div>
+								}
+							</div>
+						}
+					</section>
+					<section class="px-ad-panel">
+						<div class="px-ad-panel-head"><div><div class="px-asset-kicker">Recent evidence</div><h2>Latest transfers</h2></div></div>
+						if len(data.RecentTxs) == 0 {
+							<div class="px-ad-empty">No recent transfer preview returned. Use Explore to search the event stream.</div>
+						} else {
+							<div class="px-ad-activity">
+								for _, tx := range data.RecentTxs {
+									<div class="px-ad-activity-row"><span class={ "kind", txKindTone(tx.Type) }>{ tx.Type }</span><span class="mono amt">{ tx.Amount }</span><span class="mono acct">{ tx.Account }</span><span>{ tx.Age }</span></div>
+								}
+							</div>
+						}
+					</section>
+				</main>
+				<aside class="px-ad-side">
+					<div class="px-ad-side-card"><h3>Distribution</h3><div class="px-ad-meter"><span style={ "width: " + pctWidth(data.Top10Pct) }></span></div>@assetKV("Top 10", data.Top10Pct, true)@assetKV("Top 100", data.Top100Pct, true)@assetKV("Concentration", data.GiniLabel, false)</div>
+					<div class="px-ad-side-card"><h3>Issuer account</h3>@assetKV("Account", firstOrDash(data.IssuerAddr), true)@assetKV("Balance", firstOrDash(data.IssuerBalance), true)@assetKV("Subentries", firstOrDash(data.IssuerSubentries), true)@assetKV("Last modified", firstOrDash(data.IssuerLastModified), true)@assetKV("Created", firstOrDash(data.IssuerCreatedAt), false)</div>
+					<div class="px-ad-side-card"><h3>Related links</h3>
+						if len(data.Links) == 0 {
+							<p>No classic or token-contract links reported yet.</p>
+						} else {
+							<div class="px-ad-links">
+								for _, link := range data.Links {
+									<a href={ templ.SafeURL(link.Href) }><span>{ link.Label }</span><small>{ link.Relation } · { link.Meta }</small></a>
+								}
+							</div>
+						}
+					</div>
+					<div class="px-ad-side-card"><h3>Top holders</h3>
+						if len(data.Holders) == 0 {
+							<p>Holder preview is unavailable for this asset.</p>
+						} else {
+							<div class="px-ad-holders">
+								for _, holder := range data.Holders {
+									<a href={ templ.SafeURL(holder.Href) }><span class="mono">{ holder.Account }</span><b class="mono">{ holder.Balance }</b><small>{ holder.Share }</small></a>
+								}
+							</div>
+						}
+					</div>
+				</aside>
+			</section>
+		</main>
+	}
+}
+
+templ assetKV(k string, v string, mono bool) { <div class="px-ad-kv-row"><span>{ k }</span><b class={ templ.KV("mono", mono) }>{ v }</b></div> }
+
+templ assetStat(label string, value string, note string) { <div class="px-ad-stat"><span>{ label }</span><b class="mono">{ firstOrDash(value) }</b><small>{ note }</small></div> }
+
+func assetV2Href(a legacy.AssetRow) string { if a.Slug != "" { return "/v2/assets/" + a.Slug }; if a.Code != "" { return "/v2/assets/" + a.Code }; return "/v2/assets" }
+func assetInitial(a legacy.AssetRow) string { if strings.TrimSpace(a.Initial) != "" { return a.Initial }; r := []rune(a.Code); if len(r) > 0 { return strings.ToUpper(string(r[0])) }; return "?" }
+func assetNameLine(a legacy.AssetRow) string { if strings.TrimSpace(a.Issuer) != "" { return a.Name + " · " + a.Issuer }; return a.Name }
+func assetTypeTone(a legacy.AssetRow) string { v := strings.ToLower(a.TypeBadge + " " + a.TypeColor); if strings.Contains(v, "sep") || strings.Contains(v, "violet") || strings.Contains(v, "soroban") { return "soroban" }; if strings.Contains(v, "native") { return "native" }; return "classic" }
+func assetPreviewTone(a legacy.AssetPreviewData) string { v := strings.ToLower(a.TypeBadge + " " + a.TypeColor); if strings.Contains(v, "sep") || strings.Contains(v, "violet") || strings.Contains(v, "soroban") { return "soroban" }; if strings.Contains(v, "native") { return "native" }; return "classic" }
+func assetPreviewInitial(a legacy.AssetPreviewData) string { if strings.TrimSpace(a.Initial) != "" { return a.Initial }; r := []rune(a.Code); if len(r) > 0 { return strings.ToUpper(string(r[0])) }; return "?" }
+func assetDisplayName(a legacy.AssetPreviewData) string { if strings.TrimSpace(a.Code) != "" { return a.Code }; name := strings.TrimSpace(a.Name); if i := strings.Index(name, ":"); i > 0 { return name[:i] }; if name != "" { return name }; return "Asset" }
+func assetIssuerLine(a legacy.AssetPreviewData) string { name := strings.TrimSpace(a.Name); if i := strings.Index(name, ":"); i >= 0 && i+1 < len(name) { return name[i+1:] }; return firstOrDash(a.IssuerAddr) }
+func firstOrDash(v string) string { v = strings.TrimSpace(v); if v == "" || v == "—" { return "Not reported" }; return v }
+func firstNonEmptyAsset(values ...string) string { for _, v := range values { if strings.TrimSpace(v) != "" && strings.TrimSpace(v) != "—" { return v } }; return "" }
+func verifiedLabel(ok bool) string { if ok { return "Verified" }; return "Not verified" }
+func boolLabel(ok bool) string { if ok { return "Enabled" }; return "Not enabled" }
+func authFlags(a legacy.AssetPreviewData) string { out := []string{}; if a.AuthRequired { out = append(out, "AUTH_REQUIRED") }; if a.AuthRevocable { out = append(out, "REVOCABLE") }; if len(out) == 0 { return "None" }; return strings.Join(out, ", ") }
+func assetDetailSentence(a legacy.AssetPreviewData) string { if strings.EqualFold(a.Code, "XLM") || strings.Contains(strings.ToLower(a.TypeBadge), "native") { return "Native XLM is the base asset for fees, reserves, and classic Stellar movement. Prism keeps recent activity and holder evidence visible beside the network role." }; if a.HasSAC { return "Prism found a Soroban token link for this asset, so issuer evidence and contract activity should be read together before trusting the ticker." }; return "Prism is reading this as a Stellar asset. Inspect the issuer, verification state, holder concentration, and market evidence before trusting the ticker." }
+func txKindTone(v string) string { v = strings.ToLower(v); if v == "sell" || v == "redeem" { return "out" }; if v == "buy" || v == "issue" { return "in" }; if v == "soroban" { return "soroban" }; return "" }
+func pctWidth(v string) string { v = strings.TrimSpace(strings.TrimSuffix(v, "%")); if v == "" || v == "Not reported" { return "0%" }; return v + "%" }

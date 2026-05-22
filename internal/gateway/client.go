@@ -17,6 +17,8 @@ const (
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
 	TTLRecentList         = 5 * time.Second
 	TTLHomeSummary        = 2 * time.Second
+	TTLHomeSummaryFailure = 10 * time.Second
+	TTLLedgerFeedFailure  = 30 * time.Second
 	TTLImmutable          = 5 * time.Minute
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
@@ -75,6 +77,8 @@ func (c *Client) buildURL(network, path string) string {
 
 // doRequest executes an HTTP request with authentication.
 func (c *Client) doRequest(ctx context.Context, method, rawURL string) ([]byte, error) {
+	start := time.Now()
+	endpoint := gatewayLogEndpoint(rawURL)
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gateway: creating request: %w", err)
@@ -84,23 +88,43 @@ func (c *Client) doRequest(ctx context.Context, method, rawURL string) ([]byte, 
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("gateway: request failed: %w", err)
+		c.logger.Warn("gateway request failed", "method", method, "endpoint", endpoint, "duration", time.Since(start), "error", err)
+		return nil, fmt.Errorf("gateway: request failed %s %s after %s: %w", method, endpoint, time.Since(start), err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("gateway: reading response: %w", err)
+		c.logger.Warn("gateway response read failed", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", time.Since(start), "error", err)
+		return nil, fmt.Errorf("gateway: reading response %s %s after %s: %w", method, endpoint, time.Since(start), err)
 	}
 
 	if resp.StatusCode >= 400 {
+		c.logger.Warn("gateway returned error", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", time.Since(start), "body", string(body))
 		return nil, &APIError{
 			StatusCode: resp.StatusCode,
 			Message:    string(body),
 		}
 	}
 
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		c.logger.Warn("slow gateway request", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", elapsed, "bytes", len(body))
+	} else {
+		c.logger.Debug("gateway request", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", elapsed, "bytes", len(body))
+	}
+
 	return body, nil
+}
+
+func gatewayLogEndpoint(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	if u.RawQuery != "" {
+		return u.Path + "?" + u.RawQuery
+	}
+	return u.Path
 }
 
 // Health checks gateway connectivity.
@@ -351,21 +375,32 @@ func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, seq
 	return &resp, nil
 }
 
+// ledgerFeedNegativeEntry is cached briefly on per-ledger summary failures to
+// avoid repeated 30s waits for the same recent ledgers while the serving
+// endpoint is unhealthy or lagging.
+type ledgerFeedNegativeEntry struct{ err error }
+
 // GetSilverLedgerFeedSummary returns the current rich per-ledger summary used by the /v2/home feed.
 func (c *Client) GetSilverLedgerFeedSummary(ctx context.Context, network string, sequence int64) (*LedgerFeedSummary, error) {
 	cacheKey := fmt.Sprintf("%s:silver_ledger_feed_summary:%d", network, sequence)
 	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*ledgerFeedNegativeEntry); isNeg {
+			return nil, neg.err
+		}
 		return v.(*LedgerFeedSummary), nil
 	}
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
 	if err != nil {
+		c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: err}, TTLLedgerFeedFailure)
 		return nil, err
 	}
 
 	var resp LedgerFeedSummary
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
+		wrapped := fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
+		c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: wrapped}, TTLLedgerFeedFailure)
+		return nil, wrapped
 	}
 
 	c.cache.Set(cacheKey, &resp, TTLImmutable)
@@ -415,21 +450,31 @@ func ledgerSummaryFromFeedSummary(v LedgerFeedSummary) LedgerSummary {
 	}
 }
 
+// homeSummaryNegativeEntry is cached briefly on home-summary failures so one
+// slow gateway endpoint cannot stall every home-page/fragment request.
+type homeSummaryNegativeEntry struct{ err error }
+
 // GetHomeSummary returns the aggregated non-feed data used by /v2/home.
 func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSummaryResponse, error) {
 	cacheKey := fmt.Sprintf("%s:home_summary", network)
 	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*homeSummaryNegativeEntry); isNeg {
+			return nil, neg.err
+		}
 		return v.(*HomeSummaryResponse), nil
 	}
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/home/summary"))
 	if err != nil {
+		c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: err}, TTLHomeSummaryFailure)
 		return nil, err
 	}
 
 	var resp HomeSummaryResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing home summary: %w", err)
+		wrapped := fmt.Errorf("gateway: parsing home summary: %w", err)
+		c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: wrapped}, TTLHomeSummaryFailure)
+		return nil, wrapped
 	}
 
 	c.cache.Set(cacheKey, &resp, TTLHomeSummary)
@@ -752,7 +797,24 @@ func (c *Client) GetContractRecentCalls(ctx context.Context, network string, con
 
 	var result []ContractRecentCall
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("gateway: parsing contract calls: %w", err)
+		var wrapped struct {
+			Calls       []ContractRecentCall `json:"calls"`
+			RecentCalls []ContractRecentCall `json:"recent_calls"`
+			Invocations []ContractRecentCall `json:"invocations"`
+		}
+		if wrappedErr := json.Unmarshal(body, &wrapped); wrappedErr != nil {
+			return nil, fmt.Errorf("gateway: parsing contract calls: %w", err)
+		}
+		switch {
+		case len(wrapped.Calls) > 0:
+			result = wrapped.Calls
+		case len(wrapped.RecentCalls) > 0:
+			result = wrapped.RecentCalls
+		case len(wrapped.Invocations) > 0:
+			result = wrapped.Invocations
+		default:
+			result = []ContractRecentCall{}
+		}
 	}
 
 	c.cache.Set(cacheKey, result, TTLRecentList)
@@ -784,6 +846,163 @@ func (c *Client) GetAssets(ctx context.Context, network string, limit int, sortB
 	}
 
 	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+// GetAssetDetail returns the canonical asset detail endpoint used for native assets,
+// classic assets, and token-contract asset identifiers such as C... .
+func (c *Client) GetAssetDetail(ctx context.Context, network, asset string) (*AssetDetail, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_detail:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetDetail), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetDetail
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset detail: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+func (c *Client) GetAssetLinks(ctx context.Context, network, asset string) (*AssetLinksResponse, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_links:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetLinksResponse), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/links"))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetLinksResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset links: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLContracts)
+	return &result, nil
+}
+
+func (c *Client) GetAssetPairs(ctx context.Context, network, asset string) (*AssetPairsResponse, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_pairs:%s:10", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetPairsResponse), nil
+	}
+	params := url.Values{}
+	params.Set("limit", "10")
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/pairs")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var result AssetPairsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset pairs: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetAssetHolders(ctx context.Context, network, asset string) (*AssetHoldersResponse, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_holders:%s:100", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetHoldersResponse), nil
+	}
+	params := url.Values{}
+	params.Set("limit", "100")
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/holders")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var result AssetHoldersResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing asset holders: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetAssetStats(ctx context.Context, network, asset string) (*AssetStats, error) {
+	if asset == "" {
+		return nil, fmt.Errorf("gateway: empty asset")
+	}
+	cacheKey := fmt.Sprintf("%s:asset_stats:%s", network, asset)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AssetStats), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/stats"))
+	if err != nil {
+		return nil, err
+	}
+	var result AssetStats
+	if err := json.Unmarshal(body, &result); err != nil {
+		var envelope AssetStatsEnvelope
+		if err2 := json.Unmarshal(body, &envelope); err2 != nil {
+			return nil, fmt.Errorf("gateway: parsing asset stats: %w", err)
+		}
+		if envelope.Stats != nil {
+			result = *envelope.Stats
+		}
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetTokenStats(ctx context.Context, network, contractID string) (*TokenStats, error) {
+	if contractID == "" {
+		return nil, fmt.Errorf("gateway: empty contract id")
+	}
+	cacheKey := fmt.Sprintf("%s:token_stats:%s", network, contractID)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TokenStats), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tokens/"+url.PathEscape(contractID)+"/stats"))
+	if err != nil {
+		return nil, err
+	}
+	var result TokenStats
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing token stats: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetTokenTransfers(ctx context.Context, network, contractID string, limit int) (*TokenTransfersResponse, error) {
+	if contractID == "" {
+		return nil, fmt.Errorf("gateway: empty contract id")
+	}
+	if limit <= 0 {
+		limit = 25
+	}
+	cacheKey := fmt.Sprintf("%s:token_transfers:%s:%d", network, contractID, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TokenTransfersResponse), nil
+	}
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tokens/"+url.PathEscape(contractID)+"/transfers")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var result TokenTransfersResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing token transfers: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
 	return &result, nil
 }
 

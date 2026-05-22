@@ -7,13 +7,20 @@ type LeaderCardData struct {
 	EntityMark string
 	EntityTone string
 	Body       string
+	Href       string
 }
 
 templ LeaderCard(data LeaderCardData) {
 	<div class="v2-simple-card v2-leader-card">
 		<div class="v2-simple-card-label">{ data.Label }</div>
 		<div class="v2-simple-card-value">{ data.Value }<small>calls</small></div>
-		<div class="v2-leader-entity"><span class={ "v2-leader-entity-mark", data.EntityTone }>{ data.EntityMark }</span><span>{ data.Entity }</span></div>
+		<div class="v2-leader-entity"><span class={ "v2-leader-entity-mark", data.EntityTone }>{ data.EntityMark }</span>
+			if data.Href != "" {
+				<a href={ templ.SafeURL(data.Href) }>{ data.Entity }</a>
+			} else {
+				<span>{ data.Entity }</span>
+			}
+		</div>
 		<div class="v2-simple-card-body">{ data.Body }</div>
 	</div>
 }

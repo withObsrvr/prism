@@ -1,6 +1,8 @@
 package fragments
 
 import (
+	"strings"
+
 	"github.com/withObsrvr/prism/internal/templates/components"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
@@ -150,7 +152,11 @@ templ TxOperations(ops []pages.TxOperation) {
 								</div>
 								if op.Contract != "" {
 									<div class="flex items-center gap-1.5 mt-0.5 text-xs">
-										<span class="font-mono text-text-muted">{ op.Contract }</span>
+										if op.ContractFull != "" {
+											<a href={ templ.SafeURL("/contracts/" + op.ContractFull) } class="font-mono text-emerald-700 hover:text-emerald-800">{ op.Contract }</a>
+										} else {
+											<span class="font-mono text-text-muted">{ op.Contract }</span>
+										}
 										if op.Function != "" {
 											<span class="text-text-muted">&middot;</span>
 											<span class="font-mono text-violet-600">{ op.Function }</span>
@@ -196,7 +202,11 @@ templ TxEvents(events []pages.TxEvent) {
 								@components.TypeBadge(evt.Type, evt.TypeColor)
 							</td>
 							<td class="px-4 py-3 hidden md:table-cell">
-								<span class="text-xs text-text-strong">{ evt.Contract }</span>
+								if evt.ContractFull != "" {
+									<a href={ templ.SafeURL("/contracts/" + evt.ContractFull) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ evt.Contract }</a>
+								} else {
+									<span class="text-xs text-text-strong">{ evt.Contract }</span>
+								}
 							</td>
 							<td class="px-4 py-3 text-sm">
 								@templ.Raw(evt.DataHTML)
@@ -227,7 +237,11 @@ templ TxBalanceChanges(changes []pages.TxBalanceChange) {
 					for _, bc := range changes {
 						<tr class={ templ.KV("opacity-60", bc.IsFee || bc.IsPool) }>
 							<td class="px-5 py-2.5">
-								<span class="font-mono text-xs text-text-primary">{ bc.Account }</span>
+								if bc.AccountFull != "" {
+									<a href={ templ.SafeURL("/account/" + bc.AccountFull) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ bc.Account }</a>
+								} else {
+									<span class="font-mono text-xs text-text-primary">{ bc.Account }</span>
+								}
 							</td>
 							<td class="px-4 py-2.5 text-right">
 								<span class="text-sm font-medium text-text-primary">{ bc.Asset }</span>
@@ -349,6 +363,8 @@ func tlDotClass(color string) string {
 	}
 }
 
+func isFullContractID(value string) bool { return len(strings.TrimSpace(value)) == 56 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(value)), "C") }
+
 func tlBadgeClass(color string) string {
 	switch color {
 	case "cyan":
@@ -387,7 +403,11 @@ templ TxStateChanges(changes []pages.TxStateChange) {
 								<span class="font-mono text-xs text-text-primary">{ sc.Key }</span>
 							</td>
 							<td class="px-4 py-3 hidden md:table-cell">
-								<span class="text-xs text-text-strong">{ sc.Contract }</span>
+								if isFullContractID(sc.Contract) {
+									<a href={ templ.SafeURL("/contracts/" + sc.Contract) } class="font-mono text-xs text-emerald-700 hover:text-emerald-800">{ sc.Contract }</a>
+								} else {
+									<span class="text-xs text-text-strong">{ sc.Contract }</span>
+								}
 							</td>
 							<td class="px-4 py-3 font-mono text-xs text-text-body">
 								@templ.Raw(sc.DetailHTML)

@@ -54,6 +54,7 @@ type AttentionCardData struct {
 	BarColor string
 	BarWidth string
 	CTA      string
+	Href     string
 }
 
 type AttentionSectionData struct {
@@ -69,6 +70,7 @@ type LeaderCardData struct {
 	EntityMark string
 	EntityTone string
 	Body       string
+	Href       string
 }
 
 type LeadersSectionData struct {

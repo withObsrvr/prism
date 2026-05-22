@@ -3,13 +3,13 @@ package componentsv2
 templ PromptInput(placeholder string) {
 	<div class="v2-prompt-wrap" id="v2-prompt-wrap">
 		<div class="v2-prompt-label">Ask anything about the network —</div>
-		<div class="v2-prompt-box">
+		<form class="v2-prompt-box" action="/search/submit" method="GET">
 			<span class="v2-prompt-icon">
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"></path><path d="M12 7v5l3 2"></path></svg>
 			</span>
-			<input id="v2-prompt-input" class="v2-prompt-input" placeholder={ placeholder } autocomplete="off"/>
-			<span class="v2-kbd">⌘K</span>
-		</div>
+			<input id="v2-prompt-input" class="v2-prompt-input" name="q" placeholder={ placeholder } autocomplete="off" hx-get="/search/suggest" hx-trigger="keyup changed delay:120ms" hx-target="#v2-prompt-results" hx-swap="innerHTML" hx-on::after-request="document.getElementById('v2-prompt-results').hidden = !this.value.trim()"/>
+			<button class="v2-kbd" type="submit">↵</button>
+		</form>
 		<div class="v2-prompt-hints">
 			<button type="button" class="v2-prompt-hint">Which contracts are expiring this week?</button>
 			<button type="button" class="v2-prompt-hint">Show me every agent payment today</button>

@@ -8,11 +8,18 @@ type AttentionCardData struct {
 	BarColor string
 	BarWidth string
 	CTA      string
+	Href     string
 }
 
 templ AttentionCard(data AttentionCardData) {
 	<div class={ "v2-card v2-attention-card", data.Tone }>
-		<div class="v2-card-kicker">{ data.Kicker }</div>
+		<div class="v2-card-kicker">
+			if data.Href != "" {
+				<a href={ templ.SafeURL(data.Href) }>{ data.Kicker }</a>
+			} else {
+				{ data.Kicker }
+			}
+		</div>
 		<div class={ "v2-card-value", data.Tone }>{ data.Value }</div>
 		<div class="v2-card-body">{ data.Body }</div>
 		<div class="v2-card-rule"><span style={ "width:" + data.BarWidth + ";background:" + data.BarColor }></span></div>

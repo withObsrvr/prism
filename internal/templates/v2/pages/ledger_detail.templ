@@ -1,0 +1,245 @@
+package pagesv2
+
+import (
+	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+)
+
+templ LedgerDetail(data legacy.LedgerDetailData, network string) {
+	@layoutsv2.LedgerBase(fmt.Sprintf("Ledger %s, Prism", data.Sequence)) {
+		@componentsv2.DetailHeader(data.SequenceRaw, network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledgers", Href: "/v2/home/ledger"}, {Label: data.Sequence, Mono: true}})
+		<div class="px-lg-nav">
+			<a class="px-lg-nav-btn" href={ templ.SafeURL("/v2/ledger/" + data.PrevSequenceRaw) }><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2L3 6l4 4"></path></svg><span>Previous</span><span class="mono num">{ data.PrevSequence }</span></a>
+			<div class="px-lg-nav-cur"><span class="px-lg-nav-label">Ledger</span><span class="px-lg-nav-num mono">{ data.Sequence }</span></div>
+			<a class="px-lg-nav-btn r" href={ templ.SafeURL("/v2/ledger/" + data.NextSequenceRaw) }><span class="mono num">{ data.NextSequence }</span><span>Next</span><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2l4 4-4 4"></path></svg></a>
+		</div>
+		<section class="px-tx-headline"><div class="px-tx-headline-inner">
+			<div class="px-tx-headline-top"><span class="px-tx-eyebrow">{ data.ClosedAt } · { relativeClosedAt(data) }</span></div>
+			<h1 class="px-lg-h1"><span class="px-tx-verb">Ledger</span> <span class="px-lg-num mono">{ data.Sequence }</span> <span class="px-tx-verb">closed with</span> <span class="px-lg-amt">{ data.OpCount } operations</span> <span class="px-tx-verb">across</span> <span class="px-lg-amt">{ data.TxCount } transactions</span></h1>
+			<p class="px-tx-sub">@templ.Raw(ledgerNarrativeHTML(data))</p>
+			<div class="px-tx-actions">
+				<a class="px-tx-btn primary" href={ templ.SafeURL("/events?ledger=" + data.SequenceRaw) }>Stream from this ledger</a>
+				@shareLedger(data, network)
+				<button class="px-tx-btn">JSON</button><button class="px-tx-btn">Raw XDR</button><button class="px-tx-btn">CSV (operations)</button>
+			</div>
+		</div></section>
+		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
+			<section class="px-tx-section">
+				@sectionHead("What was inside", data.OpCount + " operations · classified by Prism's interpretation layer")
+				<div class="px-lg-comp"><div class="px-lg-comp-bar">
+					for _, op := range breakdown(data) {
+						<span class={ "px-lg-comp-seg", compClass(op.Color) } style={ "flex: " + op.Count } title={ op.Name + " · " + op.Count }><span class="n">{ op.Count }</span></span>
+					}
+				</div></div>
+				<div class="px-lg-comp-caption"><span class="px-lg-comp-caption-item"><b>{ data.TxSuccess }</b> of { data.TxCount } successful</span><span class="px-lg-comp-caption-sep">·</span><span class="px-lg-comp-caption-item"><b>{ data.EventsEmitted }</b> events emitted</span><span class="px-lg-comp-caption-sep">·</span><span class="px-lg-comp-caption-item"><b>{ touchedAddressCount(data) }</b> unique addresses touched</span></div>
+			</section>
+			<section class="px-tx-section">
+				@sectionHead("Soroban spotlight", "Contract state, TTLs, and agent activity surfaced from this ledger.")
+				@stoodOut(data)
+				<div class="px-lg-spot-divider"><span class="px-lg-spot-eyebrow">By dimension</span></div>
+				<div class="px-lg-spot-grid">
+					for _, card := range spotlightCards(data) {
+						@spotCard(card)
+					}
+				</div>
+			</section>
+			<section class="px-tx-section" data-px-ledger-tx-root>
+				<div class="px-tx-section-head"><div><h2>Transactions</h2><span class="px-tx-section-sub" data-px-ledger-tx-summary>{ fmt.Sprintf("%d shown · sorted by execution order", len(data.Transactions)) }</span></div><div class="px-lg-filters" role="tablist" aria-label="Filter transactions"><button class="px-lg-filter active" type="button" data-px-ledger-tx-filter="all" aria-selected="true">All <span class="px-lg-filter-c">{ data.TxCount }</span></button><button class="px-lg-filter" type="button" data-px-ledger-tx-filter="soroban" aria-selected="false">Soroban <span class="px-lg-filter-c">{ data.SorobanCalls }</span></button><button class="px-lg-filter" type="button" data-px-ledger-tx-filter="classic" aria-selected="false">Classic <span class="px-lg-filter-c">{ classicTxCount(data) }</span></button><button class="px-lg-filter" type="button" data-px-ledger-tx-filter="failed" aria-selected="false">Failed <span class="px-lg-filter-c">{ data.TxFailed }</span></button></div></div>
+				<div class="px-lg-txcards">
+					for _, tx := range data.Transactions {
+						@txCard(tx)
+					}
+				</div><div class="px-lg-txfoot"><span data-px-ledger-tx-foot>Showing { fmt.Sprintf("%d", len(data.Transactions)) } of { data.TxCount } transactions</span><a class="px-lg-more">Stream live operations from this ledger →</a></div>
+			</section>
+			<section class="px-tx-section">
+				@sectionHead("Accounts that changed", "Top accounts and contracts touched by this ledger")
+				<div class="px-lg-accts">
+					for _, acct := range changedAccounts(data) {
+						@acctCard(acct)
+					}
+				</div>
+			</section>
+		</main>
+		<aside class="px-tx-side">
+			@sideCard("Ledger") {
+				@sideRow("Sequence", data.Sequence)
+				@sideRow("Hash", data.Hash)
+				@sideRow("Previous", data.PrevHash)
+				@sideRow("Closed at", data.ClosedAt)
+				@sideRow("Close time", data.CloseTime)
+				@sideRow("Protocol", "v" + data.Protocol)
+				@sideRow("Base fee", data.BaseFee + " stroops")
+			}
+			@sideCard("Contents") {
+				@sideRow("Transactions", data.TxCount)
+				@sideRow("Operations", data.OpCount)
+				@sideRow("Events", data.EventsEmitted)
+				@sideRow("Soroban ops", data.SorobanCalls + " (" + data.SorobanPct + ")")
+				@sideRow("Failed", data.TxFailed)
+				@sideRow("Total fees", data.TotalFees + " stroops")
+			}
+			<div class="px-tx-side-card soft"><h4>Validators</h4><p class="px-tx-side-body">Closed by the Stellar validator quorum. Prism avoids naming one validator as the closer; SCP agreement is quorum-based.</p><a class="px-tx-side-link" href="/network">View quorum set →</a></div>
+			<div class="px-tx-side-card"><h4>Adjacent ledgers</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.PrevSequenceRaw) }><span class="px-tx-rel-h mono">{ data.PrevSequence }</span><span class="px-tx-rel-s">previous ledger</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.NextSequenceRaw) }><span class="px-tx-rel-h mono">{ data.NextSequence }</span><span class="px-tx-rel-s">next ledger</span></a></div></div>
+			@recentLedgerSpark(data)
+		</aside>
+		</div></div>
+		@ledgerTxFiltersScript()
+	}
+}
+
+templ ledgerTxFiltersScript() {
+	<script>
+		(function(){
+			if (window.__prismLedgerTxFiltersBound) return;
+			window.__prismLedgerTxFiltersBound = true;
+			function apply(root, filter){
+				if (!root) return;
+				var cards = Array.prototype.slice.call(root.querySelectorAll('[data-px-ledger-tx-card]'));
+				var shown = 0;
+				cards.forEach(function(card){
+					var kind = card.getAttribute('data-px-ledger-tx-kind') || 'soroban';
+					var visible = filter === 'all' || kind === filter;
+					card.hidden = !visible;
+					card.style.display = visible ? '' : 'none';
+					if (visible) shown++;
+				});
+				root.querySelectorAll('[data-px-ledger-tx-filter]').forEach(function(btn){
+					var active = btn.getAttribute('data-px-ledger-tx-filter') === filter;
+					btn.classList.toggle('active', active);
+					btn.setAttribute('aria-selected', active ? 'true' : 'false');
+				});
+				var total = cards.length;
+				var summary = root.querySelector('[data-px-ledger-tx-summary]');
+				if (summary) summary.textContent = shown + ' shown · sorted by execution order';
+				var foot = root.querySelector('[data-px-ledger-tx-foot]');
+				if (foot) foot.textContent = 'Showing ' + shown + ' of ' + total + ' transactions';
+			}
+			document.addEventListener('click', function(event){
+				var btn = event.target.closest('[data-px-ledger-tx-filter]');
+				if (!btn) return;
+				event.preventDefault();
+				apply(btn.closest('[data-px-ledger-tx-root]'), btn.getAttribute('data-px-ledger-tx-filter') || 'all');
+			});
+		})();
+	</script>
+}
+
+templ shareLedger(data legacy.LedgerDetailData, network string) {
+	<details class="px-share">
+		<summary class="px-tx-btn px-share-trigger">
+			<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v6a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V5"></path><path d="M6.5 1v8M4 3.5l2.5-2.5L9 3.5"></path></svg>
+			Share
+		</summary>
+		<div class="px-share-pop">
+			<div class="px-share-arrow"></div>
+			<div class="px-share-head"><div class="px-share-eyebrow">Share this ledger</div><button type="button" class="px-share-close" aria-label="Close" onclick="this.closest('details').removeAttribute('open')">×</button></div>
+			<div class="px-share-preview"><div class="px-share-preview-img"><svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><rect width="1200" height="630" fill="#FBFAF7"></rect><defs><radialGradient id={ "og-warm-" + data.SequenceRaw } cx="0" cy="0" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF7F50" stop-opacity="0.06"></stop><stop offset="1" stop-color="#FF7F50" stop-opacity="0"></stop></radialGradient></defs><rect width="1200" height="630" fill={ "url(#og-warm-" + data.SequenceRaw + ")" }></rect><g transform="translate(64, 56)"><g fill="none" stroke="#D9521E" stroke-linejoin="round"><path d="M22 4 L40 14 L40 30 L22 40 L4 30 L4 14 Z" stroke-width="2.4"></path><path d="M22 4 L22 40 M4 14 L40 30 M40 14 L4 30" stroke-width="1.6" opacity="0.45"></path></g><text x="56" y="32" fill="#1F1B16" font-family="Georgia, serif" font-size="36" font-weight="600">prism</text></g><g transform="translate(1136, 88)" text-anchor="end"><text fill="#9A968C" font-family="ui-monospace, monospace" font-size="13">{ data.ClosedAt } · { strings.ToUpper(networkLabel(network)) }</text></g><text x="64" y="200" fill="#D9521E" font-family="ui-monospace, monospace" font-size="16" font-weight="700" letter-spacing="0.5">LEDGER { data.Sequence } · { strings.ToUpper(firstNonEmpty(data.ActivityTag, "SOROBAN-AWARE")) }</text><text x="64" y="310" fill="#1F1B16" font-family="Georgia, serif" font-size="92" font-weight="500" letter-spacing="-2">{ data.OpCount } operations</text><text x="64" y="396" fill="#56544E" font-family="Georgia, serif" font-size="64" font-weight="500" letter-spacing="-1">across { data.TxCount } transactions</text><text x="64" y="466" fill="#1F1B16" font-family="ui-sans-serif, sans-serif" font-size="22">{ sharePreviewLine(data) }</text><text x="64" y="498" fill="#56544E" font-family="ui-sans-serif, sans-serif" font-size="22">{ data.SorobanCalls } Soroban calls · { data.EventsEmitted } events · { data.TxFailed } failed</text><g transform="translate(64, 540)"><rect x="0" y="0" width="302" height="36" fill="#5E4FA8"></rect><rect x="304" y="0" width="249" height="36" fill="#1F4E5F"></rect><rect x="555" y="0" width="211" height="36" fill="#7A746A"></rect><rect x="768" y="0" width="136" height="36" fill="#B98429"></rect><rect x="906" y="0" width="98" height="36" fill="#D9521E"></rect><rect x="1006" y="0" width="76" height="36" fill="#C9BDA3"></rect></g><text x="64" y="610" fill="#D9521E" font-family="ui-monospace, monospace" font-size="15" font-weight="600">{ shareURL(data) }</text></svg></div><div class="px-share-preview-cap">Card people will see when they paste the link</div></div>
+			<div class="px-share-url"><div class="px-share-url-input mono">{ shareURL(data) }</div><button type="button" class="px-share-url-copy" data-share={ shareURL(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="2.5" width="6" height="6" rx="1"></rect><path d="M5 2.5V1h5v6H8.5"></path></svg>Copy</button></div>
+			<div class="px-share-platforms"><a class="px-share-platform" href={ templ.SafeURL("https://twitter.com/intent/tweet?text=" + shareTweet(data)) } target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>Post to X</a><button type="button" class="px-share-platform" data-share={ shareMarkdown(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5h9M2 6.5h9M2 9.5h6"></path></svg>Copy as Markdown</button><button type="button" class="px-share-platform" data-share={ shareEmbed(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3.5L2 6.5l3 3M8 3.5l3 3-3 3"></path></svg>Copy embed</button></div>
+			<div class="px-share-foot">Press <span class="kbd">⌘</span> <span class="kbd">⇧</span> <span class="kbd">S</span> to share any page</div>
+		</div>
+	</details>
+}
+
+templ stoodOut(data legacy.LedgerDetailData) {
+	<div class="px-lg-stood"><div class="px-lg-stood-eyebrow">What stood out</div><div class="px-lg-stood-grid"><article class="px-lg-stood-card swap"><div class="px-lg-stood-tag">Largest activity</div><h3><b>{ firstTxSummary(data) }</b></h3><p>Representative decoded transaction from this ledger.</p><a class="px-lg-stood-link"><span class="mono">{ firstTxHash(data) }</span> →</a></article><article class="px-lg-stood-card lend"><div class="px-lg-stood-tag">Soroban footprint</div><h3><b>{ data.SorobanCalls }</b> Soroban calls emitted <b>{ data.EventsEmitted }</b> events</h3><p>Runtime and event information comes from Prism's ledger summary pipeline.</p></article><article class="px-lg-stood-card deploy"><div class="px-lg-stood-tag">Fees</div><h3>Total charged: <b>{ data.TotalFees } stroops</b></h3><p>Median fee { data.FeeMedian } · P99/P90 { data.FeeP99 }</p></article></div></div>
+}
+
+templ txCard(tx legacy.LedgerTx) {
+	<a class={ "px-lg-txc", templ.KV("fail", tx.IsFailed) } href={ templ.SafeURL("/v2/tx/" + tx.Hash) } data-px-ledger-tx-card data-px-ledger-tx-kind={ ledgerTxFilterKind(tx) }>
+		<span class="px-lg-txc-num mono">{ pad2(tx.Index) }</span>
+		<div class="px-lg-txc-body"><div class="px-lg-txc-tags"><span class={ "tag", txCardTagClass(tx) }>{ txCardTag(tx) }</span><span class="tag-proto mono">{ txCardProto(tx) }</span></div><div class="px-lg-txc-head">@templ.Raw(tx.Summary)</div><div class="px-lg-txc-meta"><span class="actor"><b>{ txCardActor(tx) }</b></span><span class="sep">·</span><span class="mono"><span class="muted">tx</span> { tx.ShortHash }</span><span class="sep">·</span><span class="mono">{ tx.Ops } ops</span></div></div>
+		<div class="px-lg-txc-trail"><span class={ "px-lg-txc-status", templ.KV("fail", tx.IsFailed), templ.KV("ok", !tx.IsFailed) }>{ txStatus(tx.IsFailed) }</span><span class="px-lg-txc-fee mono">{ tx.Fee } <span class="muted">stroops</span></span><span class="px-lg-txc-arrow">→</span></div>
+	</a>
+}
+
+templ recentLedgerSpark(data legacy.LedgerDetailData) {
+	<div class="px-tx-side-card"><h4>Recent ledgers</h4><div class="px-tx-side-sub">Transaction count over nearby closes</div><div class="px-lg-spark">
+		for _, b := range sparkBars(data) {
+			<a class={ "px-lg-spark-bar", templ.KV("current", b.Current) } style={ "--h: " + b.Height } href={ templ.SafeURL("/v2/ledger/" + b.SequenceRaw) } title={ b.Title }>
+				<span class="px-lg-spark-tip">
+					{ b.Sequence }<br/><span class="muted mono">{ b.TxCount } tx · { data.CloseTime }</span>
+					if b.Current {
+						<br/><b>this ledger</b>
+					}
+				</span>
+			</a>
+		}
+	</div><div class="px-lg-spark-foot"><span>{ data.PrevSequence }</span><span>this ledger</span><span>{ data.Sequence }</span></div><div class="px-lg-spark-callout"><b>{ data.TxCount } transactions</b> landed in this close window.</div></div>
+}
+
+templ quickItem(k string, v string, mono bool) { <div class="px-tx-quick-item"><span class="k">{ k }</span><span class={ "v", templ.KV("mono", mono) }>{ v }</span></div> }
+templ sectionHead(title string, sub string) { <div class="px-tx-section-head"><h2>{ title }</h2><span class="px-tx-section-sub">{ sub }</span></div> }
+templ statCard(k string, v string, of string, width string, tone string) { <div class="px-lg-stat"><span class="k">{ k }</span><span class="v">{ v }<span class="of">{ of }</span></span><span class={ "bar", tone }><span style={ "width: " + width }></span></span></div> }
+templ spotCard(card legacy.LedgerSpotlightCard) {
+	<article class={ "px-lg-spot", spotTone(card.Tone) }>
+		<div class="px-lg-spot-head">
+			<span class="px-lg-spot-ic">{ spotIcon(card.Tone) }</span>
+			<h3 class="px-lg-spot-title">{ card.Kicker }</h3>
+			if card.Tone == "agent" {
+				<span class="px-lg-spot-x402">x402</span>
+			}
+		</div>
+		<div class="px-lg-spot-bign">{ card.Value }</div>
+		<div class="px-lg-spot-because">{ card.Body }</div>
+		<div class="px-lg-spot-items"><div class="px-lg-spot-item"><span class="name">Live classification</span><span class="meta">Prism signal</span></div></div>
+	</article>
+}
+templ txRow(tx legacy.LedgerTx) { <a class={ "px-lg-tx", templ.KV("failed", tx.IsFailed) } href={ templ.SafeURL("/v2/tx/" + tx.Hash) }><span class="px-lg-tx-num">{ pad2(tx.Index) }</span><span class="px-lg-tx-hash mono">{ tx.ShortHash }</span><span class="px-lg-tx-kind"><span class={ "px-lg-kind-pill", txKindClass(tx) }>{ tx.OpType }</span></span><span class="px-lg-tx-summary">@templ.Raw(tx.Summary)</span><span class="px-lg-tx-actor"><span class="muted">unknown</span><br/><span class="mono muted">{ tx.ShortHash }</span></span><span class="px-lg-tx-events r mono">n/a</span><span class="px-lg-tx-fee r mono">{ tx.Fee }</span><span class={ "px-lg-tx-status", templ.KV("fail", tx.IsFailed), templ.KV("ok", !tx.IsFailed) }>{ txStatus(tx.IsFailed) }</span></a> }
+templ acctCard(acct legacy.LedgerChangedAccount) {
+	<article class="px-lg-acct">
+		<div class="px-lg-acct-head"><div class="px-lg-acct-meta"><h3>{ acct.Name }</h3><span class="mono">{ acct.Address }</span></div><div class="px-lg-acct-touched"><span class="n">{ touchedNum(acct.Touched) }</span><span class="l">{ touchedLabel(acct.Touched) }</span></div></div>
+		<ul class="px-lg-acct-deltas">
+			for _, d := range acct.Deltas {
+				<li class={ deltaClass(d) }><span class="mono">{ d }</span></li>
+			}
+		</ul>
+	</article>
+}
+templ sideCard(title string) { <div class="px-tx-side-card"><h4>{ title }</h4>{ children... }</div> }
+templ sideRow(k string, v string) { <div class="px-tx-side-row"><span class="k">{ k }</span><span class="v mono">{ v }</span></div> }
+
+func networkLabel(v string) string { if strings.EqualFold(v,"testnet") { return "Testnet" }; if strings.EqualFold(v,"futurenet") { return "Futurenet" }; return "Mainnet" }
+func firstNonEmpty(v string, fallback string) string { if strings.TrimSpace(v) != "" { return v }; return fallback }
+func defaultLedgerSubNarrative(data legacy.LedgerDetailData) string { return fmt.Sprintf("Closed in %s. %s Soroban calls emitted %s events; %s transactions succeeded and %s failed.", data.CloseTime, data.SorobanCalls, data.EventsEmitted, data.TxSuccess, data.TxFailed) }
+func breakdown(data legacy.LedgerDetailData) []legacy.OpBreakdownItem { if len(data.OpBreakdown)>0 { return data.OpBreakdown }; return []legacy.OpBreakdownItem{{Name:"Transactions",Count:data.TxCount,Color:"bg-gray-400"}} }
+func compClass(c string) string { if strings.Contains(c,"violet") { return "s-swap" }; if strings.Contains(c,"cyan") { return "s-transfer" }; if strings.Contains(c,"emerald") { return "s-lending" }; if strings.Contains(c,"amber") { return "s-events" }; if strings.Contains(c,"gray") { return "s-classic" }; return "s-other" }
+func shortOpName(v string) string { v=strings.TrimPrefix(v,"Invoke "); if len(v)>11 { return v[:11] }; return v }
+func spotTone(v string) string { if v=="failed" { return "fail" }; return v }
+func spotIcon(v string) string { switch v { case "deploy": return "+"; case "ttl": return "⟳"; case "failed": return "×"; case "events": return "ε"; case "state": return "Δ"; case "agent": return "α"; default: return "•" } }
+func spotlightCards(data legacy.LedgerDetailData) []legacy.LedgerSpotlightCard { if len(data.SpotlightCards)>0 { return data.SpotlightCards }; return []legacy.LedgerSpotlightCard{{"New deployments","0","Fresh contract deployments appear here when available.","deploy"},{"TTL extensions","0","Persistent-storage renewals and restores appear here.","ttl"},{"Failed invocations",data.TxFailed,"Application-level Soroban reverts and classic failures.","failed"},{"Events emitted",data.EventsEmitted,"Dominant contract event topics emitted by this ledger.","events"},{"State changes",data.StateWrites,"Ledger-entry writes across contract execution.","state"},{"Agent payments","0","x402 machine-to-machine payments appear here when classified.","agent"}} }
+func firstTxSummary(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { return stripHTMLLocal(data.Transactions[0].Summary) }; return "No transactions loaded" }
+func firstTxHash(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { return data.Transactions[0].ShortHash }; return "No tx" }
+func txKindClass(tx legacy.LedgerTx) string { if tx.IsFailed { return "k-fail" }; switch tx.OpColor { case "violet": return "k-soroban"; case "cyan", "gray": return "k-classic"; default: return "k-soroban" } }
+func txStatus(failed bool) string { if failed { return "✗" }; return "✓" }
+func pad2(v string) string { if len(v)==1 { return "0"+v }; return v }
+func changedAccounts(data legacy.LedgerDetailData) []legacy.LedgerChangedAccount { if len(data.ChangedAccounts)>0 { return data.ChangedAccounts }; return []legacy.LedgerChangedAccount{{Name:"Ledger participants",Address:"transaction set",Touched:data.TxCount+" txs",Deltas:[]string{"fees paid","balances and sequence numbers updated","contract state touched"}}} }
+func touchedNum(v string) string { parts:=strings.Fields(v); if len(parts)>0 { return parts[0] }; return v }
+func touchedLabel(v string) string { parts:=strings.Fields(v); if len(parts)>1 { return parts[1] }; return "txs" }
+func deltaClass(v string) string { if strings.HasPrefix(v,"+") { return "in" }; if strings.HasPrefix(v,"−") || strings.HasPrefix(v,"-") { return "out" }; return "neutral" }
+func stripHTMLLocal(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return string(out) }
+func shareURL(data legacy.LedgerDetailData) string { return "https://prism.withobsrvr.com/ledger/" + data.SequenceRaw }
+func shareTitle(data legacy.LedgerDetailData) string { return fmt.Sprintf("Ledger %s closed with %s operations across %s transactions", data.Sequence, data.OpCount, data.TxCount) }
+func sharePreviewLine(data legacy.LedgerDetailData) string { s:=stripHTMLLocal(firstTxSummary(data)); if strings.TrimSpace(s)=="" || s=="No transactions loaded" { return "Prism decoded this ledger's activity." }; if len([]rune(s))>82 { return string([]rune(s)[:82]) + "…" }; return s }
+func shareTweet(data legacy.LedgerDetailData) string { return url.QueryEscape(shareTitle(data) + ": " + shareURL(data)) }
+func shareMarkdown(data legacy.LedgerDetailData) string { return fmt.Sprintf("[%s](%s)", shareTitle(data), shareURL(data)) }
+func shareEmbed(data legacy.LedgerDetailData) string { return fmt.Sprintf("<iframe src=\"%s/embed\" title=\"Prism ledger %s\" width=\"640\" height=\"360\"></iframe>", shareURL(data), data.Sequence) }
+func relativeClosedAt(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.CloseTime)!="" { return data.CloseTime + " close" }; return "closed" }
+func ledgerNarrativeHTML(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.SubNarrative)!="" { return strings.ReplaceAll(data.SubNarrative, "—", ":") }; return fmt.Sprintf("%s: <b>%s of %s operations</b> were Soroban calls. Closed in <b>%s</b>, paying a combined <span class=\"mono\">%s stroops</span> in fees. %s transactions succeeded and %s failed.", firstNonEmpty(data.ActivityTag,"Soroban-aware"), data.SorobanCalls, data.OpCount, data.CloseTime, data.TotalFees, data.TxSuccess, data.TxFailed) }
+func touchedAddressCount(data legacy.LedgerDetailData) string { if len(data.ChangedAccounts)>0 { return fmt.Sprintf("%d", len(data.ChangedAccounts)) }; return "0" }
+func classicTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if !tx.IsFailed && txKindClass(tx)=="k-classic" { n++ } }; return fmt.Sprintf("%d", n) }; total, _ := strconv.Atoi(strings.ReplaceAll(data.TxCount, ",", "")); failed, _ := strconv.Atoi(strings.ReplaceAll(data.TxFailed, ",", "")); classic := total - failed; if classic < 0 { classic = 0 }; return fmt.Sprintf("%d", classic) }
+func txCardTag(tx legacy.LedgerTx) string { if tx.IsFailed { return "failed" }; if txKindClass(tx)=="k-classic" { return "classic" }; return "soroban" }
+func ledgerTxFilterKind(tx legacy.LedgerTx) string { if tx.IsFailed { return "failed" }; if txKindClass(tx)=="k-classic" { return "classic" }; return "soroban" }
+func txCardTagClass(tx legacy.LedgerTx) string { if tx.IsFailed { return "fail" }; if txKindClass(tx)=="k-classic" { return "classic" }; return "soroban" }
+func txCardProto(tx legacy.LedgerTx) string { op:=strings.ToLower(strings.TrimSpace(tx.OpType)); if op=="" { return "operation" }; if len(op)>18 { return op[:18] }; return op }
+func txCardActor(tx legacy.LedgerTx) string { if tx.IsFailed { return "Failed transaction" }; if txKindClass(tx)=="k-classic" { return "Classic operation" }; return "Soroban call" }
+type sparkBar struct { Sequence string; SequenceRaw string; TxCount string; Height string; Title string; Current bool }
+func sparkBars(data legacy.LedgerDetailData) []sparkBar { base, err := strconv.Atoi(data.SequenceRaw); if err != nil { base, _ = strconv.Atoi(strings.ReplaceAll(data.Sequence, ",", "")) }; heights:=[]int{28,35,22,31,26,30,41,56,37,100}; out:=make([]sparkBar,0,10); for i,h:=range heights { seq:=base-9+i; cur:=i==9; tx:=data.TxCount; if !cur { tx=fmt.Sprintf("%d", 20+(h%23)) }; raw:=fmt.Sprintf("%d", seq); title:=fmt.Sprintf("%s · %s tx", raw, tx); out=append(out, sparkBar{Sequence: formatSeq(raw), SequenceRaw: raw, TxCount: tx, Height: fmt.Sprintf("%d%%", h), Title: title, Current: cur}) }; return out }
+func formatSeq(raw string) string { n:=len(raw); if n<=3 { return raw }; var b strings.Builder; pre:=n%3; if pre==0 { pre=3 }; b.WriteString(raw[:pre]); for i:=pre; i<n; i+=3 { b.WriteString(","); b.WriteString(raw[i:i+3]) }; return b.String() }
+

@@ -13,6 +13,7 @@ import (
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/humanize"
 	"github.com/withObsrvr/prism/internal/templates/pages"
+	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +38,29 @@ func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) AccountPortfolioV1(w http.ResponseWriter, r *http.Request) {
 	data := mockAccountData()
 	pages.AccountPortfolio(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) GAccountDetailV2(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+
+	var data pages.AccountData
+	if h.useLiveData(r) {
+		if live, err := h.buildAccountData(r, network, id); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live v2 account data failed, falling back to mock", "account", id, "error", err)
+		}
+	}
+	if data.Address == "" {
+		data = mockAccountData()
+	}
+	if data.SignerCount == "" {
+		data.SignerCount = fmt.Sprintf("%d", len(data.Signers))
+	}
+	if err := pagesv2.GAccountDetail(data, network).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render v2 g-account detail", "account", id, "error", err)
+	}
 }
 
 func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) (pages.AccountData, error) {
@@ -159,19 +183,20 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 	}
 
 	data := pages.AccountData{
-		Address:      accountID,
-		ShortAddress: gateway.ShortAddress(accountID),
-		TotalValue:   "—",
-		XLMBalance:   acct.Balance + " XLM",
-		Trustlines:   fmt.Sprintf("%d", trustlineCount),
-		ActiveOffers: "0",
-		Subentries:   fmt.Sprintf("%d", acct.NumSubentries),
-		IsFunded:     true,
-		SignerCount:  fmt.Sprintf("%d", len(signers)),
-		Balances:     balances,
-		Activities:   activities,
-		Signers:      signers,
-		Thresholds:   thresholds,
+		Address:        accountID,
+		ShortAddress:   gateway.ShortAddress(accountID),
+		TotalValue:     "—",
+		XLMBalance:     acct.Balance + " XLM",
+		Trustlines:     fmt.Sprintf("%d", trustlineCount),
+		ActiveOffers:   "0",
+		Subentries:     fmt.Sprintf("%d", acct.NumSubentries),
+		SequenceNumber: acct.SequenceNumber,
+		IsFunded:       true,
+		SignerCount:    fmt.Sprintf("%d", len(signers)),
+		Balances:       balances,
+		Activities:     activities,
+		Signers:        signers,
+		Thresholds:     thresholds,
 	}
 	if strings.HasPrefix(accountID, "C") {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(ctx, network, accountID); err == nil && walletInfo != nil && walletInfo.IsSmartWallet {
@@ -194,6 +219,18 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 }
 
 func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request) {
+	data, _ := h.smartAccountDataForRequest(r)
+	pages.SmartAccountV2(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) SmartAccountDashboardV2(w http.ResponseWriter, r *http.Request) {
+	data, network := h.smartAccountDataForRequest(r)
+	if err := pagesv2.SmartAccount(data, network).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render v2 smart account", "contract", r.PathValue("id"), "error", err)
+	}
+}
+
+func (h *Handlers) smartAccountDataForRequest(r *http.Request) (pages.SmartAccountData, string) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
@@ -238,7 +275,7 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 			data.SecurityLog = []pages.SecurityEvent{{Action: "Wallet detected", Detail: "Using fallback mock data", Time: "—", Status: "Info", StatusColor: "blue"}}
 		}
 	}
-	pages.SmartAccountV2(data).Render(r.Context(), w)
+	return data, network
 }
 
 func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {

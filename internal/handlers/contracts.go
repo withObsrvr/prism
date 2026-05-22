@@ -9,6 +9,7 @@ import (
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/humanize"
 	"github.com/withObsrvr/prism/internal/templates/pages"
+	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
 func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +18,22 @@ func (h *Handlers) ContractList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
+	data, ok := h.contractDetailDataForRequest(w, r)
+	if !ok {
+		return
+	}
+	pages.ContractDetail(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) ContractDetailV2(w http.ResponseWriter, r *http.Request) {
+	data, ok := h.contractDetailDataForRequest(w, r)
+	if !ok {
+		return
+	}
+	pagesv2.ContractDetail(data, networkFromRequest(r)).Render(r.Context(), w)
+}
+
+func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.Request) (pages.ContractDetailData, bool) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
@@ -24,8 +41,12 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 	if h.useLiveData(r) {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
 			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
-			http.Redirect(w, r, "/account/"+id+"/smart", http.StatusSeeOther)
-			return
+			prefix := ""
+			if strings.HasPrefix(r.URL.Path, "/v2/") {
+				prefix = "/v2"
+			}
+			http.Redirect(w, r, prefix+"/account/"+id+"/smart", http.StatusSeeOther)
+			return pages.ContractDetailData{}, false
 		}
 	}
 
@@ -35,14 +56,14 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 			data = live
 		} else {
 			h.Logger.Warn("live contract shell data failed", "error", err, "contract", id)
-			data = unavailableContractDetailData(id)
+			data = unavailableContractDetailData(id, network)
 		}
 	}
 	if data.Address == "" {
 		data = mockContractDetailData()
 	}
 
-	pages.ContractDetailV2(data).Render(r.Context(), w)
+	return data, true
 }
 
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {
@@ -54,7 +75,10 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		return pages.ContractDetailData{}, fmt.Errorf("fetching contract detail: metadata=%v analytics=%v", metaErr, analyticsErr)
 	}
 
-	recentCalls, _ := h.Gateway.GetContractRecentCalls(ctx, network, contractID, 10)
+	recentCalls, recentCallsErr := h.Gateway.GetContractRecentCalls(ctx, network, contractID, 10)
+	if recentCallsErr != nil {
+		h.Logger.Warn("contract recent calls failed", "error", recentCallsErr, "contract", contractID, "network", network)
+	}
 	storageResp, _ := h.Gateway.GetContractStorage(ctx, network, contractID, 3)
 
 	data := pages.ContractDetailData{
@@ -293,7 +317,7 @@ func titleCase(s string) string {
 	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
 }
 
-func unavailableContractDetailData(contractID string) pages.ContractDetailData {
+func unavailableContractDetailData(contractID string, network string) pages.ContractDetailData {
 	short := gateway.ShortAddress(contractID)
 	return pages.ContractDetailData{
 		Name:             short,
@@ -309,7 +333,7 @@ func unavailableContractDetailData(contractID string) pages.ContractDetailData {
 		TotalInvocations: "—",
 		FunctionsCount:   "—",
 		SuccessRate:      "—",
-		Narrative:        short + " could not be loaded from live testnet data right now.",
+		Narrative:        short + " could not be loaded from live " + network + " data right now.",
 		Context:          "Prism did not fall back to mock data for this page so the live-data issue is visible during QA.",
 		Signals: []pages.ContractHumanSignal{{
 			Title:    "Live data unavailable",

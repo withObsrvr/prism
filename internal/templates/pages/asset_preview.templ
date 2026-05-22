@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"github.com/withObsrvr/prism/internal/templates/components"
+	"github.com/withObsrvr/prism/internal/templates/layouts"
 )
 
 // AssetPreviewData holds everything the asset slide-out needs.
@@ -10,6 +11,7 @@ import (
 type AssetPreviewData struct {
 	// Identity (from table row)
 	Code       string
+	Slug       string
 	Name       string
 	Initial    string
 	BgColor    string
@@ -21,17 +23,41 @@ type AssetPreviewData struct {
 	IsUp       bool
 
 	// Trust & Issuer (not in table)
-	HomeDomain   string
-	IssuerAddr   string
-	AuthRequired bool
-	AuthRevocable bool
-	TomlVerified bool
+	HomeDomain         string
+	IssuerAddr         string
+	IssuerBalance      string
+	IssuerSubentries   string
+	IssuerLastModified string
+	IssuerCreatedAt    string
+	AuthRequired       bool
+	AuthRevocable      bool
+	AuthImmutable      bool
+	AuthClawback       bool
+	TomlVerified       bool
+	Decimals           string
+
+	// Classic stats (not in table)
+	ClassicHolders      string
+	Trustlines          string
+	CirculatingSupply   string
+	ClassicTransfers24h string
+	ClassicVolume24h    string
 
 	// Soroban integration (not in table)
-	HasSAC           bool
-	SACContractID    string
-	SorobanPools     int
-	SorobanTransfers string
+	HasSAC              bool
+	SACContractID       string
+	SACName             string
+	SACSymbol           string
+	SACDecimals         string
+	SACHolderCount      string
+	SACTransferCount    string
+	SACFirstSeen        string
+	SACLastActivity     string
+	SACSupply           string
+	SACTransfers24h     string
+	SACVolume24h        string
+	SorobanPools        int
+	SorobanTransfers    string
 
 	// Distribution (not in table)
 	Top10Pct    string
@@ -40,6 +66,10 @@ type AssetPreviewData struct {
 
 	// DEX pairs (not in table)
 	Pairs []AssetPair
+
+	// Related links / holders
+	Links   []AssetLink
+	Holders []AssetHolder
 
 	// Recent activity (not in table)
 	RecentTxs []AssetRecentTx
@@ -59,6 +89,20 @@ type AssetRecentTx struct {
 	Age     string
 }
 
+type AssetLink struct {
+	Relation string
+	Label    string
+	Href     string
+	Meta     string
+}
+
+type AssetHolder struct {
+	Account string
+	Balance string
+	Share   string
+	Href    string
+}
+
 // AssetPreview renders a slide-out panel with data you can't see in the table.
 templ AssetPreview(data AssetPreviewData) {
 	<div class="bg-surface-card border-l border-border-default shadow-2xl h-full overflow-y-auto">
@@ -76,6 +120,52 @@ templ AssetPreview(data AssetPreviewData) {
 		</div>
 
 		<div class="px-6 py-5">
+			@assetPreviewContent(data, false)
+		</div>
+	</div>
+}
+
+templ AssetDetail(data AssetPreviewData) {
+	@layouts.Base(data.Code + " — Asset — Prism", "assets") {
+		<main class="mx-auto max-w-[900px] px-4 md:px-8 py-6">
+			<div class="anim mb-4">
+				<a href="/assets" class="inline-flex items-center gap-1.5 text-sm font-medium text-text-body hover:text-text-primary transition-colors">
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+					Back to assets
+				</a>
+			</div>
+			<div class="rounded-2xl border border-border-default bg-surface-card shadow-sm p-6 md:p-7">
+				@assetPreviewContent(data, true)
+			</div>
+
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+				<div hx-get={ "/fragments/assets/" + data.Slug + "/links" } hx-trigger="load" hx-swap="outerHTML">
+					@assetSectionSkeleton("Related Links")
+				</div>
+				<div hx-get={ "/fragments/assets/" + data.Slug + "/holders" } hx-trigger="load" hx-swap="outerHTML">
+					@assetSectionSkeleton("Top Holders")
+				</div>
+			</div>
+
+			<div class="mt-6" hx-get={ "/fragments/assets/" + data.Slug + "/pairs" } hx-trigger="load" hx-swap="outerHTML">
+				@assetSectionSkeleton("Markets & Pools")
+			</div>
+		</main>
+	}
+}
+
+templ assetSectionSkeleton(title string) {
+	<div class="rounded-2xl border border-border-default bg-surface-card shadow-sm p-5">
+		<div class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-4">{ title }</div>
+		<div class="space-y-3">
+			for i := 0; i < 3; i++ {
+				<div class="h-12 rounded-xl bg-surface-subtle animate-pulse"></div>
+			}
+		</div>
+	</div>
+}
+
+templ assetPreviewContent(data AssetPreviewData, fullPage bool) {
 			<!-- Identity + Price (brief recap) -->
 			<div class="flex items-center gap-3 mb-1">
 				<div class={ "flex h-11 w-11 items-center justify-center rounded-full text-white font-bold", data.BgColor }>{ data.Initial }</div>
@@ -227,13 +317,23 @@ templ AssetPreview(data AssetPreviewData) {
 				</div>
 			}
 
-			<!-- CTA -->
-			<a href="/assets" class="flex items-center justify-center gap-2 rounded-lg bg-gray-900 dark:bg-gray-100 px-4 py-3 text-sm font-semibold text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
-				View Full Asset Details
-				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-			</a>
-		</div>
-	</div>
+	if !fullPage {
+		<!-- CTA -->
+		<a href={ templ.SafeURL(assetDetailHref(data)) } class="flex items-center justify-center gap-2 rounded-lg bg-gray-900 dark:bg-gray-100 px-4 py-3 text-sm font-semibold text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
+			View Full Asset Details
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+		</a>
+	}
+}
+
+func assetDetailHref(data AssetPreviewData) string {
+	if data.Slug != "" {
+		return "/assets/" + data.Slug
+	}
+	if data.Code != "" {
+		return "/assets/" + data.Code
+	}
+	return "/assets"
 }
 
 func giniColor(label string) string {

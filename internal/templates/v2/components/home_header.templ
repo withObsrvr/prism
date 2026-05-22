@@ -17,14 +17,7 @@ templ HomeHeader(data HeaderData) {
 			<a href="#">Agents</a>
 			<a href="#">Docs</a>
 		</nav>
-		<div class="v2-network-select-wrap">
-			<span class="v2-network-select-label">Network</span>
-			<select id="v2-network-select" class="v2-network-select" aria-label="Select network">
-				<option value="mainnet" selected?={ data.Network == "mainnet" }>Mainnet</option>
-				<option value="testnet" selected?={ data.Network == "testnet" }>Testnet</option>
-				<option value="futurenet" selected?={ data.Network == "futurenet" }>Futurenet</option>
-			</select>
-		</div>
+		@NetworkSelector(data.Network)
 		<div class="v2-home-status-wrap">
 			<div class="v2-home-status">
 				<span class="v2-home-status-dot"></span>

@@ -6,6 +6,86 @@ import (
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
+// AssetLinks renders related asset / token relationships.
+templ AssetLinks(title string, links []pages.AssetLink) {
+	<div class="rounded-2xl border border-border-default bg-surface-card shadow-sm p-5">
+		<div class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-4">{ title }</div>
+		if len(links) == 0 {
+			@components.EmptyState("search", "No related links", "Gateway did not return linked assets for this entry yet.", "", "")
+		} else {
+			<div class="space-y-3">
+				for _, link := range links {
+					<a href={ templ.SafeURL(link.Href) } class="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-4 py-3 hover:bg-surface-subtle transition-colors">
+						<div>
+							<div class="text-sm font-semibold text-text-primary">{ link.Label }</div>
+							<div class="text-2xs text-text-muted">{ link.Relation }</div>
+						</div>
+						<div class="text-right">
+							<div class="text-2xs text-text-body">{ link.Meta }</div>
+							<svg class="h-4 w-4 text-text-muted ml-auto mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+						</div>
+					</a>
+				}
+			</div>
+		}
+	</div>
+}
+
+// AssetHolders renders the top holder preview table.
+templ AssetHolders(title string, holders []pages.AssetHolder) {
+	<div class="rounded-2xl border border-border-default bg-surface-card shadow-sm p-5">
+		<div class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-4">{ title }</div>
+		if len(holders) == 0 {
+			@components.EmptyState("search", "No holder data", "Gateway did not return holder preview data for this asset yet.", "", "")
+		} else {
+			<div class="space-y-3">
+				for _, holder := range holders {
+					<a href={ templ.SafeURL(holder.Href) } class="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-4 py-3 hover:bg-surface-subtle transition-colors">
+						<div>
+							<div class="font-mono text-xs text-text-primary">{ holder.Account }</div>
+							<div class="text-2xs text-text-muted">{ holder.Balance }</div>
+						</div>
+						<div class="text-sm font-semibold text-text-primary tabular">{ holder.Share }</div>
+					</a>
+				}
+			</div>
+		}
+	</div>
+}
+
+// AssetPairs renders the related market / pool preview.
+templ AssetPairs(title string, pairs []pages.AssetPair) {
+	<div class="rounded-2xl border border-border-default bg-surface-card shadow-sm p-5">
+		<div class="text-2xs font-semibold uppercase tracking-wider text-text-muted mb-4">{ title }</div>
+		if len(pairs) == 0 {
+			@components.EmptyState("search", "No market data", "Gateway did not return related pools or pairs for this asset yet.", "", "")
+		} else {
+			<div class="space-y-3">
+				for _, p := range pairs {
+					<div class="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-4 py-3">
+						<div>
+							<div class="text-sm font-semibold text-text-primary">{ p.CounterCode }</div>
+							<div class="text-2xs text-text-muted">{ p.Pool }</div>
+						</div>
+						<div class="text-right">
+							<div class="text-xs font-semibold text-text-primary tabular">{ p.Liquidity }</div>
+							<div class="text-2xs text-text-muted tabular">{ p.Volume24h } 24h</div>
+						</div>
+					</div>
+				}
+			</div>
+		}
+	</div>
+}
+
+func assetPreviewHref(a pages.AssetRow) string {
+	slug := a.Slug
+	if slug == "" {
+		slug = a.Code
+	}
+	return "/assets/" + slug + "/preview"
+}
+
 // AssetTable renders the asset directory table with pagination.
 templ AssetTable(data pages.AssetDirectoryData) {
 	<div id="asset-table">
@@ -26,7 +106,7 @@ templ AssetTable(data pages.AssetDirectoryData) {
 				<tbody class="divide-y divide-border-subtle">
 					for _, a := range data.Assets {
 						<tr class="group hover:bg-surface-subtle transition-colors cursor-pointer"
-							hx-get={ "/assets/" + a.Code + "/preview" }
+							hx-get={ assetPreviewHref(a) }
 							hx-target="#slideout"
 							hx-swap="innerHTML">
 							<td class="px-6 py-4">

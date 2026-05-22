@@ -580,6 +580,148 @@ type AssetsResponse struct {
 	GeneratedAt string         `json:"generated_at"`
 }
 
+// AssetDetail matches /silver/assets/{asset} — the canonical detail endpoint for
+// native assets, classic assets, and token-contract asset identifiers.
+type AssetDetail struct {
+	CanonicalSlug       string               `json:"canonical_slug,omitempty"`
+	Route               string               `json:"route,omitempty"`
+	AssetCode           string               `json:"asset_code,omitempty"`
+	AssetIssuer         string               `json:"asset_issuer,omitempty"`
+	AssetType           string               `json:"asset_type,omitempty"`
+	DisplayName         string               `json:"display_name,omitempty"`
+	Name                string               `json:"name,omitempty"`
+	Symbol              string               `json:"symbol,omitempty"`
+	Decimals            int                  `json:"decimals,omitempty"`
+	TokenType           string               `json:"token_type,omitempty"`
+	ContractID          string               `json:"contract_id,omitempty"`
+	HomeDomain          string               `json:"home_domain,omitempty"`
+	TomlVerified        bool                 `json:"toml_verified,omitempty"`
+	AuthRequired        bool                 `json:"auth_required,omitempty"`
+	AuthRevocable       bool                 `json:"auth_revocable,omitempty"`
+	AuthImmutable       bool                 `json:"auth_immutable,omitempty"`
+	AuthClawback        bool                 `json:"auth_clawback_enabled,omitempty"`
+	HolderCount         int64                `json:"holder_count,omitempty"`
+	TrustlineCount      int64                `json:"trustline_count,omitempty"`
+	TotalTrustlines     int64                `json:"total_trustlines,omitempty"`
+	CirculatingSupply   string               `json:"circulating_supply,omitempty"`
+	Volume24H           string               `json:"volume_24h,omitempty"`
+	Transfers24H        int64                `json:"transfers_24h,omitempty"`
+	UniqueAccounts24H   int64                `json:"unique_accounts_24h,omitempty"`
+	Top10Concentration  float64              `json:"top_10_concentration,omitempty"`
+	Top100Concentration float64              `json:"top_100_concentration,omitempty"`
+	LinkedTokenContract string               `json:"linked_token_contract,omitempty"`
+	LinkedContractID    string               `json:"linked_contract_id,omitempty"`
+	LinkedTokenType     string               `json:"linked_token_type,omitempty"`
+	LinkedClassicAsset  string               `json:"linked_classic_asset,omitempty"`
+	Asset               *AssetIdentity       `json:"asset,omitempty"`
+	Issuer              *AssetIssuerInfo     `json:"issuer,omitempty"`
+	Stats               *AssetStatsEnvelope  `json:"stats,omitempty"`
+	LinkedTokens        []AssetLinkSummary   `json:"linked_tokens,omitempty"`
+	RecentTransfers     []AssetTransferBrief `json:"recent_transfers,omitempty"`
+	TransferPreview     []AssetTransferBrief `json:"transfer_preview,omitempty"`
+	TopPairs            []AssetPairSummary   `json:"top_pairs,omitempty"`
+	PairsPreview        []AssetPairSummary   `json:"pairs_preview,omitempty"`
+	TopHolders          []AssetHolderSummary `json:"top_holders,omitempty"`
+	HoldersPreview      []AssetHolderSummary `json:"holders_preview,omitempty"`
+	Links               []AssetLinkSummary   `json:"links,omitempty"`
+	LinksPreview        []AssetLinkSummary   `json:"links_preview,omitempty"`
+}
+
+type AssetIdentity struct {
+	Code   string `json:"code,omitempty"`
+	Issuer string `json:"issuer,omitempty"`
+	Type   string `json:"type,omitempty"`
+}
+
+type AssetIssuerInfo struct {
+	AccountID        string `json:"account_id,omitempty"`
+	HomeDomain       string `json:"home_domain,omitempty"`
+	AuthRequired     bool   `json:"auth_required,omitempty"`
+	AuthRevocable    bool   `json:"auth_revocable,omitempty"`
+	AuthImmutable    bool   `json:"auth_immutable,omitempty"`
+	AuthClawback     bool   `json:"auth_clawback_enabled,omitempty"`
+}
+
+type AssetTransferBrief struct {
+	Timestamp             string `json:"timestamp,omitempty"`
+	TransactionHash       string `json:"transaction_hash,omitempty"`
+	LedgerSequence        int64  `json:"ledger_sequence,omitempty"`
+	SourceType            string `json:"source_type,omitempty"`
+	FromAccount           string `json:"from_account,omitempty"`
+	ToAccount             string `json:"to_account,omitempty"`
+	AssetCode             string `json:"asset_code,omitempty"`
+	TokenContractID       string `json:"token_contract_id,omitempty"`
+	Amount                string `json:"amount,omitempty"`
+	TransactionSuccessful bool   `json:"transaction_successful,omitempty"`
+}
+
+type AssetPairSummary struct {
+	CounterAsset string `json:"counter_asset,omitempty"`
+	CounterCode  string `json:"counter_code,omitempty"`
+	Pool         string `json:"pool,omitempty"`
+	Liquidity    string `json:"liquidity,omitempty"`
+	Volume24H    string `json:"volume_24h,omitempty"`
+}
+
+type AssetHolderSummary struct {
+	Account  string  `json:"account,omitempty"`
+	Balance  string  `json:"balance,omitempty"`
+	SharePct float64 `json:"share_pct,omitempty"`
+}
+
+type AssetLinkSummary struct {
+	Relation      string `json:"relation,omitempty"`
+	Label         string `json:"label,omitempty"`
+	CanonicalSlug string `json:"canonical_slug,omitempty"`
+	Route         string `json:"route,omitempty"`
+	AssetCode     string `json:"asset_code,omitempty"`
+	AssetIssuer   string `json:"asset_issuer,omitempty"`
+	ContractID    string `json:"contract_id,omitempty"`
+	TokenType     string `json:"token_type,omitempty"`
+	TokenName     string `json:"token_name,omitempty"`
+	TokenSymbol   string `json:"token_symbol,omitempty"`
+	TokenDecimals int    `json:"token_decimals,omitempty"`
+}
+
+type AssetLinksResponse struct {
+	Asset        string             `json:"asset,omitempty"`
+	Links        []AssetLinkSummary `json:"links"`
+	LinkedTokens []AssetLinkSummary `json:"linked_tokens,omitempty"`
+}
+
+type AssetPairsResponse struct {
+	Asset string             `json:"asset,omitempty"`
+	Pairs []AssetPairSummary `json:"pairs"`
+}
+
+type AssetHoldersResponse struct {
+	Asset   string               `json:"asset,omitempty"`
+	Holders []AssetHolderSummary `json:"holders"`
+	Count   int                  `json:"count,omitempty"`
+	HasMore bool                 `json:"has_more,omitempty"`
+	Cursor  string               `json:"cursor,omitempty"`
+}
+
+type AssetStatsEnvelope struct {
+	Asset       *AssetIdentity `json:"asset,omitempty"`
+	Stats       *AssetStats    `json:"stats,omitempty"`
+	GeneratedAt string         `json:"generated_at,omitempty"`
+}
+
+type AssetStats struct {
+	Asset               *AssetIdentity `json:"asset,omitempty"`
+	HolderCount         int64          `json:"holder_count,omitempty"`
+	TotalHolders        int64          `json:"total_holders,omitempty"`
+	TrustlineCount      int64          `json:"trustline_count,omitempty"`
+	TotalTrustlines     int64          `json:"total_trustlines,omitempty"`
+	CirculatingSupply   string         `json:"circulating_supply,omitempty"`
+	Volume24H           string         `json:"volume_24h,omitempty"`
+	Transfers24H        int64          `json:"transfers_24h,omitempty"`
+	UniqueAccounts24H   int64          `json:"unique_accounts_24h,omitempty"`
+	Top10Concentration  float64        `json:"top_10_concentration,omitempty"`
+	Top100Concentration float64        `json:"top_100_concentration,omitempty"`
+}
+
 // TransferEvent matches /silver/transfers response items.
 type TransferEvent struct {
 	Timestamp             string `json:"timestamp"`
@@ -1076,6 +1218,37 @@ type Token struct {
 	LastActivity  string `json:"last_activity,omitempty"`
 }
 
+type TokenStats struct {
+	Symbol         string `json:"symbol,omitempty"`
+	TokenType      string `json:"token_type,omitempty"`
+	HolderCount    int64  `json:"holder_count,omitempty"`
+	TotalSupply    string `json:"total_supply,omitempty"`
+	TotalSupplyRaw int64  `json:"total_supply_raw,omitempty"`
+	Transfers24H   int64  `json:"transfers_24h,omitempty"`
+	Volume24H      string `json:"volume_24h,omitempty"`
+	Volume24HRaw   int64  `json:"volume_24h_raw,omitempty"`
+}
+
+type TokenTransfer struct {
+	EventID        string `json:"event_id,omitempty"`
+	LedgerSequence int64  `json:"ledger_sequence,omitempty"`
+	TxHash         string `json:"tx_hash,omitempty"`
+	ClosedAt       string `json:"closed_at,omitempty"`
+	EventType      string `json:"event_type,omitempty"`
+	From           string `json:"from,omitempty"`
+	To             string `json:"to,omitempty"`
+	Amount         string `json:"amount,omitempty"`
+	SourceType     string `json:"source_type,omitempty"`
+	OperationType  int    `json:"operation_type,omitempty"`
+}
+
+type TokenTransfersResponse struct {
+	Transfers []TokenTransfer `json:"transfers"`
+	Count     int             `json:"count,omitempty"`
+	HasMore   bool            `json:"has_more,omitempty"`
+	Cursor    string          `json:"cursor,omitempty"`
+}
+
 // LedgerFullResponse matches /silver/ledger/{seq}/full — a composite endpoint returning
 // ledger header, transactions, operations, fee distribution, and Soroban stats in one call.
 // Replaces the 6-call fan-out used by the ledger detail page.
@@ -1463,25 +1636,36 @@ type ExplorerEventLedgerRange struct {
 }
 
 type ExplorerEvent struct {
-	EventID         string  `json:"event_id"`
-	Type            string  `json:"type"`
-	Protocol        *string `json:"protocol"`
-	ContractID      *string `json:"contract_id"`
-	ContractName    *string `json:"contract_name"`
-	ContractSymbol  *string `json:"contract_symbol"`
-	LedgerSequence  int64   `json:"ledger_sequence"`
-	TransactionHash string  `json:"transaction_hash"`
-	ClosedAt        string  `json:"closed_at"`
-	Successful      bool    `json:"successful"`
-	Topic0          *string `json:"topic0"`
-	Topic1          *string `json:"topic1"`
-	Topic2          *string `json:"topic2"`
-	Topic3          *string `json:"topic3"`
-	TopicsDecoded   *string `json:"topics_decoded"`
-	Data            *string `json:"data"`
-	DataDecoded     *string `json:"data_decoded"`
-	EventIndex      int     `json:"event_index"`
-	OperationIndex  int     `json:"operation_index"`
+	EventID                  string  `json:"event_id"`
+	Type                     string  `json:"type"`
+	Protocol                 *string `json:"protocol"`
+	ContractID               *string `json:"contract_id"`
+	ContractName             *string `json:"contract_name"`
+	ContractSymbol           *string `json:"contract_symbol"`
+	LedgerSequence           int64   `json:"ledger_sequence"`
+	TransactionHash          string  `json:"transaction_hash"`
+	ClosedAt                 string  `json:"closed_at"`
+	Successful               bool    `json:"successful"` // Deprecated API alias; use TransactionSuccessful for UI status.
+	TransactionSuccessful    *bool   `json:"transaction_successful"`
+	InSuccessfulContractCall *bool   `json:"in_successful_contract_call"`
+	Topic0                   *string `json:"topic0"`
+	Topic1                   *string `json:"topic1"`
+	Topic2                   *string `json:"topic2"`
+	Topic3                   *string `json:"topic3"`
+	TopicsDecoded            *string `json:"topics_decoded"`
+	Data                     *string `json:"data"`
+	DataDecoded              *string `json:"data_decoded"`
+	EventIndex               int     `json:"event_index"`
+	OperationIndex           int     `json:"operation_index"`
+}
+
+// PublicSuccessful returns the transaction-scoped event status for explorer UI.
+// It falls back to the deprecated successful field for compatibility with older Gateway responses.
+func (e ExplorerEvent) PublicSuccessful() bool {
+	if e.TransactionSuccessful != nil {
+		return *e.TransactionSuccessful
+	}
+	return e.Successful
 }
 
 // --- Transaction Effects ---

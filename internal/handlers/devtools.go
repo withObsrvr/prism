@@ -152,12 +152,10 @@ func mapExplorerEvent(e gateway.ExplorerEvent) pages.FirehoseEvent {
 		fe.DetailMeta = *e.Protocol
 	}
 
-	// TODO: re-enable once the API populates `successful` correctly.
-	// Currently all events return successful=false regardless of actual tx status.
-	// if !e.Successful {
-	// 	fe.AlertBadge = "Failed"
-	// 	fe.AlertColor = "red"
-	// }
+	if !e.PublicSuccessful() {
+		fe.AlertBadge = "Failed"
+		fe.AlertColor = "red"
+	}
 
 	return fe
 }

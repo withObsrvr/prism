@@ -51,9 +51,21 @@ func (app *Application) recoverPanic(next http.Handler) http.Handler {
 type statusWriter struct {
 	http.ResponseWriter
 	status int
+	wrote  bool
 }
 
 func (sw *statusWriter) WriteHeader(code int) {
+	if sw.wrote {
+		return
+	}
+	sw.wrote = true
 	sw.status = code
 	sw.ResponseWriter.WriteHeader(code)
+}
+
+func (sw *statusWriter) Write(b []byte) (int, error) {
+	if !sw.wrote {
+		sw.WriteHeader(sw.status)
+	}
+	return sw.ResponseWriter.Write(b)
 }

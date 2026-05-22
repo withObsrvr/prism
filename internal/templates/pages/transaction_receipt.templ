@@ -147,22 +147,25 @@ type TxOperation struct {
 	IsPrimary   bool
 	Status      string
 	SummaryHTML string
-	Contract    string
-	Function    string
-	DetailHTML  string
+	Contract     string
+	ContractFull string
+	Function     string
+	DetailHTML   string
 }
 
 type TxEvent struct {
 	Index    string
 	Type     string
 	TypeColor string
-	Contract string
-	DataHTML string
+	Contract     string
+	ContractFull string
+	DataHTML     string
 }
 
 type TxBalanceChange struct {
-	Account   string
-	Asset     string
+	Account     string
+	AccountFull string
+	Asset       string
 	AssetType string
 	TypeColor string
 	Change    string
