@@ -8,6 +8,7 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -286,12 +287,19 @@ func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query strin
 	}
 	if cls.Type == prismsearch.ClassContract {
 		if h.Gateway != nil {
-			if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, q); err == nil && info != nil && info.IsSmartWallet {
+			walletCtx, walletCancel := context.WithTimeout(ctx, 750*time.Millisecond)
+			if info, err := h.Gateway.GetSmartWalletInfo(walletCtx, network, q); err == nil && info != nil && info.IsSmartWallet {
+				walletCancel()
 				return "/v2/account/" + q
 			}
-			if _, err := h.Gateway.GetAssetDetail(ctx, network, q); err == nil {
+			walletCancel()
+
+			assetCtx, assetCancel := context.WithTimeout(ctx, 750*time.Millisecond)
+			if _, err := h.Gateway.GetAssetDetail(assetCtx, network, q); err == nil {
+				assetCancel()
 				return "/assets/" + q
 			}
+			assetCancel()
 		}
 	}
 	return cls.URL()
@@ -1296,7 +1304,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	// Build summary HTML from the summary description.
-	summaryHTML := html.EscapeString(summary.Description)
+	summaryHTML := linkifyBlockchainRefs(summary.Description)
 	if summaryHTML == "" && len(txFull.Operations) == 1 {
 		summaryHTML = buildOperationSummary(txFull.Operations[0])
 	}
@@ -1381,14 +1389,15 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		opSummary := buildOperationSummary(op)
 
 		ops = append(ops, pages.TxOperation{
-			Index:       fmt.Sprintf("%d", op.Index+1),
-			Type:        gateway.OperationDisplayName(op.TypeName),
-			IsSoroban:   op.IsSorobanOp,
-			IsPrimary:   op.Index == 0,
-			Status:      opStatus,
-			SummaryHTML: opSummary,
-			Contract:    gateway.ShortAddress(op.ContractID),
-			Function:    op.FunctionName,
+			Index:        fmt.Sprintf("%d", op.Index+1),
+			Type:         gateway.OperationDisplayName(op.TypeName),
+			IsSoroban:    op.IsSorobanOp,
+			IsPrimary:    op.Index == 0,
+			Status:       opStatus,
+			SummaryHTML:  opSummary,
+			Contract:     gateway.ShortAddress(op.ContractID),
+			ContractFull: op.ContractID,
+			Function:     op.FunctionName,
 		})
 	}
 
@@ -1416,18 +1425,19 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			}
 			dataHTML = fmt.Sprintf(`<span class="font-medium">%s</span>`, html.EscapeString(display))
 			if evt.From != "" {
-				dataHTML += fmt.Sprintf(` from <span class="font-mono text-xs">%s</span>`, html.EscapeString(gateway.ShortAddress(evt.From)))
+				dataHTML += ` from ` + accountLinkHTML(evt.From, gateway.ShortAddress(evt.From), "font-mono text-xs text-emerald-700 hover:text-emerald-800")
 			}
 			if evt.To != "" {
-				dataHTML += fmt.Sprintf(` to <span class="font-mono text-xs">%s</span>`, html.EscapeString(gateway.ShortAddress(evt.To)))
+				dataHTML += ` to ` + accountLinkHTML(evt.To, gateway.ShortAddress(evt.To), "font-mono text-xs text-emerald-700 hover:text-emerald-800")
 			}
 		}
 		evts = append(evts, pages.TxEvent{
-			Index:     fmt.Sprintf("%d", i),
-			Type:      evt.EventType,
-			TypeColor: typeColor,
-			Contract:  gateway.ShortAddress(evt.ContractID),
-			DataHTML:  dataHTML,
+			Index:        fmt.Sprintf("%d", i),
+			Type:         evt.EventType,
+			TypeColor:    typeColor,
+			Contract:     gateway.ShortAddress(evt.ContractID),
+			ContractFull: evt.ContractID,
+			DataHTML:     dataHTML,
 		})
 	}
 
@@ -1445,12 +1455,13 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			assetType = "Native"
 		}
 		balChanges = append(balChanges, pages.TxBalanceChange{
-			Account:    gateway.ShortAddress(bc.Account),
-			Asset:      asset,
-			AssetType:  assetType,
-			TypeColor:  "gray",
-			Change:     bc.Delta,
-			IsPositive: isPositive,
+			Account:     gateway.ShortAddress(bc.Account),
+			AccountFull: bc.Account,
+			Asset:       asset,
+			AssetType:   assetType,
+			TypeColor:   "gray",
+			Change:      bc.Delta,
+			IsPositive:  isPositive,
 		})
 	}
 
@@ -1475,7 +1486,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 					if assetType == "" {
 						assetType = "Classic"
 					}
-					balChanges = append(balChanges, pages.TxBalanceChange{Account: gateway.ShortAddress(bc.Address), Asset: asset, AssetType: assetType, TypeColor: "gray", Change: bc.Delta, IsPositive: isPositive})
+					balChanges = append(balChanges, pages.TxBalanceChange{Account: gateway.ShortAddress(bc.Address), AccountFull: bc.Address, Asset: asset, AssetType: assetType, TypeColor: "gray", Change: bc.Delta, IsPositive: isPositive})
 				}
 			}
 			for _, sc := range diffs.StateChanges {
@@ -1508,7 +1519,7 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		if eff.Asset != nil {
 			asset = eff.Asset.Code
 		}
-		summary := html.EscapeString(gateway.EffectDisplayName(effectType))
+		summary := fmt.Sprintf(`%s %s`, accountLinkHTML(eff.AccountID, gateway.ShortAddress(eff.AccountID), "font-mono text-xs text-emerald-700 hover:text-emerald-800"), html.EscapeString(gateway.EffectDisplayName(effectType)))
 		if amount != "" {
 			display := amount
 			if asset != "" {
@@ -1748,10 +1759,63 @@ func dedupeHumanSignals(items []pages.TxHumanSignal) []pages.TxHumanSignal {
 // with decoded arguments, similar to stellar.expert's display:
 //
 //	mint(GCFB…TEKT, 10000000i128)
-//
+var blockchainRefRE = regexp.MustCompile(`\b(?:[GC][A-Z2-7]{20,}|[a-fA-F0-9]{64})\b`)
+
+func accountLinkHTML(addr, label, class string) string {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return html.EscapeString(label)
+	}
+	return fmt.Sprintf(`<a href="/account/%s" class="%s">%s</a>`, url.PathEscape(addr), html.EscapeString(class), html.EscapeString(firstNonEmpty(label, gateway.ShortAddress(addr))))
+}
+
+func contractLinkHTML(addr, label, class string) string {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return html.EscapeString(label)
+	}
+	return fmt.Sprintf(`<a href="/contracts/%s" class="%s">%s</a>`, url.PathEscape(addr), html.EscapeString(class), html.EscapeString(firstNonEmpty(label, gateway.ShortAddress(addr))))
+}
+
+func txLinkHTML(hash, label, class string) string {
+	hash = strings.TrimSpace(hash)
+	if hash == "" {
+		return html.EscapeString(label)
+	}
+	return fmt.Sprintf(`<a href="/tx/%s" class="%s">%s</a>`, url.PathEscape(hash), html.EscapeString(class), html.EscapeString(firstNonEmpty(label, gateway.ShortHash(hash))))
+}
+
+func linkifyBlockchainRefs(text string) string {
+	if strings.TrimSpace(text) == "" {
+		return ""
+	}
+	matches := blockchainRefRE.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return html.EscapeString(text)
+	}
+	var b strings.Builder
+	last := 0
+	linkClass := "font-mono text-xs text-emerald-700 hover:text-emerald-800"
+	for _, m := range matches {
+		b.WriteString(html.EscapeString(text[last:m[0]]))
+		value := text[m[0]:m[1]]
+		switch value[0] {
+		case 'G':
+			b.WriteString(accountLinkHTML(value, gateway.ShortAddress(value), linkClass))
+		case 'C':
+			b.WriteString(contractLinkHTML(value, gateway.ShortAddress(value), linkClass))
+		default:
+			b.WriteString(txLinkHTML(value, gateway.ShortHash(value), linkClass))
+		}
+		last = m[1]
+	}
+	b.WriteString(html.EscapeString(text[last:]))
+	return b.String()
+}
+
 // buildOperationSummary produces a human-readable HTML summary for a single operation.
 func buildOperationSummary(op gateway.DecodedOperation) string {
-	source := html.EscapeString(gateway.ShortAddress(op.SourceAccount))
+	source := accountLinkHTML(op.SourceAccount, gateway.ShortAddress(op.SourceAccount), "font-mono text-text-primary text-emerald-700 hover:text-emerald-800")
 
 	// Soroban contract calls — use decoded args when available.
 	if op.FunctionName != "" && op.ArgumentsJSON != "" {
@@ -1763,7 +1827,7 @@ func buildOperationSummary(op gateway.DecodedOperation) string {
 	}
 
 	displayName := strings.ToLower(gateway.OperationDisplayName(op.TypeName))
-	dest := html.EscapeString(gateway.ShortAddress(op.Destination))
+	dest := accountLinkHTML(op.Destination, gateway.ShortAddress(op.Destination), "font-mono text-text-primary text-emerald-700 hover:text-emerald-800")
 	asset := op.AssetCode
 	if asset == "" {
 		asset = "XLM"
@@ -1951,14 +2015,14 @@ func formatSorobanCall(source, functionName, argsJSON string) string {
 	// Parse the arguments JSON array.
 	var args []map[string]any
 	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
-		return fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> called <span class="font-mono text-violet-600">%s</span>`,
-			html.EscapeString(gateway.ShortAddress(source)), html.EscapeString(functionName))
+		return fmt.Sprintf(`%s called <span class="font-mono text-violet-600">%s</span>`,
+			accountLinkHTML(source, gateway.ShortAddress(source), "font-medium text-emerald-700 hover:text-emerald-800"), html.EscapeString(functionName))
 	}
 
 	// Format each argument concisely.
 	formattedArgs := make([]string, 0, len(args))
 	for _, arg := range args {
-		formattedArgs = append(formattedArgs, html.EscapeString(formatScVal(arg)))
+		formattedArgs = append(formattedArgs, formatScValHTML(arg))
 	}
 
 	argsStr := ""
@@ -1969,10 +2033,24 @@ func formatSorobanCall(source, functionName, argsJSON string) string {
 		argsStr += `<span class="font-mono text-xs">` + a + `</span>`
 	}
 
-	return fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> <span class="font-mono text-violet-600">%s</span>(%s)`,
-		html.EscapeString(gateway.ShortAddress(source)),
+	return fmt.Sprintf(`%s <span class="font-mono text-violet-600">%s</span>(%s)`,
+		accountLinkHTML(source, gateway.ShortAddress(source), "font-medium text-emerald-700 hover:text-emerald-800"),
 		html.EscapeString(functionName),
 		argsStr)
+}
+
+// formatScValHTML formats a decoded Soroban ScVal for display and links addresses.
+func formatScValHTML(val map[string]any) string {
+	valType, _ := val["type"].(string)
+	if valType == "account" || valType == "contract" {
+		if addr, ok := val["address"].(string); ok {
+			if valType == "contract" {
+				return contractLinkHTML(addr, gateway.ShortAddress(addr), "font-mono text-xs text-emerald-700 hover:text-emerald-800")
+			}
+			return accountLinkHTML(addr, gateway.ShortAddress(addr), "font-mono text-xs text-emerald-700 hover:text-emerald-800")
+		}
+	}
+	return html.EscapeString(formatScVal(val))
 }
 
 // formatScVal formats a decoded Soroban ScVal for display.

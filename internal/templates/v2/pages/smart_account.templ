@@ -1,0 +1,174 @@
+package pagesv2
+
+import (
+	"fmt"
+	"strings"
+
+	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+)
+
+templ SmartAccount(data legacy.SmartAccountData, network string) {
+	@layoutsv2.LedgerBase(data.Name + " — Prism") {
+		@componentsv2.DetailHeader(data.ContractID, network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Smart accounts"}, {Label: saShort(data.ContractID), Mono: true}})
+		<div class="px-tx-page"><div class="px-tx-page-inner">
+			<main class="px-tx-main">
+				@smartIdentity(data)
+				@smartControls(data)
+				@smartEvidenceTabs(data)
+			</main>
+			@smartRightRail(data)
+		</div></div>
+		@smartTabsScript()
+	}
+}
+
+templ smartIdentity(data legacy.SmartAccountData) {
+	<section class="px-tx-section px-cn-id px-sa-hero">
+		<div class="px-ga-hero-grid">
+			<div class="px-ga-hero-main">
+				<div class="px-ga-hero-intro">
+					<div><div class="px-ga-hero-kicker">Smart account portfolio</div><h1 class="px-ga-hero-name">{ data.Name }</h1></div>
+					<div class="px-ga-hero-address"><span class="k">Contract</span><code>{ saChunk(data.ContractID) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.ContractID } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button></div>
+				</div>
+				<div class="px-ga-hero-portfolio" aria-label="Smart account summary">
+					<div class="px-ga-hero-balance"><span class="k">Estimated value</span><span class="v mono">{ data.TotalBalance }</span><span class="unit">{ data.BalanceCents } USD</span></div>
+					<div class="px-ga-hero-facts"><div><span>Approval</span><b>{ saFirst(data.MinSigners, data.ApprovalSummary) }</b></div><div><span>Signers</span><b>{ fmt.Sprintf("%d keys", len(data.Signers)) }</b></div><div><span>TTL</span><b>{ saFirst(data.Health.TTLRemaining, "unknown") }</b></div></div>
+					<div class="px-sa-confidence"><span>Prism confidence</span><b>{ saFirst(data.Confidence, "behavior detected") }</b><p>{ saFirst(data.ApprovalSummary, "Prism detected smart-wallet behavior, signer hints, and contract metadata for this account.") }</p></div>
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ smartControls(data legacy.SmartAccountData) {
+	<section class="px-tx-detail px-sa-controls" data-sa-tabs-root>
+		<div class="px-tx-detail-inner">
+			<div class="px-tx-tabs" role="tablist" aria-label="Smart account controls">
+				@smartTab("signers", "Signers", fmt.Sprintf("%d", len(data.Signers)), true)
+				@smartTab("policies", "Policies", fmt.Sprintf("%d", len(data.Policies)), false)
+				@smartTab("activity", "Activity", fmt.Sprintf("%d", len(saActivityRows(data))), false)
+			</div>
+			<div class="px-tx-detail-body">
+				<div data-sa-panel="signers">@smartSigners(data)</div>
+				<div data-sa-panel="policies" hidden>@smartPolicies(data)</div>
+				<div data-sa-panel="activity" hidden>@smartActivity(data)</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ smartTab(id string, label string, count string, active bool) {
+	<button class={ "px-tx-tab", templ.KV("active", active) } type="button" data-sa-tab={ id } aria-selected={ fmt.Sprintf("%t", active) }>{ label } <span class="px-tx-tab-c">{ count }</span></button>
+}
+
+templ smartSigners(data legacy.SmartAccountData) {
+	<div class="px-ga-signers"><div class="px-ga-thresholds"><h4>Approval model</h4><div class="px-ga-thresh-grid">
+		@smartApprovalCell("Required", saFirst(data.MinSigners, "unknown"), "Minimum approval Prism could decode")
+		@smartApprovalCell("Weight", saFirst(data.RequiredWeight, "—") + " / " + saFirst(data.TotalWeight, "—"), "Required weight over total signer weight")
+		@smartApprovalCell("Source", saFirst(data.SignerSourceLabel, "detected signer hints"), "How Prism derived the signer set")
+	</div></div>
+	<table class="px-ac-signertable"><thead><tr><th>Signer</th><th>Role</th><th>Public key</th><th class="r">Weight</th></tr></thead><tbody>
+		if len(data.Signers) > 0 {
+			for _, s := range data.Signers {
+				<tr><td><div class="px-ac-sigcell"><span class="px-ac-sigicon px-sa-sigicon">{ saInitial(s.Name) }</span><div><div class="px-ac-signame"><b>{ s.Name }</b></div><div class="px-ac-sigwho">{ saFirst(s.KeyType, "key") }</div></div></div></td><td><span class="px-ga-sigtype add">{ saFirst(s.Role, "Signer") }</span></td><td class="mono px-ac-sigkey"><a href={ templ.SafeURL(s.AddressHref) }>{ saFirst(s.Address, s.AddressFull) }</a></td><td class="r"><span class="px-ga-weightpill">{ saFirst(s.Weight, "—") }</span></td></tr>
+			}
+		} else {
+			<tr><td colspan="4" class="px-sa-empty-row">Signer set has not been decoded from indexed state yet.</td></tr>
+		}
+	</tbody></table></div>
+}
+
+templ smartApprovalCell(name string, value string, desc string) {
+	<div class="px-ga-thresh-cell"><div class="px-ga-thresh-name">{ name }</div><div class="px-ga-thresh-weight px-sa-thresh-weight">{ value }</div><div class="px-ga-thresh-desc">{ desc }</div></div>
+}
+
+templ smartPolicies(data legacy.SmartAccountData) {
+	<div class="px-sa-policy-list">
+		if len(data.Policies) > 0 {
+			for _, p := range data.Policies {
+				<div class="px-sa-policy"><div class="px-sa-policy-head"><div><b>{ p.Name }</b><span>{ p.Description }</span></div>
+					if p.IsActive {
+						<em>Active</em>
+					}
+				</div>
+					if p.Limit != "" {
+						<div class="px-sa-policy-meter"><div><span>{ p.Spent } / { p.Limit } used</span><span>resets { p.ResetsIn }</span></div><i><b style={ "width: " + p.SpentPct }></b></i></div>
+					}
+					if len(p.Contracts) > 0 {
+						<div class="px-sa-contracts">
+							for _, c := range p.Contracts {
+								<span><b>{ c.Name }</b>{ c.Methods }</span>
+							}
+						</div>
+					}
+				</div>
+			}
+		} else {
+			@smartEmpty("No decoded policies", "Prism has not decoded policy objects for this smart account yet.")
+		}
+	</div>
+}
+
+templ smartActivity(data legacy.SmartAccountData) {
+	<div class="px-cn-calls"><div class="px-cn-calltable px-ga-optable">
+		if len(saActivityRows(data)) > 0 {
+			for _, ev := range saActivityRows(data) {
+				<a class="px-sa-event" href={ templ.SafeURL(saTxHref(ev.TxHash)) }><span class="time mono">{ saFirst(ev.Time, "recent") }</span><span class="status">{ saFirst(ev.Status, "Observed") }</span><span class="body"><b>{ ev.Action }</b><small>{ ev.Detail }</small></span><span class="hash mono">{ ev.ShortHash }</span></a>
+			}
+		} else {
+			@smartEmpty("No recent activity", "No recent transfers or smart-wallet calls were observed in the selected history window.")
+		}
+	</div></div>
+}
+
+templ smartEvidenceTabs(data legacy.SmartAccountData) {
+	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>Evidence Prism used</h2><span class="px-tx-section-sub">Behavior hints, contract health, and raw anchors for audit work.</span></div></div>
+		<div class="px-sa-evidence-grid">
+			@smartBehavior(data)
+			@smartHealth(data)
+		</div>
+	</section>
+}
+
+templ smartBehavior(data legacy.SmartAccountData) {
+	<div class="px-tx-side-card px-sa-card"><h4>Behavior summary</h4>
+		<div class="px-sa-chiplist">
+			for _, w := range data.ActiveWindows {
+				<span>{ w }</span>
+			}
+			for _, fn := range data.CommonFunctions {
+				<span><b>{ fn.Name }</b>{ fn.Count }</span>
+			}
+			for _, p := range data.CommonProtocols {
+				<span><b>{ p.Name }</b>{ p.Count }</span>
+			}
+			if len(data.ActiveWindows) == 0 && len(data.CommonFunctions) == 0 && len(data.CommonProtocols) == 0 {
+				<p>No behavior summary has been decoded yet.</p>
+			}
+		</div>
+	</div>
+}
+
+templ smartHealth(data legacy.SmartAccountData) {
+	<div class="px-tx-side-card px-sa-card"><h4>Contract health</h4><dl class="px-tx-facts"><dt>Rent</dt><dd>{ saFirst(data.Health.RentStatus, "unknown") }</dd><dt>TTL</dt><dd>{ saFirst(data.Health.TTLRemaining, "unknown") }</dd><dt>Wasm</dt><dd class="mono">{ saShort(data.Health.WASMHash) }</dd><dt>Implementation</dt><dd>{ saFirst(data.Health.OZVersion, "unknown") }</dd><dt>Deployed</dt><dd>{ saFirst(data.Health.Deployed, "unknown") }</dd></dl></div>
+}
+
+templ smartRightRail(data legacy.SmartAccountData) {
+	<aside class="px-tx-side"><div class="px-tx-side-card"><h4>Smart account facts</h4><dl class="px-tx-facts"><dt>Type</dt><dd>{ saFirst(data.BadgeLabel, "Smart wallet") }</dd><dt>Contract</dt><dd class="mono">{ saShort(data.ContractID) }</dd><dt>Detection</dt><dd>{ saFirst(data.ClassificationSource, "wallet behavior") }</dd><dt>Confidence</dt><dd>{ saFirst(data.Confidence, "behavior detected") }</dd><dt>Policy state</dt><dd>{ saFirst(data.PolicyStateLabel, "not decoded") }</dd></dl></div>
+		<div class="px-tx-side-card"><h4>Why this page is different</h4><p class="px-tx-side-body">This is a contract account that appears to control authorization. Prism leads with signer policy and behavior before raw contract internals.</p></div>
+	</aside>
+}
+
+templ smartEmpty(title string, body string) { <div class="px-ga-empty"><b>{ title }</b><span>{ body }</span></div> }
+
+templ smartTabsScript() { <script>(function(){if(window.__prismSmartTabsBound)return;window.__prismSmartTabsBound=true;function activate(root,name){if(!root)return;root.querySelectorAll('[data-sa-tab]').forEach(function(tab){var on=tab.getAttribute('data-sa-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-sa-panel]').forEach(function(panel){var on=panel.getAttribute('data-sa-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-sa-tab]');if(!tab)return;e.preventDefault();activate(tab.closest('[data-sa-tabs-root]'),tab.getAttribute('data-sa-tab'));});})();</script> }
+
+func saFirst(v string, fallback string) string { if strings.TrimSpace(v) != "" && strings.TrimSpace(v) != "—" { return v }; return fallback }
+func saShort(v string) string { v=strings.TrimSpace(v); if len(v) <= 14 { return saFirst(v, "unknown") }; return v[:6] + "..." + v[len(v)-4:] }
+func saChunk(v string) string { v=strings.TrimSpace(v); if len(v)<=12 { return v }; parts:=[]string{}; for len(v)>8 { parts=append(parts, v[:8]); v=v[8:] }; if v!="" { parts=append(parts,v) }; return strings.Join(parts,"·") }
+func saInitial(v string) string { v=strings.TrimSpace(v); if v=="" { return "S" }; return strings.ToUpper(string([]rune(v)[0])) }
+func saActivityRows(data legacy.SmartAccountData) []legacy.SecurityEvent { if len(data.ActivityLog) > 0 { return data.ActivityLog }; return data.SecurityLog }
+func saTxHref(hash string) string { if strings.TrimSpace(hash)=="" { return "#" }; return "/v2/tx/" + hash }

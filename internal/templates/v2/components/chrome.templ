@@ -1,0 +1,79 @@
+package componentsv2
+
+type Crumb struct {
+	Label string
+	Href string
+	Mono bool
+}
+
+templ Brand() {
+	<a class="ph-brand ph-brand-prism" href="/v2/home" aria-label="Prism home">
+		<span class="ph-brand-lockup" aria-hidden="true">
+			<span class="ph-prism-band">
+				<span class="ph-prism-band-seg teal"></span>
+				<span class="ph-prism-band-seg violet"></span>
+				<span class="ph-prism-band-seg coral"></span>
+				<span class="ph-prism-band-seg olive"></span>
+				<span class="ph-prism-band-seg blue"></span>
+			</span>
+			<span class="ph-name">Prism</span>
+		</span>
+	</a>
+}
+
+templ MainNav(active string) {
+	<nav class="ph-nav" aria-label="Primary navigation">
+		<a class={ navActive(active, "home") } href="/v2/home">Home</a>
+		<a class={ navActive(active, "explore") } href="/v2/explore">Explore</a>
+		<a class={ navActive(active, "assets") } href="/v2/assets">Assets</a>
+		<a class={ navActive(active, "contracts") } href="/contracts">Contracts</a>
+		<a class={ navActive(active, "docs") } href="/v2/home#why">Docs</a>
+	</nav>
+}
+
+templ MainHeader(active string, network string) {
+	<header class="ph-top">
+		<div class="ph-top-inner">
+			@Brand()
+			@MainNav(active)
+			<div class="ph-right">
+				{ children... }
+				@NetworkSelector(network)
+			</div>
+		</div>
+	</header>
+}
+
+templ DetailHeader(searchValue string, network string) {
+	<header class="ph-top">
+		<div class="ph-top-inner">
+			@Brand()
+			<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input type="search" aria-label="Search Prism" value={ searchValue }/><span class="px-tx-search-shortcut">⌘K</span></div>
+			<div class="ph-right">@NetworkSelector(network)</div>
+		</div>
+	</header>
+}
+
+templ Breadcrumbs(items []Crumb) {
+	<nav class="px-tx-crumbs" aria-label="Breadcrumbs">
+		<div class="px-tx-crumbs-inner">
+			for i, item := range items {
+				if i > 0 {
+					<span class="sep">/</span>
+				}
+				if item.Href != "" {
+					<a href={ templ.SafeURL(item.Href) }>{ item.Label }</a>
+				} else {
+					<span class={ "cur", templ.KV("mono", item.Mono) }>{ item.Label }</span>
+				}
+			}
+		</div>
+	</nav>
+}
+
+func navActive(active string, key string) string {
+	if active == key {
+		return "active"
+	}
+	return ""
+}

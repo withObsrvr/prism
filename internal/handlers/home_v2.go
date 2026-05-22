@@ -537,6 +537,7 @@ func buildHomeV2Attention(summary *gateway.HomeSummaryResponse) vmv2.AttentionSe
 			BarColor: attentionBarColor(c.Severity),
 			BarWidth: barWidth,
 			CTA:      "How to extend this →",
+			Href:     homeV2ContractHref(c.ContractID),
 		})
 	}
 	return data
@@ -566,9 +567,18 @@ func buildHomeV2Leaders(summary *gateway.HomeSummaryResponse) vmv2.LeadersSectio
 			EntityMark: marks[boundedIndex(i, len(marks))],
 			EntityTone: tones[boundedIndex(i, len(tones))],
 			Body:       body,
+			Href:       homeV2ContractHref(leader.ContractID),
 		})
 	}
 	return data
+}
+
+func homeV2ContractHref(contractID string) string {
+	contractID = strings.TrimSpace(contractID)
+	if contractID == "" {
+		return ""
+	}
+	return "/v2/contract/" + contractID
 }
 
 func buildHomeV2Utilization(summary *gateway.HomeSummaryResponse) vmv2.UtilizationSectionData {

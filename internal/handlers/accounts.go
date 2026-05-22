@@ -219,6 +219,18 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 }
 
 func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request) {
+	data, _ := h.smartAccountDataForRequest(r)
+	pages.SmartAccountV2(data).Render(r.Context(), w)
+}
+
+func (h *Handlers) SmartAccountDashboardV2(w http.ResponseWriter, r *http.Request) {
+	data, network := h.smartAccountDataForRequest(r)
+	if err := pagesv2.SmartAccount(data, network).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render v2 smart account", "contract", r.PathValue("id"), "error", err)
+	}
+}
+
+func (h *Handlers) smartAccountDataForRequest(r *http.Request) (pages.SmartAccountData, string) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
@@ -263,7 +275,7 @@ func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request)
 			data.SecurityLog = []pages.SecurityEvent{{Action: "Wallet detected", Detail: "Using fallback mock data", Time: "—", Status: "Info", StatusColor: "blue"}}
 		}
 	}
-	pages.SmartAccountV2(data).Render(r.Context(), w)
+	return data, network
 }
 
 func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {

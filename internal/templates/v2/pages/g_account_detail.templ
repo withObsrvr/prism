@@ -20,35 +20,18 @@ type gaSorobanAuth struct { Ago, Contract, Address, Fn, Args, Outcome, Error str
 
 templ GAccountDetail(data legacy.AccountData, network string) {
 	@layoutsv2.LedgerBase("Account " + data.ShortAddress + " — Prism") {
-		<header class="ph-top"><div class="ph-top-inner"><a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a><div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.Address }/><span class="px-tx-search-shortcut">⌘K</span></div><div class="ph-right">@componentsv2.NetworkSelector(network)</div></div></header>
-		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><a>Accounts</a><span class="sep">/</span><span class="cur mono">{ gaAccountName(data) }</span></div></nav>
+		@componentsv2.DetailHeader(data.Address, network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Accounts"}, {Label: gaAccountName(data), Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner">
 			<main class="px-tx-main">
 				@gaIdentity(data)
+				@gaHumanBrief(data)
 				@gaGlance(data)
-				<section class="px-tx-section">
-					<div class="px-tx-section-head"><div><h2>Account internals</h2><span class="px-tx-section-sub">Trustlines, signers, on-chain activity, and Stellar-specific entries.</span></div></div>
-					<div class="px-tx-detail" data-ga-tabs-root>
-						<div class="px-tx-tabs" role="tablist" aria-label="Account internals">
-							@gaTab("trustlines", "Trustlines", gaTrustlineCount(data), true)
-							@gaTab("signers", "Signers", data.SignerCount, false)
-							@gaTab("activity", "Activity", gaActivityCount(data), false)
-							@gaTab("offers", "Offers · DEX", gaOffersCount(data), false)
-							@gaTab("claimable", "Claimable", gaMockOnlyCount(data, "4"), false)
-							@gaTab("data", "Data", gaMockOnlyCount(data, "6"), false)
-							@gaTab("soroban", "Soroban auth", gaMockOnlyCount(data, "47"), false)
-						</div>
-						<div class="px-tx-detail-body">
-							<div data-ga-panel="trustlines">@gaTrustlines(data)</div>
-							<div data-ga-panel="signers" hidden>@gaSigners(data)</div>
-							<div data-ga-panel="activity" hidden>@gaActivity(data)</div>
-							<div data-ga-panel="offers" hidden>@gaOffers(data)</div>
-							<div data-ga-panel="claimable" hidden>@gaClaimables(data)</div>
-							<div data-ga-panel="data" hidden>@gaDataEntries(data)</div>
-							<div data-ga-panel="soroban" hidden>@gaSorobanAuths(data)</div>
-						</div>
-					</div>
-				</section>
+				@gaPortfolio(data)
+				@gaSignerControls(data)
+				@gaRecentActivity(data)
+				@gaAdvancedEntries(data)
+				@gaAccountEducation()
 			</main>
 			@gaRightRail(data)
 		</div></div>
@@ -61,23 +44,103 @@ templ gaTab(id string, label string, count string, active bool) {
 }
 
 templ gaIdentity(data legacy.AccountData) {
-	<section class="px-tx-section px-cn-id px-ga-id"><div class="px-cn-id-grid"><div class="px-cn-id-icon"><div class="px-cn-icon-shape px-ga-icon"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="currentColor" stroke-width="1.5"></circle><path d="M21 12.5 C20 10.5 18 9.5 16 9.5 C12.4 9.5 10 12.4 10 16 C10 19.6 12.4 22.5 16 22.5 C19.2 22.5 21.5 20 21.5 16.8 L16.5 16.8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><div class="px-cn-verified px-ga-verified"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3 3 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg><span>{ gaVerifiedLabel(data) }</span></div></div><div class="px-cn-id-meta"><div class="px-cn-id-row1"><span class="px-cn-tag protocol px-ga-tag-acc">Classic Account</span><span class="px-cn-tag kind">ed25519 keypair</span><span class="px-cn-tag wasm">Multi-signer · { data.SignerCount } keys</span><span class="px-cn-tag wasm px-ga-tag-thresh">Thresholds { gaThresholdSummary(data) }</span><span class="px-cn-tag live"><span class="px-cn-pulse"></span>Active · last op { gaLastOp(data) }</span></div><h1 class="px-cn-h1"><span class="px-cn-h1-name">{ gaAccountName(data) }</span><span class="px-cn-h1-version">{ gaAccountSubtitle(data) }</span></h1><p class="px-cn-id-blurb">A classic Stellar account, the kind that's existed since 2015. It holds <b>{ gaTrustlineCount(data) } trustlines</b> and <b>{ gaTotalValue(data) }</b> across them, governed by <b>{ data.SignerCount } signers</b> with weighted thresholds. Sequence number <span class="mono">{ gaSequence(data) }</span>. { gaReserveSentence(data) }</p><div class="px-cn-addr"><span class="k">Address</span><code>{ gaChunk(data.Address) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.Address } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button><span class="px-ga-muxed">+ muxed sub-accounts (M…)</span></div><div class="px-cn-actions"><button class="px-tx-btn primary">Watch this account</button><button class="px-tx-btn">Send to address</button><a class="px-tx-btn" href={ templ.SafeURL("https://stellar.expert/explorer/public/account/" + data.Address) } target="_blank" rel="noopener">Stellar.expert ↗</a><button class="px-tx-btn">Audit trail (CSV)</button></div></div></div></section>
+	<section class="px-tx-section px-cn-id px-ga-id px-ga-hero px-ga-dossier">
+		<div class="px-cn-id-grid px-ga-dossier-grid">
+			<div class="px-cn-id-icon px-ga-dossier-icon">
+				<div class="px-cn-icon-shape px-ga-icon" aria-hidden="true">
+					<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="currentColor" stroke-width="1.5"></circle><path d="M21 12.5 C20 10.5 18 9.5 16 9.5 C12.4 9.5 10 12.4 10 16 C10 19.6 12.4 22.5 16 22.5 C19.2 22.5 21.5 20 21.5 16.8 L16.5 16.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</div>
+				<div class="px-cn-verified px-ga-verified"><span>✓</span><span>{ gaVerifiedLabel(data) }</span></div>
+			</div>
+			<div class="px-cn-id-meta px-ga-dossier-body">
+				<div class="px-cn-id-row1">
+					<span class="px-cn-tag wasm">{ data.SignerCount } signers</span>
+					<span class="px-cn-tag wasm px-ga-tag-thresh">Thresholds { gaThresholdSummary(data) }</span>
+					<span class="px-cn-tag live"><span class="px-cn-pulse"></span>Active · last op { gaLastOp(data) }</span>
+				</div>
+				<h1 class="px-cn-h1 px-ga-dossier-title"><span class="px-cn-h1-name">{ gaAccountName(data) }</span><span class="px-cn-h1-version">{ gaAccountSubtitle(data) }</span></h1>
+				<p class="px-cn-id-blurb px-ga-dossier-blurb">
+					A classic Stellar account that holds <b>{ gaXLMAmount(data) } XLM</b> and <b>{ gaTrustlineCount(data) } trustlines</b>. It is controlled by <b>{ data.SignerCount } signers</b> using weighted thresholds, with sequence <span class="mono">{ gaSequence(data) }</span>. { gaReserveSentence(data) }
+				</p>
+				<div class="px-cn-addr px-ga-dossier-address"><span class="k">Address</span><code>{ gaChunk(data.Address) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.Address } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button></div>
+			</div>
+		</div>
+	</section>
+}
+
+templ gaHumanBrief(data legacy.AccountData) {
+	<section class="px-tx-section px-ga-brief" aria-labelledby="ga-brief-title">
+		<div class="px-tx-section-head"><div><h2 id="ga-brief-title">What Prism understands</h2><span class="px-tx-section-sub">A plain-language read before the raw account evidence.</span></div></div>
+		<div class="px-ga-brief-grid">
+			<div class="px-ga-brief-item"><span class="px-ga-brief-mark ok">✓</span><div><b>Account type is known</b><span>This is a G-address, the classic Stellar account model backed by ed25519 signatures.</span></div></div>
+			<div class="px-ga-brief-item"><span class="px-ga-brief-mark ok">✓</span><div><b>Balances are inspectable</b><span>{ gaTrustlineCount(data) } trustlines and the native XLM balance are loaded below as evidence.</span></div></div>
+			<div class="px-ga-brief-item"><span class="px-ga-brief-mark info">i</span><div><b>Authorization depends on thresholds</b><span>{ data.SignerCount } signers can combine weights to authorize payments, trustline changes, and account settings.</span></div></div>
+			<div class="px-ga-brief-item"><span class="px-ga-brief-mark info">i</span><div><b>Reserve state needs context</b><span>{ gaReserveSentence(data) }</span></div></div>
+		</div>
+	</section>
 }
 
 templ gaGlance(data legacy.AccountData) {
-	<section class="px-tx-section"><div class="px-tx-section-head"><h2>At a glance</h2><span class="px-tx-section-sub">Balances, signing setup, and account anchors.</span></div><div class="px-ac-glance"><div class="px-ac-gcard"><div class="px-ac-gtitle">XLM balance</div><div class="px-ac-gvalue">{ gaXLMAmount(data) }<span class="px-ga-unit">XLM</span></div><div class="px-ac-gsub">{ gaXLMSub(data) }</div><ul class="px-ac-gbreak"><li><span class="t">Available</span><span class="v mono">{ gaXLMAmount(data) }</span></li><li><span class="t">Reserved</span><span class="v mono">{ gaReservedXLM(data) }</span></li><li><span class="t">Sponsored by</span><span class="v">{ gaSponsorName(data) }</span></li></ul></div><div class="px-ac-gcard"><div class="px-ac-gtitle">Trustlines</div><div class="px-ac-gvalue">{ gaTrustlineCount(data) }<span class="px-ga-of"> open</span></div><div class="px-ac-gsub">{ gaTotalValue(data) } total · { gaAuthFlagCount() } with auth flags</div><div class="px-ga-trustchips">
-		for _, chip := range gaTrustChips(data) {
-			<span class={ "px-ga-tchip", templ.KV("more", strings.HasPrefix(chip, "+")) }>{ chip }</span>
-		}
-	</div></div><div class="px-ac-gcard"><div class="px-ac-gtitle">Signers · thresholds</div><div class="px-ac-gvalue px-ac-gvalue-sm">{ data.SignerCount } keys <span class="of">· low/med/high { gaThresholdSummary(data) }</span></div><div class="px-ga-thresh">
-		for _, row := range gaSignerRows(data) {
-			<div class="px-ga-thresh-row"><span class="lbl">{ row.Name }</span><span class="px-ga-weightbar"><span style={ "width: " + gaWeightPct(row.Weight) }></span></span><span class="w mono">w { row.Weight }</span></div>
-		}
-	</div></div><div class="px-ac-gcard"><div class="px-ac-gtitle">Account info</div><div class="px-ga-info-rows"><div class="px-ga-info-row"><span class="k">Sequence</span><span class="v mono">{ gaSequence(data) }</span></div><div class="px-ga-info-row"><span class="k">Home domain</span><span class="v">{ firstNonEmpty(data.HomeDomain, "unknown") }</span></div><div class="px-ga-info-row"><span class="k">Created</span><span class="v">{ firstNonEmpty(data.CreatedAt, "unknown") }</span></div><div class="px-ga-info-row"><span class="k">Total ops</span><span class="v mono">{ gaActivityCount(data) } loaded</span></div><div class="px-ga-info-row"><span class="k">Inflation dest.</span><span class="v"><span class="px-ga-muted">none</span></span></div></div></div></div></section>
+	<section class="px-tx-section px-ga-glance-section">
+		<div class="px-tx-section-head"><div><h2>At a glance</h2><span class="px-tx-section-sub">The account profile in four audit-friendly concepts.</span></div></div>
+		<div class="px-ac-glance px-ga-glance">
+			<div class="px-ac-gcard"><div class="px-ac-gtitle">XLM balance</div><div class="px-ac-gvalue">{ gaXLMAmount(data) }<span class="px-ga-unit">XLM</span></div><div class="px-ac-gsub">{ gaNativeUSD(data) } native value</div><ul class="px-ac-gbreak"><li><span class="t">Reserve read</span><span class="v">{ gaReservedXLM(data) } XLM locked</span></li><li><span class="t">Pricing</span><span class="v">{ gaPricingStatus(data) }</span></li></ul></div>
+			<div class="px-ac-gcard"><div class="px-ac-gtitle">Asset relationships</div><div class="px-ac-gvalue">{ gaTrustlineCount(data) }<span class="px-ga-of"> open</span></div><div class="px-ac-gsub">{ gaIssuedUSD(data) } across issued assets</div><div class="px-ga-trustchips">
+				for _, chip := range gaTrustChips(data) {
+					<span class={ "px-ga-tchip", templ.KV("more", strings.HasPrefix(chip, "+")) }>{ chip }</span>
+				}
+			</div></div>
+			<div class="px-ac-gcard"><div class="px-ac-gtitle">Control setup</div><div class="px-ac-gvalue">{ data.SignerCount }</div><div class="px-ac-gsub">weighted signers · thresholds { gaThresholdSummary(data) }</div><div class="px-ga-thresh">
+				for _, t := range gaThresholdCells(data) {
+					<div class="px-ga-thresh-row"><span class="lbl">{ t.Label }</span><span class="px-ga-weightbar"><span style={ "width: " + t.Pct }></span></span><span class="w">{ t.Value }</span></div>
+				}
+			</div></div>
+			<div class="px-ac-gcard"><div class="px-ac-gtitle">Account record</div><div class="px-ac-gvalue px-ga-small-value">{ gaCreatedAge(data) }</div><div class="px-ac-gsub">sequence and anchors</div><div class="px-ga-info-rows"><div class="px-ga-info-row"><span class="k">Sequence</span><span class="v mono">{ gaSequence(data) }</span></div><div class="px-ga-info-row"><span class="k">Home domain</span><span class="v">{ firstNonEmpty(data.HomeDomain, "unknown") }</span></div></div></div>
+		</div>
+	</section>
+}
+
+templ gaPortfolio(data legacy.AccountData) {
+	<section class="px-tx-section px-ga-portfolio">
+		<div class="px-tx-section-head"><div><h2>Balances and asset relationships</h2><span class="px-tx-section-sub">Trustlines are the account's explicit relationships with issued assets. The table is the evidence behind the summary above.</span></div><span class="px-ga-section-fact mono">{ gaTrustlineCount(data) } trustlines</span></div>
+		@gaTrustlines(data)
+	</section>
+}
+
+templ gaSignerControls(data legacy.AccountData) {
+	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>Who can move or change it</h2><span class="px-tx-section-sub">Signer weights and thresholds show which keys can authorize payments, trustline changes, and account settings.</span></div><span class="px-ga-section-fact mono">{ data.SignerCount } signers · { gaThresholdSummary(data) }</span></div>
+		@gaSigners(data)
+	</section>
+}
+
+templ gaRecentActivity(data legacy.AccountData) {
+	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>What changed recently</h2><span class="px-tx-section-sub">Recent operations explain the latest movements behind the balance and signer state.</span></div><span class="px-ga-section-fact">Last op { gaLastOp(data) }</span></div>
+		@gaActivity(data)
+	</section>
+}
+
+templ gaAdvancedEntries(data legacy.AccountData) {
+	<section class="px-tx-section">
+		<div class="px-tx-section-head"><div><h2>Other evidence Prism found</h2><span class="px-tx-section-sub">Open offers, claimable balances, data entries, and Soroban authorizations can affect how this account behaves.</span></div></div>
+		<div class="px-tx-detail" data-ga-tabs-root>
+			<div class="px-tx-tabs" role="tablist" aria-label="Additional account entries">
+				@gaTab("offers", "Offers · DEX", gaOffersCount(data), true)
+				@gaTab("claimable", "Claimable", gaMockOnlyCount(data, "4"), false)
+				@gaTab("data", "Data", gaMockOnlyCount(data, "6"), false)
+				@gaTab("soroban", "Soroban auth", gaMockOnlyCount(data, "47"), false)
+			</div>
+			<div class="px-tx-detail-body">
+				<div data-ga-panel="offers">@gaOffers(data)</div>
+				<div data-ga-panel="claimable" hidden>@gaClaimables(data)</div>
+				<div data-ga-panel="data" hidden>@gaDataEntries(data)</div>
+				<div data-ga-panel="soroban" hidden>@gaSorobanAuths(data)</div>
+			</div>
+		</div>
+	</section>
 }
 
 templ gaTrustlines(data legacy.AccountData) {
-	<div class="px-ga-trust"><div class="px-ac-rule-explain"><span class="px-ac-explain-icon">i</span><span>A <b>trustline</b> is the explicit opt-in this account holds for one issued asset. Each costs a 0.5 XLM reserve unless sponsored. Issuers can require authorization (<code>AUTH_REQUIRED</code>) before balances move.</span></div><table class="px-ga-trusttable"><thead><tr><th>Asset</th><th>Issuer</th><th class="r">Balance</th><th class="r">Liabilities</th><th class="r">Limit</th><th class="r">USD value</th><th>Status</th></tr></thead><tbody>
+	<div class="px-ga-trust"><table class="px-ga-trusttable"><thead><tr><th>Asset</th><th>Issuer</th><th class="r">Balance</th><th class="r">Liabilities</th><th class="r">Limit</th><th class="r">USD value</th><th>Status</th></tr></thead><tbody>
 		for _, l := range gaTrustlinesData(data) {
 			<tr class={ templ.KV("native", l.Native) }><td><div class="px-ga-trustcell"><span class={ "px-ga-trustsym", templ.KV("native", l.Native) }>{ gaInitial(l.Code) }</span><div><div class="px-ga-trustcode"><b>{ l.Code }</b></div><div class="px-ga-trustname">{ l.Name }</div></div></div></td><td class="px-ga-trustissuer">
 				if l.Native {
@@ -112,9 +175,9 @@ templ gaSigners(data legacy.AccountData) {
 }
 
 templ gaActivity(data legacy.AccountData) {
-	<div class="px-cn-calls"><div class="px-cn-calls-filters"><span class="px-cn-callfilter active">All <span class="c">{ gaActivityCount(data) }</span></span><span class="px-cn-callfilter">Payments</span><span class="px-cn-callfilter">DEX</span><span class="px-cn-callfilter">Trustlines</span><span class="px-cn-callfilter">Soroban</span><span class="px-cn-callfilter ml">Watch live <span class="px-cn-pulse"></span></span></div><div class="px-cn-calltable px-ga-optable">
+	<div class="px-cn-calls" data-ga-history-root><div class="px-cn-calls-filters"><button type="button" class="px-cn-callfilter active" data-ga-history-filter="all">All <span class="c">{ gaActivityCount(data) }</span></button><button type="button" class="px-cn-callfilter" data-ga-history-filter="payments">Payments</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="dex">DEX</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="trustlines">Trustlines</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="soroban">Soroban</button></div><div class="px-cn-calltable px-ga-optable">
 		for _, o := range gaActivityRows(data) {
-			<a class={ "px-ga-oprow", o.Tone } href={ templ.SafeURL(gaTxHref(o.Hash)) }><span class="px-cn-callago"><span class="dot"></span><span>{ o.Ago } ago</span></span><span class={ "px-ga-optype", "k-" + o.Kind }>{ gaPrettyKind(o.Kind) }</span><span class="px-ga-opbody">{ o.Summary }</span><span class="px-ga-opto mono">{ o.To }</span><span class="px-ga-opamt mono">{ o.Amount }</span></a>
+			<a class={ "px-ga-oprow", o.Tone } data-ga-history-kind={ gaHistoryKind(o.Kind) } href={ templ.SafeURL(gaTxHref(o.Hash)) }><span class="px-cn-callago"><span class="dot"></span><span>{ o.Ago } ago</span></span><span class={ "px-ga-optype", "k-" + o.Kind }>{ gaPrettyKind(o.Kind) }</span><span class="px-ga-opbody">{ o.Summary }</span><span class="px-ga-opto mono">{ o.To }</span><span class="px-ga-opamt mono">{ o.Amount }</span></a>
 		}
 	</div></div>
 }
@@ -185,18 +248,31 @@ templ gaEmptyState(title string, body string) {
 	<div class="px-ga-empty"><b>{ title }</b><span>{ body }</span></div>
 }
 
-templ gaRightRail(data legacy.AccountData) { <aside class="px-tx-side"><div class="px-tx-side-card"><h4>Account facts</h4><dl class="px-tx-facts"><dt>Type</dt><dd>Classic ed25519 account</dd><dt>Created</dt><dd>{ firstNonEmpty(data.CreatedAt, "unknown") }</dd><dt>Total ops</dt><dd>{ gaActivityCount(data) } loaded · recent window</dd><dt>Sequence</dt><dd class="mono">{ gaSequence(data) }</dd><dt>Home domain</dt><dd>{ firstNonEmpty(data.HomeDomain, "unknown") }</dd><dt>Subentries</dt><dd>{ data.Subentries }</dd></dl></div><div class="px-tx-side-card"><h4>Reserves & sponsorship</h4><dl class="px-tx-facts"><dt>Base reserve</dt><dd>1.0 XLM</dd><dt>Trustline reserves</dt><dd>{ gaReserveTrustlines(data) } XLM</dd><dt>Signer reserves</dt><dd>{ data.SignerCount } signer entries</dd><dt>Sponsor</dt><dd>{ gaSponsorName(data) }</dd><dt>Net XLM lock</dt><dd class="mono">{ gaReservedXLM(data) } XLM</dd></dl></div><div class="px-tx-side-card"><h4>Compare account types</h4><ul class="px-ac-compare"><li><span class="px-ac-compare-name"><b>Classic G-account</b><span class="px-ac-compare-tag">this account</span></span><span class="px-ac-compare-desc">ed25519 keypair. Trustlines, signers, thresholds. Native to Stellar Classic.</span></li><li><span class="px-ac-compare-name"><b>Smart account (C-address)</b></span><span class="px-ac-compare-desc">Contract that implements <code>CustomAccountInterface</code>. Programmable auth.</span></li><li><span class="px-ac-compare-name"><b>Muxed (M-address)</b></span><span class="px-ac-compare-desc">A G-account with a 64-bit memo ID baked into the address.</span></li></ul></div></aside> }
+templ gaRightRail(data legacy.AccountData) { <aside class="px-tx-side"><div class="px-tx-side-card"><h4>Account facts</h4><dl class="px-tx-facts"><dt>Type</dt><dd>Classic ed25519 account</dd><dt>Created</dt><dd>{ firstNonEmpty(data.CreatedAt, "unknown") }</dd><dt>Total ops</dt><dd>{ gaActivityCount(data) } loaded · recent window</dd><dt>Sequence</dt><dd class="mono">{ gaSequence(data) }</dd><dt>Home domain</dt><dd>{ firstNonEmpty(data.HomeDomain, "unknown") }</dd><dt>Subentries</dt><dd>{ data.Subentries }</dd></dl></div><div class="px-tx-side-card"><h4>Reserves & sponsorship</h4><dl class="px-tx-facts"><dt>Base reserve</dt><dd>1.0 XLM</dd><dt>Trustline reserves</dt><dd>{ gaReserveTrustlines(data) } XLM</dd><dt>Signer reserves</dt><dd>{ data.SignerCount } signer entries</dd><dt>Sponsor</dt><dd>{ gaSponsorName(data) }</dd><dt>Net XLM lock</dt><dd class="mono">{ gaReservedXLM(data) } XLM</dd></dl></div></aside> }
 
-templ gaTabsScript() { <script>(function(){if(window.__prismGATabsBound)return;window.__prismGATabsBound=true;function activate(root,name){if(!root)return;root.querySelectorAll('[data-ga-tab]').forEach(function(tab){var on=tab.getAttribute('data-ga-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-ga-panel]').forEach(function(panel){var on=panel.getAttribute('data-ga-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-ga-tab]');if(!tab)return;e.preventDefault();activate(tab.closest('[data-ga-tabs-root]'),tab.getAttribute('data-ga-tab'));});})();</script> }
+templ gaAccountEducation() { <section class="px-tx-section px-ga-education"><div class="px-tx-section-head"><div><h2>Account type reference</h2><span class="px-tx-section-sub">Use this once the value, holdings, and confidence read are clear.</span></div></div><ul class="px-ac-compare"><li><span class="px-ac-compare-name"><b>Classic G-account</b><span class="px-ac-compare-tag">this account</span></span><span class="px-ac-compare-desc">ed25519 keypair. Holds XLM, trustlines, signers, and thresholds on Stellar Classic.</span></li><li><span class="px-ac-compare-name"><b>Smart account (C-address)</b></span><span class="px-ac-compare-desc">Contract account with programmable authorization through <code>CustomAccountInterface</code>.</span></li><li><span class="px-ac-compare-name"><b>Muxed (M-address)</b></span><span class="px-ac-compare-desc">A G-account plus a 64-bit memo ID, usually used to route deposits.</span></li></ul></section> }
+
+templ gaTabsScript() { <script>(function(){if(window.__prismGATabsBound)return;window.__prismGATabsBound=true;function activate(root,name){if(!root)return;root.querySelectorAll('[data-ga-tab]').forEach(function(tab){var on=tab.getAttribute('data-ga-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-ga-panel]').forEach(function(panel){var on=panel.getAttribute('data-ga-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';});}function filterHistory(root,name){if(!root)return;root.querySelectorAll('[data-ga-history-filter]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-ga-history-filter')===name);});root.querySelectorAll('[data-ga-history-kind]').forEach(function(row){var on=name==='all'||row.getAttribute('data-ga-history-kind')===name;row.hidden=!on;row.style.display=on?'':'none';});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-ga-tab]');if(tab){e.preventDefault();activate(tab.closest('[data-ga-tabs-root]'),tab.getAttribute('data-ga-tab'));return;}var filter=e.target.closest('[data-ga-history-filter]');if(filter){e.preventDefault();filterHistory(filter.closest('[data-ga-history-root]'),filter.getAttribute('data-ga-history-filter'));}});})();</script> }
 
 func gaAccountName(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return data.HomeDomain }; return data.ShortAddress }
 func gaAccountSubtitle(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return "Hot wallet" }; return "Classic Stellar account" }
 func gaVerifiedLabel(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return "Federation match" }; return "G-address" }
 func gaTotalValue(data legacy.AccountData) string { if strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" { return data.TotalValue }; return "tracked balances" }
+func gaHasPricedValue(data legacy.AccountData) bool { return strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" }
+func gaPortfolioValue(data legacy.AccountData) string { if gaHasPricedValue(data) { return data.TotalValue }; return "—" }
+func gaPortfolioValueUnit(data legacy.AccountData) string { if gaHasPricedValue(data) { return "priced in USD" }; return "USD pricing pending" }
+func gaPricingStatus(data legacy.AccountData) string { if gaHasPricedValue(data) { return "available" }; return "missing" }
+func gaConfidenceLabel(data legacy.AccountData) string { if gaHasPricedValue(data) { return "priced balances" }; return "balances verified, USD pending" }
+func gaNativeUSD(data legacy.AccountData) string { for _, b:= range data.Balances { if strings.EqualFold(b.Code,"XLM") && strings.TrimSpace(b.ValueUSD)!="" { return b.ValueUSD } }; return "unpriced" }
+func gaIssuedUSD(data legacy.AccountData) string { total:=0.0; for _, b:= range data.Balances { if strings.EqualFold(b.Code,"XLM") { continue }; total += gaUSDNumber(b.ValueUSD) }; if total<=0 { return "unpriced" }; return fmt.Sprintf("$%.2f", total) }
+func gaNativeValuePct(data legacy.AccountData) string { native:=0.0; issued:=0.0; for _, b:= range data.Balances { if strings.EqualFold(b.Code,"XLM") { native += gaUSDNumber(b.ValueUSD) } else { issued += gaUSDNumber(b.ValueUSD) } }; total:=native+issued; if total<=0 { return "0%" }; pct:=native/total*100; if pct>0 && pct<3 { pct=3 }; if pct>97 && issued>0 { pct=97 }; return fmt.Sprintf("%.0f%%", pct) }
+func gaIssuedValuePct(data legacy.AccountData) string { native:=0.0; issued:=0.0; for _, b:= range data.Balances { if strings.EqualFold(b.Code,"XLM") { native += gaUSDNumber(b.ValueUSD) } else { issued += gaUSDNumber(b.ValueUSD) } }; total:=native+issued; if total<=0 { return "0%" }; pct:=issued/total*100; if pct>0 && pct<3 { pct=3 }; if pct>97 && native>0 { pct=97 }; return fmt.Sprintf("%.0f%%", pct) }
+func gaUSDNumber(v string) float64 { cleaned:=strings.NewReplacer("$","",",",""," ","").Replace(strings.TrimSpace(v)); f,_:=strconv.ParseFloat(cleaned,64); return f }
 func gaXLMAmount(data legacy.AccountData) string { v:=strings.TrimSpace(strings.TrimSuffix(data.XLMBalance," XLM")); if v=="" { return "—" }; return v }
 func gaXLMSub(data legacy.AccountData) string { if strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" { return "part of " + data.TotalValue + " total" }; return "native balance from account entry" }
 func gaTrustlineCount(data legacy.AccountData) string { if data.Trustlines!="" { return data.Trustlines }; n:=0; for _,b:=range data.Balances { if !strings.EqualFold(b.Code,"XLM") { n++ } }; return fmt.Sprintf("%d", n) }
 func gaActivityCount(data legacy.AccountData) string { if len(data.Activities)>0 { return fmt.Sprintf("%d", len(data.Activities)) }; return "10" }
+func gaCreatedAge(data legacy.AccountData) string { if strings.TrimSpace(data.CreatedAt)!="" { return data.CreatedAt }; return "age unknown" }
 func gaLastOp(data legacy.AccountData) string { if len(data.Activities)>0 { return data.Activities[0].Time }; return "4s ago" }
 func gaSequence(data legacy.AccountData) string { if strings.TrimSpace(data.SequenceNumber)!="" { return data.SequenceNumber }; return "unknown" }
 func gaReserveSentence(data legacy.AccountData) string { if data.Subentries!="" { return "Base reserve and subentry reserves are visible, so the XLM lock can be audited." }; return "Reserve details are estimated until the account subentries load." }
@@ -214,6 +290,7 @@ func gaWeightPct(w string) string { n,_:=strconv.Atoi(w); if n<=0 { n=1 }; if n>
 func gaInitial(v string) string { v=strings.TrimSpace(v); if v=="" { return "G" }; return strings.ToUpper(string([]rune(v)[0])) }
 func gaFlagClass(v string) string { switch strings.ToLower(v) { case "authorized": return "ok"; case "native": return "native"; default: return "warn" } }
 func gaPrettyKind(v string) string { return strings.Title(strings.ReplaceAll(v,"_"," ")) }
+func gaHistoryKind(v string) string { switch strings.ToLower(v) { case "payment", "path_payment": return "payments"; case "manage_offer", "offer", "dex": return "dex"; case "trustline", "change_trust": return "trustlines"; case "soroban", "contract": return "soroban"; default: return "other" } }
 func gaThresholdDesc(v string) string { switch strings.ToLower(v) { case "low": return "bump_sequence, allow_trust, inflation and home-domain changes"; case "medium": return "payment, manage_offer, change_trust, manage_data, most operations"; default: return "set_options on signers, master weight, or thresholds" } }
 func gaTxHref(hash string) string { if strings.TrimSpace(hash)=="" { return "#" }; return "/v2/tx/" + hash }
 

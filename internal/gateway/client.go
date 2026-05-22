@@ -797,7 +797,24 @@ func (c *Client) GetContractRecentCalls(ctx context.Context, network string, con
 
 	var result []ContractRecentCall
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("gateway: parsing contract calls: %w", err)
+		var wrapped struct {
+			Calls       []ContractRecentCall `json:"calls"`
+			RecentCalls []ContractRecentCall `json:"recent_calls"`
+			Invocations []ContractRecentCall `json:"invocations"`
+		}
+		if wrappedErr := json.Unmarshal(body, &wrapped); wrappedErr != nil {
+			return nil, fmt.Errorf("gateway: parsing contract calls: %w", err)
+		}
+		switch {
+		case len(wrapped.Calls) > 0:
+			result = wrapped.Calls
+		case len(wrapped.RecentCalls) > 0:
+			result = wrapped.RecentCalls
+		case len(wrapped.Invocations) > 0:
+			result = wrapped.Invocations
+		default:
+			result = []ContractRecentCall{}
+		}
 	}
 
 	c.cache.Set(cacheKey, result, TTLRecentList)
@@ -878,11 +895,13 @@ func (c *Client) GetAssetPairs(ctx context.Context, network, asset string) (*Ass
 	if asset == "" {
 		return nil, fmt.Errorf("gateway: empty asset")
 	}
-	cacheKey := fmt.Sprintf("%s:asset_pairs:%s", network, asset)
+	cacheKey := fmt.Sprintf("%s:asset_pairs:%s:10", network, asset)
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*AssetPairsResponse), nil
 	}
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/pairs"))
+	params := url.Values{}
+	params.Set("limit", "10")
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/pairs")+"?"+params.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -898,11 +917,13 @@ func (c *Client) GetAssetHolders(ctx context.Context, network, asset string) (*A
 	if asset == "" {
 		return nil, fmt.Errorf("gateway: empty asset")
 	}
-	cacheKey := fmt.Sprintf("%s:asset_holders:%s", network, asset)
+	cacheKey := fmt.Sprintf("%s:asset_holders:%s:100", network, asset)
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*AssetHoldersResponse), nil
 	}
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/holders"))
+	params := url.Values{}
+	params.Set("limit", "100")
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/assets/"+url.PathEscape(asset)+"/holders")+"?"+params.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -928,7 +949,58 @@ func (c *Client) GetAssetStats(ctx context.Context, network, asset string) (*Ass
 	}
 	var result AssetStats
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("gateway: parsing asset stats: %w", err)
+		var envelope AssetStatsEnvelope
+		if err2 := json.Unmarshal(body, &envelope); err2 != nil {
+			return nil, fmt.Errorf("gateway: parsing asset stats: %w", err)
+		}
+		if envelope.Stats != nil {
+			result = *envelope.Stats
+		}
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetTokenStats(ctx context.Context, network, contractID string) (*TokenStats, error) {
+	if contractID == "" {
+		return nil, fmt.Errorf("gateway: empty contract id")
+	}
+	cacheKey := fmt.Sprintf("%s:token_stats:%s", network, contractID)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TokenStats), nil
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tokens/"+url.PathEscape(contractID)+"/stats"))
+	if err != nil {
+		return nil, err
+	}
+	var result TokenStats
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing token stats: %w", err)
+	}
+	c.cache.Set(cacheKey, &result, TTLRecentList)
+	return &result, nil
+}
+
+func (c *Client) GetTokenTransfers(ctx context.Context, network, contractID string, limit int) (*TokenTransfersResponse, error) {
+	if contractID == "" {
+		return nil, fmt.Errorf("gateway: empty contract id")
+	}
+	if limit <= 0 {
+		limit = 25
+	}
+	cacheKey := fmt.Sprintf("%s:token_transfers:%s:%d", network, contractID, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*TokenTransfersResponse), nil
+	}
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tokens/"+url.PathEscape(contractID)+"/transfers")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var result TokenTransfersResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing token transfers: %w", err)
 	}
 	c.cache.Set(cacheKey, &result, TTLRecentList)
 	return &result, nil

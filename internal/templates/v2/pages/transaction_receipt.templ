@@ -12,20 +12,14 @@ import (
 
 templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 	@layoutsv2.LedgerBase("Transaction " + data.ShortHash + " — Prism") {
-		<header class="ph-top">
-			<div class="ph-top-inner">
-				<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
-				<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.ShortHash }/><span class="px-tx-search-shortcut">⌘K</span></div>
-				<div class="ph-right">@componentsv2.NetworkSelector(network)</div>
-			</div>
-		</header>
-		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><a href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }>Ledger { data.Ledger }</a><span class="sep">/</span><span class="cur mono">Tx { data.ShortHash }</span></div></nav>
+		@componentsv2.DetailHeader(data.ShortHash, network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledger " + data.Ledger, Href: "/v2/ledger/" + data.LedgerRaw}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			@txHeroHeader(txv2.BuildTxHero(data), data)
 			@txHeroViz(txv2.BuildTxHero(data), data)
 			@txDetailTabs(data)
 		</main><aside class="px-tx-side">
-			@sideCard("Transaction") { @sideRow("Hash", data.ShortHash) @sideRow("Ledger", data.Ledger) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
+			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
 			@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
 			<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) }>View contract <span class="mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</span> →</a></div>
 			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
@@ -35,14 +29,8 @@ templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 
 templ TransactionReceiptShell(data legacy.TxReceiptData, network string) {
 	@layoutsv2.LedgerBase("Transaction " + data.ShortHash + " — Prism") {
-		<header class="ph-top">
-			<div class="ph-top-inner">
-				<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
-				<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input value={ data.ShortHash }/><span class="px-tx-search-shortcut">⌘K</span></div>
-				<div class="ph-right">@componentsv2.NetworkSelector(network)</div>
-			</div>
-		</header>
-		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><span class="cur mono">Tx { data.ShortHash }</span></div></nav>
+		@componentsv2.DetailHeader(data.ShortHash, network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			<div hx-get={ templ.SafeURL("/fragments/tx/v2/" + data.Hash + "/hero") } hx-trigger="load" hx-swap="outerHTML">
 				@TxReceiptHeroSkeleton(data)
@@ -122,7 +110,7 @@ templ txTabsScript() {
 
 templ TxReceiptSidebarFragment(data legacy.TxReceiptData) {
 	<aside class="px-tx-side">
-		@sideCard("Transaction") { @sideRow("Hash", data.ShortHash) @sideRow("Ledger", data.Ledger) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
+		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
 		@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
 		<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) }>View contract <span class="mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</span> →</a></div>
 		<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
@@ -149,6 +137,10 @@ templ TxReceiptSidebarSkeleton(data legacy.TxReceiptData) {
 
 templ txQuickItem(k string, v string, mono bool) { <div class="px-tx-quick-item"><span class="k">{ k }</span><span class={ "v", templ.KV("mono", mono) }>{ v }</span></div> }
 
+templ txQuickLinkItem(k string, v string, href string, mono bool) { <div class="px-tx-quick-item"><span class="k">{ k }</span><a href={ templ.SafeURL(href) } class={ "v", templ.KV("mono", mono) }>{ v }</a></div> }
+
+templ sideLinkRow(k string, v string, href string) { <div class="px-tx-side-row"><span class="k">{ k }</span><a class="v mono" href={ templ.SafeURL(href) }>{ v }</a></div> }
+
 templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 	<section class={ "px-tx-headline", "px-tx-hero-" + string(hero.Kind) }><div class="px-tx-headline-inner">
 		<div class="px-tx-headline-top">
@@ -161,12 +153,16 @@ templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 		<h1 class="px-tx-h1">@templ.Raw(hero.TitleHTML)</h1>
 		<p class="px-tx-sub">@templ.Raw(hero.SubtitleHTML)</p>
 		<div class="px-tx-quick">
-			@txQuickItem("From", txSourceLabel(data), false)
-			@txQuickItem("Contract", txContractLabel(data), false)
+			@txQuickLinkItem("From", txSourceLabel(data), txSourceHref(data), true)
+			if txContractHref(data) != "" {
+				@txQuickLinkItem("Contract", txContractLabel(data), txContractHref(data), true)
+			} else {
+				@txQuickItem("Contract", txContractLabel(data), false)
+			}
 			@txQuickItem("Function", txFunctionLabel(data), false)
 			@txQuickItem("Fee", txFeeLabel(data), true)
 		</div>
-		<div class="px-tx-actions"><a class="px-tx-btn primary" href={ templ.SafeURL("/account/" + txSourceFull(data)) }>Watch this address</a><button class="px-tx-btn" data-share={ txShareURL(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)">Copy link</button><button class="px-tx-btn">JSON</button><button class="px-tx-btn" type="button" data-px-tx-open-tab="raw">Raw XDR</button><button class="px-tx-btn">Replay in sandbox</button></div>
+		<div class="px-tx-actions"><a class="px-tx-btn primary" href={ templ.SafeURL(txSourceHref(data)) }>Watch this address</a><button class="px-tx-btn" data-share={ txShareURL(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)">Copy link</button><button class="px-tx-btn">JSON</button><button class="px-tx-btn" type="button" data-px-tx-open-tab="raw">Raw XDR</button><button class="px-tx-btn">Replay in sandbox</button></div>
 	</div></section>
 }
 
@@ -238,9 +234,9 @@ templ txHeroFoot(meta txv2.TxHeroMeta) {
 
 templ txFlow(data legacy.TxReceiptData) {
 	<section class="px-tx-section"><div class="px-tx-section-head"><h2>What moved</h2><span class="px-tx-section-sub">Net balance changes after this transaction settled</span></div><div class="px-tx-flow"><div class="px-tx-flow-card">
-		<div class="px-tx-flow-side"><div class="px-tx-party"><div class="px-tx-avatar">{ avatarInitial(data.SourceAddr) }</div><div><div class="px-tx-party-name">{ txSourceName(data) }</div><div class="px-tx-party-addr mono">{ data.SourceAddr }</div></div></div><div class="px-tx-deltas"><div class="px-tx-delta out"><span class="amt">{ firstNonEmpty(data.SourceAmount, "—") }</span><span class="usd">sent</span></div><div class="px-tx-delta in"><span class="amt">{ firstNonEmpty(data.DestAmount, "—") }</span><span class="usd">received</span></div></div></div>
+		<div class="px-tx-flow-side"><div class="px-tx-party"><div class="px-tx-avatar">{ avatarInitial(data.SourceAddr) }</div><div><a class="px-tx-party-name" href={ templ.SafeURL(txSourceHref(data)) }>{ txSourceName(data) }</a><div><a class="px-tx-party-addr mono" href={ templ.SafeURL(txSourceHref(data)) }>{ data.SourceAddr }</a></div></div></div><div class="px-tx-deltas"><div class="px-tx-delta out"><span class="amt">{ firstNonEmpty(data.SourceAmount, "—") }</span><span class="usd">sent</span></div><div class="px-tx-delta in"><span class="amt">{ firstNonEmpty(data.DestAmount, "—") }</span><span class="usd">received</span></div></div></div>
 		<div class="px-tx-flow-mid"><div class="px-tx-flow-rail"><span class="px-tx-flow-pin start"></span><span class="px-tx-flow-line"></span><span class="px-tx-flow-pin end"></span></div><div class="px-tx-flow-via"><div class="px-tx-flow-protocol"><div class="px-tx-flow-logo">≈</div><div><div class="px-tx-flow-name">{ firstNonEmpty(data.ContractName, "Protocol") }</div><div class="px-tx-flow-pool mono">{ firstNonEmpty(data.Route, data.ContractAddr) }</div></div></div><div class="px-tx-flow-rate"><span class="k">Effective rate</span><span class="v"><span class="mono">{ firstNonEmpty(data.EffectiveRate, "—") }</span></span></div></div></div>
-		<div class="px-tx-flow-side"><div class="px-tx-party right"><div class="px-tx-avatar pool">≈</div><div><div class="px-tx-party-name">{ firstNonEmpty(data.ContractName, "Contract") }</div><div class="px-tx-party-addr mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</div></div></div><div class="px-tx-deltas"><div class="px-tx-delta in"><span class="amt">{ invertSigned(data.SourceAmount) }</span><span class="usd">pool in</span></div><div class="px-tx-delta out"><span class="amt">{ invertSigned(data.DestAmount) }</span><span class="usd">pool out</span></div></div></div>
+		<div class="px-tx-flow-side"><div class="px-tx-party right"><div class="px-tx-avatar pool">≈</div><div><a class="px-tx-party-name" href={ templ.SafeURL(txContractHref(data)) }>{ firstNonEmpty(data.ContractName, "Contract") }</a><div><a class="px-tx-party-addr mono" href={ templ.SafeURL(txContractHref(data)) }>{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</a></div></div></div><div class="px-tx-deltas"><div class="px-tx-delta in"><span class="amt">{ invertSigned(data.SourceAmount) }</span><span class="usd">pool in</span></div><div class="px-tx-delta out"><span class="amt">{ invertSigned(data.DestAmount) }</span><span class="usd">pool out</span></div></div></div>
 	</div><div class="px-tx-flow-foot"><div class="px-tx-flow-foot-item"><span class="k">Slippage</span><span class="v">{ firstNonEmpty(data.Slippage, "—") }</span></div><div class="px-tx-flow-foot-item"><span class="k">Path</span><span class="v mono">{ firstNonEmpty(data.Route, "—") }</span></div><div class="px-tx-flow-foot-item"><span class="k">Fee</span><span class="v mono">{ txFeeLabel(data) }</span></div><div class="px-tx-flow-foot-item"><span class="k">Status</span><span class="v">{ txStatusLabel(data.Status) }</span></div></div></div></section>
 }
 
@@ -257,7 +253,11 @@ templ txOperations(data legacy.TxReceiptData) {
 								<code>{ op.Function }</code>
 							}
 						</h3>
-						<p>{ op.Contract }</p>
+						if op.ContractFull != "" {
+							<p><a href={ templ.SafeURL("/contracts/" + op.ContractFull) }>{ op.Contract }</a></p>
+						} else {
+							<p>{ op.Contract }</p>
+						}
 					</div>
 					<span class="px-tx-op-status ok">{ firstNonEmpty(op.Status, "success") }</span>
 				</div>
@@ -267,7 +267,13 @@ templ txOperations(data legacy.TxReceiptData) {
 						<div class="px-tx-arg"><span class="k">detail</span><span class="v">@templ.Raw(op.DetailHTML)</span></div>
 					}
 					if op.Contract != "" {
-						<div class="px-tx-arg"><span class="k">contract</span><span class="v mono">{ op.Contract }</span></div>
+						<div class="px-tx-arg"><span class="k">contract</span><span class="v mono">
+							if op.ContractFull != "" {
+								<a href={ templ.SafeURL("/contracts/" + op.ContractFull) }>{ op.Contract }</a>
+							} else {
+								{ op.Contract }
+							}
+						</span></div>
 					}
 				</div></div>
 			</article>
@@ -280,7 +286,13 @@ templ txEvents(data legacy.TxReceiptData) {
 		<div class="px-tx-events-note"><b>{ data.EventsCount } events</b> emitted. Prism groups protocol events with operations to explain what happened in plain language.</div>
 		for _, ev := range data.Events {
 			<article class={ "px-tx-event", "px-tx-event-" + strings.ToLower(ev.Type) }>
-				<div class="px-tx-event-head"><span class="px-tx-event-num">#{ ev.Index }</span><code class="px-tx-event-name">{ ev.Type }</code><span class="px-tx-event-from">from <b>{ ev.Contract }</b></span></div>
+				<div class="px-tx-event-head"><span class="px-tx-event-num">#{ ev.Index }</span><code class="px-tx-event-name">{ ev.Type }</code><span class="px-tx-event-from">from 
+					if ev.ContractFull != "" {
+						<a href={ templ.SafeURL("/contracts/" + ev.ContractFull) }><b>{ ev.Contract }</b></a>
+					} else {
+						<b>{ ev.Contract }</b>
+					}
+				</span></div>
 				<div class="px-tx-event-summary">@templ.Raw(ev.DataHTML)</div>
 			</article>
 		}
@@ -292,7 +304,13 @@ templ txBalances(data legacy.TxReceiptData) {
 		<div class="px-tx-bal-row px-tx-bal-th"><span>Account</span><span>Asset</span><span class="r">Before</span><span class="r">After</span><span class="r">Change</span></div>
 		for _, b := range data.BalanceChanges {
 			<div class="px-tx-bal-row">
-				<span><b>{ b.Account }</b></span>
+				<span>
+					if b.AccountFull != "" {
+						<a href={ templ.SafeURL("/account/" + b.AccountFull) }><b>{ b.Account }</b></a>
+					} else {
+						<b>{ b.Account }</b>
+					}
+				</span>
 				<span><span class="mono">{ b.Asset }</span>
 					if b.IsFee {
 						<span class="muted"> · fee</span>
@@ -317,6 +335,8 @@ func headlineFromTitle(s string) string { parts := strings.Split(s, " "); if len
 func txNarrativeHTML(data legacy.TxReceiptData) string { if data.AISummaryHTML != "" { return data.AISummaryHTML }; if data.HumanNarrative != "" { return data.HumanNarrative }; if data.SummaryHTML != "" { return data.SummaryHTML }; return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }
 func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
 func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
+func txSourceHref(data legacy.TxReceiptData) string { if data.EffectiveActorHref != "" { return data.EffectiveActorHref }; if data.SmartWalletDetected && data.SmartWalletContract != "" { return "/account/" + data.SmartWalletContract + "/smart" }; return "/account/" + txSourceFull(data) }
+func txContractHref(data legacy.TxReceiptData) string { if data.DownstreamContractHref != "" { return data.DownstreamContractHref }; if data.ContractAddrFull != "" && data.ContractAddrFull != "—" { return "/contracts/" + data.ContractAddrFull }; return "" }
 func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetected && data.SmartWalletContractShort != "" { return data.SmartWalletContractShort }; return firstNonEmpty(data.EffectiveActorShort, "Source") }
 func txContractLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.ContractName, "Contract") + " " + firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }
 func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }

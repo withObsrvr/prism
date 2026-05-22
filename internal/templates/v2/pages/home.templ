@@ -10,14 +10,13 @@ import (
 
 templ Home(data vmv2.HomeData) {
 	@layoutsv2.Base("Prism: Stellar's Soroban-first explorer") {
-		<header class="ph-top"><div class="ph-top-inner">
-			<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
-			<nav class="ph-nav"><a class="active" href="/v2/home">Home</a><a href="#activity">Explore</a><a href="#contracts">Contracts</a><a href="#activity">Agents</a><a href="#why">Docs</a></nav>
-			<div class="ph-right"><div class="ph-heartbeat"><span class="dot"></span><span>live</span><span class="sep">·</span><span>last ledger <b id="ph-heartbeat-age">{ shortHeaderAge(data.Header.AgeLabel) }</b></span><span class="sep">·</span><span><b id="ph-heartbeat-tx">{ topTxCount(data) }</b> tx/5s</span></div>@componentsv2.NetworkSelector(data.Header.Network)</div>
-		</div></header>
+		@componentsv2.MainHeader("home", data.Header.Network) {
+			<div class="ph-heartbeat"><span class="dot"></span><span>live</span><span class="sep">·</span><span>last ledger <b id="ph-heartbeat-age">{ shortHeaderAge(data.Header.AgeLabel) }</b></span><span class="sep">·</span><span><b id="ph-heartbeat-tx">{ topTxCount(data) }</b> tx/5s</span></div>
+		}
 		<main class="ph-page">
-			<section class="ph-hero"><h1>@templ.Raw(heroHeadline(data))</h1><p class="ph-hero-sub">You're looking at Stellar's Soroban-first explorer. Every transaction below is classified and described in one sentence: swaps, contract calls, agent payments, and classic payments, all in plain English. <a href="#why">How this works →</a></p>
-				<div class="ph-search-wrap"><div class="ph-search-label">Ask anything about the network</div><div class="ph-search"><span class="ph-search-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"></circle><path d="M12 12l4 4"></path></svg></span><input id="ph-search-input" placeholder={ firstNonEmptyHome(data.Prompt.Placeholder, "Paste a tx hash, address, contract, or plain-English question") }/><span class="ph-search-shortcut">⌘K</span></div><div class="ph-tryline"><span class="label">Try</span><button class="ph-trychip">Which contracts are expiring this week?</button><button class="ph-trychip">Show me every agent payment today</button><button class="ph-trychip">What is this hash about?</button><button class="ph-trychip">Is Soroswap busy?</button></div></div>
+			<section class="ph-hero ph-hybrid-hero">
+				@phHeroLedger(topLedger(data))
+				<div class="ph-search-wrap ph-hybrid-search"><div class="ph-search-label">Ask a question, paste evidence, or jump to an entity</div><div class="ph-search"><span class="ph-search-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"></circle><path d="M12 12l4 4"></path></svg></span><input id="ph-search-input" placeholder={ firstNonEmptyHome(data.Prompt.Placeholder, "Paste a tx hash, address, contract, or ask what happened") }/><span class="ph-search-shortcut">⌘K</span></div><div class="ph-tryline"><span class="label">Try</span><button class="ph-trychip">Explain the latest ledger</button><button class="ph-trychip">Which contracts are expiring this week?</button><button class="ph-trychip">Show agent payments in the last hour</button><button class="ph-trychip">What is this hash about?</button></div></div>
 			</section>
 			<div class="ph-alert"><div class="ph-alert-icon">!</div><div class="ph-alert-body"><div class="ph-alert-title">{ firstNonEmptyHome(data.Alert.Title, "Three contracts are running out of room") }</div><div class="ph-alert-desc">{ firstNonEmptyHome(data.Alert.Body, "Blend's lending pool, Soroswap's router, and Phoenix's AMM have under four days of persistent-storage life left.") }</div><div class="ph-alert-why">{ firstNonEmptyHome(data.Alert.Meta, "Why this matters: contract operators need to extend TTL before it hits zero, otherwise their users see failures.") }</div><a class="ph-alert-cta" href="#contracts">{ firstNonEmptyHome(data.Alert.CTA, "Review →") }</a></div><button class="ph-alert-close" type="button" aria-label="Dismiss storage warning" onclick="this.closest('.ph-alert').remove()">×</button></div>
 			<section id="activity" class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">What just happened</h2><p class="ph-sec-sub">Each card is a ledger, Stellar's 5-second heartbeat, with everything that settled inside it. Pick a classification to drill into individual transactions instead. <b>5 ledgers per minute</b>, always.</p></div><div class="ph-sec-toolbar"><button class="ph-sec-pill active">Everything by ledger</button><button class="ph-sec-pill">All transactions</button><button class="ph-sec-pill">Swaps</button><button class="ph-sec-pill">Contract calls</button><button class="ph-sec-pill">Agent payments</button><button class="ph-sec-pill">New deployments</button><button class="ph-sec-pill">Confidential</button><button class="ph-sec-pill">Classic</button></div><div id="ph-ledger-root" class="ph-ledgers" data-feed={ data.FeedJSON } data-live={ boolStringHome(data.FeedLive) }>
@@ -49,15 +48,45 @@ templ Home(data vmv2.HomeData) {
 				if(!root) return;
 				var ageEl = document.getElementById('ph-heartbeat-age');
 				var txEl = document.getElementById('ph-heartbeat-tx');
+				var focus = {
+					ledger: document.getElementById('ph-focus-ledger'),
+					ledgerLink: document.getElementById('ph-focus-ledger-link'),
+					tx: document.getElementById('ph-focus-tx'),
+					age: document.getElementById('ph-focus-age'),
+					meta: document.getElementById('ph-focus-meta'),
+					chips: document.getElementById('ph-focus-chips'),
+					instructions: document.getElementById('ph-focus-instructions'),
+					instructionsBar: document.getElementById('ph-focus-instructions-bar'),
+					readwrite: document.getElementById('ph-focus-readwrite'),
+					readwriteBar: document.getElementById('ph-focus-readwrite-bar'),
+					refraction: document.getElementById('ph-focus-refraction')
+				};
 				var inFlight = false;
 				function esc(s){ return String(s == null ? '' : s).replace(/[&<>\"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]; }); }
 				function cls(k){ return ({swap:'swap', call:'call', agent:'agent', classic:'classic', deploy:'deploy', confidential:'confid'})[k] || 'classic'; }
+				function refract(k){ return ({swap:'swap', call:'call', agent:'events', classic:'classic', deploy:'lending', confidential:'transfer'})[k] || 'other'; }
+				function renderRefraction(chips){ chips = chips || []; if(!chips.length) chips = [{kind:'swap'}, {kind:'confidential'}, {kind:'call'}, {kind:'agent'}]; return chips.map(function(ch){ return '<span class="ph-refraction-seg '+refract(ch.kind)+'"></span>'; }).join(''); }
 				function seq(v){ return String(v || '').replace(/,/g,'').trim(); }
 				function renderLedger(row, isNew){
 					var chips = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
 					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+esc(row.meta)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-cap"><div class="ph-ledger-cap-row"><span class="k">instructions</span><span class="v">'+esc(row.instructionsPct)+'%</span></div><div class="ph-ledger-cap-row"><span class="k">read/write</span><span class="v">'+esc(row.readWritePct)+'%</span></div></div></a>';
 				}
 				function normalizeAges(rows){ (rows || []).forEach(function(row, i){ if(!row.age || root.dataset.live !== 'true') row.age = i === 0 ? 'just now' : (i * 5) + ' seconds ago'; }); }
+				function updateFocus(row){
+					if(!row) return;
+					var href = '/v2/ledger/' + encodeURIComponent(seq(row.ledgerNumber));
+					if(focus.ledger) focus.ledger.textContent = '#' + String(row.ledgerNumber || '');
+					if(focus.ledgerLink) focus.ledgerLink.href = href;
+					if(focus.tx) focus.tx.textContent = String(row.transactionCount || '0');
+					if(focus.age) focus.age.textContent = String(row.age || 'just now');
+					if(focus.meta) focus.meta.textContent = String(row.meta || '');
+					if(focus.chips) focus.chips.innerHTML = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
+					if(focus.refraction) focus.refraction.innerHTML = renderRefraction(row.chips || []);
+					if(focus.instructions) focus.instructions.textContent = String(row.instructionsPct || 0) + '%';
+					if(focus.instructionsBar) focus.instructionsBar.style.width = String(row.instructionsPct || 0) + '%';
+					if(focus.readwrite) focus.readwrite.textContent = String(row.readWritePct || 0) + '%';
+					if(focus.readwriteBar) focus.readwriteBar.style.width = String(row.readWritePct || 0) + '%';
+				}
 				function applyFeed(feed, isPoll){
 					var ledgers = (feed && feed.ledgers) || [];
 					if(!ledgers.length) return;
@@ -66,6 +95,7 @@ templ Home(data vmv2.HomeData) {
 					var currentSeq = current ? current.textContent.replace('#','') : '';
 					var incomingSeq = ledgers[0].ledgerNumber || '';
 					root.innerHTML = ledgers.map(function(row, i){ return renderLedger(row, isPoll && i === 0 && incomingSeq !== currentSeq); }).join('');
+					updateFocus(ledgers[0]);
 					if(txEl) txEl.textContent = ledgers[0].transactionCount || txEl.textContent;
 					if(ageEl) ageEl.textContent = String(ledgers[0].age || 'just now');
 				}
@@ -83,6 +113,40 @@ templ Home(data vmv2.HomeData) {
 	}
 }
 
+templ phHeroLedger(row vmv2.LedgerRowData) {
+	<div class="ph-ledger-focus" aria-labelledby="ph-ledger-focus-title">
+		<div class="ph-ledger-focus-main">
+			<div class="ph-ledger-focus-kicker"><span class="dot"></span><span>Latest ledger</span><span class="mono" id="ph-focus-age">{ row.Age }</span></div>
+			<h1 id="ph-ledger-focus-title">Ledger <a id="ph-focus-ledger-link" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }><span id="ph-focus-ledger">#{ row.LedgerNumber }</span></a> just closed with <b id="ph-focus-tx">{ row.TransactionCount }</b> transactions.</h1>
+			<p class="ph-ledger-focus-copy"><b>Interpretation:</b> Prism classified this ledger into human-readable activity before showing the raw rows. <span id="ph-focus-meta">{ row.Meta }</span></p>
+			<div class="ph-ledger-focus-chips" id="ph-focus-chips">
+				for _, chip := range row.Chips {
+					<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
+				}
+			</div>
+			@phRefractionBar(row)
+		</div>
+		<div class="ph-ledger-focus-evidence" aria-label="Ledger evidence summary">
+			<div class="ph-ledger-focus-evidence-label">Evidence snapshot</div>
+			<div class="ph-focus-meter"><div><span>instructions</span><b id="ph-focus-instructions">{ fmt.Sprintf("%d%%", row.InstructionsPct) }</b></div><i><span id="ph-focus-instructions-bar" style={ fmt.Sprintf("width: %d%%", row.InstructionsPct) }></span></i></div>
+			<div class="ph-focus-meter"><div><span>read/write</span><b id="ph-focus-readwrite">{ fmt.Sprintf("%d%%", row.ReadWritePct) }</b></div><i><span id="ph-focus-readwrite-bar" style={ fmt.Sprintf("width: %d%%", row.ReadWritePct) }></span></i></div>
+			<a class="ph-ledger-focus-open" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>Open ledger evidence →</a>
+		</div>
+	</div>
+}
+
+templ phRefractionBar(row vmv2.LedgerRowData) {
+	<div class="ph-refraction" id="ph-focus-refraction" aria-hidden="true">
+		if len(row.Chips) > 0 {
+			for _, chip := range row.Chips {
+				<span class={ "ph-refraction-seg", refractionClass(chip.Kind) }></span>
+			}
+		} else {
+			<span class="ph-refraction-seg swap"></span><span class="ph-refraction-seg transfer"></span><span class="ph-refraction-seg call"></span><span class="ph-refraction-seg events"></span>
+		}
+	</div>
+}
+
 templ phLedger(row vmv2.LedgerRowData) {
 	<a class="ph-ledger" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>
 		<div class="ph-ledger-id"><span class="ph-ledger-num">#{ row.LedgerNumber }</span><span class="ph-ledger-when">{ row.Age }</span></div>
@@ -95,11 +159,33 @@ templ phLedger(row vmv2.LedgerRowData) {
 	</a>
 }
 
-templ attentionCard(card vmv2.AttentionCardData) { <div class={ "ph-attn", templ.KV("urgent", card.Tone=="urgent" || card.Tone=="warn") }><div class="ph-attn-name">{ card.Kicker }</div><div class="ph-attn-runway">{ card.Value }</div><div class="ph-attn-desc">{ card.Body }</div><a href="#contracts" class={ "ph-attn-cta", templ.KV("calm", card.Tone=="calm") }>{ firstNonEmptyHome(card.CTA, "Review →") }</a></div> }
+templ attentionCard(card vmv2.AttentionCardData) {
+	<div class={ "ph-attn", templ.KV("urgent", card.Tone=="urgent" || card.Tone=="warn") }>
+		<div class="ph-attn-name">
+			if card.Href != "" {
+				<a href={ templ.SafeURL(card.Href) }>{ card.Kicker }</a>
+			} else {
+				{ card.Kicker }
+			}
+		</div>
+		<div class="ph-attn-runway">{ card.Value }</div>
+		<div class="ph-attn-desc">{ card.Body }</div>
+		<a href={ templ.SafeURL(firstNonEmptyHome(card.Href, "#contracts")) } class={ "ph-attn-cta", templ.KV("calm", card.Tone=="calm") }>{ firstNonEmptyHome(card.CTA, "Review →") }</a>
+	</div>
+}
 
 templ activeCard(card vmv2.LeaderCardData, i int) {
 	<div class={ "ph-active", templ.KV("growing", i==3 || strings.Contains(strings.ToLower(card.Label), "grow")) }>
-		<div class="ph-active-head"><div class="ph-active-logo">{ firstRune(card.EntityMark, card.Entity) }</div><div class="ph-active-name">{ card.Entity }</div></div>
+		<div class="ph-active-head">
+			<div class="ph-active-logo">{ firstRune(card.EntityMark, card.Entity) }</div>
+			<div class="ph-active-name">
+				if card.Href != "" {
+					<a href={ templ.SafeURL(card.Href) }>{ card.Entity }</a>
+				} else {
+					{ card.Entity }
+				}
+			</div>
+		</div>
 		if i==3 || strings.Contains(strings.ToLower(card.Label), "grow") {
 			<div class="ph-active-growing-tag">↑ growing</div>
 		}
@@ -114,7 +200,9 @@ func boolStringHome(v bool) string { if v { return "true" }; return "false" }
 func networkTitle(v string) string { if strings.EqualFold(v,"testnet") { return "Testnet" }; if strings.EqualFold(v,"futurenet") { return "Futurenet" }; return "Mainnet" }
 func shortHeaderAge(v string) string { v=strings.TrimSpace(strings.TrimSuffix(v,"ago")); if v=="" { return "2s" }; return v }
 func topTxCount(data vmv2.HomeData) string { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0].TransactionCount }; return "187" }
+func topLedger(data vmv2.HomeData) vmv2.LedgerRowData { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0] }; return vmv2.LedgerRowData{LedgerNumber: data.Header.LedgerNumber, TransactionCount: topTxCount(data), Meta: "classified by activity type", Age: shortHeaderAge(data.Header.AgeLabel), InstructionsPct: 0, ReadWritePct: 0} }
 func heroHeadline(data vmv2.HomeData) string { return fmt.Sprintf("The Stellar network is healthy and <em>busier than usual</em> right now: <b>%s</b> transactions every 5 seconds, with <b>2,314</b> smart contracts active today.", topTxCount(data)) }
 func chipClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "agent"; case "classic": return "classic"; case "deploy": return "deploy"; case "confidential": return "confid"; default: return "classic" } }
+func refractionClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "events"; case "classic": return "classic"; case "deploy": return "lending"; case "confidential": return "transfer"; default: return "other" } }
 func firstRune(mark string, fallback string) string { if strings.TrimSpace(mark)!="" { return string([]rune(mark)[0]) }; if strings.TrimSpace(fallback)!="" { return string([]rune(fallback)[0]) }; return "•" }
 var _ componentsv2.HeaderData

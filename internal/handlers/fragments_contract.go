@@ -16,7 +16,7 @@ func (h *Handlers) buildContractFragmentData(r *http.Request, network, contractI
 	data, err := h.buildContractDetailData(r, network, contractID)
 	if err != nil {
 		h.Logger.Warn("live contract data failed", "error", err, "contract", contractID)
-		fallback := unavailableContractDetailData(contractID)
+		fallback := unavailableContractDetailData(contractID, network)
 		return &fallback
 	}
 	return &data

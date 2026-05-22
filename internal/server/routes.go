@@ -29,6 +29,8 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /v2/home/feed", h.HomeV2Feed)
 	mux.HandleFunc("GET /v2/home/ledger", h.HomeLedgerFirstV2)
 	mux.HandleFunc("GET /v2/explore", h.ExploreV2)
+	mux.HandleFunc("GET /v2/explore/header", h.ExploreV2Header)
+	mux.HandleFunc("GET /v2/explore/live", h.ExploreV2Live)
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /search/suggest", h.SearchSuggest)
 	mux.HandleFunc("GET /search/submit", h.SearchSubmit)
@@ -61,6 +63,8 @@ func (app *Application) Routes() http.Handler {
 	// ─────────────────────────────────────────────
 
 	mux.HandleFunc("GET /assets", h.AssetDirectoryV2)
+	mux.HandleFunc("GET /v2/assets", h.AssetDirectoryV2)
+	mux.HandleFunc("GET /v2/assets/{slug}", h.AssetDetailV2)
 	mux.HandleFunc("GET /assets/v1", h.AssetDirectory)
 	mux.HandleFunc("GET /assets/{slug}/preview", h.AssetPreview)
 	mux.HandleFunc("GET /assets/{slug}", h.AssetDetail)
@@ -82,6 +86,7 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /account/{id}", h.AccountPortfolio)
 	mux.HandleFunc("GET /v2/account/{id}", h.GAccountDetailV2)
 	mux.HandleFunc("GET /account/{id}/smart", h.SmartAccountDashboard)
+	mux.HandleFunc("GET /v2/account/{id}/smart", h.SmartAccountDashboardV2)
 
 	// ─────────────────────────────────────────────
 	// Dev Tools routes

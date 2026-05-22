@@ -23,17 +23,41 @@ type AssetPreviewData struct {
 	IsUp       bool
 
 	// Trust & Issuer (not in table)
-	HomeDomain   string
-	IssuerAddr   string
-	AuthRequired bool
-	AuthRevocable bool
-	TomlVerified bool
+	HomeDomain         string
+	IssuerAddr         string
+	IssuerBalance      string
+	IssuerSubentries   string
+	IssuerLastModified string
+	IssuerCreatedAt    string
+	AuthRequired       bool
+	AuthRevocable      bool
+	AuthImmutable      bool
+	AuthClawback       bool
+	TomlVerified       bool
+	Decimals           string
+
+	// Classic stats (not in table)
+	ClassicHolders      string
+	Trustlines          string
+	CirculatingSupply   string
+	ClassicTransfers24h string
+	ClassicVolume24h    string
 
 	// Soroban integration (not in table)
-	HasSAC           bool
-	SACContractID    string
-	SorobanPools     int
-	SorobanTransfers string
+	HasSAC              bool
+	SACContractID       string
+	SACName             string
+	SACSymbol           string
+	SACDecimals         string
+	SACHolderCount      string
+	SACTransferCount    string
+	SACFirstSeen        string
+	SACLastActivity     string
+	SACSupply           string
+	SACTransfers24h     string
+	SACVolume24h        string
+	SorobanPools        int
+	SorobanTransfers    string
 
 	// Distribution (not in table)
 	Top10Pct    string

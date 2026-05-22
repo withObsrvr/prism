@@ -12,14 +12,8 @@ import (
 
 templ LedgerDetail(data legacy.LedgerDetailData, network string) {
 	@layoutsv2.LedgerBase(fmt.Sprintf("Ledger %s, Prism", data.Sequence)) {
-		<header class="ph-top">
-			<div class="ph-top-inner">
-				<a class="ph-brand" href="/v2/home"><span class="ph-mark"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 L19 7 L19 15 L11 20 L3 15 L3 7 Z" stroke="currentColor" stroke-width="1.4" fill="none"></path><path d="M11 2 L11 20 M3 7 L19 15 M19 7 L3 15" stroke="currentColor" stroke-width="1" opacity="0.45"></path></svg></span><span class="ph-name">prism</span></a>
-				<div class="px-tx-search"><span class="px-tx-search-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="3.5"></circle><path d="M9 9l3.5 3.5"></path></svg></span><input type="search" aria-label="Search Prism" value={ data.SequenceRaw }/><span class="px-tx-search-shortcut">⌘K</span></div>
-				<div class="ph-right">@componentsv2.NetworkSelector(network)</div>
-			</div>
-		</header>
-		<nav class="px-tx-crumbs"><div class="px-tx-crumbs-inner"><a href="/v2/home">Explorer</a><span class="sep">/</span><a href="/v2/home/ledger">Ledgers</a><span class="sep">/</span><span class="cur mono">{ data.Sequence }</span></div></nav>
+		@componentsv2.DetailHeader(data.SequenceRaw, network)
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledgers", Href: "/v2/home/ledger"}, {Label: data.Sequence, Mono: true}})
 		<div class="px-lg-nav">
 			<a class="px-lg-nav-btn" href={ templ.SafeURL("/v2/ledger/" + data.PrevSequenceRaw) }><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2L3 6l4 4"></path></svg><span>Previous</span><span class="mono num">{ data.PrevSequence }</span></a>
 			<div class="px-lg-nav-cur"><span class="px-lg-nav-label">Ledger</span><span class="px-lg-nav-num mono">{ data.Sequence }</span></div>

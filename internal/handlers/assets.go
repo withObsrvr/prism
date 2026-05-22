@@ -10,6 +10,7 @@ import (
 
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/templates/pages"
+	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
 func (h *Handlers) AssetDirectory(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +48,7 @@ func (h *Handlers) AssetDirectoryV2(w http.ResponseWriter, r *http.Request) {
 		data = mockAssetDirectoryData()
 	}
 
-	pages.AssetDirectoryV2(data).Render(r.Context(), w)
+	pagesv2.AssetDirectory(data, network).Render(r.Context(), w)
 }
 
 func (h *Handlers) AssetPreview(w http.ResponseWriter, r *http.Request) {
@@ -311,6 +312,32 @@ func (h *Handlers) AssetDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handlers) AssetDetailV2(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	network := networkFromRequest(r)
+	code, _, _ := parseAssetSlug(slug)
+	if code == "" {
+		code = slug
+	}
+
+	var data pages.AssetPreviewData
+	if h.useLiveData(r) {
+		if live, err := h.buildAssetPreviewData(r, network, slug); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("live asset detail v2 failed, falling back to mock", "error", err, "slug", slug)
+		}
+	}
+	if data.Code == "" {
+		data = mockAssetPreviewData(code)
+	}
+
+	if err := pagesv2.AssetDetail(data, network).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render asset detail v2", "error", err, "slug", slug)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
 func (h *Handlers) buildAssetPreviewData(r *http.Request, network, slug string) (pages.AssetPreviewData, error) {
 	ctx := r.Context()
 	code, _, canonical := parseAssetSlug(slug)
@@ -438,36 +465,76 @@ func assetSlug(code, issuer string) string {
 
 func mapAssetDetailToPreview(detail *gateway.AssetDetail, canonical string) pages.AssetPreviewData {
 	assetCode := firstNonEmpty(detail.AssetCode, detail.Symbol, gateway.ShortAddress(firstNonEmpty(detail.ContractID, canonical)))
+	assetIssuer := detail.AssetIssuer
 	assetType := detail.AssetType
+	if detail.Asset != nil {
+		assetCode = firstNonEmpty(detail.Asset.Code, assetCode)
+		assetIssuer = firstNonEmpty(detail.Asset.Issuer, assetIssuer)
+		assetType = firstNonEmpty(detail.Asset.Type, assetType)
+	}
+	issuerInfo := detail.Issuer
+	if issuerInfo != nil {
+		assetIssuer = firstNonEmpty(issuerInfo.AccountID, assetIssuer)
+	}
+	var stats *gateway.AssetStats
+	if detail.Stats != nil {
+		stats = detail.Stats.Stats
+	}
+	if stats == nil {
+		stats = &gateway.AssetStats{
+			HolderCount: detail.HolderCount, TotalHolders: detail.HolderCount,
+			TrustlineCount: firstNonZero(detail.TrustlineCount, detail.TotalTrustlines), TotalTrustlines: firstNonZero(detail.TotalTrustlines, detail.TrustlineCount),
+			CirculatingSupply: detail.CirculatingSupply, Volume24H: detail.Volume24H, Transfers24H: detail.Transfers24H,
+			UniqueAccounts24H: detail.UniqueAccounts24H, Top10Concentration: detail.Top10Concentration, Top100Concentration: detail.Top100Concentration,
+		}
+	}
 	if assetType == "" && strings.HasPrefix(firstNonEmpty(detail.ContractID, canonical), "C") {
 		assetType = "sep41"
 	}
 	name := firstNonEmpty(detail.DisplayName, detail.Name, detail.Symbol, liveAssetDisplayName(assetCode, assetType))
-	issuerAddr := firstNonEmpty(detail.AssetIssuer, detail.ContractID, "Native")
+	issuerAddr := firstNonEmpty(assetIssuer, detail.ContractID, "Native")
+	linkedContract := firstNonEmpty(detail.LinkedTokenContract, detail.LinkedContractID)
+	linkedType := firstNonEmpty(detail.LinkedTokenType, detail.TokenType)
+	for _, link := range firstNonNilLinks(detail.LinkedTokens, firstNonNilLinks(detail.Links, detail.LinksPreview)) {
+		if linkedContract == "" && link.ContractID != "" {
+			linkedContract = link.ContractID
+		}
+		if linkedType == "" && link.TokenType != "" {
+			linkedType = link.TokenType
+		}
+	}
 	data := pages.AssetPreviewData{
 		Code:         assetCode,
-		Slug:         firstNonEmpty(detail.CanonicalSlug, canonical, assetSlug(assetCode, detail.AssetIssuer)),
+		Slug:         firstNonEmpty(detail.CanonicalSlug, canonical, assetSlug(assetCode, assetIssuer)),
 		Name:         name,
 		Initial:      string([]rune(firstNonEmpty(assetCode, "A"))[0]),
 		BgColor:      assetPreviewColor(assetCode),
 		IsVerified:   detail.TomlVerified || strings.EqualFold(assetType, "native") || detail.ContractID != "",
-		TypeBadge:    liveAssetTypeBadge(assetType),
-		TypeColor:    liveAssetTypeColor(assetType),
+		TypeBadge:    liveAssetTypeBadge(firstNonEmpty(linkedType, assetType)),
+		TypeColor:    liveAssetTypeColor(firstNonEmpty(linkedType, assetType)),
 		Price:        "—",
 		Change:       "Live asset",
 		IsUp:         true,
-		HomeDomain:   detail.HomeDomain,
+		HomeDomain:   firstNonEmpty(detail.HomeDomain, func() string { if issuerInfo != nil { return issuerInfo.HomeDomain }; return "" }()),
 		IssuerAddr:   issuerAddr,
-		AuthRequired: detail.AuthRequired,
-		AuthRevocable: detail.AuthRevocable,
+		AuthRequired: detail.AuthRequired || (issuerInfo != nil && issuerInfo.AuthRequired),
+		AuthRevocable: detail.AuthRevocable || (issuerInfo != nil && issuerInfo.AuthRevocable),
+		AuthImmutable: detail.AuthImmutable || (issuerInfo != nil && issuerInfo.AuthImmutable),
+		AuthClawback: detail.AuthClawback || (issuerInfo != nil && issuerInfo.AuthClawback),
 		TomlVerified: detail.TomlVerified,
-		HasSAC:       detail.LinkedTokenContract != "" || strings.EqualFold(detail.LinkedTokenType, "sac"),
-		SACContractID: firstNonEmpty(detail.LinkedTokenContract, func() string { if strings.EqualFold(detail.LinkedTokenType, "sac") { return detail.ContractID }; return "" }()),
+		Decimals:     formatMaybeInt(detail.Decimals),
+		ClassicHolders: formatMaybeNumber(firstNonZero(stats.TotalHolders, stats.HolderCount)),
+		Trustlines: formatMaybeNumber(firstNonZero(stats.TotalTrustlines, stats.TrustlineCount)),
+		CirculatingSupply: firstNonEmpty(stats.CirculatingSupply, "—"),
+		ClassicTransfers24h: formatMaybeNumber(stats.Transfers24H),
+		ClassicVolume24h: firstNonEmpty(stats.Volume24H, "—"),
+		HasSAC:       linkedContract != "" || strings.EqualFold(linkedType, "sac"),
+		SACContractID: linkedContract,
 		SorobanPools: len(firstNonNilPairs(detail.TopPairs, detail.PairsPreview)),
-		SorobanTransfers: func() string { if detail.Transfers24H > 0 { return gateway.FormatNumber(detail.Transfers24H) }; return "—" }(),
-		Top10Pct:     formatPct(detail.Top10Concentration),
-		Top100Pct:    formatPct(detail.Top100Concentration),
-		GiniLabel:    concentrationLabel(detail.Top10Concentration),
+		SorobanTransfers: formatMaybeNumber(stats.Transfers24H),
+		Top10Pct:     formatPct(stats.Top10Concentration),
+		Top100Pct:    formatPct(stats.Top100Concentration),
+		GiniLabel:    concentrationLabel(stats.Top10Concentration),
 		Pairs:        []pages.AssetPair{},
 		RecentTxs:    []pages.AssetRecentTx{},
 	}
@@ -478,6 +545,23 @@ func mapAssetDetailToPreview(detail *gateway.AssetDetail, canonical string) page
 			Pool:        firstNonEmpty(p.Pool, "Market"),
 			Liquidity:   firstNonEmpty(p.Liquidity, "—"),
 			Volume24h:   firstNonEmpty(p.Volume24H, "—"),
+		})
+	}
+	for _, link := range firstNonNilLinks(detail.Links, detail.LinksPreview) {
+		href := firstNonEmpty(link.Route, "/v2/assets/"+firstNonEmpty(link.CanonicalSlug, link.ContractID, assetSlug(link.AssetCode, link.AssetIssuer)))
+		data.Links = append(data.Links, pages.AssetLink{
+			Relation: strings.ReplaceAll(firstNonEmpty(link.Relation, "related_asset"), "_", " "),
+			Label:    firstNonEmpty(link.Label, link.AssetCode, gateway.ShortAddress(firstNonEmpty(link.ContractID, link.AssetIssuer))),
+			Href:     href,
+			Meta:     firstNonEmpty(link.TokenType, gateway.ShortAddress(firstNonEmpty(link.ContractID, link.AssetIssuer)), "asset"),
+		})
+	}
+	for _, holder := range firstNonNilHolders(detail.TopHolders, detail.HoldersPreview) {
+		data.Holders = append(data.Holders, pages.AssetHolder{
+			Account: gateway.ShortAddress(holder.Account),
+			Balance: firstNonEmpty(holder.Balance, "—"),
+			Share:   func() string { if holder.SharePct > 0 { return fmt.Sprintf("%.2f%%", holder.SharePct) }; return "—" }(),
+			Href:    accountOrContractHref(holder.Account),
 		})
 	}
 	for _, tx := range firstNonNilTransfers(detail.RecentTransfers, detail.TransferPreview) {
@@ -499,13 +583,26 @@ func (h *Handlers) enrichAssetPreviewData(ctx context.Context, network, asset st
 	if data == nil {
 		return
 	}
-	if links, err := h.Gateway.GetAssetLinks(ctx, network, asset); err == nil && links != nil && len(links.Links) > 0 {
-		for _, link := range links.Links {
+	if stats, err := h.Gateway.GetAssetStats(ctx, network, asset); err == nil && stats != nil {
+		data.ClassicHolders = firstNonEmpty(formatMaybeNumber(firstNonZero(stats.TotalHolders, stats.HolderCount)), data.ClassicHolders)
+		data.Trustlines = firstNonEmpty(formatMaybeNumber(firstNonZero(stats.TotalTrustlines, stats.TrustlineCount)), data.Trustlines)
+		data.CirculatingSupply = firstNonEmpty(stats.CirculatingSupply, data.CirculatingSupply)
+		data.ClassicTransfers24h = firstNonEmpty(formatMaybeNumber(stats.Transfers24H), data.ClassicTransfers24h)
+		data.ClassicVolume24h = firstNonEmpty(stats.Volume24H, data.ClassicVolume24h)
+		if stats.Top10Concentration > 0 { data.Top10Pct = formatPct(stats.Top10Concentration); data.GiniLabel = concentrationLabel(stats.Top10Concentration) }
+		if stats.Top100Concentration > 0 { data.Top100Pct = formatPct(stats.Top100Concentration) }
+	}
+	if links, err := h.Gateway.GetAssetLinks(ctx, network, asset); err == nil && links != nil && (len(links.Links) > 0 || len(links.LinkedTokens) > 0) {
+		allLinks := append([]gateway.AssetLinkSummary{}, links.Links...)
+		allLinks = append(allLinks, links.LinkedTokens...)
+		for _, link := range allLinks {
 			if data.SACContractID == "" && link.ContractID != "" {
 				data.SACContractID = link.ContractID
 				data.HasSAC = true
-				break
 			}
+			if data.SACName == "" { data.SACName = link.TokenName }
+			if data.SACSymbol == "" { data.SACSymbol = link.TokenSymbol }
+			if data.SACDecimals == "" { data.SACDecimals = formatMaybeInt(link.TokenDecimals) }
 		}
 	}
 	if len(data.Pairs) == 0 {
@@ -523,9 +620,47 @@ func (h *Handlers) enrichAssetPreviewData(ctx context.Context, network, asset st
 			}
 		}
 	}
-	if data.Top100Pct == "—" {
-		if holders, err := h.Gateway.GetAssetHolders(ctx, network, asset); err == nil && holders != nil && len(holders.Holders) > 0 {
+	if holders, err := h.Gateway.GetAssetHolders(ctx, network, asset); err == nil && holders != nil && len(holders.Holders) > 0 {
+		if len(data.Holders) == 0 {
+			for _, holder := range holders.Holders {
+				data.Holders = append(data.Holders, pages.AssetHolder{Account: gateway.ShortAddress(holder.Account), Balance: firstNonEmpty(holder.Balance, "—"), Share: func() string { if holder.SharePct > 0 { return fmt.Sprintf("%.2f%%", holder.SharePct) }; return "—" }(), Href: accountOrContractHref(holder.Account)})
+			}
+		}
+		if data.Top100Pct == "—" {
 			data.Top100Pct = gateway.FormatNumber(int64(len(holders.Holders))) + " holders"
+		}
+	}
+	if data.IssuerAddr != "" && data.IssuerAddr != "Native" {
+		if acct, err := h.Gateway.GetAccountOverview(ctx, network, data.IssuerAddr); err == nil && acct != nil {
+			data.IssuerBalance = firstNonEmpty(acct.Account.Balance, "—")
+			data.IssuerSubentries = fmt.Sprintf("%d", acct.Account.NumSubentries)
+			if acct.Account.LastModifiedLedger > 0 { data.IssuerLastModified = gateway.FormatNumber(acct.Account.LastModifiedLedger) }
+			data.IssuerCreatedAt = firstNonEmpty(acct.Account.CreatedAt, acct.Account.UpdatedAt)
+		}
+	}
+	if data.SACContractID != "" {
+		if token, err := h.Gateway.GetSilverToken(ctx, network, data.SACContractID); err == nil && token != nil {
+			data.HasSAC = true
+			data.SACName = firstNonEmpty(data.SACName, token.Name)
+			data.SACSymbol = firstNonEmpty(data.SACSymbol, token.Symbol)
+			data.SACDecimals = firstNonEmpty(data.SACDecimals, formatMaybeInt(token.Decimals))
+			data.SACHolderCount = firstNonEmpty(formatMaybeNumber(token.HolderCount), data.SACHolderCount)
+			data.SACTransferCount = firstNonEmpty(formatMaybeNumber(token.TransferCount), data.SACTransferCount)
+			data.SACFirstSeen = token.FirstSeen
+			data.SACLastActivity = token.LastActivity
+		}
+		if stats, err := h.Gateway.GetTokenStats(ctx, network, data.SACContractID); err == nil && stats != nil {
+			data.SACHolderCount = firstNonEmpty(formatMaybeNumber(stats.HolderCount), data.SACHolderCount)
+			data.SACSupply = firstNonEmpty(stats.TotalSupply, data.SACSupply)
+			data.SACTransfers24h = firstNonEmpty(formatMaybeNumber(stats.Transfers24H), data.SACTransfers24h)
+			data.SACVolume24h = firstNonEmpty(stats.Volume24H, data.SACVolume24h)
+		}
+		if transfers, err := h.Gateway.GetTokenTransfers(ctx, network, data.SACContractID, 25); err == nil && transfers != nil && len(transfers.Transfers) > 0 {
+			for _, tx := range transfers.Transfers {
+				age := "—"
+				if t, err := time.Parse(time.RFC3339, tx.ClosedAt); err == nil { age = gateway.FormatAge(t) }
+				data.RecentTxs = append(data.RecentTxs, pages.AssetRecentTx{Type: firstNonEmpty(tx.EventType, "soroban"), Amount: strings.TrimSpace(gateway.FormatDecimalAmount(tx.Amount) + " " + firstNonEmpty(data.SACSymbol, data.Code)), Account: gateway.ShortAddress(firstNonEmpty(tx.To, tx.From)), Age: age})
+			}
 		}
 	}
 }
@@ -544,11 +679,51 @@ func firstNonNilTransfers(primary, fallback []gateway.AssetTransferBrief) []gate
 	return fallback
 }
 
+func firstNonNilLinks(primary, fallback []gateway.AssetLinkSummary) []gateway.AssetLinkSummary {
+	if len(primary) > 0 {
+		return primary
+	}
+	return fallback
+}
+
+func firstNonNilHolders(primary, fallback []gateway.AssetHolderSummary) []gateway.AssetHolderSummary {
+	if len(primary) > 0 {
+		return primary
+	}
+	return fallback
+}
+
 func formatPct(v float64) string {
 	if v <= 0 {
 		return "—"
 	}
+	if v <= 1 {
+		v *= 100
+	}
 	return fmt.Sprintf("%.1f%%", v)
+}
+
+func firstNonZero(values ...int64) int64 {
+	for _, v := range values {
+		if v != 0 {
+			return v
+		}
+	}
+	return 0
+}
+
+func formatMaybeNumber(v int64) string {
+	if v <= 0 {
+		return "—"
+	}
+	return gateway.FormatNumber(v)
+}
+
+func formatMaybeInt(v int) string {
+	if v <= 0 {
+		return "—"
+	}
+	return fmt.Sprintf("%d", v)
 }
 
 func concentrationLabel(top10 float64) string {

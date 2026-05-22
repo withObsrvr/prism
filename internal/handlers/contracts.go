@@ -52,7 +52,7 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 			data = live
 		} else {
 			h.Logger.Warn("live contract shell data failed", "error", err, "contract", id)
-			data = unavailableContractDetailData(id)
+			data = unavailableContractDetailData(id, network)
 		}
 	}
 	if data.Address == "" {
@@ -71,7 +71,10 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		return pages.ContractDetailData{}, fmt.Errorf("fetching contract detail: metadata=%v analytics=%v", metaErr, analyticsErr)
 	}
 
-	recentCalls, _ := h.Gateway.GetContractRecentCalls(ctx, network, contractID, 10)
+	recentCalls, recentCallsErr := h.Gateway.GetContractRecentCalls(ctx, network, contractID, 10)
+	if recentCallsErr != nil {
+		h.Logger.Warn("contract recent calls failed", "error", recentCallsErr, "contract", contractID, "network", network)
+	}
 	storageResp, _ := h.Gateway.GetContractStorage(ctx, network, contractID, 3)
 
 	data := pages.ContractDetailData{
@@ -310,7 +313,7 @@ func titleCase(s string) string {
 	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
 }
 
-func unavailableContractDetailData(contractID string) pages.ContractDetailData {
+func unavailableContractDetailData(contractID string, network string) pages.ContractDetailData {
 	short := gateway.ShortAddress(contractID)
 	return pages.ContractDetailData{
 		Name:             short,
@@ -326,7 +329,7 @@ func unavailableContractDetailData(contractID string) pages.ContractDetailData {
 		TotalInvocations: "—",
 		FunctionsCount:   "—",
 		SuccessRate:      "—",
-		Narrative:        short + " could not be loaded from live testnet data right now.",
+		Narrative:        short + " could not be loaded from live " + network + " data right now.",
 		Context:          "Prism did not fall back to mock data for this page so the live-data issue is visible during QA.",
 		Signals: []pages.ContractHumanSignal{{
 			Title:    "Live data unavailable",

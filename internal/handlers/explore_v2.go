@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"net/http"
@@ -16,6 +17,41 @@ import (
 
 func (h *Handlers) ExploreV2(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
+	filters := exploreFiltersFromRequest(r)
+	data := mockExploreV2Data(network, filters)
+	if h.useLiveData(r) {
+		data = exploreV2ShellData(network, filters)
+	}
+	if err := pagesv2.Explore(data).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render explore v2", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handlers) ExploreV2Header(w http.ResponseWriter, r *http.Request) {
+	network := networkFromRequest(r)
+	header := exploreHeader(network)
+	if h.useLiveData(r) {
+		ctx, cancel := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+		defer cancel()
+		if recent, err := h.Gateway.GetSilverRecentLedgers(ctx, network, 1); err == nil && recent != nil && len(recent.Ledgers) > 0 {
+			ledger := recent.Ledgers[0]
+			header.LedgerNumber = gateway.FormatNumber(ledger.LedgerSequence)
+			if t, err := time.Parse(time.RFC3339, ledger.ClosedAt); err == nil {
+				header.AgeLabel = gateway.FormatAge(t)
+			}
+		} else if err != nil {
+			h.Logger.Warn("explore header ledger refresh failed", "network", network, "error", err)
+		}
+	}
+	if err := pagesv2.ExploreHeartbeat(header, false).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render explore v2 header", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handlers) ExploreV2Live(w http.ResponseWriter, r *http.Request) {
+	network := networkFromRequest(r)
 	data := mockExploreV2Data(network, exploreFiltersFromRequest(r))
 	if h.useLiveData(r) {
 		if live, err := h.buildExploreV2Data(r, network); err == nil {
@@ -25,8 +61,8 @@ func (h *Handlers) ExploreV2(w http.ResponseWriter, r *http.Request) {
 			data.ErrorMessage = "Showing a design fallback while the gateway connection recovers."
 		}
 	}
-	if err := pagesv2.Explore(data).Render(r.Context(), w); err != nil {
-		h.Logger.Error("render explore v2", "error", err)
+	if err := pagesv2.ExploreMain(data).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render explore v2 live", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -37,12 +73,13 @@ func (h *Handlers) buildExploreV2Data(r *http.Request, network string) (vmv2.Exp
 		Tab:          exploreTabForFilters(filters),
 		TopicMatch:   exploreFirstNonEmpty(filters.Fn, filters.Asset, filters.Q),
 		TxHash:       txHashIfLikely(filters.Q),
+		ContractID:   contractIDIfLikely(filters.Q),
 		ContractName: contractNameIfLikely(filters.Q),
 		Cursor:       r.URL.Query().Get("cursor"),
 		Limit:        48,
 		Order:        "desc",
 	}
-	if params.TxHash != "" {
+	if params.TxHash != "" || params.ContractID != "" {
 		params.TopicMatch = ""
 		params.ContractName = ""
 	}
@@ -59,15 +96,22 @@ func (h *Handlers) buildExploreV2Data(r *http.Request, network string) (vmv2.Exp
 		}
 		rows = append(rows, row)
 	}
+	if params.ContractID != "" && len(rows) == 0 {
+		rows = h.exploreRowsForTokenContract(r, network, params.ContractID, filters)
+	}
 
 	header := exploreHeader(network)
 	if resp.Meta.LedgerRange.Max > 0 {
 		header.LedgerNumber = gateway.FormatNumber(resp.Meta.LedgerRange.Max)
 	}
+	matched := int64(resp.Meta.MatchedCount)
+	if params.ContractID != "" && matched == 0 && len(rows) > 0 {
+		matched = int64(len(rows))
+	}
 	data := vmv2.ExploreData{
 		Header:     header,
 		Filters:    filters,
-		Summary:    exploreSummary(filters, int64(resp.Meta.MatchedCount), resp.Meta.LedgerRange.Min, resp.Meta.LedgerRange.Max, resp.Meta.EventsPerSecond, true),
+		Summary:    exploreSummary(filters, matched, resp.Meta.LedgerRange.Min, resp.Meta.LedgerRange.Max, resp.Meta.EventsPerSecond, true),
 		Presets:    explorePresets(),
 		Rows:       rows,
 		SourceLive: true,
@@ -129,6 +173,78 @@ func exploreTabForFilters(f vmv2.ExploreFilters) string {
 		}
 		return ""
 	}
+}
+
+func (h *Handlers) exploreRowsForTokenContract(r *http.Request, network string, contractID string, filters vmv2.ExploreFilters) []vmv2.ExploreRow {
+	transfers, err := h.Gateway.GetTokenTransfers(r.Context(), network, contractID, 48)
+	if err == nil && transfers != nil && len(transfers.Transfers) > 0 {
+		rows := make([]vmv2.ExploreRow, 0, len(transfers.Transfers))
+		for _, transfer := range transfers.Transfers {
+			row := exploreRowFromTokenTransfer(transfer, contractID)
+			if !exploreRowMatches(row, filters) {
+				continue
+			}
+			rows = append(rows, row)
+		}
+		return rows
+	}
+	if err != nil {
+		h.Logger.Warn("token transfer fallback failed for explore contract search", "contract", contractID, "network", network, "error", err)
+	}
+	generic, err := h.Gateway.GetGenericEvents(r.Context(), network, contractID, "", 48)
+	if err != nil || generic == nil {
+		if err != nil {
+			h.Logger.Warn("generic event fallback failed for explore contract search", "contract", contractID, "network", network, "error", err)
+		}
+		return nil
+	}
+	rows := make([]vmv2.ExploreRow, 0, len(generic.Events))
+	for _, event := range generic.Events {
+		row := exploreRowFromGenericEvent(event)
+		if !exploreRowMatches(row, filters) {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func exploreRowFromTokenTransfer(t gateway.TokenTransfer, contractID string) vmv2.ExploreRow {
+	closed, _ := time.Parse(time.RFC3339, t.ClosedAt)
+	when := "recent"
+	age := "just now"
+	if !closed.IsZero() {
+		when = closed.Format("15:04:05")
+		age = gateway.FormatAge(closed)
+	}
+	topic := normalizeExploreTopic(t.EventType)
+	if topic == "custom" && t.EventType == "" {
+		topic = "transfer"
+	}
+	amount := strings.TrimSpace(t.Amount)
+	headline := gateway.ShortAddress(t.From) + " sent value to " + gateway.ShortAddress(t.To)
+	if amount != "" {
+		headline = gateway.ShortAddress(t.From) + " sent " + amount + " token units to " + gateway.ShortAddress(t.To)
+	}
+	if strings.EqualFold(t.EventType, "mint") {
+		headline = "Token contract minted " + exploreFirstNonEmpty(amount, "value") + " to " + gateway.ShortAddress(t.To)
+	}
+	return vmv2.ExploreRow{
+		When: when, Age: age, Scope: "soroban", Protocol: "Token contract", Topic: topic, Function: exploreFirstNonEmpty(t.EventType, "transfer"), Headline: headline,
+		From: t.From, Contract: contractID, TxHash: t.TxHash, Ledger: gateway.FormatNumber(t.LedgerSequence), Events: "1", Status: "Success", StatusTone: "success", EvidenceHref: "/v2/tx/" + t.TxHash, ContractHref: "/v2/contract/" + contractID, LedgerHref: "/v2/ledger/" + strconv.FormatInt(t.LedgerSequence, 10),
+	}
+}
+
+func exploreRowFromGenericEvent(e gateway.GenericEvent) vmv2.ExploreRow {
+	closed, _ := time.Parse(time.RFC3339, e.ClosedAt)
+	when := "recent"
+	age := "just now"
+	if !closed.IsZero() {
+		when = closed.Format("15:04:05")
+		age = gateway.FormatAge(closed)
+	}
+	topic := normalizeExploreTopic(e.EventType + " " + e.TopicsDecoded)
+	return vmv2.ExploreRow{When: when, Age: age, Scope: "soroban", Protocol: "Contract event", Topic: topic, Function: exploreFirstNonEmpty(e.EventType, "event"), Headline: "Contract emitted " + exploreFirstNonEmpty(e.EventType, "an event"), Contract: e.ContractID, TxHash: e.TxHash, Ledger: gateway.FormatNumber(e.LedgerSequence), Events: "1", Status: "Success", StatusTone: "success", EvidenceHref: "/v2/tx/" + e.TxHash, ContractHref: "/v2/contract/" + e.ContractID, LedgerHref: "/v2/ledger/" + strconv.FormatInt(e.LedgerSequence, 10)}
 }
 
 func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
@@ -252,6 +368,23 @@ func exploreRowMatches(row vmv2.ExploreRow, f vmv2.ExploreFilters) bool {
 	return true
 }
 
+func exploreV2ShellData(network string, filters vmv2.ExploreFilters) vmv2.ExploreData {
+	data := mockExploreV2Data(network, filters)
+	data.Rows = nil
+	data.SourceLive = false
+	data.Loading = true
+	data.HasMore = false
+	data.NextCursor = ""
+	data.NextHref = ""
+	data.Header.LedgerNumber = "syncing"
+	data.Header.AgeLabel = "latest ledger"
+	data.Summary.MatchedLabel = "…"
+	data.Summary.LedgerRange = "Fetching live ledger range"
+	data.Summary.EvidenceLabel = "Loading live gateway data"
+	data.Summary.EventsPerSec = ""
+	return data
+}
+
 func mockExploreV2Data(network string, filters vmv2.ExploreFilters) vmv2.ExploreData {
 	rows := []vmv2.ExploreRow{
 		{When: "14:32:04", Age: "4s ago", Scope: "soroban", Protocol: "Soroswap", Topic: "swap", Function: "swap", Headline: "Alice swapped 100 USDC for 412.04 XLM on Soroswap", From: "GABC7F9A", Contract: "CCRT9981", TxHash: "abc49f4e2", Ledger: "52,844,201", Events: "4", Status: "Success", StatusTone: "success", Asset: "USDC", EvidenceHref: "/v2/tx/abc49f4e2"},
@@ -279,6 +412,9 @@ func exploreSummary(f vmv2.ExploreFilters, count int64, minLedger int64, maxLedg
 		scope = "all Stellar activity"
 	}
 	parts := []string{"Show", "<b class=\"scope\">" + html.EscapeString(scope) + "</b>"}
+	if f.Q != "" {
+		parts = append(parts, "matching "+exploreQueryHTML(f.Q))
+	}
 	if f.Topic != "" {
 		parts = append(parts, "about <b class=\"topic\">"+html.EscapeString(f.Topic)+"</b>")
 	}
@@ -304,6 +440,24 @@ func exploreSummary(f vmv2.ExploreFilters, count int64, minLedger int64, maxLedg
 		summary.EventsPerSec = fmt.Sprintf("%.1f", *eps)
 	}
 	return summary
+}
+
+func exploreQueryHTML(q string) string {
+	q = strings.TrimSpace(q)
+	label := "“" + q + "”"
+	kind := "query"
+	switch {
+	case contractIDIfLikely(q) != "":
+		label = "contract <code>" + html.EscapeString(gateway.ShortAddress(q)) + "</code>"
+		kind = "contract"
+	case txHashIfLikely(q) != "":
+		label = "transaction <code>" + html.EscapeString(gateway.ShortHash(q)) + "</code>"
+		kind = "tx"
+	case strings.HasPrefix(strings.ToUpper(q), "G") && len(q) == 56:
+		label = "address <code>" + html.EscapeString(gateway.ShortAddress(q)) + "</code>"
+		kind = "address"
+	}
+	return "<b class=\"" + kind + "\">" + label + "</b>"
 }
 
 func timeWindowLabel(v string) string {
@@ -346,7 +500,15 @@ func exploreFirstNonEmpty(values ...string) string {
 
 func txHashIfLikely(q string) string {
 	q = strings.TrimSpace(q)
-	if len(q) >= 24 && !strings.Contains(q, " ") {
+	if len(q) == 64 && isHex(q) {
+		return q
+	}
+	return ""
+}
+
+func contractIDIfLikely(q string) string {
+	q = strings.TrimSpace(q)
+	if len(q) == 56 && strings.HasPrefix(strings.ToUpper(q), "C") && !strings.Contains(q, " ") {
 		return q
 	}
 	return ""
@@ -354,7 +516,7 @@ func txHashIfLikely(q string) string {
 
 func contractNameIfLikely(q string) string {
 	q = strings.TrimSpace(q)
-	if q == "" || txHashIfLikely(q) != "" {
+	if q == "" || txHashIfLikely(q) != "" || contractIDIfLikely(q) != "" {
 		return ""
 	}
 	return q
