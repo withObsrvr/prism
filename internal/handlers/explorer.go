@@ -286,18 +286,19 @@ func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query strin
 		return ""
 	}
 	if cls.Type == prismsearch.ClassContract {
+		contractID := cls.Value
 		if h.Gateway != nil {
 			walletCtx, walletCancel := context.WithTimeout(ctx, 750*time.Millisecond)
-			if info, err := h.Gateway.GetSmartWalletInfo(walletCtx, network, q); err == nil && info != nil && info.IsSmartWallet {
+			if info, err := h.Gateway.GetSmartWalletInfo(walletCtx, network, contractID); err == nil && info != nil && info.IsSmartWallet {
 				walletCancel()
-				return "/v2/account/" + q
+				return "/v2/account/" + contractID
 			}
 			walletCancel()
 
 			assetCtx, assetCancel := context.WithTimeout(ctx, 750*time.Millisecond)
-			if _, err := h.Gateway.GetAssetDetail(assetCtx, network, q); err == nil {
+			if _, err := h.Gateway.GetAssetDetail(assetCtx, network, contractID); err == nil {
 				assetCancel()
-				return "/assets/" + q
+				return "/assets/" + contractID
 			}
 			assetCancel()
 		}

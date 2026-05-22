@@ -35,6 +35,7 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /search/suggest", h.SearchSuggest)
 	mux.HandleFunc("GET /search/submit", h.SearchSubmit)
 	mux.HandleFunc("POST /search/submit", h.SearchSubmit)
+	mux.HandleFunc("GET /v2/ask", h.AskV2)
 
 	// Ledgers
 	mux.HandleFunc("GET /ledger/{sequence}", h.LedgerDetail)
