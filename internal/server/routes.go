@@ -40,10 +40,14 @@ func (app *Application) Routes() http.Handler {
 	// Ledgers
 	mux.HandleFunc("GET /ledger/{sequence}", h.LedgerDetail)
 	mux.HandleFunc("GET /v2/ledger/{sequence}", h.LedgerDetailV2)
+	mux.HandleFunc("GET /v2/ledger/{sequence}/card.png", h.LedgerCardV2)
+	mux.HandleFunc("GET /v2/ledger/{sequence}/card.svg", h.LedgerCardSVGV2)
 
 	// Transactions
 	mux.HandleFunc("GET /tx/{hash}", h.TransactionReceipt)
 	mux.HandleFunc("GET /v2/tx/{hash}", h.TransactionReceiptV2)
+	mux.HandleFunc("GET /v2/tx/{hash}/card.png", h.TransactionCardV2)
+	mux.HandleFunc("GET /v2/tx/{hash}/card.svg", h.TransactionCardSVGV2)
 	mux.HandleFunc("GET /tx/v3/{hash}", h.TransactionReceiptV3)
 	mux.HandleFunc("GET /tx/v2/{hash}", h.TransactionReceiptV2)
 	mux.HandleFunc("GET /tx/v1/{hash}", h.TransactionReceiptV1)

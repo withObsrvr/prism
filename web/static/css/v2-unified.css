@@ -2727,12 +2727,34 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   color: var(--ph-text-2);
 }
 .px-tx-btn:hover { border-color: var(--ph-border-strong); color: var(--ph-text); }
+.px-tx-btn:disabled,
+.px-tx-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.px-tx-btn:disabled:hover,
+.px-tx-btn[aria-disabled="true"]:hover {
+  border-color: var(--ph-border);
+  color: var(--ph-text-2);
+}
 .px-tx-btn.primary {
   background: var(--ph-text);
   border-color: var(--ph-text);
   color: var(--ph-on-ink);
 }
 .px-tx-btn.primary:hover { background: var(--ph-ink-hover); border-color: var(--ph-ink-hover); color: var(--ph-on-ink); }
+.px-tx-btn.primary:disabled,
+.px-tx-btn.primary[aria-disabled="true"] {
+  background: var(--ph-text);
+  border-color: var(--ph-text);
+  color: var(--ph-on-ink);
+}
+.px-tx-btn.primary:disabled:hover,
+.px-tx-btn.primary[aria-disabled="true"]:hover {
+  background: var(--ph-text);
+  border-color: var(--ph-text);
+  color: var(--ph-on-ink);
+}
 
 /* Share button + popover */
 .px-share { position: relative; }
@@ -3606,12 +3628,34 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   transition: border-color 120ms, color 120ms, background 120ms;
 }
 .px-tx-btn:hover { border-color: var(--ph-border-strong); color: var(--ph-text); }
+.px-tx-btn:disabled,
+.px-tx-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.px-tx-btn:disabled:hover,
+.px-tx-btn[aria-disabled="true"]:hover {
+  border-color: var(--ph-border);
+  color: var(--ph-text-2);
+}
 .px-tx-btn.primary {
   background: var(--ph-text);
   color: var(--ph-on-ink);
   border-color: var(--ph-text);
 }
 .px-tx-btn.primary:hover { background: var(--ph-ink-hover); color: var(--ph-on-ink); }
+.px-tx-btn.primary:disabled,
+.px-tx-btn.primary[aria-disabled="true"] {
+  background: var(--ph-text);
+  border-color: var(--ph-text);
+  color: var(--ph-on-ink);
+}
+.px-tx-btn.primary:disabled:hover,
+.px-tx-btn.primary[aria-disabled="true"]:hover {
+  background: var(--ph-text);
+  border-color: var(--ph-text);
+  color: var(--ph-on-ink);
+}
 
 /* Sections */
 .px-tx-section {

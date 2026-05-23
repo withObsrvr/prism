@@ -1079,6 +1079,21 @@ func (h *Handlers) TransactionReceiptV2(w http.ResponseWriter, r *http.Request) 
 	network := networkFromRequest(r)
 
 	data := pages.TxReceiptData{Hash: hash, ShortHash: shortHash}
+	if h.useLiveData(r) {
+		metaCtx, cancel := context.WithTimeout(r.Context(), txDiffsGatewayTimeout)
+		defer cancel()
+		if live, err := h.buildTxReceiptData(r.Clone(metaCtx), network, hash, shortHash); err == nil {
+			data = live
+		} else {
+			h.Logger.Warn("v2 transaction metadata data failed, rendering shell metadata", "hash", shortHash, "error", err)
+		}
+	}
+	if data.Ledger == "" && data.LedgerRaw == "" {
+		mock := mockTxReceiptData(hash, shortHash)
+		mock.Hash = hash
+		mock.ShortHash = shortHash
+		data = mock
+	}
 	if err := pagesv2.TransactionReceiptShell(data, network).Render(r.Context(), w); err != nil {
 		if isClientGone(err) || errors.Is(r.Context().Err(), context.Canceled) {
 			h.Logger.Warn("v2 transaction receipt client disconnected during render", "hash", shortHash, "error", err)

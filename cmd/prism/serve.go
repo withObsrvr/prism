@@ -42,9 +42,11 @@ func init() {
 	viper.SetDefault("data_source", "auto")
 
 	// Gateway defaults. Keep this below the HTTP write timeout so slow gateway
-	// endpoints fail fast and pages can render their mock/stale fallbacks.
+	// endpoints fail fast and pages can render their mock/stale fallbacks. Explorer
+	// event queries can legitimately take 6s+ on remote deployments, so leave
+	// enough headroom while still staying below the 10s WriteTimeout.
 	viper.SetDefault("gateway.base_url", "https://gateway.withobsrvr.com")
-	viper.SetDefault("gateway.timeout", "5s")
+	viper.SetDefault("gateway.timeout", "8s")
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
@@ -56,7 +58,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Parse gateway timeout.
 	gwTimeout, err := time.ParseDuration(viper.GetString("gateway.timeout"))
 	if err != nil {
-		gwTimeout = 5 * time.Second
+		gwTimeout = 8 * time.Second
 	}
 
 	// Application-wide context for background goroutines.
@@ -110,6 +112,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	logger.Info("starting server",
 		"addr", srv.Addr,
 		"data_source", app.Config.DataSource,
+		"gateway_timeout", gwTimeout,
 	)
 
 	err = srv.ListenAndServe()
