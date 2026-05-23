@@ -162,7 +162,7 @@ templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 			@txQuickItem("Function", txFunctionLabel(data), false)
 			@txQuickItem("Fee", txFeeLabel(data), true)
 		</div>
-		<div class="px-tx-actions"><button class="px-tx-btn primary" type="button" disabled aria-disabled="true" title="Coming soon">Watch this address</button>@txShareButton(data)<button class="px-tx-btn" type="button" disabled aria-disabled="true" title="Coming soon">JSON</button><button class="px-tx-btn" type="button" disabled aria-disabled="true" title="Coming soon">Raw XDR</button></div>
+		<div class="px-tx-actions">@txShareButton(data)</div>
 	</div></section>
 }
 
