@@ -23,12 +23,28 @@ templ Brand() {
 
 templ MainNav(active string) {
 	<nav class="ph-nav" aria-label="Primary navigation">
-		<a class={ navActive(active, "home") } href="/v2/home">Home</a>
-		<a class={ navActive(active, "explore") } href="/v2/explore">Explore</a>
-		<a class={ navActive(active, "assets") } href="/v2/assets">Assets</a>
-		<a class={ navActive(active, "contracts") } href="/contracts">Contracts</a>
-		<a class={ navActive(active, "docs") } href="/v2/home#why">Docs</a>
+		@NavLinks(active)
 	</nav>
+}
+
+templ MobileNav(active string) {
+	<details class="ph-mobile-nav">
+		<summary aria-label="Open navigation menu">
+			<span class="ph-mobile-nav-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+			<span class="sr-only">Menu</span>
+		</summary>
+		<nav class="ph-mobile-nav-panel" aria-label="Mobile navigation">
+			@NavLinks(active)
+		</nav>
+	</details>
+}
+
+templ NavLinks(active string) {
+	<a class={ navActive(active, "home") } href="/v2/home">Home</a>
+	<a class={ navActive(active, "explore") } href="/v2/explore">Explore</a>
+	<a class={ navActive(active, "assets") } href="/v2/assets">Assets</a>
+	<a class={ navActive(active, "contracts") } href="/contracts">Contracts</a>
+	<a class={ navActive(active, "docs") } href="/v2/home#why">Docs</a>
 }
 
 templ MainHeader(active string, network string) {
@@ -36,6 +52,7 @@ templ MainHeader(active string, network string) {
 		<div class="ph-top-inner">
 			@Brand()
 			@MainNav(active)
+			@MobileNav(active)
 			<div class="ph-right">
 				{ children... }
 				@NetworkSelector(network)

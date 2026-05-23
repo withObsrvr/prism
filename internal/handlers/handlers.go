@@ -24,9 +24,13 @@ func New(logger *slog.Logger, gw *gateway.Client) *Handlers {
 	}
 }
 
-// networkFromRequest reads the prism_network cookie and returns a validated network name.
-// Defaults to "mainnet" if the cookie is missing or invalid.
+// networkFromRequest reads the network query param first, then the prism_network cookie.
+// Defaults to "mainnet" if neither value is present or valid.
 func networkFromRequest(r *http.Request) string {
+	switch r.URL.Query().Get("network") {
+	case "mainnet", "testnet", "futurenet":
+		return r.URL.Query().Get("network")
+	}
 	cookie, err := r.Cookie("prism_network")
 	if err != nil {
 		return "mainnet"

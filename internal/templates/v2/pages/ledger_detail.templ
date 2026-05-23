@@ -11,7 +11,7 @@ import (
 )
 
 templ LedgerDetail(data legacy.LedgerDetailData, network string) {
-	@layoutsv2.LedgerBaseMeta(fmt.Sprintf("Ledger %s, Prism", data.Sequence), ledgerSocialMeta(data)) {
+	@layoutsv2.LedgerBaseMeta(fmt.Sprintf("Ledger %s, Prism", data.Sequence), ledgerSocialMeta(data, network)) {
 		@componentsv2.DetailHeader(data.SequenceRaw, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledgers", Href: "/v2/home/ledger"}, {Label: data.Sequence, Mono: true}})
 		<div class="px-lg-nav">
@@ -132,9 +132,10 @@ templ shareLedger(data legacy.LedgerDetailData, network string) {
 	<button
 		type="button"
 		class="px-tx-btn px-share-trigger"
+		data-share-url={ shareURL(data, network) }
 		data-share-title={ shareTitle(data) }
 		data-share-text={ shareText(data) }
-		onclick="(async function(btn){var label=btn.querySelector('[data-share-label]');var original=label?label.textContent:'Share';var url=window.location.href.split('#')[0];var payload={title:btn.dataset.shareTitle,text:btn.dataset.shareText,url:url};async function copied(){if(navigator.clipboard){await navigator.clipboard.writeText(payload.url);if(label){label.textContent='Copied link';setTimeout(function(){label.textContent=original;},1600);}}}try{if(navigator.share){await navigator.share(payload);return;}await copied();}catch(error){if(error && error.name==='AbortError') return;try{await copied();}catch(_){if(label){label.textContent='Copy failed';setTimeout(function(){label.textContent=original;},1600);}}}})(this)"
+		onclick="(async function(btn){var label=btn.querySelector('[data-share-label]');var original=label?label.textContent:'Share';var payload={title:btn.dataset.shareTitle,text:btn.dataset.shareText,url:btn.dataset.shareUrl};async function copied(){if(navigator.clipboard){await navigator.clipboard.writeText(payload.url);if(label){label.textContent='Copied link';setTimeout(function(){label.textContent=original;},1600);}}}try{if(navigator.share){await navigator.share(payload);return;}await copied();}catch(error){if(error && error.name==='AbortError') return;try{await copied();}catch(_){if(label){label.textContent='Copy failed';setTimeout(function(){label.textContent=original;},1600);}}}})(this)"
 	>
 		<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v6a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V5"></path><path d="M6.5 1v8M4 3.5l2.5-2.5L9 3.5"></path></svg>
 		<span data-share-label>Share</span>
@@ -218,10 +219,12 @@ func touchedNum(v string) string { parts:=strings.Fields(v); if len(parts)>0 { r
 func touchedLabel(v string) string { parts:=strings.Fields(v); if len(parts)>1 { return parts[1] }; return "txs" }
 func deltaClass(v string) string { if strings.HasPrefix(v,"+") { return "in" }; if strings.HasPrefix(v,"−") || strings.HasPrefix(v,"-") { return "out" }; return "neutral" }
 func stripHTMLLocal(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return html.UnescapeString(string(out)) }
-func shareURL(data legacy.LedgerDetailData) string { return "https://prism.withobsrvr.com/v2/ledger/" + data.SequenceRaw }
+func networkQuery(network string) string { if network == "" || network == "mainnet" { return "" }; return "?network=" + network }
+func shareURL(data legacy.LedgerDetailData, network string) string { return "https://prism.withobsrvr.com/v2/ledger/" + data.SequenceRaw + networkQuery(network) }
+func shareCardURL(data legacy.LedgerDetailData, network string) string { return "https://prism.withobsrvr.com/v2/ledger/" + data.SequenceRaw + "/card.png" + networkQuery(network) }
 func shareTitle(data legacy.LedgerDetailData) string { return fmt.Sprintf("Ledger %s closed with %s operations across %s transactions", data.Sequence, data.OpCount, data.TxCount) }
 func shareDescription(data legacy.LedgerDetailData) string { return fmt.Sprintf("%s Soroban calls, %s events, %s failed transactions. %s", data.SorobanCalls, data.EventsEmitted, data.TxFailed, sharePreviewLine(data)) }
-func ledgerSocialMeta(data legacy.LedgerDetailData) layoutsv2.SocialMeta { return layoutsv2.SocialMeta{Title: shareTitle(data), Description: shareDescription(data), URL: shareURL(data), Image: shareURL(data) + "/card.png"} }
+func ledgerSocialMeta(data legacy.LedgerDetailData, network string) layoutsv2.SocialMeta { return layoutsv2.SocialMeta{Title: shareTitle(data), Description: shareDescription(data), URL: shareURL(data, network), Image: shareCardURL(data, network)} }
 func sharePreviewLine(data legacy.LedgerDetailData) string { s:=stripHTMLLocal(firstTxSummary(data)); if strings.TrimSpace(s)=="" || s=="No transactions loaded" { return "Prism decoded this ledger's activity." }; if len([]rune(s))>82 { return string([]rune(s)[:82]) + "…" }; return s }
 func shareText(data legacy.LedgerDetailData) string { return shareTitle(data) }
 func relativeClosedAt(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.CloseTime)!="" { return data.CloseTime + " close" }; return "closed" }
