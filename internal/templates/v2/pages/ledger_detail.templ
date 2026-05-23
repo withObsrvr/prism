@@ -2,6 +2,7 @@ package pagesv2
 
 import (
 	"fmt"
+	"html"
 	"strconv"
 	"strings"
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
@@ -216,7 +217,7 @@ func changedAccounts(data legacy.LedgerDetailData) []legacy.LedgerChangedAccount
 func touchedNum(v string) string { parts:=strings.Fields(v); if len(parts)>0 { return parts[0] }; return v }
 func touchedLabel(v string) string { parts:=strings.Fields(v); if len(parts)>1 { return parts[1] }; return "txs" }
 func deltaClass(v string) string { if strings.HasPrefix(v,"+") { return "in" }; if strings.HasPrefix(v,"−") || strings.HasPrefix(v,"-") { return "out" }; return "neutral" }
-func stripHTMLLocal(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return string(out) }
+func stripHTMLLocal(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return html.UnescapeString(string(out)) }
 func shareURL(data legacy.LedgerDetailData) string { return "https://prism.withobsrvr.com/v2/ledger/" + data.SequenceRaw }
 func shareTitle(data legacy.LedgerDetailData) string { return fmt.Sprintf("Ledger %s closed with %s operations across %s transactions", data.Sequence, data.OpCount, data.TxCount) }
 func shareDescription(data legacy.LedgerDetailData) string { return fmt.Sprintf("%s Soroban calls, %s events, %s failed transactions. %s", data.SorobanCalls, data.EventsEmitted, data.TxFailed, sharePreviewLine(data)) }

@@ -23,8 +23,10 @@ func (app *Application) Routes() http.Handler {
 	// Explorer routes
 	// ─────────────────────────────────────────────
 
-	// Home — search-first landing page
-	mux.HandleFunc("GET /", h.Home)
+	// Home — v2 search-first landing page
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/v2/home", http.StatusFound)
+	})
 	mux.HandleFunc("GET /v2/home", h.HomeV2)
 	mux.HandleFunc("GET /v2/home/feed", h.HomeV2Feed)
 	mux.HandleFunc("GET /v2/home/ledger", h.HomeLedgerFirstV2)

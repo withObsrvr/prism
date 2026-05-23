@@ -2,6 +2,7 @@ package pagesv2
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
@@ -359,7 +360,7 @@ func txShareTitle(data legacy.TxReceiptData) string { return "Transaction " + da
 func txShareDescription(data legacy.TxReceiptData) string { ledger := strings.TrimSpace(data.Ledger); if ledger == "" { ledger = strings.TrimSpace(data.LedgerRaw) }; prefix := "Decoded transaction"; if ledger != "" { prefix = "Transaction in ledger " + ledger }; detail := txShareText(data); if detail == "" { return prefix }; return prefix + ": " + detail }
 func txShareText(data legacy.TxReceiptData) string { text := strings.TrimSpace(stripTxHTML(txNarrativeHTML(data))); if text == "" { return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }; if len([]rune(text)) > 140 { return string([]rune(text)[:140]) + "…" }; return text }
 func txSocialMeta(data legacy.TxReceiptData) layoutsv2.SocialMeta { return layoutsv2.SocialMeta{Title: txShareTitle(data), Description: txShareDescription(data), URL: txShareURL(data), Image: txShareURL(data) + "/card.png"} }
-func stripTxHTML(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return string(out) }
+func stripTxHTML(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return html.UnescapeString(string(out)) }
 func avatarInitial(v string) string { v = strings.TrimSpace(v); if v == "" { return "•" }; return strings.ToUpper(string([]rune(v)[0])) }
 func invertSigned(v string) string { v = strings.TrimSpace(v); if strings.HasPrefix(v, "−") { return "+" + strings.TrimPrefix(v, "−") }; if strings.HasPrefix(v, "-") { return "+" + strings.TrimPrefix(v, "-") }; if strings.HasPrefix(v, "+") { return "−" + strings.TrimPrefix(v, "+") }; if v == "" { return "—" }; return v }
 func txRawText(data legacy.TxReceiptData) string { if data.EnvelopeXDR != "" { return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  source: " + firstNonEmpty(data.SourceAddrFull, data.SourceAddr) + "\n  fee: " + firstNonEmpty(data.FeePaid, "—") + " stroops\n  sequence: " + firstNonEmpty(data.SeqNumber, "—") + "\n  xdr: " + data.EnvelopeXDR + "\n}" }; return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  ledger: " + data.LedgerRaw + "\n  operations: " + data.OpsCount + "\n  events: " + data.EventsCount + "\n}" }

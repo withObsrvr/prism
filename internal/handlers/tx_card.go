@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"image/color"
 	"image/png"
@@ -42,7 +43,9 @@ func (h *Handlers) txCardData(r *http.Request) (pages.TxReceiptData, string) {
 
 	var data pages.TxReceiptData
 	if h.useLiveData(r) {
-		if live, err := h.buildTxReceiptData(r, network, hash, shortHash); err == nil {
+		ctx, cancel := context.WithTimeout(r.Context(), cardGatewayTimeout)
+		defer cancel()
+		if live, err := h.buildTxReceiptData(r.Clone(ctx), network, hash, shortHash); err == nil {
 			data = live
 		} else {
 			h.Logger.Warn("live transaction card data failed, falling back to mock", "hash", shortHash, "error", err)
@@ -70,10 +73,15 @@ func renderTransactionCardPNG(data pages.TxReceiptData, network string) image.Im
 	red := rgb(217, 82, 30)
 
 	regular := mustFace(goregular.TTF, 22)
+	defer regular.Close()
 	regularLarge := mustFace(goregular.TTF, 60)
+	defer regularLarge.Close()
 	bold := mustFace(gobold.TTF, 16)
+	defer bold.Close()
 	brand := mustFace(gobold.TTF, 36)
+	defer brand.Close()
 	mono := mustFace(goregular.TTF, 15)
+	defer mono.Close()
 
 	drawPrismLogo(img, 64, 50, brand, ink)
 	drawRightString(img, 1136, 88, firstNonEmptyTxCard(data.Timestamp, "transaction")+" · "+strings.ToUpper(networkLabelCard(network)), mono, soft)

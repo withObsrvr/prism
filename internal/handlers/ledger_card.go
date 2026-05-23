@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"html"
 	"image"
 	"image/color"
@@ -9,6 +10,8 @@ import (
 	"image/png"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/withObsrvr/prism/internal/templates/pages"
 	"golang.org/x/image/font"
@@ -44,7 +47,9 @@ func (h *Handlers) ledgerCardData(r *http.Request) (pages.LedgerDetailData, stri
 
 	var data pages.LedgerDetailData
 	if h.useLiveData(r) {
-		if live, err := h.buildLedgerDetailData(r, network, sequence); err == nil {
+		ctx, cancel := context.WithTimeout(r.Context(), cardGatewayTimeout)
+		defer cancel()
+		if live, err := h.buildLedgerDetailData(r.Clone(ctx), network, sequence); err == nil {
 			data = live
 		} else {
 			h.Logger.Warn("live ledger card data failed, falling back to mock", "error", err)
@@ -71,11 +76,17 @@ func renderLedgerCardPNG(data pages.LedgerDetailData, network string) image.Imag
 	orange := rgb(217, 82, 30)
 
 	regular := mustFace(goregular.TTF, 22)
+	defer regular.Close()
 	regularLarge := mustFace(goregular.TTF, 64)
+	defer regularLarge.Close()
 	regularHuge := mustFace(goregular.TTF, 92)
+	defer regularHuge.Close()
 	bold := mustFace(gobold.TTF, 16)
+	defer bold.Close()
 	brand := mustFace(gobold.TTF, 36)
+	defer brand.Close()
 	mono := mustFace(goregular.TTF, 15)
+	defer mono.Close()
 
 	drawPrismLogo(img, 64, 50, brand, ink)
 	drawRightString(img, 1136, 88, data.ClosedAt+" · "+strings.ToUpper(networkLabelCard(network)), mono, soft)
@@ -152,10 +163,31 @@ func blend(dst, src color.RGBA) color.RGBA {
 	return color.RGBA{R: uint8((uint32(src.R)*a + uint32(dst.R)*(255-a)) / 255), G: uint8((uint32(src.G)*a + uint32(dst.G)*(255-a)) / 255), B: uint8((uint32(src.B)*a + uint32(dst.B)*(255-a)) / 255), A: 255}
 }
 
+const cardGatewayTimeout = 3 * time.Second
+
+var (
+	cardFontsOnce   sync.Once
+	cardRegularFont *opentype.Font
+	cardBoldFont    *opentype.Font
+	cardFontsErr    error
+)
+
+func initCardFonts() {
+	cardRegularFont, cardFontsErr = opentype.Parse(goregular.TTF)
+	if cardFontsErr != nil {
+		return
+	}
+	cardBoldFont, cardFontsErr = opentype.Parse(gobold.TTF)
+}
+
 func mustFace(ttf []byte, size float64) font.Face {
-	f, err := opentype.Parse(ttf)
-	if err != nil {
-		panic(err)
+	cardFontsOnce.Do(initCardFonts)
+	if cardFontsErr != nil {
+		panic(cardFontsErr)
+	}
+	f := cardRegularFont
+	if bytes.Equal(ttf, gobold.TTF) {
+		f = cardBoldFont
 	}
 	face, err := opentype.NewFace(f, &opentype.FaceOptions{Size: size, DPI: 72, Hinting: font.HintingFull})
 	if err != nil {
@@ -239,7 +271,7 @@ func stripHTMLCard(s string) string {
 			out = append(out, r)
 		}
 	}
-	return string(out)
+	return html.UnescapeString(string(out))
 }
 
 func sharePreviewLineCard(data pages.LedgerDetailData) string {
