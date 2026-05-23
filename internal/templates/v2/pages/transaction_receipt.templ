@@ -2,6 +2,7 @@ package pagesv2
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
@@ -11,7 +12,7 @@ import (
 )
 
 templ TransactionReceipt(data legacy.TxReceiptData, network string) {
-	@layoutsv2.LedgerBase("Transaction " + data.ShortHash + " — Prism") {
+	@layoutsv2.LedgerBaseMeta("Transaction " + data.ShortHash + " — Prism", txSocialMeta(data)) {
 		@componentsv2.DetailHeader(data.ShortHash, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledger " + data.Ledger, Href: "/v2/ledger/" + data.LedgerRaw}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
@@ -28,7 +29,7 @@ templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 }
 
 templ TransactionReceiptShell(data legacy.TxReceiptData, network string) {
-	@layoutsv2.LedgerBase("Transaction " + data.ShortHash + " — Prism") {
+	@layoutsv2.LedgerBaseMeta("Transaction " + data.ShortHash + " — Prism", txSocialMeta(data)) {
 		@componentsv2.DetailHeader(data.ShortHash, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
@@ -162,8 +163,21 @@ templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 			@txQuickItem("Function", txFunctionLabel(data), false)
 			@txQuickItem("Fee", txFeeLabel(data), true)
 		</div>
-		<div class="px-tx-actions"><a class="px-tx-btn primary" href={ templ.SafeURL(txSourceHref(data)) }>Watch this address</a><button class="px-tx-btn" data-share={ txShareURL(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)">Copy link</button><button class="px-tx-btn">JSON</button><button class="px-tx-btn" type="button" data-px-tx-open-tab="raw">Raw XDR</button><button class="px-tx-btn">Replay in sandbox</button></div>
+		<div class="px-tx-actions">@txShareButton(data)</div>
 	</div></section>
+}
+
+templ txShareButton(data legacy.TxReceiptData) {
+	<button
+		type="button"
+		class="px-tx-btn px-share-trigger"
+		data-share-title={ txShareTitle(data) }
+		data-share-text={ txShareText(data) }
+		onclick="(async function(btn){var label=btn.querySelector('[data-share-label]');var original=label?label.textContent:'Share';var url=window.location.href.split('#')[0];var payload={title:btn.dataset.shareTitle,text:btn.dataset.shareText,url:url};async function copied(){if(navigator.clipboard){await navigator.clipboard.writeText(payload.url);if(label){label.textContent='Copied link';setTimeout(function(){label.textContent=original;},1600);}}}try{if(navigator.share){await navigator.share(payload);return;}await copied();}catch(error){if(error && error.name==='AbortError') return;try{await copied();}catch(_){if(label){label.textContent='Copy failed';setTimeout(function(){label.textContent=original;},1600);}}}})(this)"
+	>
+		<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v6a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V5"></path><path d="M6.5 1v8M4 3.5l2.5-2.5L9 3.5"></path></svg>
+		<span data-share-label>Share</span>
+	</button>
 }
 
 templ txHeroViz(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
@@ -341,7 +355,12 @@ func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetecte
 func txContractLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.ContractName, "Contract") + " " + firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }
 func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }
 func txFeeLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.FeePaidXLM, firstNonEmpty(data.FeePaid, "—")) }
-func txShareURL(data legacy.TxReceiptData) string { return "https://prism.withobsrvr.com/tx/v2/" + data.Hash }
+func txShareURL(data legacy.TxReceiptData) string { return "https://prism.withobsrvr.com/v2/tx/" + data.Hash }
+func txShareTitle(data legacy.TxReceiptData) string { return "Transaction " + data.ShortHash + " on Prism" }
+func txShareDescription(data legacy.TxReceiptData) string { ledger := strings.TrimSpace(data.Ledger); if ledger == "" { ledger = strings.TrimSpace(data.LedgerRaw) }; prefix := "Decoded transaction"; if ledger != "" { prefix = "Transaction in ledger " + ledger }; detail := txShareText(data); if detail == "" { return prefix }; return prefix + ": " + detail }
+func txShareText(data legacy.TxReceiptData) string { text := strings.TrimSpace(stripTxHTML(txNarrativeHTML(data))); if text == "" { return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }; if len([]rune(text)) > 140 { return string([]rune(text)[:140]) + "…" }; return text }
+func txSocialMeta(data legacy.TxReceiptData) layoutsv2.SocialMeta { return layoutsv2.SocialMeta{Title: txShareTitle(data), Description: txShareDescription(data), URL: txShareURL(data), Image: txShareURL(data) + "/card.png"} }
+func stripTxHTML(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return html.UnescapeString(string(out)) }
 func avatarInitial(v string) string { v = strings.TrimSpace(v); if v == "" { return "•" }; return strings.ToUpper(string([]rune(v)[0])) }
 func invertSigned(v string) string { v = strings.TrimSpace(v); if strings.HasPrefix(v, "−") { return "+" + strings.TrimPrefix(v, "−") }; if strings.HasPrefix(v, "-") { return "+" + strings.TrimPrefix(v, "-") }; if strings.HasPrefix(v, "+") { return "−" + strings.TrimPrefix(v, "+") }; if v == "" { return "—" }; return v }
 func txRawText(data legacy.TxReceiptData) string { if data.EnvelopeXDR != "" { return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  source: " + firstNonEmpty(data.SourceAddrFull, data.SourceAddr) + "\n  fee: " + firstNonEmpty(data.FeePaid, "—") + " stroops\n  sequence: " + firstNonEmpty(data.SeqNumber, "—") + "\n  xdr: " + data.EnvelopeXDR + "\n}" }; return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  ledger: " + data.LedgerRaw + "\n  operations: " + data.OpsCount + "\n  events: " + data.EventsCount + "\n}" }

@@ -2,7 +2,7 @@ package pagesv2
 
 import (
 	"fmt"
-	"net/url"
+	"html"
 	"strconv"
 	"strings"
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
@@ -11,7 +11,7 @@ import (
 )
 
 templ LedgerDetail(data legacy.LedgerDetailData, network string) {
-	@layoutsv2.LedgerBase(fmt.Sprintf("Ledger %s, Prism", data.Sequence)) {
+	@layoutsv2.LedgerBaseMeta(fmt.Sprintf("Ledger %s, Prism", data.Sequence), ledgerSocialMeta(data)) {
 		@componentsv2.DetailHeader(data.SequenceRaw, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledgers", Href: "/v2/home/ledger"}, {Label: data.Sequence, Mono: true}})
 		<div class="px-lg-nav">
@@ -24,9 +24,7 @@ templ LedgerDetail(data legacy.LedgerDetailData, network string) {
 			<h1 class="px-lg-h1"><span class="px-tx-verb">Ledger</span> <span class="px-lg-num mono">{ data.Sequence }</span> <span class="px-tx-verb">closed with</span> <span class="px-lg-amt">{ data.OpCount } operations</span> <span class="px-tx-verb">across</span> <span class="px-lg-amt">{ data.TxCount } transactions</span></h1>
 			<p class="px-tx-sub">@templ.Raw(ledgerNarrativeHTML(data))</p>
 			<div class="px-tx-actions">
-				<a class="px-tx-btn primary" href={ templ.SafeURL("/events?ledger=" + data.SequenceRaw) }>Stream from this ledger</a>
 				@shareLedger(data, network)
-				<button class="px-tx-btn">JSON</button><button class="px-tx-btn">Raw XDR</button><button class="px-tx-btn">CSV (operations)</button>
 			</div>
 		</div></section>
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
@@ -131,20 +129,16 @@ templ ledgerTxFiltersScript() {
 }
 
 templ shareLedger(data legacy.LedgerDetailData, network string) {
-	<details class="px-share">
-		<summary class="px-tx-btn px-share-trigger">
-			<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v6a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V5"></path><path d="M6.5 1v8M4 3.5l2.5-2.5L9 3.5"></path></svg>
-			Share
-		</summary>
-		<div class="px-share-pop">
-			<div class="px-share-arrow"></div>
-			<div class="px-share-head"><div class="px-share-eyebrow">Share this ledger</div><button type="button" class="px-share-close" aria-label="Close" onclick="this.closest('details').removeAttribute('open')">×</button></div>
-			<div class="px-share-preview"><div class="px-share-preview-img"><svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><rect width="1200" height="630" fill="#FBFAF7"></rect><defs><radialGradient id={ "og-warm-" + data.SequenceRaw } cx="0" cy="0" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF7F50" stop-opacity="0.06"></stop><stop offset="1" stop-color="#FF7F50" stop-opacity="0"></stop></radialGradient></defs><rect width="1200" height="630" fill={ "url(#og-warm-" + data.SequenceRaw + ")" }></rect><g transform="translate(64, 56)"><g fill="none" stroke="#D9521E" stroke-linejoin="round"><path d="M22 4 L40 14 L40 30 L22 40 L4 30 L4 14 Z" stroke-width="2.4"></path><path d="M22 4 L22 40 M4 14 L40 30 M40 14 L4 30" stroke-width="1.6" opacity="0.45"></path></g><text x="56" y="32" fill="#1F1B16" font-family="Georgia, serif" font-size="36" font-weight="600">prism</text></g><g transform="translate(1136, 88)" text-anchor="end"><text fill="#9A968C" font-family="ui-monospace, monospace" font-size="13">{ data.ClosedAt } · { strings.ToUpper(networkLabel(network)) }</text></g><text x="64" y="200" fill="#D9521E" font-family="ui-monospace, monospace" font-size="16" font-weight="700" letter-spacing="0.5">LEDGER { data.Sequence } · { strings.ToUpper(firstNonEmpty(data.ActivityTag, "SOROBAN-AWARE")) }</text><text x="64" y="310" fill="#1F1B16" font-family="Georgia, serif" font-size="92" font-weight="500" letter-spacing="-2">{ data.OpCount } operations</text><text x="64" y="396" fill="#56544E" font-family="Georgia, serif" font-size="64" font-weight="500" letter-spacing="-1">across { data.TxCount } transactions</text><text x="64" y="466" fill="#1F1B16" font-family="ui-sans-serif, sans-serif" font-size="22">{ sharePreviewLine(data) }</text><text x="64" y="498" fill="#56544E" font-family="ui-sans-serif, sans-serif" font-size="22">{ data.SorobanCalls } Soroban calls · { data.EventsEmitted } events · { data.TxFailed } failed</text><g transform="translate(64, 540)"><rect x="0" y="0" width="302" height="36" fill="#5E4FA8"></rect><rect x="304" y="0" width="249" height="36" fill="#1F4E5F"></rect><rect x="555" y="0" width="211" height="36" fill="#7A746A"></rect><rect x="768" y="0" width="136" height="36" fill="#B98429"></rect><rect x="906" y="0" width="98" height="36" fill="#D9521E"></rect><rect x="1006" y="0" width="76" height="36" fill="#C9BDA3"></rect></g><text x="64" y="610" fill="#D9521E" font-family="ui-monospace, monospace" font-size="15" font-weight="600">{ shareURL(data) }</text></svg></div><div class="px-share-preview-cap">Card people will see when they paste the link</div></div>
-			<div class="px-share-url"><div class="px-share-url-input mono">{ shareURL(data) }</div><button type="button" class="px-share-url-copy" data-share={ shareURL(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="2.5" width="6" height="6" rx="1"></rect><path d="M5 2.5V1h5v6H8.5"></path></svg>Copy</button></div>
-			<div class="px-share-platforms"><a class="px-share-platform" href={ templ.SafeURL("https://twitter.com/intent/tweet?text=" + shareTweet(data)) } target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>Post to X</a><button type="button" class="px-share-platform" data-share={ shareMarkdown(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5h9M2 6.5h9M2 9.5h6"></path></svg>Copy as Markdown</button><button type="button" class="px-share-platform" data-share={ shareEmbed(data) } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.share)"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3.5L2 6.5l3 3M8 3.5l3 3-3 3"></path></svg>Copy embed</button></div>
-			<div class="px-share-foot">Press <span class="kbd">⌘</span> <span class="kbd">⇧</span> <span class="kbd">S</span> to share any page</div>
-		</div>
-	</details>
+	<button
+		type="button"
+		class="px-tx-btn px-share-trigger"
+		data-share-title={ shareTitle(data) }
+		data-share-text={ shareText(data) }
+		onclick="(async function(btn){var label=btn.querySelector('[data-share-label]');var original=label?label.textContent:'Share';var url=window.location.href.split('#')[0];var payload={title:btn.dataset.shareTitle,text:btn.dataset.shareText,url:url};async function copied(){if(navigator.clipboard){await navigator.clipboard.writeText(payload.url);if(label){label.textContent='Copied link';setTimeout(function(){label.textContent=original;},1600);}}}try{if(navigator.share){await navigator.share(payload);return;}await copied();}catch(error){if(error && error.name==='AbortError') return;try{await copied();}catch(_){if(label){label.textContent='Copy failed';setTimeout(function(){label.textContent=original;},1600);}}}})(this)"
+	>
+		<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v6a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V5"></path><path d="M6.5 1v8M4 3.5l2.5-2.5L9 3.5"></path></svg>
+		<span data-share-label>Share</span>
+	</button>
 }
 
 templ stoodOut(data legacy.LedgerDetailData) {
@@ -223,13 +217,13 @@ func changedAccounts(data legacy.LedgerDetailData) []legacy.LedgerChangedAccount
 func touchedNum(v string) string { parts:=strings.Fields(v); if len(parts)>0 { return parts[0] }; return v }
 func touchedLabel(v string) string { parts:=strings.Fields(v); if len(parts)>1 { return parts[1] }; return "txs" }
 func deltaClass(v string) string { if strings.HasPrefix(v,"+") { return "in" }; if strings.HasPrefix(v,"−") || strings.HasPrefix(v,"-") { return "out" }; return "neutral" }
-func stripHTMLLocal(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return string(out) }
-func shareURL(data legacy.LedgerDetailData) string { return "https://prism.withobsrvr.com/ledger/" + data.SequenceRaw }
+func stripHTMLLocal(s string) string { out:=make([]rune,0,len(s)); in:=false; for _,r:=range s { if r=='<' { in=true; continue }; if r=='>' { in=false; continue }; if !in { out=append(out,r) } }; return html.UnescapeString(string(out)) }
+func shareURL(data legacy.LedgerDetailData) string { return "https://prism.withobsrvr.com/v2/ledger/" + data.SequenceRaw }
 func shareTitle(data legacy.LedgerDetailData) string { return fmt.Sprintf("Ledger %s closed with %s operations across %s transactions", data.Sequence, data.OpCount, data.TxCount) }
+func shareDescription(data legacy.LedgerDetailData) string { return fmt.Sprintf("%s Soroban calls, %s events, %s failed transactions. %s", data.SorobanCalls, data.EventsEmitted, data.TxFailed, sharePreviewLine(data)) }
+func ledgerSocialMeta(data legacy.LedgerDetailData) layoutsv2.SocialMeta { return layoutsv2.SocialMeta{Title: shareTitle(data), Description: shareDescription(data), URL: shareURL(data), Image: shareURL(data) + "/card.png"} }
 func sharePreviewLine(data legacy.LedgerDetailData) string { s:=stripHTMLLocal(firstTxSummary(data)); if strings.TrimSpace(s)=="" || s=="No transactions loaded" { return "Prism decoded this ledger's activity." }; if len([]rune(s))>82 { return string([]rune(s)[:82]) + "…" }; return s }
-func shareTweet(data legacy.LedgerDetailData) string { return url.QueryEscape(shareTitle(data) + ": " + shareURL(data)) }
-func shareMarkdown(data legacy.LedgerDetailData) string { return fmt.Sprintf("[%s](%s)", shareTitle(data), shareURL(data)) }
-func shareEmbed(data legacy.LedgerDetailData) string { return fmt.Sprintf("<iframe src=\"%s/embed\" title=\"Prism ledger %s\" width=\"640\" height=\"360\"></iframe>", shareURL(data), data.Sequence) }
+func shareText(data legacy.LedgerDetailData) string { return shareTitle(data) }
 func relativeClosedAt(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.CloseTime)!="" { return data.CloseTime + " close" }; return "closed" }
 func ledgerNarrativeHTML(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.SubNarrative)!="" { return strings.ReplaceAll(data.SubNarrative, "—", ":") }; return fmt.Sprintf("%s: <b>%s of %s operations</b> were Soroban calls. Closed in <b>%s</b>, paying a combined <span class=\"mono\">%s stroops</span> in fees. %s transactions succeeded and %s failed.", firstNonEmpty(data.ActivityTag,"Soroban-aware"), data.SorobanCalls, data.OpCount, data.CloseTime, data.TotalFees, data.TxSuccess, data.TxFailed) }
 func touchedAddressCount(data legacy.LedgerDetailData) string { if len(data.ChangedAccounts)>0 { return fmt.Sprintf("%d", len(data.ChangedAccounts)) }; return "0" }

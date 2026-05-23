@@ -1,12 +1,40 @@
 package layoutsv2
 
+type SocialMeta struct {
+	Title       string
+	Description string
+	URL         string
+	Image       string
+}
+
 templ LedgerBase(title string) {
+	@LedgerBaseMeta(title, SocialMeta{}) {
+		{ children... }
+	}
+}
+
+templ LedgerBaseMeta(title string, meta SocialMeta) {
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>{ title }</title>
+		if meta.Title != "" {
+			<meta name="description" content={ meta.Description }/>
+			<meta property="og:type" content="website"/>
+			<meta property="og:title" content={ meta.Title }/>
+			<meta property="og:description" content={ meta.Description }/>
+			<meta property="og:url" content={ meta.URL }/>
+			<meta property="og:image" content={ meta.Image }/>
+			<meta property="og:image:width" content="1200"/>
+			<meta property="og:image:height" content="630"/>
+			<meta property="og:image:type" content="image/png"/>
+			<meta name="twitter:card" content="summary_large_image"/>
+			<meta name="twitter:title" content={ meta.Title }/>
+			<meta name="twitter:description" content={ meta.Description }/>
+			<meta name="twitter:image" content={ meta.Image }/>
+		}
 		<link rel="icon" type="image/svg+xml" href="/static/favicon.svg"/>
 		<link rel="preconnect" href="https://fonts.googleapis.com"/>
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
