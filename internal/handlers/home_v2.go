@@ -141,9 +141,12 @@ const (
 	homeV2SorobanInstructionLimit = int64(100_000_000)
 	homeV2SorobanReadWriteLimit   = int64(3_500_000)
 
-	homeV2HomeSummaryTimeout   = 1500 * time.Millisecond
-	homeV2RecentLedgersTimeout = 2 * time.Second
-	homeV2FeedSummariesTimeout = 1500 * time.Millisecond
+	// Bumped from 1.5-2s: during the post-backfill catch-up the query-api runs
+	// 1.5-4s under Postgres contention, so the tight budgets timed out on
+	// otherwise-successful responses. Revert toward ~2s once catch-up settles.
+	homeV2HomeSummaryTimeout   = 6 * time.Second
+	homeV2RecentLedgersTimeout = 6 * time.Second
+	homeV2FeedSummariesTimeout = 6 * time.Second
 )
 
 type homeV2NetworkCfg struct {

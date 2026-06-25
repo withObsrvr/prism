@@ -163,7 +163,7 @@ func blend(dst, src color.RGBA) color.RGBA {
 	return color.RGBA{R: uint8((uint32(src.R)*a + uint32(dst.R)*(255-a)) / 255), G: uint8((uint32(src.G)*a + uint32(dst.G)*(255-a)) / 255), B: uint8((uint32(src.B)*a + uint32(dst.B)*(255-a)) / 255), A: 255}
 }
 
-const cardGatewayTimeout = 3 * time.Second
+const cardGatewayTimeout = 6 * time.Second
 
 var (
 	cardFontsOnce   sync.Once

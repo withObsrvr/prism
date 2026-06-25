@@ -11,7 +11,7 @@ import (
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
-const homeFragmentGatewayTimeout = 3 * time.Second
+const homeFragmentGatewayTimeout = 6 * time.Second
 
 // ── Fragment 1: Network Pulse ──
 
