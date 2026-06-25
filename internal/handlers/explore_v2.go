@@ -33,7 +33,7 @@ func (h *Handlers) ExploreV2Header(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	header := exploreHeader(network)
 	if h.useLiveData(r) {
-		ctx, cancel := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+		ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
 		defer cancel()
 		if recent, err := h.Gateway.GetSilverRecentLedgers(ctx, network, 1); err == nil && recent != nil && len(recent.Ledgers) > 0 {
 			ledger := recent.Ledgers[0]

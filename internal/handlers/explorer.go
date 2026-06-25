@@ -1032,8 +1032,8 @@ func stripHTML(s string) string {
 }
 
 const (
-	txPageGatewayTimeout  = 5 * time.Second
-	txDiffsGatewayTimeout = 1500 * time.Millisecond
+	txPageGatewayTimeout  = 15 * time.Second
+	txDiffsGatewayTimeout = 6 * time.Second
 )
 
 // TransactionReceipt renders a single transaction page.

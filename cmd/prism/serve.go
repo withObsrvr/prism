@@ -87,9 +87,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 		Addr:         fmt.Sprintf("%s:%d", app.Config.Host, app.Config.Port),
 		Handler:      app.Routes(),
 		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		IdleTimeout: time.Minute,
+		ReadTimeout: 5 * time.Second,
+		// Bumped from 10s: a ledger-detail render fans out to several gateway calls
+		// that are slow during catch-up (cold reads 10-12s); 10s cut off the write
+		// mid-response ("i/o timeout"). Keep under the DO App Platform LB ceiling.
+		WriteTimeout: 35 * time.Second,
 	}
 
 	// Graceful shutdown (Let's Go Further, Chapter 12).
