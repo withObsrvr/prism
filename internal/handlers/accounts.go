@@ -149,8 +149,13 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 
 	// Build the activity list from the full hot+cold history (federated endpoint); fall back
 	// to the overview's recent (hot-only) operations if the federated endpoint is unavailable.
+	// Federated hot+cold history is great when cold reads are indexed, but for accounts whose
+	// cold history is sparse/deep the cold scan is slow (no per-account index yet). Cap the call
+	// so the page falls back to fast hot-only activity instead of hanging when that happens.
 	var activities []pages.AccountActivity
-	if txs, ferr := h.Gateway.GetAccountTransactions(ctx, network, accountID, 400, "desc", ""); ferr == nil && txs != nil && len(txs.Transactions) > 0 {
+	fctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if txs, ferr := h.Gateway.GetAccountTransactions(fctx, network, accountID, 200, "desc", ""); ferr == nil && txs != nil && len(txs.Transactions) > 0 {
 		activities = buildFederatedActivities(txs.Transactions, accountID)
 	} else {
 		for _, op := range overview.RecentOperations {
