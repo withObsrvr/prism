@@ -673,6 +673,52 @@ func (c *Client) GetAccountOverview(ctx context.Context, network string, account
 	return &result, nil
 }
 
+// AccountTransaction matches an item in the /silver/accounts/{id}/transactions response
+// (the hot+cold federated account history).
+type AccountTransaction struct {
+	LedgerSequence  int64    `json:"ledger_sequence"`
+	ClosedAt        string   `json:"closed_at"`
+	TransactionHash string   `json:"transaction_hash"`
+	Successful      *bool    `json:"successful,omitempty"`
+	SourceAccount   *string  `json:"source_account,omitempty"`
+	ActivityTypes   []string `json:"activity_types"`
+	Summary         string   `json:"summary"`
+}
+
+// AccountTransactionsResponse is the envelope for /silver/accounts/{id}/transactions.
+type AccountTransactionsResponse struct {
+	AccountID    string               `json:"account_id"`
+	Transactions []AccountTransaction `json:"transactions"`
+	Cursor       string               `json:"cursor,omitempty"`
+	HasMore      bool                 `json:"has_more"`
+}
+
+// GetAccountTransactions returns the account's full hot+cold transaction history from the
+// federated /silver/accounts/{id}/transactions endpoint, most-recent first. Unlike the
+// hot-only recent operations in the account overview, this includes pre-handoff history
+// served from cold storage.
+func (c *Client) GetAccountTransactions(ctx context.Context, network, accountID string, limit int, order, cursor string) (*AccountTransactionsResponse, error) {
+	if limit <= 0 {
+		limit = 400
+	}
+	if order == "" {
+		order = "desc"
+	}
+	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}, "order": {order}}
+	if cursor != "" {
+		params.Set("cursor", cursor)
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/accounts/"+accountID+"/transactions")+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var result AccountTransactionsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing account transactions: %w", err)
+	}
+	return &result, nil
+}
+
 // GetAccountBalances returns all balances for an account.
 func (c *Client) GetAccountBalances(ctx context.Context, network string, accountID string) (*AccountBalances, error) {
 	cacheKey := network + ":account_bal:" + accountID

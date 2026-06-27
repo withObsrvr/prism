@@ -63,6 +63,51 @@ func (h *Handlers) GAccountDetailV2(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// buildFederatedActivities converts the federated hot+cold account-transaction history into the
+// account page's activity rows, classifying each as Sent/Received from the source account so
+// pre-handoff sends (served from cold storage) are clearly visible.
+func buildFederatedActivities(txs []gateway.AccountTransaction, accountID string) []pages.AccountActivity {
+	var activities []pages.AccountActivity
+	for _, tx := range txs {
+		badge, badgeColor := "Activity", "gray"
+		if tx.SourceAccount != nil && *tx.SourceAccount == accountID {
+			badge, badgeColor = "Sent", "blue"
+		} else if tx.SourceAccount != nil && *tx.SourceAccount != "" {
+			badge, badgeColor = "Received", "emerald"
+		}
+		for _, at := range tx.ActivityTypes {
+			if strings.Contains(at, "soroban") || strings.Contains(at, "contract") {
+				badge, badgeColor = "Contract", "violet"
+			}
+		}
+		age := "—"
+		if t, err := time.Parse(time.RFC3339, tx.ClosedAt); err == nil {
+			d := time.Since(t)
+			switch {
+			case d.Hours() > 24:
+				age = fmt.Sprintf("%.0fd ago", d.Hours()/24)
+			case d.Hours() > 1:
+				age = fmt.Sprintf("%.0fh ago", d.Hours())
+			default:
+				age = fmt.Sprintf("%.0fm ago", d.Minutes())
+			}
+		}
+		summary := tx.Summary
+		if summary == "" {
+			summary = strings.Join(tx.ActivityTypes, ", ")
+		}
+		activities = append(activities, pages.AccountActivity{
+			Summary:    summary,
+			Badge:      badge,
+			BadgeColor: badgeColor,
+			TxHash:     tx.TransactionHash,
+			ShortHash:  gateway.ShortHash(tx.TransactionHash),
+			Time:       age,
+		})
+	}
+	return activities
+}
+
 func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) (pages.AccountData, error) {
 	ctx := r.Context()
 
@@ -102,9 +147,13 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		}
 	}
 
-	// Build activities from recent operations.
+	// Build the activity list from the full hot+cold history (federated endpoint); fall back
+	// to the overview's recent (hot-only) operations if the federated endpoint is unavailable.
 	var activities []pages.AccountActivity
-	for _, op := range overview.RecentOperations {
+	if txs, ferr := h.Gateway.GetAccountTransactions(ctx, network, accountID, 400, "desc", ""); ferr == nil && txs != nil && len(txs.Transactions) > 0 {
+		activities = buildFederatedActivities(txs.Transactions, accountID)
+	} else {
+		for _, op := range overview.RecentOperations {
 		badge := op.TypeName
 		badgeColor := "gray"
 		if op.IsSorobanOp {
@@ -152,6 +201,7 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 			ShortHash:  gateway.ShortHash(op.TransactionHash),
 			Time:       age,
 		})
+		}
 	}
 
 	// Build signers.
