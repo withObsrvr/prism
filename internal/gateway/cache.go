@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const cacheMaxEntries = 4096
+
 type cacheEntry struct {
 	value     any
 	expiresAt time.Time
@@ -44,6 +46,7 @@ func (c *Cache) Get(key string) (any, bool) {
 func (c *Cache) Set(key string, value any, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.evictLocked(time.Now())
 	c.entries[key] = &cacheEntry{
 		value:     value,
 		expiresAt: time.Now().Add(ttl),
@@ -64,13 +67,22 @@ func (c *Cache) cleanup(ctx context.Context) {
 			return
 		case <-ticker.C:
 			c.mu.Lock()
-			now := time.Now()
-			for k, e := range c.entries {
-				if now.After(e.expiresAt) {
-					delete(c.entries, k)
-				}
-			}
+			c.evictLocked(time.Now())
 			c.mu.Unlock()
+		}
+	}
+}
+
+func (c *Cache) evictLocked(now time.Time) {
+	for k, e := range c.entries {
+		if now.After(e.expiresAt) {
+			delete(c.entries, k)
+		}
+	}
+	for len(c.entries) >= cacheMaxEntries {
+		for k := range c.entries {
+			delete(c.entries, k)
+			break
 		}
 	}
 }

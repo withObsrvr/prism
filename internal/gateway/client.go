@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -15,11 +16,11 @@ import (
 const (
 	TTLNetworkStats       = 10 * time.Second
 	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
-	TTLRecentList         = 5 * time.Second
-	TTLHomeSummary        = 2 * time.Second
+	TTLRecentList         = 10 * time.Second
+	TTLHomeSummary        = 15 * time.Second
 	TTLHomeSummaryFailure = 10 * time.Second
 	TTLLedgerFeedFailure  = 30 * time.Second
-	TTLImmutable          = 5 * time.Minute
+	TTLImmutable          = 24 * time.Hour
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
 )
@@ -38,6 +39,7 @@ type Client struct {
 	httpClient *http.Client
 	logger     *slog.Logger
 	cache      *Cache
+	inflight   *inflightGroup
 }
 
 // New creates a gateway client. Returns nil if no API key is provided.
@@ -59,6 +61,9 @@ func New(cfg Config, logger *slog.Logger, ctx context.Context) *Client {
 		},
 		logger: logger,
 		cache:  NewCache(ctx),
+		inflight: &inflightGroup{
+			calls: make(map[string]*inflightCall),
+		},
 	}
 }
 
@@ -67,6 +72,38 @@ func (c *Client) Stop() {
 	if c != nil && c.cache != nil {
 		c.cache.Stop()
 	}
+}
+
+type inflightCall struct {
+	wg  sync.WaitGroup
+	val any
+	err error
+}
+
+type inflightGroup struct {
+	mu    sync.Mutex
+	calls map[string]*inflightCall
+}
+
+func (g *inflightGroup) Do(key string, fn func() (any, error)) (any, error, bool) {
+	g.mu.Lock()
+	if call, ok := g.calls[key]; ok {
+		g.mu.Unlock()
+		call.wg.Wait()
+		return call.val, call.err, true
+	}
+	call := &inflightCall{}
+	call.wg.Add(1)
+	g.calls[key] = call
+	g.mu.Unlock()
+
+	call.val, call.err = fn()
+	call.wg.Done()
+
+	g.mu.Lock()
+	delete(g.calls, key)
+	g.mu.Unlock()
+	return call.val, call.err, false
 }
 
 // buildURL constructs a gateway API URL for the given network.
@@ -281,20 +318,29 @@ func (c *Client) GetSilverLedgerFull(ctx context.Context, network string, sequen
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*LedgerFullResponse), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			return v, nil
+		}
 
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/full", sequence)))
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/full", sequence)))
+		if err != nil {
+			return nil, err
+		}
+
+		var resp LedgerFullResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("gateway: parsing silver ledger full: %w", err)
+		}
+
+		// A past ledger is immutable, so we can cache it aggressively.
+		c.cache.Set(cacheKey, &resp, TTLImmutable)
+		return &resp, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var resp LedgerFullResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing silver ledger full: %w", err)
-	}
-
-	// A past ledger is immutable, so we can cache it aggressively.
-	c.cache.Set(cacheKey, &resp, TTLImmutable)
-	return &resp, nil
+	return v.(*LedgerFullResponse), nil
 }
 
 // GetSilverRecentLedgers returns the most recent ledgers from a single serving-backed endpoint.
@@ -304,22 +350,31 @@ func (c *Client) GetSilverRecentLedgers(ctx context.Context, network string, lim
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*RecentLedgersResponse), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			return v, nil
+		}
 
-	params := url.Values{
-		"limit": {fmt.Sprintf("%d", limit)},
-	}
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/ledgers/recent")+"?"+params.Encode())
+		params := url.Values{
+			"limit": {fmt.Sprintf("%d", limit)},
+		}
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/ledgers/recent")+"?"+params.Encode())
+		if err != nil {
+			return nil, err
+		}
+
+		var resp RecentLedgersResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("gateway: parsing silver recent ledgers: %w", err)
+		}
+
+		c.cache.Set(cacheKey, &resp, TTLRecentList)
+		return &resp, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var resp RecentLedgersResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing silver recent ledgers: %w", err)
-	}
-
-	c.cache.Set(cacheKey, &resp, TTLRecentList)
-	return &resp, nil
+	return v.(*RecentLedgersResponse), nil
 }
 
 // GetSilverRecentTransactions returns the most recent transactions with decoded summaries
@@ -330,22 +385,31 @@ func (c *Client) GetSilverRecentTransactions(ctx context.Context, network string
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*RecentTransactionsResponse), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			return v, nil
+		}
 
-	params := url.Values{
-		"limit": {fmt.Sprintf("%d", limit)},
-	}
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/transactions/recent")+"?"+params.Encode())
+		params := url.Values{
+			"limit": {fmt.Sprintf("%d", limit)},
+		}
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/transactions/recent")+"?"+params.Encode())
+		if err != nil {
+			return nil, err
+		}
+
+		var resp RecentTransactionsResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("gateway: parsing silver recent transactions: %w", err)
+		}
+
+		c.cache.Set(cacheKey, &resp, TTLRecentList)
+		return &resp, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var resp RecentTransactionsResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing silver recent transactions: %w", err)
-	}
-
-	c.cache.Set(cacheKey, &resp, TTLRecentList)
-	return &resp, nil
+	return v.(*RecentTransactionsResponse), nil
 }
 
 // GetSilverLedgerSummary returns the older compact per-ledger snapshot used by the ledger-first v2 page.
@@ -354,25 +418,34 @@ func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, seq
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*LedgerSummary), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			return v, nil
+		}
 
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+		if err != nil {
+			return nil, err
+		}
+
+		var resp LedgerSummary
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("gateway: parsing silver ledger summary: %w", err)
+		}
+		if ledgerSummaryLooksEmpty(resp) {
+			var feedResp LedgerFeedSummary
+			if err := json.Unmarshal(body, &feedResp); err == nil && !ledgerFeedSummaryLooksEmpty(feedResp) {
+				resp = ledgerSummaryFromFeedSummary(feedResp)
+			}
+		}
+
+		c.cache.Set(cacheKey, &resp, TTLImmutable)
+		return &resp, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var resp LedgerSummary
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("gateway: parsing silver ledger summary: %w", err)
-	}
-	if ledgerSummaryLooksEmpty(resp) {
-		var feedResp LedgerFeedSummary
-		if err := json.Unmarshal(body, &feedResp); err == nil && !ledgerFeedSummaryLooksEmpty(feedResp) {
-			resp = ledgerSummaryFromFeedSummary(feedResp)
-		}
-	}
-
-	c.cache.Set(cacheKey, &resp, TTLImmutable)
-	return &resp, nil
+	return v.(*LedgerSummary), nil
 }
 
 // ledgerFeedNegativeEntry is cached briefly on per-ledger summary failures to
@@ -389,22 +462,34 @@ func (c *Client) GetSilverLedgerFeedSummary(ctx context.Context, network string,
 		}
 		return v.(*LedgerFeedSummary), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			if neg, isNeg := v.(*ledgerFeedNegativeEntry); isNeg {
+				return nil, neg.err
+			}
+			return v, nil
+		}
 
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/summary", sequence)))
+		if err != nil {
+			c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: err}, TTLLedgerFeedFailure)
+			return nil, err
+		}
+
+		var resp LedgerFeedSummary
+		if err := json.Unmarshal(body, &resp); err != nil {
+			wrapped := fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
+			c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: wrapped}, TTLLedgerFeedFailure)
+			return nil, wrapped
+		}
+
+		c.cache.Set(cacheKey, &resp, TTLImmutable)
+		return &resp, nil
+	})
 	if err != nil {
-		c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: err}, TTLLedgerFeedFailure)
 		return nil, err
 	}
-
-	var resp LedgerFeedSummary
-	if err := json.Unmarshal(body, &resp); err != nil {
-		wrapped := fmt.Errorf("gateway: parsing silver ledger feed summary: %w", err)
-		c.cache.Set(cacheKey, &ledgerFeedNegativeEntry{err: wrapped}, TTLLedgerFeedFailure)
-		return nil, wrapped
-	}
-
-	c.cache.Set(cacheKey, &resp, TTLImmutable)
-	return &resp, nil
+	return v.(*LedgerFeedSummary), nil
 }
 
 func ledgerSummaryLooksEmpty(v LedgerSummary) bool {
@@ -463,22 +548,34 @@ func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSumma
 		}
 		return v.(*HomeSummaryResponse), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			if neg, isNeg := v.(*homeSummaryNegativeEntry); isNeg {
+				return nil, neg.err
+			}
+			return v, nil
+		}
 
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/home/summary"))
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/home/summary"))
+		if err != nil {
+			c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: err}, TTLHomeSummaryFailure)
+			return nil, err
+		}
+
+		var resp HomeSummaryResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			wrapped := fmt.Errorf("gateway: parsing home summary: %w", err)
+			c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: wrapped}, TTLHomeSummaryFailure)
+			return nil, wrapped
+		}
+
+		c.cache.Set(cacheKey, &resp, TTLHomeSummary)
+		return &resp, nil
+	})
 	if err != nil {
-		c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: err}, TTLHomeSummaryFailure)
 		return nil, err
 	}
-
-	var resp HomeSummaryResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		wrapped := fmt.Errorf("gateway: parsing home summary: %w", err)
-		c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: wrapped}, TTLHomeSummaryFailure)
-		return nil, wrapped
-	}
-
-	c.cache.Set(cacheKey, &resp, TTLHomeSummary)
-	return &resp, nil
+	return v.(*HomeSummaryResponse), nil
 }
 
 // GetTopContracts returns the most active contracts.
@@ -1399,23 +1496,32 @@ func (c *Client) GetBatchDecodedTransactions(ctx context.Context, network string
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*BatchDecodedResponse), nil
 	}
+	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+		if v, ok := c.cache.Get(cacheKey); ok {
+			return v, nil
+		}
 
-	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tx/batch/decoded")+"?"+params.Encode())
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tx/batch/decoded")+"?"+params.Encode())
+		if err != nil {
+			return nil, err
+		}
+
+		var result BatchDecodedResponse
+		if err := json.Unmarshal(body, &result); err != nil {
+			return nil, fmt.Errorf("gateway: parsing batch decoded txs: %w", err)
+		}
+
+		ttl := TTLRecentList
+		if ledger > 0 {
+			ttl = TTLImmutable
+		}
+		c.cache.Set(cacheKey, &result, ttl)
+		return &result, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var result BatchDecodedResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("gateway: parsing batch decoded txs: %w", err)
-	}
-
-	ttl := TTLRecentList
-	if ledger > 0 {
-		ttl = TTLImmutable
-	}
-	c.cache.Set(cacheKey, &result, ttl)
-	return &result, nil
+	return v.(*BatchDecodedResponse), nil
 }
 
 // joinHashes joins a slice of hashes with commas.

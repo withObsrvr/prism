@@ -8,7 +8,6 @@ import (
 	"math"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
@@ -141,12 +140,9 @@ const (
 	homeV2SorobanInstructionLimit = int64(100_000_000)
 	homeV2SorobanReadWriteLimit   = int64(3_500_000)
 
-	// Bumped from 1.5-2s: during the post-backfill catch-up the query-api runs
-	// 1.5-4s under Postgres contention, so the tight budgets timed out on
-	// otherwise-successful responses. Revert toward ~2s once catch-up settles.
-	homeV2HomeSummaryTimeout   = 6 * time.Second
-	homeV2RecentLedgersTimeout = 6 * time.Second
-	homeV2FeedSummariesTimeout = 6 * time.Second
+	homeV2HomeSummaryTimeout   = 4 * time.Second
+	homeV2RecentLedgersTimeout = 3 * time.Second
+	homeV2FeedSummariesTimeout = 2 * time.Second
 )
 
 type homeV2NetworkCfg struct {
@@ -364,21 +360,14 @@ func (h *Handlers) buildHomeV2FeedData(r *http.Request, network string) (homeV2F
 	summaries := make([]*gateway.LedgerFeedSummary, len(recent.Ledgers))
 	summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2FeedSummariesTimeout)
 	defer summaryCancel()
-	var wg sync.WaitGroup
 	for i, ledger := range recent.Ledgers {
-		i, sequence := i, ledger.LedgerSequence
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			summary, err := h.Gateway.GetSilverLedgerFeedSummary(summaryCtx, network, sequence)
-			if err != nil {
-				h.Logger.Warn("home v2 summary fetch failed", "sequence", sequence, "error", err)
-				return
-			}
-			summaries[i] = summary
-		}()
+		summary, err := h.Gateway.GetSilverLedgerFeedSummary(summaryCtx, network, ledger.LedgerSequence)
+		if err != nil {
+			h.Logger.Warn("home v2 summary fetch failed", "sequence", ledger.LedgerSequence, "error", err)
+			continue
+		}
+		summaries[i] = summary
 	}
-	wg.Wait()
 
 	rows := make([]vmv2.LedgerRowData, 0, len(recent.Ledgers))
 	feedLedgers := make([]homeV2FeedLedger, 0, len(recent.Ledgers))

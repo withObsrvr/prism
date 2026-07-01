@@ -733,10 +733,11 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		ledgerSoroban, _ = h.Gateway.GetLedgerSoroban(ctx, network, seq)
 	}
 
-	// Best-effort enrichment: batch-decoded summaries for the transactions list.
+	// Best-effort enrichment: decode only a small preview on first paint. Full
+	// ledger decode can be several seconds of cold storage work.
 	// Not critical — fall back to source-account summary if unavailable.
 	decodedMap := make(map[string]*gateway.DecodedTransaction)
-	if decodedResp, err := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 50); err == nil && decodedResp != nil {
+	if decodedResp, err := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 5); err == nil && decodedResp != nil {
 		for i := range decodedResp.Transactions {
 			dt := &decodedResp.Transactions[i]
 			decodedMap[dt.TxHash] = dt
