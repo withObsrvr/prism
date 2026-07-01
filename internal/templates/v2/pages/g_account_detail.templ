@@ -23,20 +23,38 @@ templ GAccountDetail(data legacy.AccountData, network string) {
 		@componentsv2.DetailHeader(data.Address, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Accounts"}, {Label: gaAccountName(data), Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner">
-			<main class="px-tx-main">
-				@gaIdentity(data)
-				@gaHumanBrief(data)
-				@gaGlance(data)
-				@gaPortfolio(data)
-				@gaSignerControls(data)
-				@gaRecentActivity(data)
-				@gaAdvancedEntries(data)
-				@gaAccountEducation()
-			</main>
-			@gaRightRail(data)
+			if data.Loading {
+				<main class="px-tx-main" hx-get={ gaMainFragmentHref(data.Address, network) } hx-trigger="load" hx-swap="outerHTML">
+					@gaIdentity(data)
+					@gaAccountLoadingShell()
+				</main>
+				<aside class="px-tx-side" hx-get={ gaRailFragmentHref(data.Address, network) } hx-trigger="load" hx-swap="outerHTML">
+					@gaRailLoadingShell(data)
+				</aside>
+			} else {
+				@GAccountDetailMain(data)
+				@GAccountDetailRail(data)
+			}
 		</div></div>
 		@gaTabsScript()
 	}
+}
+
+templ GAccountDetailMain(data legacy.AccountData) {
+	<main class="px-tx-main">
+		@gaIdentity(data)
+		@gaHumanBrief(data)
+		@gaGlance(data)
+		@gaPortfolio(data)
+		@gaSignerControls(data)
+		@gaRecentActivity(data)
+		@gaAdvancedEntries(data)
+		@gaAccountEducation()
+	</main>
+}
+
+templ GAccountDetailRail(data legacy.AccountData) {
+	@gaRightRail(data)
 }
 
 templ gaTab(id string, label string, count string, active bool) {
@@ -248,12 +266,27 @@ templ gaEmptyState(title string, body string) {
 	<div class="px-ga-empty"><b>{ title }</b><span>{ body }</span></div>
 }
 
+templ gaAccountLoadingShell() {
+	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>Loading account evidence</h2><span class="px-tx-section-sub">Prism is fetching balances, signers, thresholds, and recent activity without blocking the page shell.</span></div></div><div class="px-ac-glance px-ga-glance">
+		for _, label := range []string{"Balances", "Trustlines", "Signers", "Recent operations"} {
+			<div class="px-ac-gcard"><div class="px-ac-gtitle">{ label }</div><div class="px-ac-gvalue">…</div><div class="px-ac-gsub">loading from gateway</div></div>
+		}
+	</div></section>
+	<section class="px-tx-section"><div class="px-ga-empty"><b>Live sections are loading</b><span>If the gateway is slow or unavailable, this area will fall back to a safe account shell instead of returning a 503 for the whole page.</span></div></section>
+}
+
+templ gaRailLoadingShell(data legacy.AccountData) {
+	<div class="px-tx-side-card"><h4>Account facts</h4><dl class="px-tx-facts"><dt>Type</dt><dd>Classic ed25519 account</dd><dt>Address</dt><dd class="mono">{ data.ShortAddress }</dd><dt>Status</dt><dd>loading live data</dd></dl></div>
+}
+
 templ gaRightRail(data legacy.AccountData) { <aside class="px-tx-side"><div class="px-tx-side-card"><h4>Account facts</h4><dl class="px-tx-facts"><dt>Type</dt><dd>Classic ed25519 account</dd><dt>Created</dt><dd>{ firstNonEmpty(data.CreatedAt, "unknown") }</dd><dt>Total ops</dt><dd>{ gaActivityCount(data) } loaded · recent window</dd><dt>Sequence</dt><dd class="mono">{ gaSequence(data) }</dd><dt>Home domain</dt><dd>{ firstNonEmpty(data.HomeDomain, "unknown") }</dd><dt>Subentries</dt><dd>{ data.Subentries }</dd></dl></div><div class="px-tx-side-card"><h4>Reserves & sponsorship</h4><dl class="px-tx-facts"><dt>Base reserve</dt><dd>1.0 XLM</dd><dt>Trustline reserves</dt><dd>{ gaReserveTrustlines(data) } XLM</dd><dt>Signer reserves</dt><dd>{ data.SignerCount } signer entries</dd><dt>Sponsor</dt><dd>{ gaSponsorName(data) }</dd><dt>Net XLM lock</dt><dd class="mono">{ gaReservedXLM(data) } XLM</dd></dl></div></aside> }
 
 templ gaAccountEducation() { <section class="px-tx-section px-ga-education"><div class="px-tx-section-head"><div><h2>Account type reference</h2><span class="px-tx-section-sub">Use this once the value, holdings, and confidence read are clear.</span></div></div><ul class="px-ac-compare"><li><span class="px-ac-compare-name"><b>Classic G-account</b><span class="px-ac-compare-tag">this account</span></span><span class="px-ac-compare-desc">ed25519 keypair. Holds XLM, trustlines, signers, and thresholds on Stellar Classic.</span></li><li><span class="px-ac-compare-name"><b>Smart account (C-address)</b></span><span class="px-ac-compare-desc">Contract account with programmable authorization through <code>CustomAccountInterface</code>.</span></li><li><span class="px-ac-compare-name"><b>Muxed (M-address)</b></span><span class="px-ac-compare-desc">A G-account plus a 64-bit memo ID, usually used to route deposits.</span></li></ul></section> }
 
 templ gaTabsScript() { <script>(function(){if(window.__prismGATabsBound)return;window.__prismGATabsBound=true;function activate(root,name){if(!root)return;root.querySelectorAll('[data-ga-tab]').forEach(function(tab){var on=tab.getAttribute('data-ga-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-ga-panel]').forEach(function(panel){var on=panel.getAttribute('data-ga-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';});}function filterHistory(root,name){if(!root)return;root.querySelectorAll('[data-ga-history-filter]').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-ga-history-filter')===name);});root.querySelectorAll('[data-ga-history-kind]').forEach(function(row){var on=name==='all'||row.getAttribute('data-ga-history-kind')===name;row.hidden=!on;row.style.display=on?'':'none';});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-ga-tab]');if(tab){e.preventDefault();activate(tab.closest('[data-ga-tabs-root]'),tab.getAttribute('data-ga-tab'));return;}var filter=e.target.closest('[data-ga-history-filter]');if(filter){e.preventDefault();filterHistory(filter.closest('[data-ga-history-root]'),filter.getAttribute('data-ga-history-filter'));}});})();</script> }
 
+func gaMainFragmentHref(accountID string, network string) templ.SafeURL { return templ.SafeURL("/v2/account/" + accountID + "/main?network=" + network) }
+func gaRailFragmentHref(accountID string, network string) templ.SafeURL { return templ.SafeURL("/v2/account/" + accountID + "/rail?network=" + network) }
 func gaAccountName(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return data.HomeDomain }; return data.ShortAddress }
 func gaAccountSubtitle(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return "Hot wallet" }; return "Classic Stellar account" }
 func gaVerifiedLabel(data legacy.AccountData) string { if strings.TrimSpace(data.HomeDomain)!="" { return "Federation match" }; return "G-address" }
@@ -271,9 +304,9 @@ func gaUSDNumber(v string) float64 { cleaned:=strings.NewReplacer("$","",",","",
 func gaXLMAmount(data legacy.AccountData) string { v:=strings.TrimSpace(strings.TrimSuffix(data.XLMBalance," XLM")); if v=="" { return "—" }; return v }
 func gaXLMSub(data legacy.AccountData) string { if strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" { return "part of " + data.TotalValue + " total" }; return "native balance from account entry" }
 func gaTrustlineCount(data legacy.AccountData) string { if data.Trustlines!="" { return data.Trustlines }; n:=0; for _,b:=range data.Balances { if !strings.EqualFold(b.Code,"XLM") { n++ } }; return fmt.Sprintf("%d", n) }
-func gaActivityCount(data legacy.AccountData) string { if len(data.Activities)>0 { return fmt.Sprintf("%d", len(data.Activities)) }; return "10" }
+func gaActivityCount(data legacy.AccountData) string { if len(data.Activities)>0 { return fmt.Sprintf("%d", len(data.Activities)) }; if gaIsMock(data) { return "10" }; return "0" }
 func gaCreatedAge(data legacy.AccountData) string { if strings.TrimSpace(data.CreatedAt)!="" { return data.CreatedAt }; return "age unknown" }
-func gaLastOp(data legacy.AccountData) string { if len(data.Activities)>0 { return data.Activities[0].Time }; return "4s ago" }
+func gaLastOp(data legacy.AccountData) string { if len(data.Activities)>0 { return data.Activities[0].Time }; if gaIsMock(data) { return "4s ago" }; return "unknown" }
 func gaSequence(data legacy.AccountData) string { if strings.TrimSpace(data.SequenceNumber)!="" { return data.SequenceNumber }; return "unknown" }
 func gaReserveSentence(data legacy.AccountData) string { if data.Subentries!="" { return "Base reserve and subentry reserves are visible, so the XLM lock can be audited." }; return "Reserve details are estimated until the account subentries load." }
 func gaThresholdSummary(data legacy.AccountData) string { if len(data.Thresholds)>=3 { return data.Thresholds[0].Value + "/" + data.Thresholds[1].Value + "/" + data.Thresholds[2].Value }; return "1/2/3" }

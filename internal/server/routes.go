@@ -92,6 +92,8 @@ func (app *Application) Routes() http.Handler {
 
 	mux.HandleFunc("GET /account/{id}", h.AccountPortfolio)
 	mux.HandleFunc("GET /v2/account/{id}", h.GAccountDetailV2)
+	mux.HandleFunc("GET /v2/account/{id}/main", h.GAccountDetailMainFragment)
+	mux.HandleFunc("GET /v2/account/{id}/rail", h.GAccountDetailRailFragment)
 	mux.HandleFunc("GET /account/{id}/smart", h.SmartAccountDashboard)
 	mux.HandleFunc("GET /v2/account/{id}/smart", h.SmartAccountDashboardV2)
 

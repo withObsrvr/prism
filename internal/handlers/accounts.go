@@ -44,22 +44,64 @@ func (h *Handlers) GAccountDetailV2(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
-	var data pages.AccountData
-	if h.useLiveData(r) {
-		if live, err := h.buildAccountData(r, network, id); err == nil {
-			data = live
-		} else {
-			h.Logger.Warn("live v2 account data failed, falling back to mock", "account", id, "error", err)
-		}
-	}
-	if data.Address == "" {
-		data = mockAccountData()
-	}
-	if data.SignerCount == "" {
-		data.SignerCount = fmt.Sprintf("%d", len(data.Signers))
-	}
+	// Render a cheap SSR shell first. Live account evidence is loaded by htmx
+	// fragments so a slow gateway cannot turn the whole page into a 503.
+	data := accountShellData(id, true)
 	if err := pagesv2.GAccountDetail(data, network).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render v2 g-account detail", "account", id, "error", err)
+	}
+}
+
+func (h *Handlers) GAccountDetailMainFragment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+	data := h.accountLiveOrFallback(r, network, id)
+	if err := pagesv2.GAccountDetailMain(data).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render v2 account main fragment", "account", id, "error", err)
+		h.renderFragmentError(w, r, "Could not load account sections", err)
+	}
+}
+
+func (h *Handlers) GAccountDetailRailFragment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	network := networkFromRequest(r)
+	data := h.accountLiveOrFallback(r, network, id)
+	if err := pagesv2.GAccountDetailRail(data).Render(r.Context(), w); err != nil {
+		h.Logger.Error("render v2 account rail fragment", "account", id, "error", err)
+		h.renderFragmentError(w, r, "Could not load account facts", err)
+	}
+}
+
+func (h *Handlers) accountLiveOrFallback(r *http.Request, network, id string) pages.AccountData {
+	if h.useLiveData(r) {
+		ctx, cancel := context.WithTimeout(r.Context(), 3500*time.Millisecond)
+		defer cancel()
+		if live, err := h.buildAccountData(r.WithContext(ctx), network, id); err == nil {
+			return live
+		} else {
+			h.Logger.Warn("live v2 account fragment data failed, rendering safe fallback", "account", id, "error", err)
+		}
+	}
+	return accountShellData(id, false)
+}
+
+func accountShellData(id string, loading bool) pages.AccountData {
+	short := gateway.ShortAddress(id)
+	if strings.TrimSpace(short) == "" {
+		short = id
+	}
+	return pages.AccountData{
+		Address:        id,
+		ShortAddress:   short,
+		TotalValue:     "—",
+		XLMBalance:     "— XLM",
+		Trustlines:     "0",
+		ActiveOffers:   "0",
+		Subentries:     "—",
+		SequenceNumber: "unknown",
+		IsFunded:       false,
+		Loading:        loading,
+		SignerCount:    "—",
 	}
 }
 
@@ -159,53 +201,53 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		activities = buildFederatedActivities(txs.Transactions, accountID)
 	} else {
 		for _, op := range overview.RecentOperations {
-		badge := op.TypeName
-		badgeColor := "gray"
-		if op.IsSorobanOp {
-			badge = "Contract"
-			badgeColor = "violet"
-		} else if op.IsPaymentOp {
-			badge = "Payment"
-			badgeColor = "blue"
-		}
-
-		age := "—"
-		if t, err := time.Parse(time.RFC3339, op.LedgerClosedAt); err == nil {
-			d := time.Since(t)
-			if d.Hours() > 24 {
-				age = fmt.Sprintf("%.0fd ago", d.Hours()/24)
-			} else if d.Hours() > 1 {
-				age = fmt.Sprintf("%.0fh ago", d.Hours())
-			} else {
-				age = fmt.Sprintf("%.0fm ago", d.Minutes())
-			}
-		}
-
-		summary := fmt.Sprintf("%s %s", gateway.ShortAddress(op.SourceAccount), op.TypeName)
-		if op.Amount != "" {
-			summary += fmt.Sprintf(" %s", op.Amount)
-		}
-		if op.IsSorobanOp && op.SorobanContract != "" {
-			if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, op.SorobanContract); err == nil && info != nil && info.IsSmartWallet {
-				badge = "Wallet"
+			badge := op.TypeName
+			badgeColor := "gray"
+			if op.IsSorobanOp {
+				badge = "Contract"
 				badgeColor = "violet"
-				label := walletTypeLabel(firstNonEmpty(info.WalletType, info.Implementation))
-				fn := op.SorobanFunction
-				if fn == "" {
-					fn = "execute"
-				}
-				summary = fmt.Sprintf("%s wallet %s() via %s", label, fn, gateway.ShortAddress(op.SorobanContract))
+			} else if op.IsPaymentOp {
+				badge = "Payment"
+				badgeColor = "blue"
 			}
-		}
 
-		activities = append(activities, pages.AccountActivity{
-			Summary:    summary,
-			Badge:      badge,
-			BadgeColor: badgeColor,
-			TxHash:     op.TransactionHash,
-			ShortHash:  gateway.ShortHash(op.TransactionHash),
-			Time:       age,
-		})
+			age := "—"
+			if t, err := time.Parse(time.RFC3339, op.LedgerClosedAt); err == nil {
+				d := time.Since(t)
+				if d.Hours() > 24 {
+					age = fmt.Sprintf("%.0fd ago", d.Hours()/24)
+				} else if d.Hours() > 1 {
+					age = fmt.Sprintf("%.0fh ago", d.Hours())
+				} else {
+					age = fmt.Sprintf("%.0fm ago", d.Minutes())
+				}
+			}
+
+			summary := fmt.Sprintf("%s %s", gateway.ShortAddress(op.SourceAccount), op.TypeName)
+			if op.Amount != "" {
+				summary += fmt.Sprintf(" %s", op.Amount)
+			}
+			if op.IsSorobanOp && op.SorobanContract != "" {
+				if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, op.SorobanContract); err == nil && info != nil && info.IsSmartWallet {
+					badge = "Wallet"
+					badgeColor = "violet"
+					label := walletTypeLabel(firstNonEmpty(info.WalletType, info.Implementation))
+					fn := op.SorobanFunction
+					if fn == "" {
+						fn = "execute"
+					}
+					summary = fmt.Sprintf("%s wallet %s() via %s", label, fn, gateway.ShortAddress(op.SorobanContract))
+				}
+			}
+
+			activities = append(activities, pages.AccountActivity{
+				Summary:    summary,
+				Badge:      badge,
+				BadgeColor: badgeColor,
+				TxHash:     op.TransactionHash,
+				ShortHash:  gateway.ShortHash(op.TransactionHash),
+				Time:       age,
+			})
 		}
 	}
 
