@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/withObsrvr/prism/internal/buildinfo"
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/server"
 )
@@ -84,9 +85,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Configure the HTTP server with sensible timeouts
 	// (from Let's Go Further, Chapter 3).
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", app.Config.Host, app.Config.Port),
-		Handler:      app.Routes(),
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		Addr:        fmt.Sprintf("%s:%d", app.Config.Host, app.Config.Port),
+		Handler:     app.Routes(),
+		ErrorLog:    slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		IdleTimeout: time.Minute,
 		ReadTimeout: 5 * time.Second,
 		// Bumped from 10s: a ledger-detail render fans out to several gateway calls
@@ -116,6 +117,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 		"addr", srv.Addr,
 		"data_source", app.Config.DataSource,
 		"gateway_timeout", gwTimeout,
+		"version", buildinfo.Version,
+		"commit", buildinfo.Commit,
+		"built", buildinfo.Date,
 	)
 
 	err = srv.ListenAndServe()

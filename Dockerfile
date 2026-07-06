@@ -32,7 +32,10 @@ RUN CGO_ENABLED=0 go build \
     -ldflags "-s -w \
       -X github.com/withObsrvr/prism/cmd/prism.version=${VERSION} \
       -X github.com/withObsrvr/prism/cmd/prism.commit=${COMMIT} \
-      -X github.com/withObsrvr/prism/cmd/prism.date=${DATE}" \
+      -X github.com/withObsrvr/prism/cmd/prism.date=${DATE} \
+      -X github.com/withObsrvr/prism/internal/buildinfo.Version=${VERSION} \
+      -X github.com/withObsrvr/prism/internal/buildinfo.Commit=${COMMIT} \
+      -X github.com/withObsrvr/prism/internal/buildinfo.Date=${DATE}" \
     -o /bin/prism .
 
 # ──────────────────────────────────────────────

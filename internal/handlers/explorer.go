@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -691,9 +692,8 @@ func (h *Handlers) LedgerDetailV2(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence string) (pages.LedgerDetailData, error) {
 	ctx := r.Context()
 
-	// Parse the sequence number.
-	var seq int64
-	if _, err := fmt.Sscanf(sequence, "%d", &seq); err != nil {
+	seq, err := strconv.ParseInt(strings.TrimSpace(sequence), 10, 64)
+	if err != nil || seq <= 0 {
 		return pages.LedgerDetailData{}, fmt.Errorf("invalid sequence: %s", sequence)
 	}
 
@@ -737,10 +737,12 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 	// ledger decode can be several seconds of cold storage work.
 	// Not critical — fall back to source-account summary if unavailable.
 	decodedMap := make(map[string]*gateway.DecodedTransaction)
-	if decodedResp, err := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 5); err == nil && decodedResp != nil {
-		for i := range decodedResp.Transactions {
-			dt := &decodedResp.Transactions[i]
-			decodedMap[dt.TxHash] = dt
+	if r.URL.Query().Get("decode") == "true" {
+		if decodedResp, err := h.Gateway.GetBatchDecodedTransactions(ctx, network, nil, seq, 5); err == nil && decodedResp != nil {
+			for i := range decodedResp.Transactions {
+				dt := &decodedResp.Transactions[i]
+				decodedMap[dt.TxHash] = dt
+			}
 		}
 	}
 
@@ -1034,7 +1036,7 @@ func stripHTML(s string) string {
 
 const (
 	txPageGatewayTimeout  = 15 * time.Second
-	txDiffsGatewayTimeout = 6 * time.Second
+	txDiffsGatewayTimeout = 1500 * time.Millisecond
 )
 
 // TransactionReceipt renders a single transaction page.
@@ -1482,11 +1484,10 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		})
 	}
 
-	// Build state changes. The materialized receipt currently exposes flattened balance diffs;
-	// ask the tx diffs endpoint for ledger-entry state changes so v2 can choose a
-	// state/lifecycle hero instead of incorrectly rendering an empty value flow.
+	// Build state changes. The /diffs endpoint can require cold storage, so keep it
+	// off first paint unless explicitly requested for a deep inspection.
 	var stateChanges []pages.TxStateChange
-	if h.Gateway != nil {
+	if h.Gateway != nil && r.URL.Query().Get("include_diffs") == "true" {
 		diffStart := time.Now()
 		diffCtx, diffCancel := context.WithTimeout(ctx, txDiffsGatewayTimeout)
 		defer diffCancel()
@@ -1734,6 +1735,86 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	return data, nil
+}
+
+func gatewayStatus(err error, status int) bool {
+	var apiErr *gateway.APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == status
+}
+
+func txReceiptFromDecoded(tx gateway.DecodedTransaction) gateway.TxReceipt {
+	sourceAccount := ""
+	if tx.SourceAccount != nil {
+		sourceAccount = *tx.SourceAccount
+	}
+	fullOps := make([]gateway.TxReceiptOperation, 0, len(tx.Operations))
+	for _, op := range tx.Operations {
+		fullOps = append(fullOps, gateway.TxReceiptOperation{
+			Type:           op.Type,
+			Index:          op.Index,
+			TypeName:       op.TypeName,
+			AssetCode:      op.AssetCode,
+			SourceAccount:  op.SourceAccount,
+			ContractID:     op.ContractID,
+			FunctionName:   op.FunctionName,
+			IsSorobanOp:    op.IsSorobanOp,
+			Destination:    op.Destination,
+			Amount:         op.Amount,
+			OperationIndex: op.Index,
+		})
+	}
+
+	summary := gateway.TxSummary{}
+	if tx.Summary != nil {
+		summary = *tx.Summary
+	}
+	classification := gateway.SemanticTransactionClassification{
+		TxType:     summary.Type,
+		Confidence: "fallback",
+	}
+	accountSequence := int64(0)
+	maxFee := int64(0)
+	return gateway.TxReceipt{
+		TxHash:         tx.TxHash,
+		LedgerSequence: tx.LedgerSequence,
+		CreatedAt:      tx.ClosedAt,
+		SourceAccount:  sourceAccount,
+		Successful:     tx.Successful,
+		OperationCount: tx.OperationCount,
+		TxType:         summary.Type,
+		Full: gateway.TxReceiptFull{
+			TxHash:                       tx.TxHash,
+			CreatedAt:                    tx.ClosedAt,
+			Operations:                   fullOps,
+			Successful:                   tx.Successful,
+			SourceAccount:                sourceAccount,
+			LedgerSequence:               tx.LedgerSequence,
+			Fee:                          tx.Fee,
+			Summary:                      summary,
+			Events:                       tx.Events,
+			SorobanResourcesInstructions: tx.SorobanResInsns,
+			SorobanResourcesReadBytes:    tx.SorobanResRead,
+			SorobanResourcesWriteBytes:   tx.SorobanResWrite,
+		},
+		Semantic: gateway.SemanticTransactionResponse{
+			Transaction: gateway.SemanticTransactionInfo{
+				TxHash:          tx.TxHash,
+				LedgerSequence:  tx.LedgerSequence,
+				ClosedAt:        tx.ClosedAt,
+				Successful:      tx.Successful,
+				Fee:             tx.Fee,
+				OperationCount:  tx.OperationCount,
+				SourceAccount:   tx.SourceAccount,
+				AccountSequence: &accountSequence,
+				MaxFee:          &maxFee,
+			},
+			Classification: classification,
+			Operations:     tx.Operations,
+			Events:         tx.Events,
+			LegacySummary:  summary,
+		},
+		Events: tx.Events,
+	}
 }
 
 func isClientGone(err error) bool {

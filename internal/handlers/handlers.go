@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 
+	"github.com/withObsrvr/prism/internal/buildinfo"
 	"github.com/withObsrvr/prism/internal/gateway"
 	"github.com/withObsrvr/prism/internal/templates/fragments"
 )
@@ -104,7 +106,12 @@ func (h *Handlers) renderFragmentError(w http.ResponseWriter, r *http.Request, m
 
 // Healthz is a simple health check for Nomad/load balancers.
 func (h *Handlers) Healthz(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status":  "ok",
+		"version": buildinfo.Version,
+		"commit":  buildinfo.Commit,
+		"built":   buildinfo.Date,
+	})
 }

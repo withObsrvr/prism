@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/withObsrvr/prism/internal/templates/fragments"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
+
+const accountFragmentGatewayTimeout = 3500 * time.Millisecond
 
 // buildAccountFragmentData fetches account detail data for fragment rendering.
 // Returns nil if live data is unavailable or not requested.
@@ -13,7 +17,9 @@ func (h *Handlers) buildAccountFragmentData(r *http.Request, network, accountID 
 	if !h.useLiveData(r) {
 		return nil
 	}
-	data, err := h.buildAccountData(r, network, accountID)
+	ctx, cancel := context.WithTimeout(r.Context(), accountFragmentGatewayTimeout)
+	defer cancel()
+	data, err := h.buildAccountData(r.WithContext(ctx), network, accountID)
 	if err != nil {
 		h.Logger.Warn("live account data failed, falling back to mock", "error", err, "account", accountID)
 		return nil
