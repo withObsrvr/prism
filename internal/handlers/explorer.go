@@ -1772,8 +1772,6 @@ func txReceiptFromDecoded(tx gateway.DecodedTransaction) gateway.TxReceipt {
 		TxType:     summary.Type,
 		Confidence: "fallback",
 	}
-	accountSequence := int64(0)
-	maxFee := int64(0)
 	return gateway.TxReceipt{
 		TxHash:         tx.TxHash,
 		LedgerSequence: tx.LedgerSequence,
@@ -1798,15 +1796,13 @@ func txReceiptFromDecoded(tx gateway.DecodedTransaction) gateway.TxReceipt {
 		},
 		Semantic: gateway.SemanticTransactionResponse{
 			Transaction: gateway.SemanticTransactionInfo{
-				TxHash:          tx.TxHash,
-				LedgerSequence:  tx.LedgerSequence,
-				ClosedAt:        tx.ClosedAt,
-				Successful:      tx.Successful,
-				Fee:             tx.Fee,
-				OperationCount:  tx.OperationCount,
-				SourceAccount:   tx.SourceAccount,
-				AccountSequence: &accountSequence,
-				MaxFee:          &maxFee,
+				TxHash:         tx.TxHash,
+				LedgerSequence: tx.LedgerSequence,
+				ClosedAt:       tx.ClosedAt,
+				Successful:     tx.Successful,
+				Fee:            tx.Fee,
+				OperationCount: tx.OperationCount,
+				SourceAccount:  tx.SourceAccount,
 			},
 			Classification: classification,
 			Operations:     tx.Operations,

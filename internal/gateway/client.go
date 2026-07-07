@@ -77,9 +77,9 @@ func (c *Client) Stop() {
 }
 
 type inflightCall struct {
-	wg  sync.WaitGroup
-	val any
-	err error
+	done chan struct{}
+	val  any
+	err  error
 }
 
 type inflightGroup struct {
@@ -88,19 +88,29 @@ type inflightGroup struct {
 }
 
 func (g *inflightGroup) Do(key string, fn func() (any, error)) (any, error, bool) {
+	return g.DoContext(context.Background(), key, fn)
+}
+
+func (g *inflightGroup) DoContext(ctx context.Context, key string, fn func() (any, error)) (any, error, bool) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	g.mu.Lock()
 	if call, ok := g.calls[key]; ok {
 		g.mu.Unlock()
-		call.wg.Wait()
-		return call.val, call.err, true
+		select {
+		case <-call.done:
+			return call.val, call.err, true
+		case <-ctx.Done():
+			return nil, ctx.Err(), true
+		}
 	}
-	call := &inflightCall{}
-	call.wg.Add(1)
+	call := &inflightCall{done: make(chan struct{})}
 	g.calls[key] = call
 	g.mu.Unlock()
 
 	call.val, call.err = fn()
-	call.wg.Done()
+	close(call.done)
 
 	g.mu.Lock()
 	delete(g.calls, key)
@@ -320,7 +330,7 @@ func (c *Client) GetSilverLedgerFull(ctx context.Context, network string, sequen
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*LedgerFullResponse), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			return v, nil
 		}
@@ -352,7 +362,7 @@ func (c *Client) GetSilverRecentLedgers(ctx context.Context, network string, lim
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*RecentLedgersResponse), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			return v, nil
 		}
@@ -387,7 +397,7 @@ func (c *Client) GetSilverRecentTransactions(ctx context.Context, network string
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*RecentTransactionsResponse), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			return v, nil
 		}
@@ -420,7 +430,7 @@ func (c *Client) GetSilverLedgerSummary(ctx context.Context, network string, seq
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*LedgerSummary), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			return v, nil
 		}
@@ -464,7 +474,7 @@ func (c *Client) GetSilverLedgerFeedSummary(ctx context.Context, network string,
 		}
 		return v.(*LedgerFeedSummary), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			if neg, isNeg := v.(*ledgerFeedNegativeEntry); isNeg {
 				return nil, neg.err
@@ -550,7 +560,7 @@ func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSumma
 		}
 		return v.(*HomeSummaryResponse), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			if neg, isNeg := v.(*homeSummaryNegativeEntry); isNeg {
 				return nil, neg.err
@@ -760,6 +770,13 @@ func (c *Client) GetOperations(ctx context.Context, network string, start, end i
 
 type accountOverviewNegativeEntry struct{ err error }
 
+func (c *Client) cacheAccountOverviewFailure(ctx context.Context, cacheKey string, err error) {
+	if ctx.Err() != nil {
+		return
+	}
+	c.cache.Set(cacheKey, &accountOverviewNegativeEntry{err: err}, TTLAccountFailure)
+}
+
 // GetAccountOverview returns comprehensive account info with recent activity.
 func (c *Client) GetAccountOverview(ctx context.Context, network string, accountID string) (*AccountOverview, error) {
 	cacheKey := network + ":account:" + accountID
@@ -770,7 +787,7 @@ func (c *Client) GetAccountOverview(ctx context.Context, network string, account
 		return v.(*AccountOverview), nil
 	}
 
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			if neg, isNeg := v.(*accountOverviewNegativeEntry); isNeg {
 				return nil, neg.err
@@ -781,14 +798,14 @@ func (c *Client) GetAccountOverview(ctx context.Context, network string, account
 		params := url.Values{"account_id": {accountID}}
 		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/explorer/account")+"?"+params.Encode())
 		if err != nil {
-			c.cache.Set(cacheKey, &accountOverviewNegativeEntry{err: err}, TTLAccountFailure)
+			c.cacheAccountOverviewFailure(ctx, cacheKey, err)
 			return nil, err
 		}
 
 		var result AccountOverview
 		if err := json.Unmarshal(body, &result); err != nil {
 			wrapped := fmt.Errorf("gateway: parsing account overview: %w", err)
-			c.cache.Set(cacheKey, &accountOverviewNegativeEntry{err: wrapped}, TTLAccountFailure)
+			c.cacheAccountOverviewFailure(ctx, cacheKey, wrapped)
 			return nil, wrapped
 		}
 
@@ -1527,7 +1544,7 @@ func (c *Client) GetBatchDecodedTransactions(ctx context.Context, network string
 	if v, ok := c.cache.Get(cacheKey); ok {
 		return v.(*BatchDecodedResponse), nil
 	}
-	v, err, _ := c.inflight.Do(cacheKey, func() (any, error) {
+	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			return v, nil
 		}

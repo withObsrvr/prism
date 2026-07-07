@@ -17,7 +17,7 @@ import (
 	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
 
-var stellarAccountIDPattern = regexp.MustCompile(`^G[A-Z2-7]{55}$`)
+var stellarAccountIDFormatPattern = regexp.MustCompile(`^G[A-Z2-7]{55}$`)
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -108,8 +108,8 @@ func accountShellData(id string, loading bool) pages.AccountData {
 	}
 }
 
-func validStellarAccountID(id string) bool {
-	return stellarAccountIDPattern.MatchString(strings.ToUpper(strings.TrimSpace(id)))
+func validStellarAccountIDFormat(id string) bool {
+	return stellarAccountIDFormatPattern.MatchString(strings.ToUpper(strings.TrimSpace(id)))
 }
 
 // buildFederatedActivities converts the federated hot+cold account-transaction history into the
@@ -160,8 +160,8 @@ func buildFederatedActivities(txs []gateway.AccountTransaction, accountID string
 func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) (pages.AccountData, error) {
 	ctx := r.Context()
 	accountID = strings.ToUpper(strings.TrimSpace(accountID))
-	if !validStellarAccountID(accountID) {
-		return pages.AccountData{}, fmt.Errorf("invalid account id: %s", accountID)
+	if !validStellarAccountIDFormat(accountID) {
+		return pages.AccountData{}, fmt.Errorf("invalid account id format: %s", accountID)
 	}
 
 	overview, err := h.Gateway.GetAccountOverview(ctx, network, accountID)
