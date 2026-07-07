@@ -1,5 +1,7 @@
 package gateway
 
+import "encoding/json"
+
 // NetworkStats matches the /silver/stats/network response.
 type NetworkStats struct {
 	GeneratedAt     string              `json:"generated_at"`
@@ -515,17 +517,18 @@ type DailyCallCount struct {
 
 // ContractMetadata matches /silver/contracts/{id}/metadata response.
 type ContractMetadata struct {
-	ContractID          string                             `json:"contract_id"`
-	DisplayName         string                             `json:"display_name"`
-	ContractType        string                             `json:"contract_type"`
-	CreatorAddress      string                             `json:"creator_address"`
-	WASMHash            string                             `json:"wasm_hash"`
-	CreatedLedger       int64                              `json:"created_ledger"`
-	CreatedAt           string                             `json:"created_at"`
-	TotalEntries        int64                              `json:"total_entries"`
-	PersistentEntries   int64                              `json:"persistent_entries"`
-	TotalStateSizeBytes int64                              `json:"total_state_size_bytes"`
-	ExportedFunctions   []ContractExportedFunctionMetadata `json:"exported_functions"`
+	ContractID                  string                             `json:"contract_id"`
+	DisplayName                 string                             `json:"display_name"`
+	ContractType                string                             `json:"contract_type"`
+	CreatorAddress              string                             `json:"creator_address"`
+	WASMHash                    string                             `json:"wasm_hash"`
+	CreatedLedger               int64                              `json:"created_ledger"`
+	CreatedAt                   string                             `json:"created_at"`
+	TotalEntries                int64                              `json:"total_entries"`
+	PersistentEntries           int64                              `json:"persistent_entries"`
+	TotalStateSizeBytes         int64                              `json:"total_state_size_bytes"`
+	EstimatedMonthlyRentStroops int64                              `json:"estimated_monthly_rent_stroops"`
+	ExportedFunctions           []ContractExportedFunctionMetadata `json:"exported_functions"`
 }
 
 type ContractExportedFunctionMetadata struct {
@@ -539,14 +542,18 @@ type ContractStorageResponse struct {
 }
 
 type ContractStorageEntry struct {
-	Key                string `json:"key"`
-	KeyHash            string `json:"key_hash"`
-	Type               string `json:"type"`
-	Durability         string `json:"durability"`
-	SizeBytes          int64  `json:"size_bytes"`
-	LiveUntilLedgerSeq int64  `json:"live_until_ledger_seq"`
-	TTLRemaining       int64  `json:"ttl_remaining"`
-	Expired            bool   `json:"expired"`
+	Key                string          `json:"key"`
+	KeyHash            string          `json:"key_hash"`
+	Type               string          `json:"type"`
+	Durability         string          `json:"durability"`
+	SizeBytes          int64           `json:"size_bytes"`
+	LiveUntilLedgerSeq int64           `json:"live_until_ledger_seq"`
+	TTLRemaining       int64           `json:"ttl_remaining"`
+	Expired            bool            `json:"expired"`
+	DataValue          string          `json:"data_value"`
+	KeyDecoded         json.RawMessage `json:"key_decoded"`
+	ValueDecoded       json.RawMessage `json:"value_decoded"`
+	LastModifiedLedger int64           `json:"last_modified_ledger"`
 }
 
 // ContractRecentCalls matches /silver/contracts/{id}/recent-calls response.

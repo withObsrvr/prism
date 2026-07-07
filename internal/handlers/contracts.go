@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -79,7 +80,7 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 	if recentCallsErr != nil {
 		h.Logger.Warn("contract recent calls failed", "error", recentCallsErr, "contract", contractID, "network", network)
 	}
-	storageResp, _ := h.Gateway.GetContractStorage(ctx, network, contractID, 3)
+	storageResp, _ := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
 
 	data := pages.ContractDetailData{
 		Name:         gateway.ShortAddress(contractID),
@@ -121,6 +122,9 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		}
 		data.StorageEntries = gateway.FormatNumber(metadata.TotalEntries)
 		data.StateSize = formatBytes(metadata.TotalStateSizeBytes)
+		if metadata.EstimatedMonthlyRentStroops > 0 {
+			data.MonthlyRent = formatRentXLM(metadata.EstimatedMonthlyRentStroops) + " XLM"
+		}
 		data.FunctionsCount = fmt.Sprintf("%d", len(metadata.ExportedFunctions))
 		for _, fn := range metadata.ExportedFunctions {
 			if fn.Name == "" {
@@ -222,14 +226,12 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 	}
 
 	if storageResp != nil {
-		for _, entry := range storageResp.Entries {
-			data.StorageItems = append(data.StorageItems, pages.ContractStorageItem{
-				Key:       truncateMiddle(entry.Key, 20),
-				Type:      titleCase(entry.Type),
-				TypeColor: storageTypeColor(entry.Type),
-				Size:      formatBytes(entry.SizeBytes),
-				TTL:       "—",
-			})
+		data.StorageItems, data.StorageStats, data.StorageTypes = buildStorageExplorer(storageResp.Entries)
+	}
+	if metadata != nil {
+		data.StorageStats.TotalEntries = gateway.FormatNumber(metadata.TotalEntries)
+		if metadata.EstimatedMonthlyRentStroops > 0 {
+			data.StorageStats.MonthlyRentXLM = formatRentXLM(metadata.EstimatedMonthlyRentStroops)
 		}
 	}
 
@@ -384,6 +386,271 @@ func storageTypeColor(t string) string {
 	default:
 		return "cyan"
 	}
+}
+
+const (
+	storageLedgersPerDay = 17280 // ~5s ledger close time
+	// Full health bar represents ~60 days of TTL runway; entries above
+	// ~24 days read healthy, 9-24 days at risk, below 9 days critical.
+	storageHealthWindow = 60 * storageLedgersPerDay
+)
+
+// buildStorageExplorer maps serving-endpoint storage entries into the
+// enriched shape the v2 State & rent panel renders, plus sample-level
+// health counts and a per-durability breakdown.
+func buildStorageExplorer(entries []gateway.ContractStorageEntry) ([]pages.ContractStorageItem, pages.ContractStorageStats, []pages.ContractStorageTypeAgg) {
+	items := make([]pages.ContractStorageItem, 0, len(entries))
+	healthy, atRisk, critical := 0, 0, 0
+	type agg struct {
+		entries int
+		bytes   int64
+		minTTL  int64
+	}
+	typeAggs := map[string]*agg{}
+
+	for _, entry := range entries {
+		durability := storageDurability(entry)
+
+		healthPct := 0
+		ttlDays := 0
+		if entry.TTLRemaining > 0 {
+			ttlDays = int(entry.TTLRemaining / storageLedgersPerDay)
+			healthPct = int(entry.TTLRemaining * 100 / storageHealthWindow)
+			if healthPct > 100 {
+				healthPct = 100
+			}
+			if healthPct < 1 {
+				healthPct = 1
+			}
+			switch {
+			case healthPct >= 40:
+				healthy++
+			case healthPct >= 15:
+				atRisk++
+			default:
+				critical++
+			}
+		}
+
+		value, valueType := decodeStorageValue(entry)
+		items = append(items, pages.ContractStorageItem{
+			Key:        decodeStorageKey(entry),
+			Type:       durability,
+			TypeColor:  storageTypeColor(durability),
+			Size:       formatBytes(entry.SizeBytes),
+			TTL:        formatStorageTTL(entry.TTLRemaining),
+			ValueType:  valueType,
+			Value:      value,
+			KeyHash:    entry.KeyHash,
+			SizeBytes:  int(entry.SizeBytes),
+			TTLDays:    ttlDays,
+			TTLLedgers: int(entry.TTLRemaining),
+			HealthPct:  healthPct,
+		})
+
+		a := typeAggs[durability]
+		if a == nil {
+			a = &agg{minTTL: -1}
+			typeAggs[durability] = a
+		}
+		a.entries++
+		a.bytes += entry.SizeBytes
+		if entry.TTLRemaining > 0 && (a.minTTL < 0 || entry.TTLRemaining < a.minTTL) {
+			a.minTTL = entry.TTLRemaining
+		}
+	}
+
+	stats := pages.ContractStorageStats{}
+	if healthy+atRisk+critical > 0 {
+		stats.Healthy = gateway.FormatNumber(int64(healthy))
+		stats.AtRisk = gateway.FormatNumber(int64(atRisk))
+		stats.Critical = gateway.FormatNumber(int64(critical))
+	}
+
+	var typeBreakdown []pages.ContractStorageTypeAgg
+	for _, name := range []string{"Instance", "Persistent", "Temporary"} {
+		a := typeAggs[name]
+		if a == nil {
+			continue
+		}
+		minTTL := "—"
+		if a.minTTL >= 0 {
+			minTTL = fmt.Sprintf("%dd", a.minTTL/storageLedgersPerDay)
+		}
+		typeBreakdown = append(typeBreakdown, pages.ContractStorageTypeAgg{
+			Name:    name,
+			Entries: gateway.FormatNumber(int64(a.entries)),
+			Size:    formatBytes(a.bytes),
+			MinTTL:  minTTL,
+		})
+	}
+
+	return items, stats, typeBreakdown
+}
+
+// formatRentXLM renders a stroop amount as compact XLM (e.g. "54.3").
+func formatRentXLM(stroops int64) string {
+	xlm := float64(stroops) / 10_000_000
+	switch {
+	case xlm >= 1000:
+		return gateway.FormatNumber(int64(xlm + 0.5))
+	case xlm >= 10:
+		return fmt.Sprintf("%.1f", xlm)
+	default:
+		return fmt.Sprintf("%.2f", xlm)
+	}
+}
+
+func formatStorageTTL(ttlLedgers int64) string {
+	if ttlLedgers <= 0 {
+		return "—"
+	}
+	days := ttlLedgers / storageLedgersPerDay
+	if days == 1 {
+		return "1 day"
+	}
+	if days > 0 {
+		return fmt.Sprintf("%d days", days)
+	}
+	return "< 1 day"
+}
+
+// decodedScVal matches the gateway's decoded key/value wrapper:
+// {"type": "vec", "value": [...], "display": "[Randomness, 30199779]"}
+type decodedScVal struct {
+	Type    string          `json:"type"`
+	Value   json.RawMessage `json:"value"`
+	Display string          `json:"display"`
+}
+
+// decodeStorageKey renders key_decoded into a compact display key,
+// falling back to the truncated raw key hash.
+func decodeStorageKey(entry gateway.ContractStorageEntry) string {
+	var kd decodedScVal
+	if len(entry.KeyDecoded) > 0 && json.Unmarshal(entry.KeyDecoded, &kd) == nil {
+		if kd.Type == "ledger_key_contract_instance" {
+			return "Contract instance"
+		}
+		// Vec keys like [Balance, GDKX...] read best in Key:Part form.
+		if kd.Type == "vec" && len(kd.Value) > 0 {
+			var parts []decodedScVal
+			if json.Unmarshal(kd.Value, &parts) == nil && len(parts) > 0 {
+				joined := make([]string, 0, len(parts))
+				for _, p := range parts {
+					joined = append(joined, truncateMiddle(p.Display, 24))
+				}
+				return truncateMiddle(strings.Join(joined, ":"), 64)
+			}
+		}
+		if kd.Display != "" {
+			return truncateMiddle(kd.Display, 64)
+		}
+	}
+	return truncateMiddle(entry.Key, 24)
+}
+
+// decodeStorageValue renders value_decoded into a display string and a
+// value-type label, falling back to the raw XDR data_value.
+func decodeStorageValue(entry gateway.ContractStorageEntry) (string, string) {
+	var vd decodedScVal
+	if len(entry.ValueDecoded) > 0 && json.Unmarshal(entry.ValueDecoded, &vd) == nil && vd.Type != "" {
+		return truncateMiddle(renderScVal(entry.ValueDecoded, 0), 400), prettyScType(vd.Type)
+	}
+	if entry.DataValue != "" {
+		return truncateMiddle(entry.DataValue, 200), "XDR"
+	}
+	return "", ""
+}
+
+const scValMaxDepth = 3
+
+// renderScVal renders a decoded ScVal wrapper into a readable string,
+// recursing into maps and vecs whose top-level display is only a summary
+// like "map{6}". Falls back to the gateway's display string.
+func renderScVal(raw json.RawMessage, depth int) string {
+	var v decodedScVal
+	if json.Unmarshal(raw, &v) != nil || v.Type == "" {
+		return ""
+	}
+	switch v.Type {
+	case "bytes":
+		// The display is just "bytes[N]"; the hex payload is more useful.
+		var b struct {
+			Hex string `json:"hex"`
+		}
+		if json.Unmarshal(v.Value, &b) == nil && b.Hex != "" {
+			return "0x" + b.Hex
+		}
+	case "map":
+		if depth < scValMaxDepth {
+			var m struct {
+				Entries []struct {
+					Key   json.RawMessage `json:"key"`
+					Value json.RawMessage `json:"value"`
+				} `json:"entries"`
+			}
+			if json.Unmarshal(v.Value, &m) == nil && len(m.Entries) > 0 {
+				parts := make([]string, 0, len(m.Entries))
+				for _, e := range m.Entries {
+					parts = append(parts, renderScVal(e.Key, depth+1)+": "+renderScVal(e.Value, depth+1))
+				}
+				// Top-level maps with several entries read best one per line.
+				if depth == 0 && len(parts) > 3 {
+					return "{\n  " + strings.Join(parts, ",\n  ") + "\n}"
+				}
+				return "{" + strings.Join(parts, ", ") + "}"
+			}
+		}
+	case "vec":
+		if depth < scValMaxDepth {
+			var items []json.RawMessage
+			if json.Unmarshal(v.Value, &items) == nil && len(items) > 0 {
+				parts := make([]string, 0, len(items))
+				for _, it := range items {
+					parts = append(parts, renderScVal(it, depth+1))
+				}
+				return "[" + strings.Join(parts, ", ") + "]"
+			}
+		}
+	case "contract_instance":
+		var inst struct {
+			ExecutableType string `json:"executable_type"`
+			StorageEntries int64  `json:"storage_entries"`
+		}
+		if json.Unmarshal(v.Value, &inst) == nil {
+			exec := strings.TrimPrefix(inst.ExecutableType, "ContractExecutableTypeContractExecutable")
+			if exec == "" {
+				exec = "Contract"
+			}
+			return fmt.Sprintf("%s executable · %d instance storage entries", exec, inst.StorageEntries)
+		}
+	}
+	return v.Display
+}
+
+func prettyScType(t string) string {
+	switch strings.ToLower(t) {
+	case "u32", "u64", "u128", "u256":
+		return "U" + t[1:]
+	case "i32", "i64", "i128", "i256":
+		return t
+	case "bool":
+		return "Bool"
+	case "contract_instance":
+		return "Instance"
+	default:
+		return titleCase(t)
+	}
+}
+
+// storageDurability extracts the clean durability label. The serving
+// endpoint puts it in `type` ("persistent"); `durability` carries the XDR
+// enum name ("ContractDataDurabilityPersistent").
+func storageDurability(entry gateway.ContractStorageEntry) string {
+	if entry.Type != "" {
+		return titleCase(entry.Type)
+	}
+	return titleCase(strings.TrimPrefix(entry.Durability, "ContractDataDurability"))
 }
 
 func (h *Handlers) ContractEvents(w http.ResponseWriter, r *http.Request) {

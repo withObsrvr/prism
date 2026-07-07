@@ -27,7 +27,7 @@ templ ContractDetail(data legacy.ContractDetailData, network string) {
 				<div class="px-tx-detail-body">
 					<div data-cn-panel="interface">@contractFunctions(data)</div>
 					<div data-cn-panel="calls" hidden>@contractCalls(data)</div>
-					<div data-cn-panel="storage" hidden>@contractStorage(data)</div>
+					<div data-cn-panel="storage" hidden>@contractStorage(data, network)</div>
 					<div data-cn-panel="code" hidden>@contractCode(data)</div>
 				</div>
 			</div></section>
@@ -38,6 +38,7 @@ templ ContractDetail(data legacy.ContractDetailData, network string) {
 			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/contracts/" + data.Address) }><span class="px-tx-rel-h mono">Legacy contract</span><span class="px-tx-rel-s">current production page</span></a><a class="px-tx-related-row" href="/events"><span class="px-tx-rel-h mono">Events</span><span class="px-tx-rel-s">stream contract activity</span></a></div></div>
 		</aside></div></div>
 		@contractTabsScript()
+		@contractStorageScript()
 	}
 }
 
@@ -118,16 +119,149 @@ templ contractCalls(data legacy.ContractDetailData) {
 	</div></div>
 }
 
-templ contractStorage(data legacy.ContractDetailData) {
-	<div id="storage" class="px-cn-panel"><div class="px-cn-storage">
+templ contractStorage(data legacy.ContractDetailData, network string) {
+	<div id="storage" class="px-cn-panel">
 		if len(data.StorageItems) > 0 {
-			for _, s := range data.StorageItems {
-				<div class="px-cn-store"><code>{ s.Key }</code><span>{ s.Type }</span><b>{ s.Size }</b><em>{ s.TTL }</em></div>
-			}
+			<div class="px-cn-stx" data-stx-root>
+				<div class="px-cn-stx-strip">
+					<span class="stat"><span class="k">Entries</span><b>{ cnFirst(data.StorageStats.TotalEntries, data.StorageEntries) }</b></span>
+					if data.StorageStats.MonthlyRentXLM != "" {
+						<span class="sep"></span>
+						<span class="stat"><span class="k">Monthly rent</span><b>{ data.StorageStats.MonthlyRentXLM } XLM</b><span class="usd">{ data.StorageStats.MonthlyRentUSD }</span></span>
+					}
+					if data.StorageStats.Healthy != "" {
+						<span class="sep"></span>
+						<span class="pill healthy"><i></i><b>{ data.StorageStats.Healthy }</b> healthy</span>
+						<span class="pill atrisk"><i></i><b>{ data.StorageStats.AtRisk }</b> at risk</span>
+						<span class="pill critical"><i></i><b>{ data.StorageStats.Critical }</b> critical</span>
+					}
+				</div>
+				<div class="px-cn-stx-filters">
+					<div class="px-cn-stx-chips">
+						<button type="button" class="px-cn-stx-chip active" data-stx-filter="all">All entries <span>{ fmt.Sprintf("%d", len(data.StorageItems)) }</span></button>
+						<button type="button" class="px-cn-stx-chip" data-stx-filter="healthy">Healthy <span>{ fmt.Sprintf("%d", cnStxCount(data.StorageItems, "healthy")) }</span></button>
+						<button type="button" class="px-cn-stx-chip" data-stx-filter="atrisk">At risk <span>{ fmt.Sprintf("%d", cnStxCount(data.StorageItems, "atrisk")) }</span></button>
+						<button type="button" class="px-cn-stx-chip" data-stx-filter="critical">Critical <span>{ fmt.Sprintf("%d", cnStxCount(data.StorageItems, "critical")) }</span></button>
+					</div>
+					<div class="px-cn-stx-search">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+						<input type="text" data-stx-q placeholder="Filter by key or value…" aria-label="Filter storage entries"/>
+					</div>
+				</div>
+				if len(data.StorageTypes) > 0 {
+					<div class="px-cn-stx-types">
+						for _, t := range data.StorageTypes {
+							<div class="px-cn-stx-type">
+								<span class="name"><i class={ "sw", cnStxTypeClass(t.Name) }></i>{ t.Name }</span>
+								<span class="meta"><span><b>{ t.Entries }</b> entries</span><span class="sep"></span><span>{ t.Size }</span><span class="sep"></span><span>Min TTL { t.MinTTL }</span></span>
+							</div>
+						}
+					</div>
+				}
+				<div class="px-cn-stx-table">
+					<div class="px-cn-stx-head">
+						<button type="button" data-stx-sort="key">Key <i data-stx-ind="key"></i></button>
+						<span>Type</span>
+						<button type="button" class="num" data-stx-sort="size">Size <i data-stx-ind="size"></i></button>
+						<button type="button" class="num" data-stx-sort="ttl">TTL <i data-stx-ind="ttl"></i></button>
+						<button type="button" class="ctr" data-stx-sort="health">Health <i data-stx-ind="health"></i></button>
+						<span class="num">Rent/mo</span>
+					</div>
+					<div class="px-cn-stx-body" data-stx-body>
+						for _, s := range data.StorageItems {
+							@contractStorageEntry(s, data.Address, network)
+						}
+					</div>
+					<div class="px-cn-stx-none" data-stx-none hidden>No entries match this filter</div>
+				</div>
+				<div class="px-cn-stx-foot">
+					<span data-stx-count>{ fmt.Sprintf("%d of %d sampled entries shown", len(data.StorageItems), len(data.StorageItems)) } · { cnFirst(data.StorageStats.TotalEntries, data.StorageEntries) } total</span>
+					<span class="src">OBSRVR Lake · silver · live-only view</span>
+				</div>
+			</div>
 		} else {
-			<div class="px-cn-empty"><b>No storage sample available</b><p>{ cnStorageEmpty(data) }</p></div>
+			<div class="px-cn-storage">
+				<div class="px-cn-empty"><b>No storage sample available</b><p>{ cnStorageEmpty(data) }</p></div>
+			</div>
 		}
-	</div></div>
+	</div>
+}
+
+templ contractStorageEntry(s legacy.ContractStorageItem, address string, network string) {
+	<div
+		class="px-cn-stx-entry"
+		data-stx-entry
+		data-stx-status={ cnStxStatus(s) }
+		data-stx-search={ cnStxHaystack(s) }
+		data-stx-key={ s.Key }
+		data-stx-size={ fmt.Sprintf("%d", s.SizeBytes) }
+		data-stx-ttl={ fmt.Sprintf("%d", s.TTLLedgers) }
+		data-stx-health={ fmt.Sprintf("%d", s.HealthPct) }
+	>
+		<button type="button" class="px-cn-stx-row" data-stx-toggle>
+			<span class="cell key"><code>{ s.Key }</code><small>{ cnFirst(s.Sub, "Storage entry") }</small></span>
+			<span class="cell"><span class={ "px-cn-stx-badge", cnStxTypeClass(s.Type) }><i></i>{ s.Type }</span></span>
+			<span class="cell num">{ s.Size }</span>
+			<span class="cell ttl"><b>{ cnStxTTLMain(s) }</b><small>{ cnStxLedgers(s.TTLLedgers) }</small></span>
+			<span class="cell health">
+				if cnStxHasHealth(s) {
+					<span class="px-cn-stx-track"><span class={ "px-cn-stx-fill", cnStxStatus(s) } style={ fmt.Sprintf("width:%d%%", s.HealthPct) }></span></span>
+					<b class={ cnStxStatus(s) }>{ fmt.Sprintf("%d%%", s.HealthPct) }</b>
+				} else {
+					<b class="unknown">—</b>
+				}
+			</span>
+			<span class="cell num rent">
+				if s.RentXLM != "" {
+					<b>{ s.RentXLM }</b>
+					<small>XLM</small>
+				} else {
+					<b class="unknown">—</b>
+				}
+			</span>
+		</button>
+		<div class="px-cn-stx-detail" hidden>
+			<div class="pills">
+				<span class={ "px-cn-stx-badge", cnStxTypeClass(s.Type) }><i></i>{ s.Type }</span>
+				if cnStxHasHealth(s) {
+					<span class={ "px-cn-stx-badge", cnStxStatus(s) }><i></i>{ cnStxStatusLabel(s) }</span>
+				}
+			</div>
+			<div class="px-cn-stx-kv">
+				<div><span>TTL remaining</span><b>{ cnStxTTLFull(s) }</b></div>
+				<div><span>Rent / month</span><b>{ cnStxRent(s) }</b></div>
+				<div><span>Value type</span><b>{ cnFirst(s.ValueType, "unknown") }</b></div>
+				<div><span>Size</span><b>{ s.Size }</b></div>
+			</div>
+			<div class="px-cn-stx-field">
+				<div class="fh"><span>Key</span><button type="button" class="px-cn-stx-copy" data-stx-copy={ s.Key }>copy</button></div>
+				<code>{ s.Key }</code>
+			</div>
+			<div class="px-cn-stx-field">
+				<div class="fh"><span>Value</span><button type="button" class="px-cn-stx-copy" data-stx-copy={ s.Value }>copy</button></div>
+				<code>{ cnFirst(s.Value, "not decoded") }</code>
+			</div>
+			if s.KeyHash != "" {
+				<div class="px-cn-stx-field">
+					<div class="fh"><span>API endpoint</span><button type="button" class="px-cn-stx-copy" data-stx-copy={ "GET " + cnStxEndpoint(network, address, s.KeyHash) }>copy</button></div>
+					<code><b>GET</b> { cnStxEndpoint(network, address, s.KeyHash) }</code>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ contractStorageScript() {
+	<script>(function(){if(window.__prismStxBound)return;window.__prismStxBound=true;
+	function root(el){return el.closest('[data-stx-root]');}
+	function apply(rt){var status=rt.__stxStatus||'all';var q=(rt.__stxQuery||'').toLowerCase();var shown=0;var entries=rt.querySelectorAll('[data-stx-entry]');entries.forEach(function(en){var okS=status==='all'||en.getAttribute('data-stx-status')===status;var okQ=!q||(en.getAttribute('data-stx-search')||'').indexOf(q)!==-1;var on=okS&&okQ;en.hidden=!on;if(on)shown++;});var none=rt.querySelector('[data-stx-none]');if(none)none.hidden=shown>0;var count=rt.querySelector('[data-stx-count]');if(count)count.textContent=shown+' of '+entries.length+' sampled entries shown';}
+	function sortBy(rt,col){var defDir=col==='size'?'desc':'asc';if(rt.__stxSortCol===col){rt.__stxSortDir=rt.__stxSortDir==='asc'?'desc':'asc';}else{rt.__stxSortCol=col;rt.__stxSortDir=defDir;}var dir=rt.__stxSortDir==='asc'?1:-1;var body=rt.querySelector('[data-stx-body]');var entries=Array.prototype.slice.call(body.querySelectorAll('[data-stx-entry]'));entries.sort(function(a,b){if(col==='key')return a.getAttribute('data-stx-key').localeCompare(b.getAttribute('data-stx-key'))*dir;var attr=col==='size'?'data-stx-size':(col==='ttl'?'data-stx-ttl':'data-stx-health');return (parseInt(a.getAttribute(attr),10)-parseInt(b.getAttribute(attr),10))*dir;});entries.forEach(function(en){body.appendChild(en);});rt.querySelectorAll('[data-stx-ind]').forEach(function(i){i.textContent=i.getAttribute('data-stx-ind')===col?(dir===1?' ↑':' ↓'):'';});}
+	document.addEventListener('click',function(e){var chip=e.target.closest('[data-stx-filter]');if(chip){var rt=root(chip);if(!rt)return;rt.__stxStatus=chip.getAttribute('data-stx-filter');rt.querySelectorAll('[data-stx-filter]').forEach(function(c){c.classList.toggle('active',c===chip);});apply(rt);return;}
+	var srt=e.target.closest('[data-stx-sort]');if(srt){var r=root(srt);if(r)sortBy(r,srt.getAttribute('data-stx-sort'));return;}
+	var cp=e.target.closest('[data-stx-copy]');if(cp){if(navigator.clipboard)navigator.clipboard.writeText(cp.getAttribute('data-stx-copy'));var old=cp.textContent;cp.textContent='copied';cp.disabled=true;setTimeout(function(){cp.textContent=old;cp.disabled=false;},1400);return;}
+	var tog=e.target.closest('[data-stx-toggle]');if(tog){var en=tog.closest('[data-stx-entry]');var d=en.querySelector('.px-cn-stx-detail');if(!d)return;var open=!d.hidden;d.hidden=open;en.classList.toggle('open',!open);return;}});
+	document.addEventListener('input',function(e){var s=e.target.closest('[data-stx-q]');if(!s)return;var rt=root(s);if(!rt)return;rt.__stxQuery=s.value;apply(rt);});
+	})();</script>
 }
 
 templ contractCode(data legacy.ContractDetailData) {
@@ -148,6 +282,17 @@ func cnInterfaceCount(data legacy.ContractDetailData) string { return fmt.Sprint
 func cnRecentInvocationCount(data legacy.ContractDetailData) string { return fmt.Sprintf("%d", len(data.Invocations)) }
 func cnRecentCallsEmpty(data legacy.ContractDetailData) string { total := strings.TrimSpace(data.TotalInvocations); if total != "" && total != "—" && total != "0" { return "Prism has observed " + total + " total invocations, but the recent-call feed did not return transaction rows for this network." }; return "Prism has not observed recent calls for this contract on the selected network." }
 func cnStorageSampleCount(data legacy.ContractDetailData) string { return fmt.Sprintf("%d", len(data.StorageItems)) }
+func cnStxHasHealth(s legacy.ContractStorageItem) bool { return s.HealthPct > 0 || s.TTLLedgers > 0 }
+func cnStxStatus(s legacy.ContractStorageItem) string { if !cnStxHasHealth(s) { return "unknown" }; if s.HealthPct >= 40 { return "healthy" }; if s.HealthPct >= 15 { return "atrisk" }; return "critical" }
+func cnStxStatusLabel(s legacy.ContractStorageItem) string { switch cnStxStatus(s) { case "healthy": return "healthy"; case "atrisk": return "at risk"; case "critical": return "critical" }; return "unknown" }
+func cnStxTypeClass(t string) string { return strings.ToLower(strings.TrimSpace(t)) }
+func cnStxCount(items []legacy.ContractStorageItem, status string) int { n := 0; for _, s := range items { if cnStxStatus(s) == status { n++ } }; return n }
+func cnStxTTLMain(s legacy.ContractStorageItem) string { if s.TTLDays == 1 { return "1 day" }; if s.TTLDays > 0 { return fmt.Sprintf("%d days", s.TTLDays) }; return cnFirst(s.TTL, "unknown") }
+func cnStxLedgers(n int) string { if n >= 1000 { return fmt.Sprintf("%dK ledgers", n/1000) }; if n > 0 { return fmt.Sprintf("%d ledgers", n) }; return "" }
+func cnStxTTLFull(s legacy.ContractStorageItem) string { main := cnStxTTLMain(s); if l := cnStxLedgers(s.TTLLedgers); l != "" { return main + " · " + l }; return main }
+func cnStxRent(s legacy.ContractStorageItem) string { if strings.TrimSpace(s.RentXLM) != "" { return s.RentXLM + " XLM" }; return "unknown" }
+func cnStxHaystack(s legacy.ContractStorageItem) string { return strings.ToLower(s.Key + " " + s.Sub + " " + s.Value + " " + s.ValueType + " " + s.Type) }
+func cnStxEndpoint(network string, address string, keyHash string) string { if strings.TrimSpace(network) == "" { network = "testnet" }; return "/lake/v1/" + network + "/api/v1/silver/contracts/" + address + "/storage?key_hash=" + keyHash }
 func cnStorageEmpty(data legacy.ContractDetailData) string { total := strings.TrimSpace(data.StorageEntries); if total != "" && total != "—" && total != "0" { return "Prism has observed " + total + " storage entries in metadata, but the storage sample feed did not return rows for this network." }; return "Storage entries will appear here when the gateway returns data for this network." }
 func cnShort(v string) string { if len(v) <= 14 || v == "—" { return cnFirst(v, "unknown") }; return v[:6] + "..." + v[len(v)-4:] }
 func cnSourceLabel(data legacy.ContractDetailData) string { if data.IsVerified || data.IsSourceVerified { return "Verified" }; return "Unverified" }
