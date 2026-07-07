@@ -140,9 +140,9 @@ const (
 	homeV2SorobanInstructionLimit = int64(100_000_000)
 	homeV2SorobanReadWriteLimit   = int64(3_500_000)
 
-	homeV2HomeSummaryTimeout   = 4 * time.Second
-	homeV2RecentLedgersTimeout = 3 * time.Second
-	homeV2FeedSummariesTimeout = 2 * time.Second
+	homeV2HomeSummaryTimeout   = 750 * time.Millisecond
+	homeV2RecentLedgersTimeout = 2 * time.Second
+	homeV2FeedSummariesTimeout = 1 * time.Second
 )
 
 type homeV2NetworkCfg struct {
@@ -358,15 +358,17 @@ func (h *Handlers) buildHomeV2FeedData(r *http.Request, network string) (homeV2F
 	}
 
 	summaries := make([]*gateway.LedgerFeedSummary, len(recent.Ledgers))
-	summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2FeedSummariesTimeout)
-	defer summaryCancel()
-	for i, ledger := range recent.Ledgers {
-		summary, err := h.Gateway.GetSilverLedgerFeedSummary(summaryCtx, network, ledger.LedgerSequence)
-		if err != nil {
-			h.Logger.Warn("home v2 summary fetch failed", "sequence", ledger.LedgerSequence, "error", err)
-			continue
+	if r.URL.Query().Get("enrich_ledgers") == "true" {
+		summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2FeedSummariesTimeout)
+		defer summaryCancel()
+		for i, ledger := range recent.Ledgers {
+			summary, err := h.Gateway.GetSilverLedgerFeedSummary(summaryCtx, network, ledger.LedgerSequence)
+			if err != nil {
+				h.Logger.Warn("home v2 summary fetch failed", "sequence", ledger.LedgerSequence, "error", err)
+				continue
+			}
+			summaries[i] = summary
 		}
-		summaries[i] = summary
 	}
 
 	rows := make([]vmv2.LedgerRowData, 0, len(recent.Ledgers))
@@ -402,7 +404,9 @@ func (h *Handlers) buildHomeV2Data(r *http.Request, network string) (vmv2.HomeDa
 	summaryCtx, summaryCancel := context.WithTimeout(r.Context(), homeV2HomeSummaryTimeout)
 	if summary, err := h.Gateway.GetHomeSummary(summaryCtx, network); err == nil && summary != nil {
 		applyHomeSummaryV2(&data, summary)
-		h.validateHomeV2TTLAttention(r, network, &data, summary)
+		if r.URL.Query().Get("validate_ttl") == "true" {
+			h.validateHomeV2TTLAttention(r, network, &data, summary)
+		}
 	} else if err != nil {
 		h.Logger.Warn("home v2 home-summary fetch failed", "network", network, "error", err)
 	}

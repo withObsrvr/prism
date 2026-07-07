@@ -9,7 +9,10 @@ DATE     ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS   = -s -w \
             -X github.com/withObsrvr/prism/cmd/prism.version=$(VERSION) \
             -X github.com/withObsrvr/prism/cmd/prism.commit=$(COMMIT) \
-            -X github.com/withObsrvr/prism/cmd/prism.date=$(DATE)
+            -X github.com/withObsrvr/prism/cmd/prism.date=$(DATE) \
+            -X github.com/withObsrvr/prism/internal/buildinfo.Version=$(VERSION) \
+            -X github.com/withObsrvr/prism/internal/buildinfo.Commit=$(COMMIT) \
+            -X github.com/withObsrvr/prism/internal/buildinfo.Date=$(DATE)
 
 .PHONY: help build run dev generate css clean test vet
 

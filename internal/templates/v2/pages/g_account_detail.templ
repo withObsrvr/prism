@@ -132,7 +132,7 @@ templ gaSignerControls(data legacy.AccountData) {
 }
 
 templ gaRecentActivity(data legacy.AccountData) {
-	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>What changed recently</h2><span class="px-tx-section-sub">Recent operations explain the latest movements behind the balance and signer state.</span></div><span class="px-ga-section-fact">Last op { gaLastOp(data) }</span></div>
+	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>Latest operations window</h2><span class="px-tx-section-sub">Gateway currently returns a bounded recent account-operation window here. Full paginated account history is not yet available in Prism.</span></div><span class="px-ga-section-fact">Last op { gaLastOp(data) }</span></div>
 		@gaActivity(data)
 	</section>
 }
@@ -193,7 +193,7 @@ templ gaSigners(data legacy.AccountData) {
 }
 
 templ gaActivity(data legacy.AccountData) {
-	<div class="px-cn-calls" data-ga-history-root><div class="px-cn-calls-filters"><button type="button" class="px-cn-callfilter active" data-ga-history-filter="all">All <span class="c">{ gaActivityCount(data) }</span></button><button type="button" class="px-cn-callfilter" data-ga-history-filter="payments">Payments</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="dex">DEX</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="trustlines">Trustlines</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="soroban">Soroban</button></div><div class="px-cn-calltable px-ga-optable">
+	<div class="px-cn-calls" data-ga-history-root><div class="px-cn-calls-filters"><button type="button" class="px-cn-callfilter active" data-ga-history-filter="all">Latest <span class="c">{ gaActivityCount(data) }</span></button><button type="button" class="px-cn-callfilter" data-ga-history-filter="payments">Payments</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="dex">DEX</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="trustlines">Trustlines</button><button type="button" class="px-cn-callfilter" data-ga-history-filter="soroban">Soroban</button></div><div class="px-cn-calltable px-ga-optable">
 		for _, o := range gaActivityRows(data) {
 			<a class={ "px-ga-oprow", o.Tone } data-ga-history-kind={ gaHistoryKind(o.Kind) } href={ templ.SafeURL(gaTxHref(o.Hash)) }><span class="px-cn-callago"><span class="dot"></span><span>{ o.Ago } ago</span></span><span class={ "px-ga-optype", "k-" + o.Kind }>{ gaPrettyKind(o.Kind) }</span><span class="px-ga-opbody">{ o.Summary }</span><span class="px-ga-opto mono">{ o.To }</span><span class="px-ga-opamt mono">{ o.Amount }</span></a>
 		}

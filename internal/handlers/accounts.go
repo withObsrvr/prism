@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,6 +16,8 @@ import (
 	"github.com/withObsrvr/prism/internal/templates/pages"
 	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 )
+
+var stellarAccountIDFormatPattern = regexp.MustCompile(`^G[A-Z2-7]{55}$`)
 
 func (h *Handlers) AccountPortfolio(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -105,6 +108,10 @@ func accountShellData(id string, loading bool) pages.AccountData {
 	}
 }
 
+func validStellarAccountIDFormat(id string) bool {
+	return stellarAccountIDFormatPattern.MatchString(strings.ToUpper(strings.TrimSpace(id)))
+}
+
 // buildFederatedActivities converts the federated hot+cold account-transaction history into the
 // account page's activity rows, classifying each as Sent/Received from the source account so
 // pre-handoff sends (served from cold storage) are clearly visible.
@@ -152,9 +159,17 @@ func buildFederatedActivities(txs []gateway.AccountTransaction, accountID string
 
 func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) (pages.AccountData, error) {
 	ctx := r.Context()
+	accountID = strings.ToUpper(strings.TrimSpace(accountID))
+	if !validStellarAccountIDFormat(accountID) {
+		return pages.AccountData{}, fmt.Errorf("invalid account id format: %s", accountID)
+	}
 
 	overview, err := h.Gateway.GetAccountOverview(ctx, network, accountID)
 	if err != nil {
+		if partial, partialErr := h.buildPartialAccountData(ctx, network, accountID); partialErr == nil {
+			h.Logger.Warn("account overview unavailable, rendering partial account data", "account", accountID, "error", err)
+			return partial, nil
+		}
 		return pages.AccountData{}, fmt.Errorf("fetching account overview: %w", err)
 	}
 
@@ -312,6 +327,51 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		}
 	}
 
+	return data, nil
+}
+
+func (h *Handlers) buildPartialAccountData(ctx context.Context, network, accountID string) (pages.AccountData, error) {
+	balCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	balResp, err := h.Gateway.GetAccountBalances(balCtx, network, accountID)
+	if err != nil {
+		return pages.AccountData{}, fmt.Errorf("fetching account balances: %w", err)
+	}
+	if balResp == nil {
+		return pages.AccountData{}, fmt.Errorf("account balances returned nil")
+	}
+
+	data := accountShellData(accountID, false)
+	data.IsFunded = len(balResp.Balances) > 0
+	data.Trustlines = "0"
+
+	trustlineCount := 0
+	for _, b := range balResp.Balances {
+		assetType := "Classic"
+		typeColor := "gray"
+		code := b.AssetCode
+		if b.AssetType == "native" || b.AssetType == "" && code == "" {
+			code = "XLM"
+			assetType = "Native"
+			data.XLMBalance = b.Balance + " XLM"
+		}
+		if code == "" {
+			code = b.AssetType
+		}
+		if assetType != "Native" {
+			trustlineCount++
+		}
+		data.Balances = append(data.Balances, pages.AccountBalance{
+			Code:      code,
+			Name:      code,
+			BgColor:   "bg-gray-600",
+			Type:      assetType,
+			TypeColor: typeColor,
+			Balance:   b.Balance,
+			ValueUSD:  "—",
+		})
+	}
+	data.Trustlines = fmt.Sprintf("%d", trustlineCount)
 	return data, nil
 }
 
