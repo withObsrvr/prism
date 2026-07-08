@@ -79,19 +79,19 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {
 	ctx := r.Context()
 
+	storageResp, storageErr := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
+	if storageErr != nil {
+		h.Logger.Warn("contract storage failed", "error", storageErr, "contract", contractID, "network", network)
+	}
 	metadata, metaErr := h.Gateway.GetContractMetadata(ctx, network, contractID)
 	analytics, analyticsErr := h.Gateway.GetContractAnalytics(ctx, network, contractID)
-	if metaErr != nil && analyticsErr != nil {
-		return pages.ContractDetailData{}, fmt.Errorf("fetching contract detail: metadata=%v analytics=%v", metaErr, analyticsErr)
+	if metaErr != nil && analyticsErr != nil && (storageResp == nil || len(storageResp.Entries) == 0) {
+		return pages.ContractDetailData{}, fmt.Errorf("fetching contract detail: metadata=%v analytics=%v storage=%v", metaErr, analyticsErr, storageErr)
 	}
 
 	recentCalls, recentCallsErr := h.Gateway.GetContractRecentCalls(ctx, network, contractID, 10)
 	if recentCallsErr != nil {
 		h.Logger.Warn("contract recent calls failed", "error", recentCallsErr, "contract", contractID, "network", network)
-	}
-	storageResp, storageErr := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
-	if storageErr != nil {
-		h.Logger.Warn("contract storage failed", "error", storageErr, "contract", contractID, "network", network)
 	}
 
 	data := pages.ContractDetailData{
