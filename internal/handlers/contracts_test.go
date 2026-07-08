@@ -166,6 +166,9 @@ func TestFormatRentXLM(t *testing.T) {
 		542991360:      "54.3", // real testnet metadata value
 		12345678901234: "1,234,568",
 		9_500_000:      "0.95",
+		5_000_000:      "0.50",
+		100_000_000:    "10.0",
+		10_000_000_000: "1,000",
 	}
 	for in, want := range cases {
 		if got := formatRentXLM(in); got != want {

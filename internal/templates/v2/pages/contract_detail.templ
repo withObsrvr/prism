@@ -165,7 +165,6 @@ templ contractStorage(data legacy.ContractDetailData, network string) {
 						<button type="button" class="num" data-stx-sort="size">Size <i data-stx-ind="size"></i></button>
 						<button type="button" class="num" data-stx-sort="ttl">TTL <i data-stx-ind="ttl"></i></button>
 						<button type="button" class="ctr" data-stx-sort="health">Health <i data-stx-ind="health"></i></button>
-						<span class="num">Rent/mo</span>
 					</div>
 					<div class="px-cn-stx-body" data-stx-body>
 						for _, s := range data.StorageItems {
@@ -198,7 +197,7 @@ templ contractStorageEntry(s legacy.ContractStorageItem, address string, network
 		data-stx-ttl={ fmt.Sprintf("%d", s.TTLLedgers) }
 		data-stx-health={ fmt.Sprintf("%d", s.HealthPct) }
 	>
-		<button type="button" class="px-cn-stx-row" data-stx-toggle>
+		<button type="button" class="px-cn-stx-row" data-stx-toggle aria-expanded="false">
 			<span class="cell key"><code>{ s.Key }</code><small>{ cnFirst(s.Sub, "Storage entry") }</small></span>
 			<span class="cell"><span class={ "px-cn-stx-badge", cnStxTypeClass(s.Type) }><i></i>{ s.Type }</span></span>
 			<span class="cell num">{ s.Size }</span>
@@ -207,14 +206,6 @@ templ contractStorageEntry(s legacy.ContractStorageItem, address string, network
 				if cnStxHasHealth(s) {
 					<span class="px-cn-stx-track"><span class={ "px-cn-stx-fill", cnStxStatus(s) } style={ fmt.Sprintf("width:%d%%", s.HealthPct) }></span></span>
 					<b class={ cnStxStatus(s) }>{ fmt.Sprintf("%d%%", s.HealthPct) }</b>
-				} else {
-					<b class="unknown">—</b>
-				}
-			</span>
-			<span class="cell num rent">
-				if s.RentXLM != "" {
-					<b>{ s.RentXLM }</b>
-					<small>XLM</small>
 				} else {
 					<b class="unknown">—</b>
 				}
@@ -229,7 +220,6 @@ templ contractStorageEntry(s legacy.ContractStorageItem, address string, network
 			</div>
 			<div class="px-cn-stx-kv">
 				<div><span>TTL remaining</span><b>{ cnStxTTLFull(s) }</b></div>
-				<div><span>Rent / month</span><b>{ cnStxRent(s) }</b></div>
 				<div><span>Value type</span><b>{ cnFirst(s.ValueType, "unknown") }</b></div>
 				<div><span>Size</span><b>{ s.Size }</b></div>
 			</div>
@@ -256,10 +246,11 @@ templ contractStorageScript() {
 	function root(el){return el.closest('[data-stx-root]');}
 	function apply(rt){var status=rt.__stxStatus||'all';var q=(rt.__stxQuery||'').toLowerCase();var shown=0;var entries=rt.querySelectorAll('[data-stx-entry]');entries.forEach(function(en){var okS=status==='all'||en.getAttribute('data-stx-status')===status;var okQ=!q||(en.getAttribute('data-stx-search')||'').indexOf(q)!==-1;var on=okS&&okQ;en.hidden=!on;if(on)shown++;});var none=rt.querySelector('[data-stx-none]');if(none)none.hidden=shown>0;var count=rt.querySelector('[data-stx-count]');if(count)count.textContent=shown+' of '+entries.length+' sampled entries shown';}
 	function sortBy(rt,col){var defDir=col==='size'?'desc':'asc';if(rt.__stxSortCol===col){rt.__stxSortDir=rt.__stxSortDir==='asc'?'desc':'asc';}else{rt.__stxSortCol=col;rt.__stxSortDir=defDir;}var dir=rt.__stxSortDir==='asc'?1:-1;var body=rt.querySelector('[data-stx-body]');var entries=Array.prototype.slice.call(body.querySelectorAll('[data-stx-entry]'));entries.sort(function(a,b){if(col==='key')return a.getAttribute('data-stx-key').localeCompare(b.getAttribute('data-stx-key'))*dir;var attr=col==='size'?'data-stx-size':(col==='ttl'?'data-stx-ttl':'data-stx-health');return (parseInt(a.getAttribute(attr),10)-parseInt(b.getAttribute(attr),10))*dir;});entries.forEach(function(en){body.appendChild(en);});rt.querySelectorAll('[data-stx-ind]').forEach(function(i){i.textContent=i.getAttribute('data-stx-ind')===col?(dir===1?' ↑':' ↓'):'';});}
+	function copyText(text){if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);return new Promise(function(resolve,reject){var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy')?resolve():reject(new Error('copy failed'));}catch(err){reject(err);}finally{document.body.removeChild(ta);}});}
 	document.addEventListener('click',function(e){var chip=e.target.closest('[data-stx-filter]');if(chip){var rt=root(chip);if(!rt)return;rt.__stxStatus=chip.getAttribute('data-stx-filter');rt.querySelectorAll('[data-stx-filter]').forEach(function(c){c.classList.toggle('active',c===chip);});apply(rt);return;}
 	var srt=e.target.closest('[data-stx-sort]');if(srt){var r=root(srt);if(r)sortBy(r,srt.getAttribute('data-stx-sort'));return;}
-	var cp=e.target.closest('[data-stx-copy]');if(cp){if(navigator.clipboard)navigator.clipboard.writeText(cp.getAttribute('data-stx-copy'));var old=cp.textContent;cp.textContent='copied';cp.disabled=true;setTimeout(function(){cp.textContent=old;cp.disabled=false;},1400);return;}
-	var tog=e.target.closest('[data-stx-toggle]');if(tog){var en=tog.closest('[data-stx-entry]');var d=en.querySelector('.px-cn-stx-detail');if(!d)return;var open=!d.hidden;d.hidden=open;en.classList.toggle('open',!open);return;}});
+	var cp=e.target.closest('[data-stx-copy]');if(cp){var old=cp.textContent;cp.disabled=true;copyText(cp.getAttribute('data-stx-copy')||'').then(function(){cp.textContent='copied';setTimeout(function(){cp.textContent=old;cp.disabled=false;},1400);}).catch(function(){cp.textContent='failed';cp.disabled=false;setTimeout(function(){cp.textContent=old;},1400);});return;}
+	var tog=e.target.closest('[data-stx-toggle]');if(tog){var en=tog.closest('[data-stx-entry]');var d=en.querySelector('.px-cn-stx-detail');if(!d)return;var open=!d.hidden;d.hidden=open;en.classList.toggle('open',!open);tog.setAttribute('aria-expanded',open?'false':'true');return;}});
 	document.addEventListener('input',function(e){var s=e.target.closest('[data-stx-q]');if(!s)return;var rt=root(s);if(!rt)return;rt.__stxQuery=s.value;apply(rt);});
 	})();</script>
 }
@@ -290,7 +281,6 @@ func cnStxCount(items []legacy.ContractStorageItem, status string) int { n := 0;
 func cnStxTTLMain(s legacy.ContractStorageItem) string { if s.TTLDays == 1 { return "1 day" }; if s.TTLDays > 0 { return fmt.Sprintf("%d days", s.TTLDays) }; return cnFirst(s.TTL, "unknown") }
 func cnStxLedgers(n int) string { if n >= 1000 { return fmt.Sprintf("%dK ledgers", n/1000) }; if n > 0 { return fmt.Sprintf("%d ledgers", n) }; return "" }
 func cnStxTTLFull(s legacy.ContractStorageItem) string { main := cnStxTTLMain(s); if l := cnStxLedgers(s.TTLLedgers); l != "" { return main + " · " + l }; return main }
-func cnStxRent(s legacy.ContractStorageItem) string { if strings.TrimSpace(s.RentXLM) != "" { return s.RentXLM + " XLM" }; return "unknown" }
 func cnStxHaystack(s legacy.ContractStorageItem) string { return strings.ToLower(s.Key + " " + s.Sub + " " + s.Value + " " + s.ValueType + " " + s.Type) }
 func cnStxEndpoint(network string, address string, keyHash string) string { if strings.TrimSpace(network) == "" { network = "testnet" }; return "/lake/v1/" + network + "/api/v1/silver/contracts/" + address + "/storage?key_hash=" + keyHash }
 func cnStorageEmpty(data legacy.ContractDetailData) string { total := strings.TrimSpace(data.StorageEntries); if total != "" && total != "—" && total != "0" { return "Prism has observed " + total + " storage entries in metadata, but the storage sample feed did not return rows for this network." }; return "Storage entries will appear here when the gateway returns data for this network." }

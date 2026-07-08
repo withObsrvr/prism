@@ -4423,7 +4423,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 
 /* ===== Contract storage explorer (State & rent panel) ===== */
-.px-cn-stx { display: flex; flex-direction: column; gap: 14px; --stx-red: #A6392C; --stx-cols: minmax(0, 1.6fr) 112px 64px 108px 140px 84px; }
+.px-cn-stx { display: flex; flex-direction: column; gap: 14px; --stx-red: #A6392C; --stx-cols: minmax(0, 1.6fr) 112px 64px 108px 140px; }
 .px-cn-stx-strip { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; font-family: var(--ph-ff-mono); }
 .px-cn-stx-strip .stat { display: inline-flex; align-items: baseline; gap: 7px; }
 .px-cn-stx-strip .stat .k { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ph-text-3); font-weight: 600; }
@@ -4496,9 +4496,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .px-cn-stx-row .health b.healthy { color: var(--ph-green); }
 .px-cn-stx-row .health b.atrisk { color: var(--ph-amber); }
 .px-cn-stx-row .health b.critical { color: var(--stx-red); }
-.px-cn-stx-row .health b.unknown, .px-cn-stx-row .rent b.unknown { color: var(--ph-text-3); font-weight: 400; }
-.px-cn-stx-row .rent b { color: var(--ph-text); font-weight: 500; }
-.px-cn-stx-row .rent small { color: var(--ph-text-3); font-size: 10.5px; }
+.px-cn-stx-row .health b.unknown { color: var(--ph-text-3); font-weight: 400; }
 .px-cn-stx-detail { padding: 16px 18px 18px; border-top: 1px dashed var(--ph-border-strong); background: var(--ph-bg); display: flex; flex-direction: column; gap: 12px; }
 .px-cn-stx-detail[hidden], .px-cn-stx-entry[hidden] { display: none; }
 .px-cn-stx-detail .pills { display: flex; gap: 8px; flex-wrap: wrap; }

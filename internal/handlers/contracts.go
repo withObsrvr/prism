@@ -490,14 +490,15 @@ func buildStorageExplorer(entries []gateway.ContractStorageEntry) ([]pages.Contr
 
 // formatRentXLM renders a stroop amount as compact XLM (e.g. "54.3").
 func formatRentXLM(stroops int64) string {
-	xlm := float64(stroops) / 10_000_000
 	switch {
-	case xlm >= 1000:
-		return gateway.FormatNumber(int64(xlm + 0.5))
-	case xlm >= 10:
-		return fmt.Sprintf("%.1f", xlm)
+	case stroops >= 10_000_000_000:
+		return gateway.FormatNumber((stroops + 5_000_000) / 10_000_000)
+	case stroops >= 100_000_000:
+		tenths := (stroops + 500_000) / 1_000_000
+		return fmt.Sprintf("%d.%d", tenths/10, tenths%10)
 	default:
-		return fmt.Sprintf("%.2f", xlm)
+		hundredths := (stroops + 50_000) / 100_000
+		return fmt.Sprintf("%d.%02d", hundredths/100, hundredths%100)
 	}
 }
 
