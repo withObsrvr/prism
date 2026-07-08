@@ -958,7 +958,10 @@ func (c *Client) GetContractStorage(ctx context.Context, network string, contrac
 		return v.(*ContractStorageResponse), nil
 	}
 
-	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}, "live_only": {"true"}}
+	// live_only=false is deliberate: the gateway's live-only query path times
+	// out (503/504, observed 2026-07-08). Callers filter expired entries
+	// instead, which preserves live-only semantics. Revisit once fixed.
+	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}, "live_only": {"false"}}
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/contracts/"+contractID+"/storage")+"?"+params.Encode())
 	if err != nil {
 		return nil, err
@@ -1311,6 +1314,110 @@ func (c *Client) GetSmartWalletDetail(ctx context.Context, network string, contr
 	}
 
 	c.cache.Set(cacheKey, &result, TTLAccount)
+	return &result, nil
+}
+
+// LookupSmartAccountsByAddress returns smart account contracts where address is an active signer.
+func (c *Client) LookupSmartAccountsByAddress(ctx context.Context, network string, address string, limit int) (*SmartAccountLookupResponse, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	cacheKey := fmt.Sprintf("%s:smart_account_lookup_address:%s:%d", network, address, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartAccountLookupResponse), nil
+	}
+
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/smart-accounts/lookup/address/"+url.PathEscape(address))+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartAccountLookupResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart account address lookup: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
+	return &result, nil
+}
+
+// LookupSmartAccountsByCredential returns smart account contracts where credentialID is an active signer.
+func (c *Client) LookupSmartAccountsByCredential(ctx context.Context, network string, credentialID string, limit int) (*SmartAccountLookupResponse, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	cacheKey := fmt.Sprintf("%s:smart_account_lookup_credential:%s:%d", network, credentialID, limit)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartAccountLookupResponse), nil
+	}
+
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/smart-accounts/lookup/credential/"+url.PathEscape(credentialID))+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartAccountLookupResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart account credential lookup: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
+	return &result, nil
+}
+
+// GetSmartAccountRules returns active context rules, signers, and policies for a smart account contract.
+func (c *Client) GetSmartAccountRules(ctx context.Context, network string, contractID string, contextRuleID *int64) (*SmartAccountStateResponse, error) {
+	ruleKey := "all"
+	if contextRuleID != nil {
+		ruleKey = fmt.Sprintf("%d", *contextRuleID)
+	}
+	cacheKey := fmt.Sprintf("%s:smart_account_rules:%s:%s", network, contractID, ruleKey)
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartAccountStateResponse), nil
+	}
+
+	rawURL := c.buildURL(network, "/silver/smart-accounts/"+url.PathEscape(contractID)+"/rules")
+	if contextRuleID != nil {
+		params := url.Values{}
+		params.Set("context_rule_id", fmt.Sprintf("%d", *contextRuleID))
+		rawURL += "?" + params.Encode()
+	}
+	body, err := c.doRequest(ctx, http.MethodGet, rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartAccountStateResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart account rules: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
+	return &result, nil
+}
+
+// GetSmartAccountStats returns aggregate smart account index statistics.
+func (c *Client) GetSmartAccountStats(ctx context.Context, network string) (*SmartAccountStatsResponse, error) {
+	cacheKey := network + ":smart_account_stats"
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartAccountStatsResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/smart-accounts/stats"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartAccountStatsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart account stats: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLNetworkStats)
 	return &result, nil
 }
 

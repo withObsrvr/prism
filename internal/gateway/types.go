@@ -1,6 +1,9 @@
 package gateway
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // NetworkStats matches the /silver/stats/network response.
 type NetworkStats struct {
@@ -794,6 +797,83 @@ type SmartWalletInfo struct {
 type SmartWalletSigner struct {
 	ID      string `json:"id"`
 	KeyType string `json:"key_type"` // "ed25519", "secp256r1", "webauthn"
+}
+
+// SmartAccountLookupResponse matches /silver/smart-accounts/lookup/* responses.
+type SmartAccountLookupResponse struct {
+	LookupType string                        `json:"lookup_type"`
+	Lookup     string                        `json:"lookup"`
+	Normalized string                        `json:"normalized"`
+	Source     string                        `json:"source"`
+	Contracts  []SmartAccountContractSummary `json:"contracts"`
+	Count      int                           `json:"count"`
+}
+
+// SmartAccountContractSummary summarizes the current smart-account authorization state.
+type SmartAccountContractSummary struct {
+	ContractID            string  `json:"contract_id"`
+	WalletType            string  `json:"wallet_type,omitempty"`
+	ContextRuleCount      int     `json:"context_rule_count"`
+	ActiveSignerCount     int     `json:"active_signer_count"`
+	CredentialSignerCount int     `json:"credential_signer_count"`
+	AddressSignerCount    int     `json:"address_signer_count"`
+	ActivePolicyCount     int     `json:"active_policy_count"`
+	ContextRuleIDs        []int64 `json:"context_rule_ids,omitempty"`
+	FirstSeenLedger       *int64  `json:"first_seen_ledger,omitempty"`
+	LastModifiedLedger    *int64  `json:"last_modified_ledger,omitempty"`
+}
+
+// SmartAccountStateResponse matches /silver/smart-accounts/{contract_id}/rules.
+type SmartAccountStateResponse struct {
+	ContractID    string                       `json:"contract_id"`
+	Source        string                       `json:"source"`
+	Summary       SmartAccountContractSummary  `json:"summary"`
+	ContextRules  []SmartAccountContextRuleRow `json:"context_rules"`
+	ContextRuleID *int64                       `json:"context_rule_id,omitempty"`
+	Count         int                          `json:"count"`
+}
+
+type SmartAccountContextRuleRow struct {
+	ContextRuleID      int64                   `json:"context_rule_id"`
+	Active             bool                    `json:"active"`
+	Metadata           *json.RawMessage        `json:"metadata,omitempty"`
+	EventType          string                  `json:"event_type,omitempty"`
+	LastModifiedLedger int64                   `json:"last_modified_ledger"`
+	TransactionHash    string                  `json:"transaction_hash,omitempty"`
+	ClosedAt           *time.Time              `json:"closed_at,omitempty"`
+	Signers            []SmartAccountSignerRow `json:"signers"`
+	Policies           []SmartAccountPolicyRow `json:"policies"`
+}
+
+type SmartAccountSignerRow struct {
+	SignerID           *int64 `json:"signer_id,omitempty"`
+	SignerType         string `json:"signer_type,omitempty"`
+	SignerAddress      string `json:"signer_address,omitempty"`
+	CredentialID       string `json:"credential_id,omitempty"`
+	RawBytes           string `json:"raw_bytes,omitempty"`
+	LastModifiedLedger int64  `json:"last_modified_ledger"`
+	TransactionHash    string `json:"transaction_hash,omitempty"`
+	RegistryResolved   bool   `json:"registry_resolved"`
+}
+
+type SmartAccountPolicyRow struct {
+	PolicyID           *int64           `json:"policy_id,omitempty"`
+	PolicyAddress      string           `json:"policy_address,omitempty"`
+	InstallParams      *json.RawMessage `json:"install_params,omitempty"`
+	LastModifiedLedger int64            `json:"last_modified_ledger"`
+	TransactionHash    string           `json:"transaction_hash,omitempty"`
+	RegistryResolved   bool             `json:"registry_resolved"`
+}
+
+type SmartAccountStatsResponse struct {
+	Source             string `json:"source"`
+	ContractCount      int64  `json:"contract_count"`
+	ActiveRuleCount    int64  `json:"active_rule_count"`
+	ActiveSignerCount  int64  `json:"active_signer_count"`
+	CredentialCount    int64  `json:"credential_count"`
+	AddressSignerCount int64  `json:"address_signer_count"`
+	ActivePolicyCount  int64  `json:"active_policy_count"`
+	LastModifiedLedger *int64 `json:"last_modified_ledger,omitempty"`
 }
 
 // SmartWalletDetail matches /silver/smart-wallets/{contract_id} response.

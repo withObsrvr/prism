@@ -163,6 +163,7 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 	if !validStellarAccountIDFormat(accountID) {
 		return pages.AccountData{}, fmt.Errorf("invalid account id format: %s", accountID)
 	}
+	controlledSmartAccounts := h.startSmartAccountControlsLookup(ctx, network, accountID)
 
 	overview, err := h.Gateway.GetAccountOverview(ctx, network, accountID)
 	if err != nil {
@@ -315,6 +316,9 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 			data.IsSmartWallet = true
 		}
 	}
+	if strings.HasPrefix(accountID, "G") {
+		data.ControlledSmartAccounts = waitSmartAccountControls(controlledSmartAccounts, 300*time.Millisecond)
+	}
 
 	// Prefer created_at from gateway; fall back to updated_at.
 	createdAtStr := acct.CreatedAt
@@ -331,6 +335,7 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 }
 
 func (h *Handlers) buildPartialAccountData(ctx context.Context, network, accountID string) (pages.AccountData, error) {
+	controlledSmartAccounts := h.startSmartAccountControlsLookup(ctx, network, accountID)
 	balCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	balResp, err := h.Gateway.GetAccountBalances(balCtx, network, accountID)
@@ -372,6 +377,9 @@ func (h *Handlers) buildPartialAccountData(ctx context.Context, network, account
 		})
 	}
 	data.Trustlines = fmt.Sprintf("%d", trustlineCount)
+	if strings.HasPrefix(accountID, "G") {
+		data.ControlledSmartAccounts = waitSmartAccountControls(controlledSmartAccounts, 300*time.Millisecond)
+	}
 	return data, nil
 }
 
@@ -437,15 +445,24 @@ func (h *Handlers) smartAccountDataForRequest(r *http.Request) (pages.SmartAccou
 
 func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {
 	ctx := r.Context()
-	detail, err := h.Gateway.GetSmartWalletDetail(ctx, network, contractID)
+	rules, rulesErr := h.Gateway.GetSmartAccountRules(ctx, network, contractID, nil)
+	detailCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	detail, err := h.Gateway.GetSmartWalletDetail(detailCtx, network, contractID)
 	if err != nil {
+		if rulesErr == nil && smartAccountStateHasData(rules) {
+			return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
+		}
 		return h.buildSmartAccountDataLegacy(r, network, contractID)
 	}
 	if detail == nil {
+		if rulesErr == nil && smartAccountStateHasData(rules) {
+			return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
+		}
 		return pages.SmartAccountData{}, fmt.Errorf("smart wallet detail returned nil for %s", contractID)
 	}
 
-	walletLike := detail.IsSmartWallet || detail.Contract.InterfaceType == "smart_wallet" || len(detail.Timeline) > 0 || len(detail.Contract.ObservedFunctions) > 0
+	walletLike := detail.IsSmartWallet || detail.Contract.InterfaceType == "smart_wallet" || len(detail.Timeline) > 0 || len(detail.Contract.ObservedFunctions) > 0 || smartAccountStateHasData(rules)
 	if !walletLike {
 		return h.buildSmartAccountDataLegacy(r, network, contractID)
 	}
@@ -676,7 +693,9 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 	if len(data.SecurityLog) < 5 {
 		h.fillSmartWalletSecurityFallback(ctx, network, contractID, &data)
 	}
-	if activity, windowLabel, err := h.buildSmartWalletActivityLog(ctx, network, contractID, detail.Account.CreatedAt); err == nil {
+	activityCtx, activityCancel := context.WithTimeout(ctx, 3*time.Second)
+	defer activityCancel()
+	if activity, windowLabel, err := h.buildSmartWalletActivityLog(activityCtx, network, contractID, detail.Account.CreatedAt); err == nil {
 		data.ActivityLog = activity
 		data.ActivityWindowLabel = windowLabel
 	} else {
@@ -690,8 +709,301 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 			data.Evidence = append(data.Evidence, "function:"+fn)
 		}
 	}
+	if rulesErr == nil && smartAccountStateHasData(rules) {
+		applySmartAccountStateToData(&data, rules)
+	}
 
 	return data, nil
+}
+
+func smartAccountStateHasData(state *gateway.SmartAccountStateResponse) bool {
+	return state != nil && (state.Summary.ContractID != "" || len(state.ContextRules) > 0 || state.Count > 0)
+}
+
+func (h *Handlers) buildSmartAccountDataFromRules(ctx context.Context, network, contractID string, state *gateway.SmartAccountStateResponse) pages.SmartAccountData {
+	data := pages.SmartAccountData{
+		Name:                 gateway.ShortAddress(contractID),
+		ContractID:           contractID,
+		TotalBalance:         "—",
+		BadgeLabel:           "Smart Account",
+		OverviewTabLabel:     "Overview",
+		SecurityTabLabel:     "Security",
+		ActivityTabLabel:     "Activity",
+		ClassificationSource: "Event Index",
+		Confidence:           "high confidence",
+		ApprovalSummary:      "Authorization state was reconstructed from smart-account events.",
+		PartialData:          true,
+		SignerSourceLabel:    "event-indexed context rules",
+		PolicyStateLabel:     "event-indexed policy state",
+		ActivitySourceLabel:  "incoming and outgoing transfers",
+		LowThreshold:         "—",
+		MedThreshold:         "—",
+		HighThreshold:        "—",
+		MasterWeight:         "—",
+		RequiredWeight:       "—",
+		TotalWeight:          "—",
+		MinSigners:           "unknown",
+		Health: pages.ContractHealth{
+			RentStatus:     "unknown",
+			TTLRemaining:   "unknown",
+			WASMHash:       "—",
+			OZVersion:      "OpenZeppelin Smart Account",
+			Deployed:       "unknown",
+			StateSize:      "—",
+			StorageEntries: "—",
+		},
+	}
+	applySmartAccountStateToData(&data, state)
+	activityCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if activity, windowLabel, err := h.buildSmartWalletActivityLog(activityCtx, network, contractID, ""); err == nil {
+		data.ActivityLog = activity
+		data.ActivityWindowLabel = windowLabel
+	}
+	data.OverviewTabLabel = smartWalletTabLabel("Overview", 0)
+	data.SecurityTabLabel = smartWalletTabLabel("Security", len(data.SecurityLog))
+	data.ActivityTabLabel = smartWalletTabLabel("Activity", len(data.ActivityLog))
+	return data
+}
+
+func applySmartAccountStateToData(data *pages.SmartAccountData, state *gateway.SmartAccountStateResponse) {
+	if data == nil || !smartAccountStateHasData(state) {
+		return
+	}
+	summary := state.Summary
+	if data.BadgeLabel == "" || data.BadgeLabel == "Wallet-like Contract" {
+		data.BadgeLabel = "Smart Account"
+	}
+	if data.ClassificationSource == "" || strings.EqualFold(data.ClassificationSource, "Observed") {
+		data.ClassificationSource = "Event Index"
+	}
+	if data.Confidence == "" || data.Confidence == "low confidence" {
+		data.Confidence = "high confidence"
+	}
+	if summary.ContextRuleCount > 0 || len(state.ContextRules) > 0 {
+		ruleCount := summary.ContextRuleCount
+		if ruleCount == 0 {
+			ruleCount = len(state.ContextRules)
+		}
+		data.ApprovalSummary = fmt.Sprintf("%d active context rule(s), %d active signer(s), %d active policy item(s)", ruleCount, summary.ActiveSignerCount, summary.ActivePolicyCount)
+		data.SignerSourceLabel = "event-indexed context rules"
+		data.PolicyStateLabel = fmt.Sprintf("%d active policy item(s) across %d rule(s)", summary.ActivePolicyCount, ruleCount)
+		data.MinSigners = fmt.Sprintf("%d active signer(s)", summary.ActiveSignerCount)
+	}
+
+	var evidence []string
+	evidence = append(evidence, data.Evidence...)
+	evidence = appendSmartEvidence(evidence, "source:"+firstNonEmpty(state.Source, "silver.smart_account_state"))
+	if summary.ContextRuleCount > 0 {
+		evidence = appendSmartEvidence(evidence, fmt.Sprintf("rules:%d", summary.ContextRuleCount))
+	}
+	if summary.LastModifiedLedger != nil {
+		evidence = appendSmartEvidence(evidence, fmt.Sprintf("last_modified_ledger:%d", *summary.LastModifiedLedger))
+	}
+	data.Evidence = evidence
+
+	signers := make([]pages.SmartSigner, 0)
+	seenSigners := map[string]bool{}
+	policies := make([]pages.SmartPolicy, 0)
+	seenPolicies := map[string]bool{}
+	events := make([]pages.SecurityEvent, 0, len(state.ContextRules))
+
+	for _, rule := range state.ContextRules {
+		ruleLabel := fmt.Sprintf("Rule %d", rule.ContextRuleID)
+		for _, signer := range rule.Signers {
+			id, display, href, keyType := smartAccountSignerIdentity(signer)
+			if id == "" {
+				continue
+			}
+			key := fmt.Sprintf("%d:%s", rule.ContextRuleID, id)
+			if seenSigners[key] {
+				continue
+			}
+			seenSigners[key] = true
+			signers = append(signers, pages.SmartSigner{
+				Name:        smartAccountSignerName(signer),
+				Role:        ruleLabel,
+				RoleColor:   "blue",
+				Address:     display,
+				AddressFull: id,
+				AddressHref: href,
+				KeyType:     keyType,
+				Weight:      "—",
+			})
+		}
+
+		for _, policy := range rule.Policies {
+			id := firstNonEmpty(policy.PolicyAddress, smartAccountOptionalInt(policy.PolicyID))
+			if id == "" {
+				continue
+			}
+			key := fmt.Sprintf("%d:%s", rule.ContextRuleID, id)
+			if seenPolicies[key] {
+				continue
+			}
+			seenPolicies[key] = true
+			p := pages.SmartPolicy{
+				Name:        fmt.Sprintf("%s policy", ruleLabel),
+				Description: "Active policy from smart-account event state",
+				IsActive:    true,
+			}
+			if policy.PolicyAddress != "" {
+				p.Contracts = append(p.Contracts, pages.AllowedContract{
+					Initial:   strings.ToUpper(firstRune(policy.PolicyAddress)),
+					InitialBg: "bg-violet-100 text-violet-700",
+					Name:      gateway.ShortAddress(policy.PolicyAddress),
+					Address:   gateway.ShortAddress(policy.PolicyAddress),
+					Methods:   "policy contract",
+				})
+			}
+			policies = append(policies, p)
+		}
+
+		eventTime := "ledger " + gateway.FormatNumber(rule.LastModifiedLedger)
+		if rule.ClosedAt != nil {
+			eventTime = formatContractAge(rule.ClosedAt.Format(time.RFC3339))
+		}
+		events = append(events, pages.SecurityEvent{
+			Action:      fmt.Sprintf("%s active", ruleLabel),
+			Detail:      fmt.Sprintf("%d signer(s), %d policy item(s)", len(rule.Signers), len(rule.Policies)),
+			Time:        eventTime,
+			Status:      "Info",
+			StatusColor: "blue",
+			TxHash:      rule.TransactionHash,
+			ShortHash:   gateway.ShortHash(rule.TransactionHash),
+			IconSVG:     "key",
+			IconBg:      "bg-blue-50 text-blue-600",
+		})
+	}
+
+	if len(signers) > 0 {
+		data.Signers = signers
+	}
+	if len(policies) > 0 {
+		data.Policies = policies
+	}
+	if len(events) > 0 {
+		data.SecurityLog = append(events, data.SecurityLog...)
+	}
+}
+
+func appendSmartEvidence(items []string, item string) []string {
+	item = strings.TrimSpace(item)
+	if item == "" {
+		return items
+	}
+	for _, existing := range items {
+		if existing == item {
+			return items
+		}
+	}
+	return append(items, item)
+}
+
+func smartAccountSignerIdentity(signer gateway.SmartAccountSignerRow) (id string, display string, href string, keyType string) {
+	switch {
+	case signer.CredentialID != "":
+		id = signer.CredentialID
+		display = truncateMiddleLocal(signer.CredentialID, 20)
+		href = "#"
+		keyType = firstNonEmpty(strings.ToUpper(signer.SignerType), "CREDENTIAL")
+	case signer.SignerAddress != "":
+		id = signer.SignerAddress
+		display = gateway.ShortAddress(signer.SignerAddress)
+		href = "/account/" + signer.SignerAddress
+		keyType = firstNonEmpty(strings.ToUpper(signer.SignerType), "ADDRESS")
+	case signer.RawBytes != "":
+		id = signer.RawBytes
+		display = truncateMiddleLocal(signer.RawBytes, 20)
+		href = "#"
+		keyType = firstNonEmpty(strings.ToUpper(signer.SignerType), "RAW")
+	case signer.SignerID != nil:
+		id = fmt.Sprintf("%d", *signer.SignerID)
+		display = id
+		href = "#"
+		keyType = firstNonEmpty(strings.ToUpper(signer.SignerType), "SIGNER")
+	}
+	return id, display, href, keyType
+}
+
+func smartAccountSignerName(signer gateway.SmartAccountSignerRow) string {
+	switch {
+	case signer.CredentialID != "":
+		return "Credential signer"
+	case signer.SignerAddress != "":
+		return "Address signer"
+	case signer.SignerID != nil:
+		return fmt.Sprintf("Signer %d", *signer.SignerID)
+	default:
+		return "Signer"
+	}
+}
+
+func smartAccountOptionalInt(v *int64) string {
+	if v == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", *v)
+}
+
+func (h *Handlers) startSmartAccountControlsLookup(ctx context.Context, network, accountID string) <-chan []pages.ControlledSmartAccount {
+	if h == nil || h.Gateway == nil || !strings.HasPrefix(strings.ToUpper(strings.TrimSpace(accountID)), "G") {
+		return nil
+	}
+	ch := make(chan []pages.ControlledSmartAccount, 1)
+	go func() {
+		ch <- h.smartAccountControlsForSigner(ctx, network, accountID)
+	}()
+	return ch
+}
+
+func waitSmartAccountControls(ch <-chan []pages.ControlledSmartAccount, timeout time.Duration) []pages.ControlledSmartAccount {
+	if ch == nil {
+		return nil
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case controls := <-ch:
+		return controls
+	case <-timer.C:
+		return nil
+	}
+}
+
+func (h *Handlers) smartAccountControlsForSigner(ctx context.Context, network, accountID string) []pages.ControlledSmartAccount {
+	if h == nil || h.Gateway == nil || strings.TrimSpace(accountID) == "" {
+		return nil
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	lookup, err := h.Gateway.LookupSmartAccountsByAddress(lookupCtx, network, accountID, 100)
+	if err != nil || lookup == nil || len(lookup.Contracts) == 0 {
+		if err != nil && h.Logger != nil {
+			h.Logger.Debug("smart account signer lookup unavailable", "account", accountID, "error", err)
+		}
+		return nil
+	}
+	out := make([]pages.ControlledSmartAccount, 0, len(lookup.Contracts))
+	for _, c := range lookup.Contracts {
+		last := "unknown"
+		if c.LastModifiedLedger != nil {
+			last = gateway.FormatNumber(*c.LastModifiedLedger)
+		}
+		out = append(out, pages.ControlledSmartAccount{
+			ContractID:            c.ContractID,
+			ShortContractID:       gateway.ShortAddress(c.ContractID),
+			Href:                  "/v2/account/" + c.ContractID + "/smart",
+			WalletType:            firstNonEmpty(walletTypeLabel(c.WalletType), "smart account"),
+			ContextRuleCount:      fmt.Sprintf("%d", c.ContextRuleCount),
+			ActiveSignerCount:     fmt.Sprintf("%d", c.ActiveSignerCount),
+			CredentialSignerCount: fmt.Sprintf("%d", c.CredentialSignerCount),
+			AddressSignerCount:    fmt.Sprintf("%d", c.AddressSignerCount),
+			ActivePolicyCount:     fmt.Sprintf("%d", c.ActivePolicyCount),
+			LastModifiedLedger:    last,
+		})
+	}
+	return out
 }
 
 func (h *Handlers) buildSmartAccountDataLegacy(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {

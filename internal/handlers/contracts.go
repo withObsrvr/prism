@@ -40,8 +40,17 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 
 	// Redirect smart-wallet contracts to the dedicated wallet view.
 	if h.useLiveData(r) {
-		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
-			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
+		redirectSmartAccount := false
+		walletType := ""
+		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo != nil && walletInfo.IsSmartWallet {
+			redirectSmartAccount = true
+			walletType = walletInfo.WalletType
+		} else if state, err := h.Gateway.GetSmartAccountRules(r.Context(), network, id, nil); err == nil && smartAccountStateHasData(state) {
+			redirectSmartAccount = true
+			walletType = state.Summary.WalletType
+		}
+		if redirectSmartAccount {
+			h.Logger.Info("smart account detected", "contract", id, "wallet_type", walletType)
 			prefix := ""
 			if strings.HasPrefix(r.URL.Path, "/v2/") {
 				prefix = "/v2"
@@ -80,7 +89,10 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 	if recentCallsErr != nil {
 		h.Logger.Warn("contract recent calls failed", "error", recentCallsErr, "contract", contractID, "network", network)
 	}
-	storageResp, _ := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
+	storageResp, storageErr := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
+	if storageErr != nil {
+		h.Logger.Warn("contract storage failed", "error", storageErr, "contract", contractID, "network", network)
+	}
 
 	data := pages.ContractDetailData{
 		Name:         gateway.ShortAddress(contractID),
@@ -409,6 +421,11 @@ func buildStorageExplorer(entries []gateway.ContractStorageEntry) ([]pages.Contr
 	typeAggs := map[string]*agg{}
 
 	for _, entry := range entries {
+		// The fetch uses live_only=false (see GetContractStorage); keep
+		// live-only semantics by dropping expired entries here.
+		if entry.Expired {
+			continue
+		}
 		durability := storageDurability(entry)
 
 		healthPct := 0

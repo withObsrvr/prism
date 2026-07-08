@@ -168,6 +168,70 @@ func TestCacheEvictsWhenFull(t *testing.T) {
 	}
 }
 
+func TestClientSmartAccountEndpoints(t *testing.T) {
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/lake/v1/testnet/api/v1/silver/smart-accounts/lookup/address/GABC":
+			if r.URL.Query().Get("limit") != "50" {
+				t.Errorf("address limit = %q, want 50", r.URL.Query().Get("limit"))
+			}
+			_, _ = w.Write([]byte(`{"lookup_type":"address","lookup":"GABC","normalized":"GABC","source":"silver.smart_account_state","count":1,"contracts":[{"contract_id":"CCONTRACT","wallet_type":"openzeppelin","context_rule_count":2,"active_signer_count":3,"credential_signer_count":1,"address_signer_count":2,"active_policy_count":4,"context_rule_ids":[0,3],"last_modified_ledger":123}]}`))
+		case "/lake/v1/testnet/api/v1/silver/smart-accounts/lookup/credential/deadbeef":
+			_, _ = w.Write([]byte(`{"lookup_type":"credential","lookup":"deadbeef","normalized":"deadbeef","source":"silver.smart_account_state","count":0,"contracts":[]}`))
+		case "/lake/v1/testnet/api/v1/silver/smart-accounts/CCONTRACT/rules":
+			_, _ = w.Write([]byte(`{"contract_id":"CCONTRACT","source":"silver.smart_account_state","summary":{"contract_id":"CCONTRACT","context_rule_count":1,"active_signer_count":1,"active_policy_count":1},"count":1,"context_rules":[{"context_rule_id":7,"active":true,"event_type":"context_rule_added","last_modified_ledger":123,"signers":[{"signer_id":10,"signer_type":"external","credential_id":"deadbeef","last_modified_ledger":123,"registry_resolved":true}],"policies":[{"policy_id":2,"policy_address":"CPOLICY","last_modified_ledger":123,"registry_resolved":true}]}]}`))
+		case "/lake/v1/testnet/api/v1/silver/smart-accounts/stats":
+			_, _ = w.Write([]byte(`{"source":"silver.smart_account_state","contract_count":8,"active_rule_count":9,"active_signer_count":10,"credential_count":3,"address_signer_count":4,"active_policy_count":5,"last_modified_ledger":123}`))
+		default:
+			t.Errorf("unexpected path %s", r.URL.RequestURI())
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	addr, err := client.LookupSmartAccountsByAddress(context.Background(), "testnet", "GABC", 50)
+	if err != nil {
+		t.Fatalf("LookupSmartAccountsByAddress error: %v", err)
+	}
+	if addr.Count != 1 || len(addr.Contracts) != 1 || addr.Contracts[0].ActivePolicyCount != 4 {
+		t.Fatalf("address lookup parsed unexpected response: %+v", addr)
+	}
+
+	cred, err := client.LookupSmartAccountsByCredential(context.Background(), "testnet", "deadbeef", 100)
+	if err != nil {
+		t.Fatalf("LookupSmartAccountsByCredential error: %v", err)
+	}
+	if cred.LookupType != "credential" || cred.Count != 0 {
+		t.Fatalf("credential lookup parsed unexpected response: %+v", cred)
+	}
+
+	state, err := client.GetSmartAccountRules(context.Background(), "testnet", "CCONTRACT", nil)
+	if err != nil {
+		t.Fatalf("GetSmartAccountRules error: %v", err)
+	}
+	if state.Count != 1 || len(state.ContextRules) != 1 || len(state.ContextRules[0].Signers) != 1 {
+		t.Fatalf("rules parsed unexpected response: %+v", state)
+	}
+
+	stats, err := client.GetSmartAccountStats(context.Background(), "testnet")
+	if err != nil {
+		t.Fatalf("GetSmartAccountStats error: %v", err)
+	}
+	if stats.ContractCount != 8 || stats.LastModifiedLedger == nil || *stats.LastModifiedLedger != 123 {
+		t.Fatalf("stats parsed unexpected response: %+v", stats)
+	}
+
+	if len(paths) != 4 {
+		t.Fatalf("upstream call count = %d, want 4, paths=%v", len(paths), paths)
+	}
+}
+
 func writeAccountOverview(t *testing.T, w http.ResponseWriter, accountID string) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")

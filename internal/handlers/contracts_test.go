@@ -41,6 +41,15 @@ func TestBuildStorageExplorerMapsServingEntries(t *testing.T) {
 			// no TTL info -> health unknown, excluded from counts
 			DataValue: "AAAAAQAAAAY=",
 		},
+		{
+			// The fetch uses live_only=false, so expired entries appear in
+			// the response and must be dropped by the mapper.
+			Key:       "00ffdeadbeef0000",
+			KeyHash:   "d9e8f7a6b5",
+			Type:      "temporary",
+			SizeBytes: 64,
+			Expired:   true,
+		},
 	}
 
 	items, stats, types := buildStorageExplorer(entries)
