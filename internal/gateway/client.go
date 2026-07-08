@@ -958,7 +958,7 @@ func (c *Client) GetContractStorage(ctx context.Context, network string, contrac
 		return v.(*ContractStorageResponse), nil
 	}
 
-	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}}
+	params := url.Values{"limit": {fmt.Sprintf("%d", limit)}, "live_only": {"true"}}
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/contracts/"+contractID+"/storage")+"?"+params.Encode())
 	if err != nil {
 		return nil, err

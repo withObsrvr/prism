@@ -21,6 +21,8 @@ type ContractDetailData struct {
 	Functions      []ContractFunction
 	Invocations    []ContractInvocation
 	StorageItems   []ContractStorageItem
+	StorageStats   ContractStorageStats
+	StorageTypes   []ContractStorageTypeAgg
 	CodePreview    string
 	WASMHash       string
 	// Phase 1A additions
@@ -74,6 +76,31 @@ type ContractStorageItem struct {
 	TypeColor string
 	Size     string
 	TTL      string
+	// Storage explorer enrichment (v2 State & rent panel)
+	Sub        string // plain-language description of the key
+	ValueType  string // e.g. "Address", "i128", "Map"
+	Value      string // decoded value preview
+	KeyHash    string // hash used by the lake storage endpoint
+	SizeBytes  int
+	TTLDays    int
+	TTLLedgers int
+	HealthPct  int    // % of max TTL remaining
+}
+
+type ContractStorageStats struct {
+	TotalEntries   string
+	MonthlyRentXLM string
+	MonthlyRentUSD string
+	Healthy        string
+	AtRisk         string
+	Critical       string
+}
+
+type ContractStorageTypeAgg struct {
+	Name    string // "Instance", "Persistent", "Temporary"
+	Entries string
+	Size    string
+	MinTTL  string
 }
 
 type ContractHumanSignal struct {
