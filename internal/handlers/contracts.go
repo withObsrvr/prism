@@ -132,7 +132,9 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		if metadata.WASMHash != "" {
 			data.WASMHash = metadata.WASMHash
 		}
-		data.StorageEntries = gateway.FormatNumber(metadata.TotalEntries)
+		if metadata.TotalEntries > 0 {
+			data.StorageEntries = gateway.FormatNumber(metadata.TotalEntries)
+		}
 		data.StateSize = formatBytes(metadata.TotalStateSizeBytes)
 		if metadata.EstimatedMonthlyRentStroops > 0 {
 			data.MonthlyRent = formatRentXLM(metadata.EstimatedMonthlyRentStroops) + " XLM"
@@ -241,13 +243,15 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		data.StorageItems, data.StorageStats, data.StorageTypes = buildStorageExplorer(storageResp.Entries)
 	}
 	if metadata != nil {
-		data.StorageStats.TotalEntries = gateway.FormatNumber(metadata.TotalEntries)
+		if metadata.TotalEntries > 0 {
+			data.StorageStats.TotalEntries = gateway.FormatNumber(metadata.TotalEntries)
+		}
 		if metadata.EstimatedMonthlyRentStroops > 0 {
 			data.StorageStats.MonthlyRentXLM = formatRentXLM(metadata.EstimatedMonthlyRentStroops)
 		}
 	}
 
-	if data.StorageEntries == "" {
+	if data.StorageEntries == "" || data.StorageEntries == "0" {
 		data.StorageEntries = fmt.Sprintf("%d", len(data.StorageItems))
 	}
 	if data.TotalInvocations == "" {
@@ -477,7 +481,7 @@ func buildStorageExplorer(entries []gateway.ContractStorageEntry) ([]pages.Contr
 		}
 	}
 
-	stats := pages.ContractStorageStats{}
+	stats := pages.ContractStorageStats{TotalEntries: gateway.FormatNumber(int64(len(items)))}
 	if healthy+atRisk+critical > 0 {
 		stats.Healthy = gateway.FormatNumber(int64(healthy))
 		stats.AtRisk = gateway.FormatNumber(int64(atRisk))
