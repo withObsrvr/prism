@@ -289,12 +289,9 @@ func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query strin
 	if cls.Type == prismsearch.ClassContract {
 		contractID := cls.Value
 		if h.Gateway != nil {
-			walletCtx, walletCancel := context.WithTimeout(ctx, 750*time.Millisecond)
-			if info, err := h.Gateway.GetSmartWalletInfo(walletCtx, network, contractID); err == nil && info != nil && info.IsSmartWallet {
-				walletCancel()
-				return "/v2/account/" + contractID
+			if h.isSmartAccountContract(ctx, network, contractID) {
+				return "/v2/account/" + contractID + "/smart"
 			}
-			walletCancel()
 
 			assetCtx, assetCancel := context.WithTimeout(ctx, 750*time.Millisecond)
 			if _, err := h.Gateway.GetAssetDetail(assetCtx, network, contractID); err == nil {
@@ -305,6 +302,20 @@ func (h *Handlers) detectSmartRedirect(ctx context.Context, network, query strin
 		}
 	}
 	return cls.URL()
+}
+
+func (h *Handlers) isSmartAccountContract(ctx context.Context, network, contractID string) bool {
+	rulesCtx, rulesCancel := context.WithTimeout(ctx, 750*time.Millisecond)
+	state, err := h.Gateway.GetSmartAccountRules(rulesCtx, network, contractID, nil)
+	rulesCancel()
+	if err == nil && smartAccountStateHasData(state) {
+		return true
+	}
+
+	walletCtx, walletCancel := context.WithTimeout(ctx, 750*time.Millisecond)
+	defer walletCancel()
+	info, err := h.Gateway.GetSmartWalletInfo(walletCtx, network, contractID)
+	return err == nil && info != nil && info.IsSmartWallet
 }
 
 func exploreRedirectForQuery(query string) string {
@@ -548,7 +559,7 @@ func (h *Handlers) SearchResults(w http.ResponseWriter, r *http.Request) {
 		case len(query) == 56 && query[0] == 'G':
 			label = "Account " + gateway.ShortAddress(query)
 		case len(query) == 56 && query[0] == 'C' && strings.Contains(redirect, "/smart"):
-			label = "Smart Wallet " + gateway.ShortAddress(query)
+			label = "Smart Account " + gateway.ShortAddress(query)
 		case len(query) == 56 && query[0] == 'C' && strings.Contains(redirect, "/assets/"):
 			label = "Token " + gateway.ShortAddress(query)
 		case len(query) == 56 && query[0] == 'C':
@@ -898,6 +909,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 
 	// Transform transactions — use decoded data when available for rich summaries.
 	if txErr == nil && len(txs) > 0 {
+		opsByTx := ledgerOpsByTransaction(ops)
 		ledgerTxs := make([]pages.LedgerTx, 0, len(txs))
 		for i, tx := range txs {
 			status := "ok"
@@ -906,8 +918,12 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 			}
 			opType := "tx"
 			opColor := "gray"
+			kind := ledgerTxKind(tx, decodedMap[tx.TransactionHash], opsByTx[tx.TransactionHash])
 			summary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> · %d op(s)`,
 				html.EscapeString(gateway.ShortAddress(tx.SourceAccount)), tx.OperationCount)
+			if opMeta := opsByTx[tx.TransactionHash]; opMeta.Count > 0 {
+				opType, opColor = ledgerTxFallbackPresentation(tx, opMeta)
+			}
 
 			// Enrich from decoded data if available.
 			if dt, ok := decodedMap[tx.TransactionHash]; ok {
@@ -931,20 +947,29 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 						opColor = "violet"
 					case "multi_op":
 						opType = "multi"
-						opColor = "violet"
+						if kind == "soroban" {
+							opColor = "violet"
+						} else {
+							opColor = "gray"
+						}
 					default:
 						opType = dt.Summary.Type
 					}
 				}
 				if walletInfo := h.firstSmartWalletForDecodedTx(ctx, network, dt); walletInfo != nil {
 					label := walletTypeLabel(firstNonEmpty(walletInfo.WalletType, walletInfo.Implementation))
+					kind = "soroban"
 					opType = "wallet"
 					opColor = "violet"
 					summary = html.EscapeString(fmt.Sprintf("%s wallet interaction from %s", label, gateway.ShortAddress(tx.SourceAccount)))
 				}
 			} else if tx.OperationCount > 1 {
 				opType = "multi"
-				opColor = "violet"
+				if kind == "soroban" {
+					opColor = "violet"
+				} else {
+					opColor = "gray"
+				}
 			}
 
 			ledgerTxs = append(ledgerTxs, pages.LedgerTx{
@@ -952,6 +977,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 				Status:    status,
 				Hash:      tx.TransactionHash,
 				ShortHash: gateway.ShortHash(tx.TransactionHash),
+				Kind:      kind,
 				OpType:    opType,
 				OpColor:   opColor,
 				Summary:   summary,
@@ -967,6 +993,105 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 
 	enrichLedgerDetailV2(&data)
 	return data, nil
+}
+
+type ledgerTxOperationMeta struct {
+	Count     int
+	Soroban   int
+	FirstType string
+}
+
+func ledgerOpsByTransaction(ops []gateway.Operation) map[string]ledgerTxOperationMeta {
+	byTx := make(map[string]ledgerTxOperationMeta)
+	for _, op := range ops {
+		if op.TransactionHash == "" {
+			continue
+		}
+		meta := byTx[op.TransactionHash]
+		meta.Count++
+		if meta.FirstType == "" {
+			meta.FirstType = op.TypeName
+		}
+		if op.IsSorobanOp {
+			meta.Soroban++
+		}
+		byTx[op.TransactionHash] = meta
+	}
+	return byTx
+}
+
+func ledgerTxKind(tx gateway.Transaction, decoded *gateway.DecodedTransaction, opMeta ledgerTxOperationMeta) string {
+	if !tx.Successful {
+		return "failed"
+	}
+	if opMeta.Soroban > 0 {
+		return "soroban"
+	}
+	if decoded != nil {
+		for _, op := range decoded.Operations {
+			if op.IsSorobanOp {
+				return "soroban"
+			}
+		}
+		if decoded.Summary != nil && decoded.Summary.Type == "contract_call" {
+			return "soroban"
+		}
+	}
+	return "classic"
+}
+
+func ledgerTxFallbackPresentation(tx gateway.Transaction, opMeta ledgerTxOperationMeta) (string, string) {
+	opType := ledgerTxPrettyOpType(opMeta.FirstType)
+	if tx.OperationCount > 1 || opMeta.Count > 1 {
+		opType = "multi"
+	}
+	if opMeta.Soroban > 0 {
+		if opMeta.Count == 1 || tx.OperationCount == 1 {
+			opType = "invoke"
+		}
+		return opType, "violet"
+	}
+	return opType, ledgerTxClassicColor(opType)
+}
+
+func ledgerTxPrettyOpType(typeName string) string {
+	switch strings.ToUpper(strings.TrimSpace(typeName)) {
+	case "PAYMENT":
+		return "payment"
+	case "PATH_PAYMENT_STRICT_RECEIVE", "PATH_PAYMENT_STRICT_SEND":
+		return "path pay"
+	case "MANAGE_BUY_OFFER", "MANAGE_SELL_OFFER", "CREATE_PASSIVE_SELL_OFFER":
+		return "offer"
+	case "SET_TRUST_LINE_FLAGS", "CHANGE_TRUST", "ALLOW_TRUST":
+		return "trustline"
+	case "CREATE_ACCOUNT":
+		return "create"
+	case "ACCOUNT_MERGE":
+		return "merge"
+	case "INVOKE_HOST_FUNCTION":
+		return "invoke"
+	default:
+		v := strings.ToLower(strings.TrimSpace(typeName))
+		v = strings.ReplaceAll(v, "_", " ")
+		if v == "" {
+			return "tx"
+		}
+		if len(v) > 18 {
+			return v[:18]
+		}
+		return v
+	}
+}
+
+func ledgerTxClassicColor(opType string) string {
+	switch opType {
+	case "payment", "transfer", "path pay":
+		return "cyan"
+	case "offer", "swap":
+		return "emerald"
+	default:
+		return "gray"
+	}
 }
 
 func enrichLedgerDetailV2(data *pages.LedgerDetailData) {

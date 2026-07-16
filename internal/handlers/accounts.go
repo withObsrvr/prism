@@ -46,6 +46,11 @@ func (h *Handlers) AccountPortfolioV1(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GAccountDetailV2(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
+	contractID := strings.ToUpper(strings.TrimSpace(id))
+	if h.useLiveData(r) && len(contractID) == 56 && strings.HasPrefix(contractID, "C") && h.isSmartAccountContract(r.Context(), network, contractID) {
+		http.Redirect(w, r, "/v2/account/"+contractID+"/smart", http.StatusSeeOther)
+		return
+	}
 
 	// Render a cheap SSR shell first. Live account evidence is loaded by htmx
 	// fragments so a slow gateway cannot turn the whole page into a 503.
@@ -445,7 +450,12 @@ func (h *Handlers) smartAccountDataForRequest(r *http.Request) (pages.SmartAccou
 
 func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {
 	ctx := r.Context()
-	rules, rulesErr := h.Gateway.GetSmartAccountRules(ctx, network, contractID, nil)
+	rulesCtx, rulesCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer rulesCancel()
+	rules, rulesErr := h.Gateway.GetSmartAccountRules(rulesCtx, network, contractID, nil)
+	if rulesErr == nil && smartAccountStateHasData(rules) {
+		return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
+	}
 	detailCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	detail, err := h.Gateway.GetSmartWalletDetail(detailCtx, network, contractID)
@@ -754,12 +764,7 @@ func (h *Handlers) buildSmartAccountDataFromRules(ctx context.Context, network, 
 		},
 	}
 	applySmartAccountStateToData(&data, state)
-	activityCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	if activity, windowLabel, err := h.buildSmartWalletActivityLog(activityCtx, network, contractID, ""); err == nil {
-		data.ActivityLog = activity
-		data.ActivityWindowLabel = windowLabel
-	}
+	data.ActivityWindowLabel = "activity not loaded in primary view"
 	data.OverviewTabLabel = smartWalletTabLabel("Overview", 0)
 	data.SecurityTabLabel = smartWalletTabLabel("Security", len(data.SecurityLog))
 	data.ActivityTabLabel = smartWalletTabLabel("Activity", len(data.ActivityLog))

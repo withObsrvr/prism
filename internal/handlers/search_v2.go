@@ -122,6 +122,8 @@ func hxOrRedirect(w http.ResponseWriter, r *http.Request, target string) {
 
 func directSuggestionLabel(q, redirect string) string {
 	switch {
+	case strings.Contains(redirect, "/account/") && strings.Contains(redirect, "/smart"):
+		return "Smart Account " + gateway.ShortAddress(q)
 	case strings.Contains(redirect, "/tx/"):
 		return "Transaction " + gateway.ShortHash(q)
 	case strings.Contains(redirect, "/account/"):
