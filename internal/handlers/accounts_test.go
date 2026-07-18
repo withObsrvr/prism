@@ -243,3 +243,69 @@ func containsString(items []string, want string) bool {
 	}
 	return false
 }
+
+func TestSmartAccountControlsLookupPopulatesControlledAccounts(t *testing.T) {
+	const accountID = "GAHM2GC2QJRAM7EGGYIPGRVOLZTHUEDWMIGDMKXQESLKMSDLGZWPSU5E"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/smart-accounts/lookup/address/"+accountID {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"lookup_type":"address","lookup":"` + accountID + `","count":1,"contracts":[{"contract_id":"CCQBQIAG2E2L5NOIML2SGAJYMXPID3MAQNII5USMENID3SDJ4ATOU2HG","wallet_type":"openzeppelin","context_rule_count":2,"active_signer_count":3,"credential_signer_count":1,"address_signer_count":2,"active_policy_count":4,"last_modified_ledger":123}]}`))
+	}))
+	defer server.Close()
+
+	gw := gateway.New(gateway.Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer gw.Stop()
+	h := &Handlers{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Gateway: gw}
+
+	controls := waitSmartAccountControls(h.startSmartAccountControlsLookup(context.Background(), "testnet", accountID), time.Second)
+	if len(controls) != 1 {
+		t.Fatalf("controls = %d, want 1", len(controls))
+	}
+	got := controls[0]
+	if got.ContractID != "CCQBQIAG2E2L5NOIML2SGAJYMXPID3MAQNII5USMENID3SDJ4ATOU2HG" {
+		t.Errorf("contract id = %q", got.ContractID)
+	}
+	if got.Href != "/v2/account/CCQBQIAG2E2L5NOIML2SGAJYMXPID3MAQNII5USMENID3SDJ4ATOU2HG/smart" {
+		t.Errorf("href = %q", got.Href)
+	}
+	if got.WalletType != "OZ Wallet" {
+		t.Errorf("wallet type = %q, want OZ Wallet", got.WalletType)
+	}
+	if got.ContextRuleCount != "2" || got.ActiveSignerCount != "3" || got.CredentialSignerCount != "1" || got.AddressSignerCount != "2" || got.ActivePolicyCount != "4" {
+		t.Errorf("counts mapped unexpectedly: %+v", got)
+	}
+	if got.LastModifiedLedger != "123" {
+		t.Errorf("last modified = %q, want 123", got.LastModifiedLedger)
+	}
+}
+
+func TestSmartAccountControlsLookupReturnsEmptyWhenWaitBudgetExceeded(t *testing.T) {
+	const accountID = "GAHM2GC2QJRAM7EGGYIPGRVOLZTHUEDWMIGDMKXQESLKMSDLGZWPSU5E"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(400 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"count":0,"contracts":[]}`))
+	}))
+	defer server.Close()
+
+	gw := gateway.New(gateway.Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer gw.Stop()
+	h := &Handlers{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Gateway: gw}
+
+	controls := waitSmartAccountControls(h.startSmartAccountControlsLookup(context.Background(), "testnet", accountID), 50*time.Millisecond)
+	if controls != nil {
+		t.Fatalf("controls = %+v, want nil when wait budget exceeded", controls)
+	}
+}
+
+func TestStartSmartAccountControlsLookupSkipsNonGAddresses(t *testing.T) {
+	h := &Handlers{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if ch := h.startSmartAccountControlsLookup(context.Background(), "testnet", "CCQBQIAG2E2L5NOIML2SGAJYMXPID3MAQNII5USMENID3SDJ4ATOU2HG"); ch != nil {
+		t.Fatalf("expected nil channel for contract address")
+	}
+	if controls := waitSmartAccountControls(nil, 50*time.Millisecond); controls != nil {
+		t.Fatalf("waitSmartAccountControls(nil) = %+v, want nil", controls)
+	}
+}

@@ -727,7 +727,9 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 }
 
 func smartAccountStateHasData(state *gateway.SmartAccountStateResponse) bool {
-	return state != nil && (state.Summary.ContractID != "" || len(state.ContextRules) > 0 || state.Count > 0)
+	// The rules endpoint 404s when no smart-account state exists, so any 200
+	// with a contract id (top-level or summary) means state was found.
+	return state != nil && (state.ContractID != "" || state.Summary.ContractID != "" || len(state.ContextRules) > 0 || state.Count > 0)
 }
 
 func (h *Handlers) buildSmartAccountDataFromRules(ctx context.Context, network, contractID string, state *gateway.SmartAccountStateResponse) pages.SmartAccountData {
@@ -980,6 +982,9 @@ func (h *Handlers) smartAccountControlsForSigner(ctx context.Context, network, a
 	if h == nil || h.Gateway == nil || strings.TrimSpace(accountID) == "" {
 		return nil
 	}
+	// Deliberately longer than the page's 300ms wait budget: the client
+	// caches the result, so a lookup that misses the first paint still
+	// populates the section on the next page view.
 	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	lookup, err := h.Gateway.LookupSmartAccountsByAddress(lookupCtx, network, accountID, 100)

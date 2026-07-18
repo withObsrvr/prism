@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,16 +39,26 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
-	// Redirect smart-wallet contracts to the dedicated wallet view.
+	// Redirect smart wallets and rules-based smart accounts to the dedicated
+	// smart account view. Each detection call is bounded so a slow gateway
+	// cannot stall the contract detail page.
 	if h.useLiveData(r) {
 		redirectSmartAccount := false
 		walletType := ""
-		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo != nil && walletInfo.IsSmartWallet {
+		walletCtx, walletCancel := context.WithTimeout(r.Context(), 750*time.Millisecond)
+		walletInfo, walletErr := h.Gateway.GetSmartWalletInfo(walletCtx, network, id)
+		walletCancel()
+		if walletErr == nil && walletInfo != nil && walletInfo.IsSmartWallet {
 			redirectSmartAccount = true
 			walletType = walletInfo.WalletType
-		} else if state, err := h.Gateway.GetSmartAccountRules(r.Context(), network, id, nil); err == nil && smartAccountStateHasData(state) {
-			redirectSmartAccount = true
-			walletType = state.Summary.WalletType
+		} else {
+			rulesCtx, rulesCancel := context.WithTimeout(r.Context(), 750*time.Millisecond)
+			state, rulesErr := h.Gateway.GetSmartAccountRules(rulesCtx, network, id, nil)
+			rulesCancel()
+			if rulesErr == nil && smartAccountStateHasData(state) {
+				redirectSmartAccount = true
+				walletType = state.Summary.WalletType
+			}
 		}
 		if redirectSmartAccount {
 			h.Logger.Info("smart account detected", "contract", id, "wallet_type", walletType)
