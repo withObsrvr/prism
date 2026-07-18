@@ -2,7 +2,12 @@ bin/
 tmp/
 docs/
 .git/
-.claude/
 .github/
+.claude/
+.agents/
+.codex/
+.go/
+.impeccable/
+test-results/
 *.md
 node_modules/

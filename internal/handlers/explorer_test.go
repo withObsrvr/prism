@@ -110,3 +110,77 @@ func TestBuildLedgerDetailDataClassifiesTxsFromOperations(t *testing.T) {
 		t.Fatalf("classic multi-op tx mapped unexpectedly: %+v", got)
 	}
 }
+
+func TestBuildLedgerDetailDataRefetchesIncompleteCompositeTransactions(t *testing.T) {
+	hashes := []string{"tx-one", "tx-two", "tx-three", "tx-four"}
+	var transactionCalls int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/lake/v1/testnet/api/v1/silver/ledger/1073104/full":
+			_, _ = io.WriteString(w, `{
+				"ledger_sequence":1073104,
+				"ledger":{
+					"sequence":1073104,
+					"closed_at":"2026-02-17T21:31:37Z",
+					"successful_tx_count":2,
+					"failed_tx_count":2,
+					"operation_count":2,
+					"transaction_count":4,
+					"protocol_version":25,
+					"base_fee":100
+				},
+				"partial":true,
+				"warnings":["transactions data unavailable"]
+			}`)
+		case "/lake/v1/testnet/api/v1/bronze/transactions":
+			transactionCalls++
+			if got := r.URL.Query().Get("start"); got != "1073104" {
+				t.Errorf("start = %q, want 1073104", got)
+			}
+			if got := r.URL.Query().Get("end"); got != "1073104" {
+				t.Errorf("end = %q, want 1073104", got)
+			}
+			if got := r.URL.Query().Get("limit"); got != "50" {
+				t.Errorf("limit = %q, want 50", got)
+			}
+			_, _ = io.WriteString(w, `{
+				"count":4,
+				"start":1073104,
+				"end":1073104,
+				"transactions":[
+					{"transaction_hash":"tx-one","ledger_sequence":1073104,"operation_count":1,"successful":true},
+					{"transaction_hash":"tx-two","ledger_sequence":1073104,"operation_count":1,"successful":false},
+					{"transaction_hash":"tx-three","ledger_sequence":1073104,"operation_count":1,"successful":false},
+					{"transaction_hash":"tx-four","ledger_sequence":1073104,"operation_count":1,"successful":true}
+				]
+			}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	gw := gateway.New(gateway.Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer gw.Stop()
+	h := &Handlers{Gateway: gw, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+
+	req := httptest.NewRequest(http.MethodGet, "/v2/ledger/1073104?network=testnet", nil)
+	data, err := h.buildLedgerDetailData(req, "testnet", "1073104")
+	if err != nil {
+		t.Fatalf("buildLedgerDetailData error = %v", err)
+	}
+	if transactionCalls != 1 {
+		t.Fatalf("transaction endpoint calls = %d, want 1", transactionCalls)
+	}
+	if len(data.Transactions) != len(hashes) {
+		t.Fatalf("transactions = %d, want %d", len(data.Transactions), len(hashes))
+	}
+	for i, hash := range hashes {
+		if data.Transactions[i].Hash != hash {
+			t.Fatalf("transaction %d hash = %q, want %q", i, data.Transactions[i].Hash, hash)
+		}
+	}
+}

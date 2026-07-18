@@ -725,6 +725,28 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		ops = full.Operations
 		ledgerFees = full.Fees
 		ledgerSoroban = full.Soroban
+		if !full.HasCompleteTransactions() {
+			fallbackTxs, fallbackErr := h.Gateway.GetTransactions(
+				ctx,
+				network,
+				seq,
+				seq,
+				gateway.LedgerFullTransactionLimit,
+				"asc",
+			)
+			if fallbackErr != nil {
+				txErr = fallbackErr
+				h.Logger.Warn(
+					"incomplete ledger transactions fallback failed",
+					"error", fallbackErr,
+					"seq", seq,
+					"loaded", len(txs),
+					"expected", min(l.TransactionCount, gateway.LedgerFullTransactionLimit),
+				)
+			} else if len(fallbackTxs) > len(txs) {
+				txs = fallbackTxs
+			}
+		}
 	} else {
 		h.Logger.Debug("silver ledger full unavailable, falling back to legacy multi-call", "error", err, "seq", seq)
 
