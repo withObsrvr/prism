@@ -158,6 +158,96 @@ func TestClientAccountOverviewInflightWaitHonorsCallerContext(t *testing.T) {
 	}
 }
 
+func TestClientDoesNotCachePartialLedgerFullResponse(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/ledger/123/full" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if calls.Add(1) == 1 {
+			_, _ = io.WriteString(w, `{"ledger_sequence":123,"ledger":{"sequence":123,"transaction_count":1},"partial":true,"warnings":["transactions data unavailable"]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"ledger_sequence":123,"ledger":{"sequence":123,"transaction_count":1},"transactions":[{"transaction_hash":"abc","ledger_sequence":123,"successful":true}]}`)
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	first, err := client.GetSilverLedgerFull(context.Background(), "testnet", 123)
+	if err != nil {
+		t.Fatalf("first GetSilverLedgerFull error: %v", err)
+	}
+	if !first.Partial || len(first.Transactions) != 0 {
+		t.Fatalf("first response = %+v, want partial response without transactions", first)
+	}
+
+	second, err := client.GetSilverLedgerFull(context.Background(), "testnet", 123)
+	if err != nil {
+		t.Fatalf("second GetSilverLedgerFull error: %v", err)
+	}
+	if len(second.Transactions) != 1 {
+		t.Fatalf("second transactions = %d, want 1", len(second.Transactions))
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("upstream calls = %d, want 2", got)
+	}
+
+	if _, err := client.GetSilverLedgerFull(context.Background(), "testnet", 123); err != nil {
+		t.Fatalf("cached GetSilverLedgerFull error: %v", err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("upstream calls after complete response = %d, want 2", got)
+	}
+}
+
+func TestClientDoesNotCacheIncompleteLedgerFullResponse(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if calls.Add(1) == 1 {
+			_, _ = io.WriteString(w, `{"ledger_sequence":123,"ledger":{"sequence":123,"transaction_count":2},"transactions":[{"transaction_hash":"abc","ledger_sequence":123,"successful":true}]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"ledger_sequence":123,"ledger":{"sequence":123,"transaction_count":2},"transactions":[{"transaction_hash":"abc","ledger_sequence":123,"successful":true},{"transaction_hash":"def","ledger_sequence":123,"successful":true}]}`)
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	if _, err := client.GetSilverLedgerFull(context.Background(), "testnet", 123); err != nil {
+		t.Fatalf("first GetSilverLedgerFull error: %v", err)
+	}
+	second, err := client.GetSilverLedgerFull(context.Background(), "testnet", 123)
+	if err != nil {
+		t.Fatalf("second GetSilverLedgerFull error: %v", err)
+	}
+	if len(second.Transactions) != 2 {
+		t.Fatalf("second transactions = %d, want 2", len(second.Transactions))
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("upstream calls = %d, want 2", got)
+	}
+}
+
+func TestClientRejectsLedgerFullSequenceMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"ledger_sequence":123,"ledger":{"sequence":0}}`)
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	if _, err := client.GetSilverLedgerFull(context.Background(), "testnet", 123); err == nil {
+		t.Fatal("GetSilverLedgerFull error = nil, want sequence mismatch error")
+	}
+}
+
 func TestCacheEvictsWhenFull(t *testing.T) {
 	cache := &Cache{entries: make(map[string]*cacheEntry)}
 	for i := 0; i < cacheMaxEntries+10; i++ {
@@ -236,4 +326,22 @@ func writeAccountOverview(t *testing.T, w http.ResponseWriter, accountID string)
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = fmt.Fprintf(w, `{"account":{"account_id":%q,"balance":"1.0000000","sequence_number":"1"},"recent_operations":[],"recent_transfers":[]}`, accountID)
+}
+
+func TestHasCompleteTransactionsHonorsPartialFlag(t *testing.T) {
+	full := &LedgerFullResponse{
+		Ledger:       Ledger{TransactionCount: 1},
+		Transactions: []Transaction{{TransactionHash: "aa"}},
+	}
+	if !full.HasCompleteTransactions() {
+		t.Fatal("complete non-partial response reported incomplete")
+	}
+	full.Partial = true
+	if full.HasCompleteTransactions() {
+		t.Fatal("partial response must never report complete, even with a satisfying transaction count")
+	}
+	var nilResp *LedgerFullResponse
+	if nilResp.HasCompleteTransactions() {
+		t.Fatal("nil response reported complete")
+	}
 }

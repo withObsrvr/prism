@@ -1350,6 +1350,26 @@ type LedgerFullResponse struct {
 	Fees           *LedgerFees    `json:"fees,omitempty"`
 	Soroban        *LedgerSoroban `json:"soroban,omitempty"`
 	GeneratedAt    string         `json:"generated_at"`
+	Partial        bool           `json:"partial,omitempty"`
+	Warnings       []string       `json:"warnings,omitempty"`
+}
+
+// LedgerFullTransactionLimit matches the bounded transaction sample returned by
+// the composite ledger endpoint.
+const LedgerFullTransactionLimit = 50
+
+// HasCompleteTransactions reports whether the composite response contains the
+// full transaction sample expected by the ledger detail page. A response the
+// backend marked partial is never complete, regardless of counts.
+func (r *LedgerFullResponse) HasCompleteTransactions() bool {
+	if r == nil || r.Partial {
+		return false
+	}
+	expected := r.Ledger.TransactionCount
+	if expected > LedgerFullTransactionLimit {
+		expected = LedgerFullTransactionLimit
+	}
+	return len(r.Transactions) >= expected
 }
 
 // RecentLedger matches a single entry in /silver/ledgers/recent response.

@@ -344,9 +344,30 @@ func (c *Client) GetSilverLedgerFull(ctx context.Context, network string, sequen
 		if err := json.Unmarshal(body, &resp); err != nil {
 			return nil, fmt.Errorf("gateway: parsing silver ledger full: %w", err)
 		}
+		if resp.LedgerSequence != sequence || resp.Ledger.Sequence != sequence {
+			return nil, fmt.Errorf(
+				"gateway: silver ledger full sequence mismatch: requested %d, response %d, ledger %d",
+				sequence,
+				resp.LedgerSequence,
+				resp.Ledger.Sequence,
+			)
+		}
 
-		// A past ledger is immutable, so we can cache it aggressively.
-		c.cache.Set(cacheKey, &resp, TTLImmutable)
+		// Only complete responses are immutable. Partial responses are transient
+		// products of the backend query budget and must be retried.
+		// HasCompleteTransactions already treats partial responses as incomplete.
+		if resp.HasCompleteTransactions() {
+			c.cache.Set(cacheKey, &resp, TTLImmutable)
+		} else {
+			c.logger.Debug(
+				"skipping incomplete silver ledger full cache",
+				"sequence", sequence,
+				"partial", resp.Partial,
+				"transactions", len(resp.Transactions),
+				"expected_transactions", min(resp.Ledger.TransactionCount, LedgerFullTransactionLimit),
+				"warnings", resp.Warnings,
+			)
+		}
 		return &resp, nil
 	})
 	if err != nil {
