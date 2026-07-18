@@ -3,6 +3,7 @@ package viewmodelv2
 import (
 	"fmt"
 	"html"
+	"strconv"
 	"strings"
 
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
@@ -15,6 +16,7 @@ const (
 	TxHeroStateChange TxHeroKind = "state_change"
 	TxHeroLifecycle   TxHeroKind = "lifecycle"
 	TxHeroFailure     TxHeroKind = "failure"
+	TxHeroOperations  TxHeroKind = "operations"
 	TxHeroGenericCall TxHeroKind = "generic_call"
 )
 
@@ -30,6 +32,7 @@ type TxHeroModel struct {
 	StateChange *TxStateChangeHero
 	Lifecycle   *TxLifecycleHero
 	Failure     *TxFailureHero
+	Operations  *TxOperationsHero
 	GenericCall *TxGenericCallHero
 }
 
@@ -100,6 +103,12 @@ type TxGenericCallHero struct {
 	SummaryHTML string
 }
 
+type TxOperationsHero struct {
+	Actor       string
+	Count       int
+	SummaryHTML string
+}
+
 func BuildTxHero(data legacy.TxReceiptData) TxHeroModel {
 	facts := factsFromReceipt(data)
 	kind := classifyTxHero(facts)
@@ -125,6 +134,8 @@ func BuildTxHero(data legacy.TxReceiptData) TxHeroModel {
 		model.StateChange = buildStateChangeHero(facts)
 	case TxHeroValueFlow:
 		model.ValueFlow = buildValueFlowHero(facts)
+	case TxHeroOperations:
+		model.Operations = buildOperationsHero(facts)
 	default:
 		model.GenericCall = buildGenericCallHero(facts)
 	}
@@ -144,6 +155,7 @@ type txHeroFacts struct {
 	HasValue       bool
 	HasState       bool
 	HasLifecycle   bool
+	HasSoroban     bool
 	LifecycleVerb  string
 	StateChanges   []legacy.TxStateChange
 	BalanceChanges []legacy.TxBalanceChange
@@ -165,6 +177,9 @@ func factsFromReceipt(data legacy.TxReceiptData) txHeroFacts {
 		}
 		if f.Contract == "" && op.Contract != "" {
 			f.Contract = op.Contract
+		}
+		if op.IsSoroban {
+			f.HasSoroban = true
 		}
 		if strings.Contains(name, "extend") || strings.Contains(name, "restore") || strings.Contains(name, "create") || strings.Contains(name, "merge") {
 			f.HasLifecycle = true
@@ -217,6 +232,9 @@ func classifyTxHero(f txHeroFacts) TxHeroKind {
 	if f.HasState {
 		return TxHeroStateChange
 	}
+	if !f.Data.IsSoroban && !f.HasSoroban && (f.TxType == "multi_op" || (len(f.OperationTypes) > 0 && f.Contract == "")) {
+		return TxHeroOperations
+	}
 	return TxHeroGenericCall
 }
 
@@ -255,6 +273,57 @@ func buildGenericCallHero(f txHeroFacts) *TxGenericCallHero {
 	return &TxGenericCallHero{Actor: f.Actor, Contract: f.Contract, Function: f.Function, SummaryHTML: summary}
 }
 
+func buildOperationsHero(f txHeroFacts) *TxOperationsHero {
+	count := operationCount(f)
+	actor := firstNonEmpty(f.Actor, "The source account")
+	breakdown := classicOperationBreakdown(f.OperationTypes)
+	summary := fmt.Sprintf("<b>%s</b> submitted <b>%d classic operation%s</b> in one transaction.", esc(actor), count, pluralS(count))
+	if breakdown != "" {
+		summary = fmt.Sprintf("%s The envelope contains %s.", summary, breakdown)
+	}
+	return &TxOperationsHero{Actor: actor, Count: count, SummaryHTML: summary}
+}
+
+func operationCount(f txHeroFacts) int {
+	if len(f.Data.Operations) > 0 {
+		return len(f.Data.Operations)
+	}
+	value := strings.Fields(strings.TrimSpace(f.Data.OpsCount))
+	if len(value) > 0 {
+		if count, err := strconv.Atoi(value[0]); err == nil && count > 0 {
+			return count
+		}
+	}
+	return len(f.OperationTypes)
+}
+
+func classicOperationBreakdown(operationTypes []string) string {
+	if len(operationTypes) == 0 {
+		return ""
+	}
+	order := make([]string, 0, len(operationTypes))
+	counts := make(map[string]int, len(operationTypes))
+	for _, operationType := range operationTypes {
+		label := strings.ToLower(strings.TrimSpace(strings.ReplaceAll(operationType, "_", " ")))
+		if label == "" {
+			continue
+		}
+		if counts[label] == 0 {
+			order = append(order, label)
+		}
+		counts[label]++
+	}
+	parts := make([]string, 0, len(order))
+	for _, label := range order {
+		count := counts[label]
+		parts = append(parts, fmt.Sprintf("<b>%d</b> %s operation%s", count, esc(label), pluralS(count)))
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
+}
+
 func stateEntries(changes []legacy.TxStateChange) []TxStateEntry {
 	out := make([]TxStateEntry, 0, len(changes))
 	for _, c := range changes {
@@ -276,6 +345,8 @@ func titleHTML(kind TxHeroKind, f txHeroFacts) string {
 			return esc(f.Data.HeroTitle)
 		}
 		return f.Data.SummaryHTML
+	case TxHeroOperations:
+		return fmt.Sprintf(`<span class="px-tx-actor">%s</span> <span class="px-tx-verb">submitted</span> <span class="px-tx-amt">%d operations</span>`, esc(firstNonEmpty(f.Actor, "Source account")), operationCount(f))
 	default:
 		return fmt.Sprintf(`<span class="px-tx-verb">Called</span> <span class="px-tx-actor">%s</span>`, esc(firstNonEmpty(f.Function, "contract")))
 	}
@@ -328,6 +399,12 @@ func pluralY(n int) string {
 		return "y"
 	}
 	return "ies"
+}
+func pluralS(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 func callLabel(fn string) string {
 	if fn == "" {

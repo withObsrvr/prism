@@ -69,6 +69,7 @@ type LedgerTx struct {
 	Status    string // "ok" or "failed"
 	Hash      string
 	ShortHash string
+	Kind      string // "classic", "soroban", or "failed"
 	OpType    string
 	OpColor   string // "violet", "cyan", "emerald", "gray"
 	Summary   string

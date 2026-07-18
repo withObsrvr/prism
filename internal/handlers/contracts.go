@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,10 +39,29 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 
-	// Redirect smart-wallet contracts to the dedicated wallet view.
+	// Redirect smart wallets and rules-based smart accounts to the dedicated
+	// smart account view. Each detection call is bounded so a slow gateway
+	// cannot stall the contract detail page.
 	if h.useLiveData(r) {
-		if walletInfo, err := h.Gateway.GetSmartWalletInfo(r.Context(), network, id); err == nil && walletInfo.IsSmartWallet {
-			h.Logger.Info("smart wallet detected", "contract", id, "wallet_type", walletInfo.WalletType)
+		redirectSmartAccount := false
+		walletType := ""
+		walletCtx, walletCancel := context.WithTimeout(r.Context(), 750*time.Millisecond)
+		walletInfo, walletErr := h.Gateway.GetSmartWalletInfo(walletCtx, network, id)
+		walletCancel()
+		if walletErr == nil && walletInfo != nil && walletInfo.IsSmartWallet {
+			redirectSmartAccount = true
+			walletType = walletInfo.WalletType
+		} else {
+			rulesCtx, rulesCancel := context.WithTimeout(r.Context(), 750*time.Millisecond)
+			state, rulesErr := h.Gateway.GetSmartAccountRules(rulesCtx, network, id, nil)
+			rulesCancel()
+			if rulesErr == nil && smartAccountStateHasData(state) {
+				redirectSmartAccount = true
+				walletType = state.Summary.WalletType
+			}
+		}
+		if redirectSmartAccount {
+			h.Logger.Info("smart account detected", "contract", id, "wallet_type", walletType)
 			prefix := ""
 			if strings.HasPrefix(r.URL.Path, "/v2/") {
 				prefix = "/v2"
@@ -70,17 +90,20 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {
 	ctx := r.Context()
 
+	storageResp, storageErr := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
+	if storageErr != nil {
+		h.Logger.Warn("contract storage failed", "error", storageErr, "contract", contractID, "network", network)
+	}
 	metadata, metaErr := h.Gateway.GetContractMetadata(ctx, network, contractID)
 	analytics, analyticsErr := h.Gateway.GetContractAnalytics(ctx, network, contractID)
-	if metaErr != nil && analyticsErr != nil {
-		return pages.ContractDetailData{}, fmt.Errorf("fetching contract detail: metadata=%v analytics=%v", metaErr, analyticsErr)
+	if metaErr != nil && analyticsErr != nil && (storageResp == nil || len(storageResp.Entries) == 0) {
+		return pages.ContractDetailData{}, fmt.Errorf("fetching contract detail: metadata=%v analytics=%v storage=%v", metaErr, analyticsErr, storageErr)
 	}
 
 	recentCalls, recentCallsErr := h.Gateway.GetContractRecentCalls(ctx, network, contractID, 10)
 	if recentCallsErr != nil {
 		h.Logger.Warn("contract recent calls failed", "error", recentCallsErr, "contract", contractID, "network", network)
 	}
-	storageResp, _ := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
 
 	data := pages.ContractDetailData{
 		Name:         gateway.ShortAddress(contractID),
@@ -120,7 +143,9 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		if metadata.WASMHash != "" {
 			data.WASMHash = metadata.WASMHash
 		}
-		data.StorageEntries = gateway.FormatNumber(metadata.TotalEntries)
+		if metadata.TotalEntries > 0 {
+			data.StorageEntries = gateway.FormatNumber(metadata.TotalEntries)
+		}
 		data.StateSize = formatBytes(metadata.TotalStateSizeBytes)
 		if metadata.EstimatedMonthlyRentStroops > 0 {
 			data.MonthlyRent = formatRentXLM(metadata.EstimatedMonthlyRentStroops) + " XLM"
@@ -229,13 +254,15 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 		data.StorageItems, data.StorageStats, data.StorageTypes = buildStorageExplorer(storageResp.Entries)
 	}
 	if metadata != nil {
-		data.StorageStats.TotalEntries = gateway.FormatNumber(metadata.TotalEntries)
+		if metadata.TotalEntries > 0 {
+			data.StorageStats.TotalEntries = gateway.FormatNumber(metadata.TotalEntries)
+		}
 		if metadata.EstimatedMonthlyRentStroops > 0 {
 			data.StorageStats.MonthlyRentXLM = formatRentXLM(metadata.EstimatedMonthlyRentStroops)
 		}
 	}
 
-	if data.StorageEntries == "" {
+	if data.StorageEntries == "" || data.StorageEntries == "0" {
 		data.StorageEntries = fmt.Sprintf("%d", len(data.StorageItems))
 	}
 	if data.TotalInvocations == "" {
@@ -409,6 +436,11 @@ func buildStorageExplorer(entries []gateway.ContractStorageEntry) ([]pages.Contr
 	typeAggs := map[string]*agg{}
 
 	for _, entry := range entries {
+		// The fetch uses live_only=false (see GetContractStorage); keep
+		// live-only semantics by dropping expired entries here.
+		if entry.Expired {
+			continue
+		}
 		durability := storageDurability(entry)
 
 		healthPct := 0
@@ -460,7 +492,7 @@ func buildStorageExplorer(entries []gateway.ContractStorageEntry) ([]pages.Contr
 		}
 	}
 
-	stats := pages.ContractStorageStats{}
+	stats := pages.ContractStorageStats{TotalEntries: gateway.FormatNumber(int64(len(items)))}
 	if healthy+atRisk+critical > 0 {
 		stats.Healthy = gateway.FormatNumber(int64(healthy))
 		stats.AtRisk = gateway.FormatNumber(int64(atRisk))

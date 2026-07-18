@@ -155,12 +155,17 @@ templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 		<p class="px-tx-sub">@templ.Raw(hero.SubtitleHTML)</p>
 		<div class="px-tx-quick">
 			@txQuickLinkItem("From", txSourceLabel(data), txSourceHref(data), true)
-			if txContractHref(data) != "" {
-				@txQuickLinkItem("Contract", txContractLabel(data), txContractHref(data), true)
+			if hero.Kind == txv2.TxHeroOperations {
+				@txQuickItem("Operations", fmt.Sprintf("%d", hero.Operations.Count), true)
+				@txQuickItem("Classification", "Classic multi-op", false)
 			} else {
-				@txQuickItem("Contract", txContractLabel(data), false)
+				if txContractHref(data) != "" {
+					@txQuickLinkItem("Contract", txContractLabel(data), txContractHref(data), true)
+				} else {
+					@txQuickItem("Contract", txContractLabel(data), false)
+				}
+				@txQuickItem("Function", txFunctionLabel(data), false)
 			}
-			@txQuickItem("Function", txFunctionLabel(data), false)
 			@txQuickItem("Fee", txFeeLabel(data), true)
 		</div>
 		<div class="px-tx-actions">@txShareButton(data)</div>
@@ -190,9 +195,18 @@ templ txHeroViz(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 			@txStateChangeHero(hero)
 		case txv2.TxHeroValueFlow:
 			@txFlow(data)
+		case txv2.TxHeroOperations:
+			@txOperationsHero(hero)
 		default:
 			@txGenericCallHero(hero)
 	}
+}
+
+templ txOperationsHero(hero txv2.TxHeroModel) {
+	<section class="px-tx-section px-hero-card px-hero-generic"><div class="px-tx-section-head"><h2>What this transaction did</h2><span class="px-tx-section-sub">Classic Stellar operations grouped in one envelope</span></div>
+		<div class="px-hero-summary">@templ.Raw(hero.Operations.SummaryHTML)</div>
+		@txHeroFoot(hero.Meta)
+	</section>
 }
 
 templ txStateChangeHero(hero txv2.TxHeroModel) {

@@ -47,6 +47,7 @@ templ GAccountDetailMain(data legacy.AccountData) {
 		@gaGlance(data)
 		@gaPortfolio(data)
 		@gaSignerControls(data)
+		@gaControlledSmartAccounts(data)
 		@gaRecentActivity(data)
 		@gaAdvancedEntries(data)
 		@gaAccountEducation()
@@ -129,6 +130,18 @@ templ gaSignerControls(data legacy.AccountData) {
 	<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>Who can move or change it</h2><span class="px-tx-section-sub">Signer weights and thresholds show which keys can authorize payments, trustline changes, and account settings.</span></div><span class="px-ga-section-fact mono">{ data.SignerCount } signers · { gaThresholdSummary(data) }</span></div>
 		@gaSigners(data)
 	</section>
+}
+
+templ gaControlledSmartAccounts(data legacy.AccountData) {
+	if len(data.ControlledSmartAccounts) > 0 {
+		<section class="px-tx-section"><div class="px-tx-section-head"><div><h2>Smart accounts this signer can operate</h2><span class="px-tx-section-sub">Event-indexed OpenZeppelin authorization state where this G-address is an active signer.</span></div><span class="px-ga-section-fact mono">{ fmt.Sprintf("%d smart accounts", len(data.ControlledSmartAccounts)) }</span></div>
+			<div class="px-ga-signers"><table class="px-ac-signertable"><thead><tr><th>Smart account</th><th>Rules</th><th>Signers</th><th>Policies</th><th class="r">Last modified</th></tr></thead><tbody>
+				for _, acct := range data.ControlledSmartAccounts {
+					<tr><td><div class="px-ac-sigcell"><span class="px-ac-sigicon px-ga-sigicon-add">{ gaInitial(acct.ShortContractID) }</span><div><div class="px-ac-signame"><a href={ templ.SafeURL(acct.Href) }><b>{ acct.ShortContractID }</b></a></div><div class="px-ac-sigwho">{ firstNonEmpty(acct.WalletType, "smart account") }</div></div></div></td><td><span class="px-ga-weightpill">{ acct.ContextRuleCount }</span></td><td><span class="px-ga-weightpill">{ acct.ActiveSignerCount }</span></td><td><span class="px-ga-weightpill">{ acct.ActivePolicyCount }</span></td><td class="r mono">{ acct.LastModifiedLedger }</td></tr>
+				}
+			</tbody></table></div>
+		</section>
+	}
 }
 
 templ gaRecentActivity(data legacy.AccountData) {

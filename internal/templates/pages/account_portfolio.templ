@@ -25,6 +25,7 @@ type AccountData struct {
 	Balances     []AccountBalance
 	Activities   []AccountActivity
 	Contracts    []AccountContract
+	ControlledSmartAccounts []ControlledSmartAccount
 	Offers       []AccountOffer
 	Signers      []AccountSigner
 	Thresholds   []AccountThreshold
@@ -65,6 +66,19 @@ type AccountContract struct {
 	Calls      string
 	Fees       string
 	LastCall   string
+}
+
+type ControlledSmartAccount struct {
+	ContractID            string
+	ShortContractID       string
+	Href                  string
+	WalletType            string
+	ContextRuleCount      string
+	ActiveSignerCount     string
+	CredentialSignerCount string
+	AddressSignerCount    string
+	ActivePolicyCount     string
+	LastModifiedLedger    string
 }
 
 type AccountOffer struct {
