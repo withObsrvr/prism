@@ -1,9 +1,30 @@
 import { chromium } from "playwright";
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const outputDir = path.resolve("docs/demo/screenshots");
-const chromiumPath = process.env.PRISM_DEMO_CHROMIUM || "/run/current-system/sw/bin/chromium";
+
+// Browser resolution order: PRISM_DEMO_CHROMIUM override, then Playwright's
+// bundled Chromium, then common system installs (covers machines that never
+// ran `npx playwright install`). Empty string means "use the bundled browser".
+function resolveChromiumPath() {
+  if (process.env.PRISM_DEMO_CHROMIUM) return process.env.PRISM_DEMO_CHROMIUM;
+  try {
+    if (existsSync(chromium.executablePath())) return "";
+  } catch {
+    // fall through to system candidates
+  }
+  const candidates = [
+    "/run/current-system/sw/bin/chromium",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+  ];
+  return candidates.find((p) => existsSync(p)) ?? "";
+}
+
+const chromiumPath = resolveChromiumPath();
 const viewport = { width: 1600, height: 1000 };
 
 const targets = {
@@ -32,7 +53,7 @@ await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: chromiumPath,
+  ...(chromiumPath ? { executablePath: chromiumPath } : {}),
   args: ["--disable-dev-shm-usage"],
 });
 
@@ -176,7 +197,8 @@ async function runStep(label, work) {
   try {
     await work();
   } catch (error) {
-    report.warnings.push(`${label}: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    report.warnings.push(`${label}: ${message}`);
   }
 }
 

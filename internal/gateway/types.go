@@ -1359,9 +1359,10 @@ type LedgerFullResponse struct {
 const LedgerFullTransactionLimit = 50
 
 // HasCompleteTransactions reports whether the composite response contains the
-// full transaction sample expected by the ledger detail page.
+// full transaction sample expected by the ledger detail page. A response the
+// backend marked partial is never complete, regardless of counts.
 func (r *LedgerFullResponse) HasCompleteTransactions() bool {
-	if r == nil {
+	if r == nil || r.Partial {
 		return false
 	}
 	expected := r.Ledger.TransactionCount

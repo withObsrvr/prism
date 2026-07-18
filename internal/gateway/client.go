@@ -355,7 +355,8 @@ func (c *Client) GetSilverLedgerFull(ctx context.Context, network string, sequen
 
 		// Only complete responses are immutable. Partial responses are transient
 		// products of the backend query budget and must be retried.
-		if !resp.Partial && resp.HasCompleteTransactions() {
+		// HasCompleteTransactions already treats partial responses as incomplete.
+		if resp.HasCompleteTransactions() {
 			c.cache.Set(cacheKey, &resp, TTLImmutable)
 		} else {
 			c.logger.Debug(

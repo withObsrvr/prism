@@ -327,3 +327,21 @@ func writeAccountOverview(t *testing.T, w http.ResponseWriter, accountID string)
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = fmt.Fprintf(w, `{"account":{"account_id":%q,"balance":"1.0000000","sequence_number":"1"},"recent_operations":[],"recent_transfers":[]}`, accountID)
 }
+
+func TestHasCompleteTransactionsHonorsPartialFlag(t *testing.T) {
+	full := &LedgerFullResponse{
+		Ledger:       Ledger{TransactionCount: 1},
+		Transactions: []Transaction{{TransactionHash: "aa"}},
+	}
+	if !full.HasCompleteTransactions() {
+		t.Fatal("complete non-partial response reported incomplete")
+	}
+	full.Partial = true
+	if full.HasCompleteTransactions() {
+		t.Fatal("partial response must never report complete, even with a satisfying transaction count")
+	}
+	var nilResp *LedgerFullResponse
+	if nilResp.HasCompleteTransactions() {
+		t.Fatal("nil response reported complete")
+	}
+}

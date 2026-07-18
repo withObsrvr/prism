@@ -743,7 +743,9 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 					"loaded", len(txs),
 					"expected", min(l.TransactionCount, gateway.LedgerFullTransactionLimit),
 				)
-			} else if len(fallbackTxs) > len(txs) {
+			} else if len(fallbackTxs) >= len(txs) {
+				// Prefer the legacy result whenever it is at least as good:
+				// the composite sample is known-incomplete at this point.
 				txs = fallbackTxs
 			}
 		}
