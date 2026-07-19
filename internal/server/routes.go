@@ -85,6 +85,8 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /contracts/{id}/events", h.ContractEvents)
 	mux.HandleFunc("GET /v2/contract/{id}", h.ContractDetailV2)
 	mux.HandleFunc("GET /v2/contracts/{id}", h.ContractDetailV2)
+	mux.HandleFunc("GET /v2/contract/{id}/interface.rust", h.ContractInterfaceRust)
+	mux.HandleFunc("GET /v2/contract/{id}/wasm", h.ContractWASMDownload)
 
 	// ─────────────────────────────────────────────
 	// Account routes
@@ -160,6 +162,8 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /fragments/contract/{id}/functions", h.ContractFunctionsFragment)
 	mux.HandleFunc("GET /fragments/contract/{id}/invocations", h.ContractInvocationsFragment)
 	mux.HandleFunc("GET /fragments/contract/{id}/balances", h.ContractCurrentBalancesFragment)
+	mux.HandleFunc("GET /fragments/contract/{id}/interface", h.ContractInterfaceFragment)
+	mux.HandleFunc("GET /fragments/contract/{id}/artifact", h.ContractArtifactFragment)
 	mux.HandleFunc("GET /fragments/smart-account/{id}/balances", h.SmartAccountCurrentBalancesFragment)
 
 	// Network health fragments

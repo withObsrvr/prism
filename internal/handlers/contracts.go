@@ -90,6 +90,7 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 			data = unavailableContractDetailData(id, network)
 		}
 	}
+	data.Mock = r.URL.Query().Get("mock") == "true"
 
 	return data, true
 }
