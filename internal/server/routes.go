@@ -159,6 +159,8 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /fragments/contract/{id}/info", h.ContractInfoFragment)
 	mux.HandleFunc("GET /fragments/contract/{id}/functions", h.ContractFunctionsFragment)
 	mux.HandleFunc("GET /fragments/contract/{id}/invocations", h.ContractInvocationsFragment)
+	mux.HandleFunc("GET /fragments/contract/{id}/balances", h.ContractCurrentBalancesFragment)
+	mux.HandleFunc("GET /fragments/smart-account/{id}/balances", h.SmartAccountCurrentBalancesFragment)
 
 	// Network health fragments
 	mux.HandleFunc("GET /fragments/network/stats-grid", h.NetworkStatsGridFragment)

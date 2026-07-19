@@ -1,12 +1,69 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
 )
+
+func TestBuildContractDetailDataDoesNotWaitForBalanceSoftDependency(t *testing.T) {
+	const contractID = "CABYF6CONTRACT"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/lake/v1/testnet/api/v1/silver/contracts/" + contractID + "/storage":
+			_, _ = io.WriteString(w, `{"entries":[]}`)
+		case "/lake/v1/testnet/api/v1/silver/contracts/" + contractID + "/metadata":
+			_, _ = fmt.Fprintf(w, `{"contract_id":%q,"display_name":"Market contract","exported_functions":[{"name":"swap"}]}`, contractID)
+		case "/lake/v1/testnet/api/v1/silver/contracts/" + contractID + "/analytics":
+			_, _ = fmt.Fprintf(w, `{"contract_id":%q,"top_functions":[{"name":"swap","count":2}]}`, contractID)
+		case "/lake/v1/testnet/api/v1/silver/contracts/" + contractID + "/recent-calls":
+			_, _ = io.WriteString(w, `[]`)
+		case "/lake/v1/testnet/api/v1/silver/addresses/" + contractID + "/balances":
+			t.Fatalf("initial contract shell must not call the balance fragment dependency")
+		default:
+			t.Fatalf("unexpected endpoint %s", r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	gw := gateway.New(gateway.Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer gw.Stop()
+	h := &Handlers{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Gateway: gw}
+	req := httptest.NewRequest(http.MethodGet, "/v2/contract/"+contractID+"?network=testnet", nil)
+
+	data, err := h.buildContractDetailData(req, "testnet", contractID)
+	if err != nil {
+		t.Fatalf("buildContractDetailData error = %v", err)
+	}
+	if data.Name != "Market contract" || data.Portfolio.Available {
+		t.Fatalf("detail data = %+v, portfolio = %+v", data, data.Portfolio)
+	}
+}
+
+func TestContractDetailWithoutGatewayKeepsRequestedIdentity(t *testing.T) {
+	const contractID = "CREQUESTEDCONTRACT"
+	h := &Handlers{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	req := httptest.NewRequest(http.MethodGet, "/v2/contract/"+contractID+"?network=testnet", nil)
+	req.SetPathValue("id", contractID)
+
+	data, ok := h.contractDetailDataForRequest(httptest.NewRecorder(), req)
+	if !ok {
+		t.Fatal("contract detail unexpectedly redirected")
+	}
+	if data.Address != contractID || data.Name != gateway.ShortAddress(contractID) || data.Portfolio.Available {
+		t.Fatalf("contract detail = %+v", data)
+	}
+}
 
 // Fixtures mirror the real serving-endpoint response shape:
 // key_decoded / value_decoded are {type, value, display} wrappers,

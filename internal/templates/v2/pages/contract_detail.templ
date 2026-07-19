@@ -16,6 +16,11 @@ templ ContractDetail(data legacy.ContractDetailData, network string) {
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			@contractIdentity(data)
 			@contractTrustStrip(data)
+			if data.BalanceFragmentHref != "" {
+				@componentsv2.BalancePortfolioLoader(data.BalanceFragmentHref)
+			} else {
+				@componentsv2.BalancePortfolio(data.Portfolio)
+			}
 			@contractActivity(data)
 			<section class="px-tx-detail" data-cn-tabs-root><div class="px-tx-detail-inner">
 				<div class="px-tx-tabs" role="tablist" aria-label="Contract evidence">

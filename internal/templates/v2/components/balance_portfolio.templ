@@ -1,0 +1,112 @@
+package componentsv2
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/gateway"
+	ui "github.com/withObsrvr/prism/internal/viewmodel"
+)
+
+templ BalancePortfolio(portfolio ui.BalancePortfolio) {
+	<section class="px-balance" aria-labelledby="px-balance-title">
+		<header class="px-balance-head">
+			<div><h2 id="px-balance-title">Current balances</h2><p>Positive XLM and token holdings indexed for this address.</p></div>
+			if portfolio.Available {
+				<div class="px-balance-summary"><strong class="mono">{ fmt.Sprintf("%d holdings", portfolio.DisplayCount()) }</strong><span>{ portfolio.SourceLabel }</span></div>
+			}
+		</header>
+		if !portfolio.Available {
+			<div class="px-balance-state"><strong>Balances are temporarily unavailable</strong><p>Other details remain available. Refresh to try this balance source again.</p></div>
+		} else if portfolio.NotMaterialized() {
+			<div class="px-balance-state"><p>Current balances have not been materialized for this contract yet.</p></div>
+		} else if len(portfolio.Items) == 0 {
+			<div class="px-balance-state"><p>No positive current balances were returned from the available sources.</p></div>
+		} else {
+			<div class="px-balance-scroll">
+				<table><thead><tr><th>Asset</th><th class="r">Balance</th><th>Issuer</th><th>Token contract</th><th>Evidence</th></tr></thead><tbody>
+					for i, item := range portfolio.Items {
+						if i < 10 {
+							@balanceRow(item)
+						}
+					}
+				</tbody></table>
+			</div>
+			if portfolio.HasMore(10) {
+				<details class="px-balance-more">
+					<summary>{ fmt.Sprintf("Show %d more", portfolio.Remaining(10)) }</summary>
+					<div class="px-balance-scroll"><table><tbody>
+						for i, item := range portfolio.Items {
+							if i >= 10 {
+								@balanceRow(item)
+							}
+						}
+					</tbody></table></div>
+				</details>
+			}
+			if portfolio.Partial {
+				<div class="px-balance-note">Current materialized balances are shown. Optional transfer-history enrichment was not included.</div>
+			}
+		}
+	</section>
+}
+
+templ BalancePortfolioLoader(href string) {
+	<section
+		class="px-balance px-balance-loading"
+		aria-labelledby="px-balance-title"
+		aria-busy="true"
+		hx-get={ templ.SafeURL(href) }
+		hx-trigger="load"
+		hx-swap="outerHTML"
+	>
+		<span class="px-sr-only">Loading current balances</span>
+		<header class="px-balance-head">
+			<div><h2 id="px-balance-title">Current balances</h2><p>Positive XLM and token holdings indexed for this address.</p></div>
+			<span class="px-balance-skeleton-line short" aria-hidden="true"></span>
+		</header>
+		<div class="px-balance-skeleton" aria-hidden="true">
+			for range 3 {
+				<div class="px-balance-skeleton-row">
+					<span class="px-balance-skeleton-line asset"></span>
+					<span class="px-balance-skeleton-line amount"></span>
+					<span class="px-balance-skeleton-line identity"></span>
+					<span class="px-balance-skeleton-line evidence"></span>
+				</div>
+			}
+		</div>
+	</section>
+}
+
+templ balanceRow(item ui.BalanceItem) {
+	<tr>
+		<td data-label="Asset"><strong>{ item.AssetCode }</strong><span>{ item.AssetType }</span></td>
+		<td data-label="Balance" class="r mono px-balance-amount">{ item.Balance }</td>
+		<td data-label="Issuer" class="mono px-balance-identity">
+			if item.AssetIssuer != "" {
+				if item.IssuerHref != "" {
+					<a href={ templ.SafeURL(item.IssuerHref) } title={ item.AssetIssuer }>{ gateway.ShortAddress(item.AssetIssuer) }</a>
+				} else {
+					<span title={ item.AssetIssuer }>{ gateway.ShortAddress(item.AssetIssuer) }</span>
+				}
+			} else {
+				<span>Native asset</span>
+			}
+		</td>
+		<td data-label="Token contract" class="mono px-balance-identity">
+			if item.TokenContractID != "" {
+				if item.TokenHref != "" {
+					<a href={ templ.SafeURL(item.TokenHref) } title={ item.TokenContractID }>{ gateway.ShortAddress(item.TokenContractID) }</a>
+				} else {
+					<span title={ item.TokenContractID }>{ gateway.ShortAddress(item.TokenContractID) }</span>
+				}
+			} else {
+				<span>Not applicable</span>
+			}
+		</td>
+		<td data-label="Evidence" class="px-balance-evidence">
+			<span>{ item.SourceLabel }</span>
+			if item.LastUpdatedLedger != nil {
+				<code>Ledger { fmt.Sprintf("%d", *item.LastUpdatedLedger) }</code>
+			}
+		</td>
+	</tr>
+}

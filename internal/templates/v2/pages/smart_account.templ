@@ -7,6 +7,7 @@ import (
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
 	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
 	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+	ui "github.com/withObsrvr/prism/internal/viewmodel"
 )
 
 templ SmartAccount(data legacy.SmartAccountData, network string) {
@@ -16,6 +17,11 @@ templ SmartAccount(data legacy.SmartAccountData, network string) {
 		<div class="px-tx-page"><div class="px-tx-page-inner">
 			<main class="px-tx-main">
 				@smartIdentity(data)
+				if data.BalanceFragmentHref != "" {
+					@componentsv2.BalancePortfolioLoader(data.BalanceFragmentHref)
+				} else {
+					@componentsv2.BalancePortfolio(data.Portfolio)
+				}
 				@smartControls(data)
 				@smartEvidenceTabs(data)
 			</main>
@@ -34,13 +40,41 @@ templ smartIdentity(data legacy.SmartAccountData) {
 					<div class="px-ga-hero-address"><span class="k">Contract</span><code>{ saChunk(data.ContractID) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.ContractID } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button></div>
 				</div>
 				<div class="px-ga-hero-portfolio" aria-label="Smart account summary">
-					<div class="px-ga-hero-balance"><span class="k">Estimated value</span><span class="v mono">{ data.TotalBalance }</span><span class="unit">{ data.BalanceCents } USD</span></div>
+					@smartBalanceHero(data.Portfolio, data.BalanceFragmentHref != "", false)
 					<div class="px-ga-hero-facts"><div><span>Approval</span><b>{ saFirst(data.MinSigners, data.ApprovalSummary) }</b></div><div><span>Signers</span><b>{ fmt.Sprintf("%d keys", len(data.Signers)) }</b></div><div><span>TTL</span><b>{ saFirst(data.Health.TTLRemaining, "unknown") }</b></div></div>
 					<div class="px-sa-confidence"><span>Prism confidence</span><b>{ saFirst(data.Confidence, "behavior detected") }</b><p>{ saFirst(data.ApprovalSummary, "Prism detected smart-wallet behavior, signer hints, and contract metadata for this account.") }</p></div>
 				</div>
 			</div>
 		</div>
 	</section>
+}
+
+templ SmartAccountBalancesFragment(portfolio ui.BalancePortfolio) {
+	@componentsv2.BalancePortfolio(portfolio)
+	@smartBalanceHero(portfolio, false, true)
+}
+
+templ smartBalanceHero(portfolio ui.BalancePortfolio, loading bool, outOfBand bool) {
+	if outOfBand {
+		<div id="px-smart-balance-hero" class="px-ga-hero-balance" hx-swap-oob="outerHTML">
+			@smartBalanceHeroContent(portfolio, loading)
+		</div>
+	} else {
+		<div id="px-smart-balance-hero" class="px-ga-hero-balance">
+			@smartBalanceHeroContent(portfolio, loading)
+		</div>
+	}
+}
+
+templ smartBalanceHeroContent(portfolio ui.BalancePortfolio, loading bool) {
+	if loading {
+		<span class="k">Balance data</span><span class="v mono px-balance-hero-loading" aria-busy="true">Loading</span>
+	} else {
+		<span class="k">{ portfolio.HeroLabel() }</span><span class="v mono">{ portfolio.HeroValue() }</span>
+		if portfolio.HeroUnit() != "" {
+			<span class="unit">{ portfolio.HeroUnit() }</span>
+		}
+	}
 }
 
 templ smartControls(data legacy.SmartAccountData) {

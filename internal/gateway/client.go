@@ -906,6 +906,29 @@ func (c *Client) GetAccountBalances(ctx context.Context, network string, account
 	return &result, nil
 }
 
+// GetAddressBalances returns canonical current balances for a G-address or
+// C-address. Regular contract pages use this generic endpoint without opting
+// into the slower transfer-history portfolio scan.
+func (c *Client) GetAddressBalances(ctx context.Context, network string, address string) (*AddressBalancesResponse, error) {
+	cacheKey := network + ":address_bal:" + address
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*AddressBalancesResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/addresses/"+url.PathEscape(address)+"/balances"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result AddressBalancesResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing address balances: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
+	return &result, nil
+}
+
 // GetAccountSigners returns signers and thresholds for an account.
 func (c *Client) GetAccountSigners(ctx context.Context, network string, accountID string) (*AccountSignersResp, error) {
 	cacheKey := network + ":account_sig:" + accountID
@@ -1332,6 +1355,28 @@ func (c *Client) GetSmartWalletDetail(ctx context.Context, network string, contr
 	var result SmartWalletDetail
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("gateway: parsing smart wallet detail: %w", err)
+	}
+
+	c.cache.Set(cacheKey, &result, TTLAccount)
+	return &result, nil
+}
+
+// GetSmartWalletBalances returns the wallet-oriented current balance document
+// for a classified smart-account contract.
+func (c *Client) GetSmartWalletBalances(ctx context.Context, network string, contractID string) (*SmartWalletBalancesResponse, error) {
+	cacheKey := network + ":smart_wallet_bal:" + contractID
+	if v, ok := c.cache.Get(cacheKey); ok {
+		return v.(*SmartWalletBalancesResponse), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/smart-wallets/"+url.PathEscape(contractID)+"/balances"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result SmartWalletBalancesResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing smart wallet balances: %w", err)
 	}
 
 	c.cache.Set(cacheKey, &result, TTLAccount)

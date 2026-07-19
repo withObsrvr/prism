@@ -24,6 +24,7 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	data.BalanceFragmentHref = currentBalanceFragmentHref("contract", r.PathValue("id"), networkFromRequest(r), "legacy", r.URL.Query().Get("mock") == "true")
 	pages.ContractDetail(data).Render(r.Context(), w)
 }
 
@@ -32,7 +33,9 @@ func (h *Handlers) ContractDetailV2(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	pagesv2.ContractDetail(data, networkFromRequest(r)).Render(r.Context(), w)
+	network := networkFromRequest(r)
+	data.BalanceFragmentHref = currentBalanceFragmentHref("contract", r.PathValue("id"), network, "v2", r.URL.Query().Get("mock") == "true")
+	pagesv2.ContractDetail(data, network).Render(r.Context(), w)
 }
 
 func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.Request) (pages.ContractDetailData, bool) {
@@ -81,7 +84,11 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 		}
 	}
 	if data.Address == "" {
-		data = mockContractDetailData()
+		if r.URL.Query().Get("mock") == "true" {
+			data = mockContractDetailData()
+		} else {
+			data = unavailableContractDetailData(id, network)
+		}
 	}
 
 	return data, true
@@ -290,7 +297,6 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 			Value: ev.Value,
 		})
 	}
-
 	return data, nil
 }
 
@@ -362,6 +368,7 @@ func unavailableContractDetailData(contractID string, network string) pages.Cont
 		TotalInvocations: "—",
 		FunctionsCount:   "—",
 		SuccessRate:      "—",
+		Portfolio:        unavailableBalancePortfolio(contractID),
 		Narrative:        short + " could not be loaded from live " + network + " data right now.",
 		Context:          "Prism did not fall back to mock data for this page so the live-data issue is visible during QA.",
 		Signals: []pages.ContractHumanSignal{{
