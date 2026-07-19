@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -156,6 +157,9 @@ func TestContractArtifactProxyPreservesValidatedResponseHeaders(t *testing.T) {
 	if rustRecorder.Code != http.StatusOK || !strings.Contains(rustRecorder.Body.String(), "fn get_price") || rustRecorder.Header().Get("X-Wasm-SHA256") != wasmHash {
 		t.Fatalf("Rust response status=%d headers=%v body=%q", rustRecorder.Code, rustRecorder.Header(), rustRecorder.Body.String())
 	}
+	if got, want := rustRecorder.Header().Get("Content-Disposition"), contractInterfaceContentDisposition(contractID); got != want {
+		t.Fatalf("Content-Disposition = %q, want %q", got, want)
+	}
 
 	wasmRequest := httptest.NewRequest(http.MethodGet, "/v2/contract/"+contractID+"/wasm?network=testnet", nil)
 	wasmRequest.SetPathValue("id", contractID)
@@ -172,6 +176,33 @@ func TestContractArtifactProxyPreservesValidatedResponseHeaders(t *testing.T) {
 	h.ContractWASMDownload(conditionalRecorder, conditionalRequest)
 	if conditionalRecorder.Code != http.StatusNotModified || conditionalRecorder.Body.Len() != 0 || conditionalRecorder.Header().Get("ETag") != etag {
 		t.Fatalf("conditional response status=%d headers=%v body=%q", conditionalRecorder.Code, conditionalRecorder.Header(), conditionalRecorder.Body.String())
+	}
+}
+
+func TestContractInterfaceContentDispositionSafelyEncodesFilename(t *testing.T) {
+	for _, contractID := range []string{
+		"CREFERENCE",
+		`CREFERENCE"quoted`,
+		`CREFERENCE\backslash`,
+		"CREFERENCE\r\nX-Injected: true",
+		"CREFERENCE-é",
+	} {
+		t.Run(contractID, func(t *testing.T) {
+			header := contractInterfaceContentDisposition(contractID)
+			if strings.ContainsAny(header, "\r\n") {
+				t.Fatalf("Content-Disposition contains a raw control character: %q", header)
+			}
+			mediaType, params, err := mime.ParseMediaType(header)
+			if err != nil {
+				t.Fatalf("ParseMediaType(%q): %v", header, err)
+			}
+			if mediaType != "inline" {
+				t.Errorf("media type = %q, want inline", mediaType)
+			}
+			if got, want := params["filename"], contractID+"-interface.rs"; got != want {
+				t.Errorf("filename = %q, want %q", got, want)
+			}
+		})
 	}
 }
 

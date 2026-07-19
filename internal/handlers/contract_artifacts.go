@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/http"
 	"net/url"
 	"sort"
@@ -82,13 +83,19 @@ func (h *Handlers) ContractInterfaceRust(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s-interface.rs"`, contractID))
+	w.Header().Set("Content-Disposition", contractInterfaceContentDisposition(contractID))
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if result.WASMHash != "" {
 		w.Header().Set("X-Wasm-SHA256", result.WASMHash)
 	}
 	_, _ = w.Write([]byte(result.Text))
+}
+
+func contractInterfaceContentDisposition(contractID string) string {
+	return mime.FormatMediaType("inline", map[string]string{
+		"filename": contractID + "-interface.rs",
+	})
 }
 
 // ContractWASMDownload proxies the authenticated Gateway download while
