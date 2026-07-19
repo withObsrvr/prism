@@ -240,8 +240,8 @@ templ txFailureHero(hero txv2.TxHeroModel) {
 }
 
 templ txGenericCallHero(hero txv2.TxHeroModel) {
-	<section class="px-tx-section px-hero-card px-hero-generic"><div class="px-tx-section-head"><h2>What was called</h2><span class="px-tx-section-sub">Contract execution summary</span></div>
-		<div class="px-hero-summary">@templ.Raw(hero.GenericCall.SummaryHTML)</div>
+	<section class="px-tx-section px-hero-card px-hero-generic"><div class="px-tx-section-head px-hero-generic-head"><h2>What was called</h2><span class="px-tx-section-sub">Contract execution summary</span></div>
+		<div class="px-hero-summary"><div class="px-hero-summary-copy">@templ.Raw(hero.GenericCall.SummaryHTML)</div></div>
 		@txHeroFoot(hero.Meta)
 	</section>
 }
@@ -271,7 +271,7 @@ templ txFlow(data legacy.TxReceiptData) {
 templ txOperations(data legacy.TxReceiptData) {
 	<div class="px-tx-ops">
 		for _, op := range data.Operations {
-			<article class="px-tx-op">
+			<article class={ "px-tx-op", templ.KV("has-body", op.SummaryHTML != "" || op.DetailHTML != "") }>
 				<div class="px-tx-op-head">
 					<span class="px-tx-op-num">#{ op.Index }</span>
 					<div class="px-tx-op-titles">
@@ -282,28 +282,23 @@ templ txOperations(data legacy.TxReceiptData) {
 							}
 						</h3>
 						if op.ContractFull != "" {
-							<p><a href={ templ.SafeURL("/contracts/" + op.ContractFull) }>{ op.Contract }</a></p>
-						} else {
+							<p><a href={ templ.SafeURL("/v2/contract/" + op.ContractFull) }>{ op.Contract }</a></p>
+						} else if op.Contract != "" {
 							<p>{ op.Contract }</p>
 						}
 					</div>
 					<span class="px-tx-op-status ok">{ firstNonEmpty(op.Status, "success") }</span>
 				</div>
-				<div class="px-tx-op-body"><div class="px-tx-args">
-					<div class="px-tx-arg"><span class="k">summary</span><span class="v">@templ.Raw(op.SummaryHTML)</span></div>
-					if op.DetailHTML != "" {
-						<div class="px-tx-arg"><span class="k">detail</span><span class="v">@templ.Raw(op.DetailHTML)</span></div>
-					}
-					if op.Contract != "" {
-						<div class="px-tx-arg"><span class="k">contract</span><span class="v mono">
-							if op.ContractFull != "" {
-								<a href={ templ.SafeURL("/contracts/" + op.ContractFull) }>{ op.Contract }</a>
-							} else {
-								{ op.Contract }
-							}
-						</span></div>
-					}
-				</div></div>
+				if op.SummaryHTML != "" || op.DetailHTML != "" {
+					<div class="px-tx-op-body">
+						if op.SummaryHTML != "" {
+							<div class="px-tx-op-summary">@templ.Raw(op.SummaryHTML)</div>
+						}
+						if op.DetailHTML != "" {
+							<div class="px-tx-op-detail"><span class="k">Detail</span><span class="v">@templ.Raw(op.DetailHTML)</span></div>
+						}
+					</div>
+				}
 			</article>
 		}
 	</div>
@@ -363,10 +358,10 @@ func headlineFromTitle(s string) string { parts := strings.Split(s, " "); if len
 func txNarrativeHTML(data legacy.TxReceiptData) string { if data.AISummaryHTML != "" { return data.AISummaryHTML }; if data.HumanNarrative != "" { return data.HumanNarrative }; if data.SummaryHTML != "" { return data.SummaryHTML }; return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }
 func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
 func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
-func txSourceHref(data legacy.TxReceiptData) string { if data.EffectiveActorHref != "" { return data.EffectiveActorHref }; if data.SmartWalletDetected && data.SmartWalletContract != "" { return "/account/" + data.SmartWalletContract + "/smart" }; return "/account/" + txSourceFull(data) }
-func txContractHref(data legacy.TxReceiptData) string { if data.DownstreamContractHref != "" { return data.DownstreamContractHref }; if data.ContractAddrFull != "" && data.ContractAddrFull != "—" { return "/contracts/" + data.ContractAddrFull }; return "" }
+func txSourceHref(data legacy.TxReceiptData) string { id := txSourceFull(data); if id == "" || id == "—" { return "" }; if strings.EqualFold(data.EffectiveActorType, "smart_wallet") || data.SmartWalletDetected && id == data.SmartWalletContract { return "/v2/account/" + id + "/smart" }; if strings.HasPrefix(id, "C") { return "/v2/contract/" + id }; return "/v2/account/" + id }
+func txContractHref(data legacy.TxReceiptData) string { id := firstNonEmpty(data.DownstreamContractAddr, data.ContractAddrFull); if id == "" || id == "—" { return "" }; return "/v2/contract/" + id }
 func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetected && data.SmartWalletContractShort != "" { return data.SmartWalletContractShort }; return firstNonEmpty(data.EffectiveActorShort, "Source") }
-func txContractLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.ContractName, "Contract") + " " + firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }
+func txContractLabel(data legacy.TxReceiptData) string { address := firstNonEmpty(data.DownstreamContractShort, firstNonEmpty(data.ContractAddr, data.ContractAddrFull)); name := strings.TrimSpace(data.ContractName); if address == "" { return firstNonEmpty(name, "Contract") }; if name == "" || strings.EqualFold(name, address) || strings.EqualFold(name, data.DownstreamContractAddr) || strings.EqualFold(name, data.ContractAddrFull) { return address }; return name + " " + address }
 func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }
 func txFeeLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.FeePaidXLM, firstNonEmpty(data.FeePaid, "—")) }
 func txNetworkQuery(network string) string { if network == "" || network == "mainnet" { return "" }; return "?network=" + network }

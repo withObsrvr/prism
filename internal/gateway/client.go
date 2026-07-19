@@ -1560,11 +1560,6 @@ func (c *Client) GetSemanticContracts(ctx context.Context, network string, limit
 
 // GetContractInterface returns the detected interface and observed functions for a contract.
 func (c *Client) GetContractInterface(ctx context.Context, network string, contractID string) (*ContractInterface, error) {
-	cacheKey := network + ":contract_iface:" + contractID
-	if v, ok := c.cache.Get(cacheKey); ok {
-		return v.(*ContractInterface), nil
-	}
-
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/contracts/"+contractID+"/interface"))
 	if err != nil {
 		return nil, err
@@ -1574,9 +1569,74 @@ func (c *Client) GetContractInterface(ctx context.Context, network string, contr
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("gateway: parsing contract interface: %w", err)
 	}
-
-	c.cache.Set(cacheKey, &result, TTLContracts)
 	return &result, nil
+}
+
+// GetContractInterfaceRust returns the API's generated Rust-style view of the
+// current declared interface. It is presentation text, not verified source.
+func (c *Client) GetContractInterfaceRust(ctx context.Context, network string, contractID string) (*ContractInterfaceRust, error) {
+	resp, body, err := c.doContractArtifactRequest(ctx, c.buildURL(network, "/silver/contracts/"+contractID+"/interface?format=rust"), "text/plain", "")
+	if err != nil {
+		return nil, err
+	}
+	return &ContractInterfaceRust{
+		Text:       string(body),
+		ContractID: resp.Header.Get("X-Contract-ID"),
+		WASMHash:   resp.Header.Get("X-Wasm-SHA256"),
+	}, nil
+}
+
+// GetContractWASM downloads the contract's current hash-validated executable.
+// Passing the previous ETag preserves the upstream conditional request.
+func (c *Client) GetContractWASM(ctx context.Context, network, contractID, etag string) (*ContractWASMDownload, error) {
+	resp, body, err := c.doContractArtifactRequest(ctx, c.buildURL(network, "/silver/contracts/"+contractID+"/wasm"), "application/wasm", etag)
+	if err != nil {
+		return nil, err
+	}
+	return &ContractWASMDownload{
+		StatusCode:         resp.StatusCode,
+		Body:               body,
+		ContentType:        resp.Header.Get("Content-Type"),
+		ContentDisposition: resp.Header.Get("Content-Disposition"),
+		ETag:               resp.Header.Get("ETag"),
+		ContractID:         resp.Header.Get("X-Contract-ID"),
+		WASMHash:           resp.Header.Get("X-Wasm-SHA256"),
+		ResolvedAtLedger:   resp.Header.Get("X-Resolved-At-Ledger"),
+	}, nil
+}
+
+func (c *Client) doContractArtifactRequest(ctx context.Context, rawURL, accept, etag string) (*http.Response, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gateway: creating contract artifact request: %w", err)
+	}
+	req.Header.Set("Authorization", "Api-Key "+c.apiKey)
+	req.Header.Set("Accept", accept)
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gateway: contract artifact request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotModified {
+		return resp, nil, nil
+	}
+
+	const maxContractArtifactResponse = 8 << 20
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxContractArtifactResponse+1))
+	if err != nil {
+		return nil, nil, fmt.Errorf("gateway: reading contract artifact response: %w", err)
+	}
+	if len(body) > maxContractArtifactResponse {
+		return nil, nil, fmt.Errorf("gateway: contract artifact response exceeds %d bytes", maxContractArtifactResponse)
+	}
+	if resp.StatusCode >= 400 {
+		return nil, nil, &APIError{StatusCode: resp.StatusCode, Message: string(body)}
+	}
+	return resp, body, nil
 }
 
 // --- Account Activity & Offers ---

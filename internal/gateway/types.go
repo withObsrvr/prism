@@ -1249,10 +1249,133 @@ type SemanticContractsResponse struct {
 
 // ContractInterface matches /silver/contracts/{id}/interface response.
 type ContractInterface struct {
-	ContractID        string   `json:"contract_id"`
-	DetectedType      string   `json:"detected_type"`
-	Interface         any      `json:"interface,omitempty"`
-	ObservedFunctions []string `json:"observed_functions"`
+	ContractID        string                       `json:"contract_id"`
+	Network           string                       `json:"network"`
+	DetectedType      string                       `json:"detected_type"`
+	Executable        ContractExecutable           `json:"executable"`
+	Interface         ContractDeclaredInterface    `json:"interface"`
+	Metadata          []ContractInterfaceMetadata  `json:"metadata"`
+	Environment       ContractInterfaceEnvironment `json:"environment"`
+	Provenance        ContractArtifactProvenance   `json:"provenance"`
+	ObservedFunctions []string                     `json:"observed_functions"`
+}
+
+type ContractExecutable struct {
+	Type                       string `json:"type"`
+	WASMHash                   string `json:"wasm_hash,omitempty"`
+	WASMSizeBytes              int64  `json:"wasm_size_bytes,omitempty"`
+	InstanceLastModifiedLedger int64  `json:"instance_last_modified_ledger,omitempty"`
+	LiveUntilLedger            *int64 `json:"live_until_ledger,omitempty"`
+	ResolvedAtLedger           int64  `json:"resolved_at_ledger,omitempty"`
+}
+
+type ContractDeclaredInterface struct {
+	Functions []ContractSpecFunction `json:"functions"`
+	Structs   []ContractSpecStruct   `json:"structs"`
+	Unions    []ContractSpecUnion    `json:"unions"`
+	Enums     []ContractSpecEnum     `json:"enums"`
+	Errors    []ContractSpecEnum     `json:"errors"`
+	Events    []ContractSpecEvent    `json:"events"`
+}
+
+type ContractSpecFunction struct {
+	Name    string              `json:"name"`
+	Doc     string              `json:"doc,omitempty"`
+	Inputs  []ContractSpecField `json:"inputs"`
+	Outputs []string            `json:"outputs"`
+}
+
+type ContractSpecField struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Doc  string `json:"doc,omitempty"`
+}
+
+type ContractSpecStruct struct {
+	Name   string              `json:"name"`
+	Doc    string              `json:"doc,omitempty"`
+	Lib    string              `json:"lib,omitempty"`
+	Fields []ContractSpecField `json:"fields"`
+}
+
+type ContractSpecUnion struct {
+	Name  string                  `json:"name"`
+	Doc   string                  `json:"doc,omitempty"`
+	Lib   string                  `json:"lib,omitempty"`
+	Cases []ContractSpecUnionCase `json:"cases"`
+}
+
+type ContractSpecUnionCase struct {
+	Name   string   `json:"name"`
+	Doc    string   `json:"doc,omitempty"`
+	Values []string `json:"values"`
+}
+
+type ContractSpecEnum struct {
+	Name  string                 `json:"name"`
+	Doc   string                 `json:"doc,omitempty"`
+	Lib   string                 `json:"lib,omitempty"`
+	Cases []ContractSpecEnumCase `json:"cases"`
+}
+
+type ContractSpecEnumCase struct {
+	Name  string `json:"name"`
+	Value uint32 `json:"value"`
+	Doc   string `json:"doc,omitempty"`
+}
+
+type ContractSpecEvent struct {
+	Name         string                   `json:"name"`
+	Doc          string                   `json:"doc,omitempty"`
+	Lib          string                   `json:"lib,omitempty"`
+	PrefixTopics []string                 `json:"prefix_topics"`
+	Params       []ContractSpecEventParam `json:"params"`
+	DataFormat   string                   `json:"data_format"`
+}
+
+type ContractSpecEventParam struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Location string `json:"location"`
+	Doc      string `json:"doc,omitempty"`
+}
+
+type ContractInterfaceMetadata struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type ContractInterfaceEnvironment struct {
+	InterfaceVersion *ContractInterfaceVersion `json:"interface_version,omitempty"`
+}
+
+type ContractInterfaceVersion struct {
+	Protocol   uint32 `json:"protocol"`
+	PreRelease uint32 `json:"pre_release"`
+}
+
+type ContractArtifactProvenance struct {
+	ExecutableSource string `json:"executable_source"`
+	CodeSource       string `json:"code_source"`
+	CodeLedger       int64  `json:"code_last_modified_ledger,omitempty"`
+	ResolvedAtLedger int64  `json:"resolved_at_ledger,omitempty"`
+}
+
+type ContractInterfaceRust struct {
+	Text       string
+	ContractID string
+	WASMHash   string
+}
+
+type ContractWASMDownload struct {
+	StatusCode         int
+	Body               []byte
+	ContentType        string
+	ContentDisposition string
+	ETag               string
+	ContractID         string
+	WASMHash           string
+	ResolvedAtLedger   string
 }
 
 // --- Account Activity ---

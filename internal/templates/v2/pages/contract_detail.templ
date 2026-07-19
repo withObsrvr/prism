@@ -2,11 +2,13 @@ package pagesv2
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
 	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
 	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+	ui "github.com/withObsrvr/prism/internal/viewmodel"
 )
 
 templ ContractDetail(data legacy.ContractDetailData, network string) {
@@ -24,21 +26,20 @@ templ ContractDetail(data legacy.ContractDetailData, network string) {
 			@contractActivity(data)
 			<section class="px-tx-detail" data-cn-tabs-root><div class="px-tx-detail-inner">
 				<div class="px-tx-tabs" role="tablist" aria-label="Contract evidence">
-					@contractTab("interface", "Interface", cnInterfaceCount(data), true)
+					@contractTab("interface", "Interface", cnFirst(data.FunctionsCount, cnInterfaceCount(data)), true)
 					@contractTab("calls", "Recent calls", cnRecentInvocationCount(data), false)
 					@contractTab("storage", "Storage", cnStorageSampleCount(data), false)
-					@contractTab("code", "Code", cnCodeCount(data), false)
+					@contractTab("artifact", "WASM", "", false)
 				</div>
 				<div class="px-tx-detail-body">
-					<div data-cn-panel="interface">@contractFunctions(data)</div>
+					<div data-cn-panel="interface">@contractInterfaceLoader(data.Address, network, data.Mock)</div>
 					<div data-cn-panel="calls" hidden>@contractCalls(data)</div>
 					<div data-cn-panel="storage" hidden>@contractStorage(data, network)</div>
-					<div data-cn-panel="code" hidden>@contractCode(data)</div>
+					<div data-cn-panel="artifact" data-cn-src={ cnArtifactFragmentHref(data.Address, network, data.Mock) } hidden>@contractArtifactLoader()</div>
 				</div>
 			</div></section>
 		</main><aside class="px-tx-side">
 			@sideCard("Contract") { @sideRow("Address", cnShort(data.Address)) @sideRow("Deployed", cnFirst(data.DeployedAt, "unknown")) @sideRow("Ledger", cnFirst(data.DeployLedger, "unknown")) @sideRow("Creator", cnFirst(data.Creator, "unknown")) @sideRow("Functions", cnFirst(data.FunctionsCount, fmt.Sprintf("%d", len(cnFunctions(data))))) @sideRow("Storage", cnFirst(data.StorageEntries, "unknown")) }
-			@sideCard("Code") { @sideRow("Wasm hash", cnShort(data.WASMHash)) @sideRow("Wasm size", cnFirst(data.WASMSize, "unknown")) @sideRow("Source", cnSourceLabel(data)) }
 			<div class="px-tx-side-card soft"><h4>Why Prism thinks this</h4><p class="px-tx-side-body">{ cnFirst(data.Context, "Prism combines source metadata, exported functions, recent calls, and storage shape to classify this contract.") }</p></div>
 			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/contracts/" + data.Address) }><span class="px-tx-rel-h mono">Legacy contract</span><span class="px-tx-rel-s">current production page</span></a><a class="px-tx-related-row" href="/events"><span class="px-tx-rel-h mono">Events</span><span class="px-tx-rel-s">stream contract activity</span></a></div></div>
 		</aside></div></div>
@@ -48,7 +49,11 @@ templ ContractDetail(data legacy.ContractDetailData, network string) {
 }
 
 templ contractTab(id string, label string, count string, active bool) {
-	<button class={ "px-tx-tab", templ.KV("active", active) } type="button" role="tab" data-cn-tab={ id } aria-selected={ fmt.Sprintf("%t", active) }>{ label } <span class="px-tx-tab-c">{ count }</span></button>
+	<button class={ "px-tx-tab", templ.KV("active", active) } type="button" role="tab" data-cn-tab={ id } aria-selected={ fmt.Sprintf("%t", active) }>{ label }
+		if count != "" {
+			<span class="px-tx-tab-c">{ count }</span>
+		}
+	</button>
 }
 
 templ contractIdentity(data legacy.ContractDetailData) {
@@ -99,17 +104,223 @@ templ contractStat(k string, v string, d string, color string) {
 	<div class="px-cn-stat"><span class="k">{ k }</span><span class="v">{ v }</span><span class="d muted">{ d }</span><svg class="px-cn-spark" viewBox="0 0 200 36" preserveAspectRatio="none"><path d="M0,30 L18,22 L36,24 L54,15 L72,18 L90,10 L108,13 L126,8 L144,16 L162,11 L180,6 L200,9 L200,36 L0,36 Z" fill={ color } opacity="0.10"></path><path d="M0,30 L18,22 L36,24 L54,15 L72,18 L90,10 L108,13 L126,8 L144,16 L162,11 L180,6 L200,9" fill="none" stroke={ color } stroke-width="1.4"></path></svg></div>
 }
 
-templ contractFunctions(data legacy.ContractDetailData) {
-	<div id="interface" class="px-cn-panel"><div class="px-cn-fns">
-		if len(cnFunctions(data)) > 0 {
-			<div class="px-cn-fns-head"><span>Function</span><span>Meaning</span><span>Calls</span><span>Risk</span></div>
-			for _, fn := range cnFunctions(data) {
-				<article class="px-cn-fn"><div><code>{ fn.Name }</code><span>{ cnFirst(fn.Category, "entrypoint") }</span></div><p>{ cnFirst(fn.Description, "Exported function detected in the contract interface.") }</p><b>{ cnFirst(fn.Calls24h, cnFirst(fn.Calls, "—")) }</b><em>normal</em></article>
-			}
-		} else {
-			<div class="px-cn-empty"><b>No interface metadata</b><p>Function metadata was not available from the gateway for this contract.</p></div>
+templ contractInterfaceLoader(contractID string, network string, mock bool) {
+	<div
+		class="px-cn-iface px-cn-artifact-loading"
+		aria-busy="true"
+		hx-get={ templ.SafeURL(cnInterfaceFragmentHref(contractID, network, mock)) }
+		hx-trigger="load"
+		hx-swap="outerHTML"
+	>
+		<span class="px-sr-only">Loading declared contract interface</span>
+		<div class="px-cn-artifact-skeleton wide"></div>
+		<div class="px-cn-artifact-skeleton"></div>
+		<div class="px-cn-artifact-skeleton"></div>
+	</div>
+}
+
+templ contractArtifactLoader() {
+	<div class="px-cn-artifact px-cn-artifact-loading" aria-busy="true">
+		<span class="px-sr-only">Loading active contract artifact</span>
+		<div class="px-cn-artifact-skeleton wide"></div>
+		<div class="px-cn-artifact-skeleton"></div>
+		<div class="px-cn-artifact-skeleton"></div>
+	</div>
+}
+
+// ContractInterfaceFragment renders the API's current declared contract
+// specification. Invocation evidence is deliberately shown as a separate fact.
+templ ContractInterfaceFragment(model ui.ContractInterface) {
+	@contractInterfacePanel(model)
+}
+
+templ contractInterfacePanel(model ui.ContractInterface) {
+	<div id="interface" class="px-cn-iface">
+		if !model.Available {
+			<div class="px-cn-empty"><b>Declared interface unavailable</b><p>The rest of this contract page is still available. Refresh to try the interface source again.</p></div>
 		}
-	</div></div>
+		if model.Available {
+			<header class="px-cn-iface-head">
+				<div><span class="eyebrow">Current executable</span><h3>Declared interface</h3><p>Decoded from the active contract specification. Historical calls are supporting evidence, not part of this declaration.</p></div>
+				if !strings.EqualFold(strings.TrimSpace(model.DetectedType), "unknown") && strings.TrimSpace(model.DetectedType) != "" {
+					<span class="px-cn-iface-kind">{ model.DetectedType }</span>
+				}
+			</header>
+			<div class="px-cn-iface-stats">
+				@contractInterfaceStat(fmt.Sprintf("%d", model.FunctionCount), "Functions")
+				@contractInterfaceStat(fmt.Sprintf("%d", model.DeclaredTypeCount), "Declared types")
+				@contractInterfaceStat(fmt.Sprintf("%d", model.EventCount), "Events")
+				@contractInterfaceStat(fmt.Sprintf("%d of %d", model.ObservedCurrentCount, model.FunctionCount), "Observed functions")
+			</div>
+			if len(model.Functions) > 0 {
+				<section class="px-cn-iface-section" aria-labelledby="px-cn-functions-title">
+					<div class="px-cn-iface-section-head"><div><h4 id="px-cn-functions-title">Functions</h4><p>Expand an entry to inspect its arguments and return values.</p></div></div>
+				<div class="px-cn-iface-list">
+					for _, fn := range model.Functions {
+						<details class="px-cn-iface-fn">
+							<summary><span class="px-cn-iface-chevron" aria-hidden="true"></span><code>{ fn.Signature }</code>
+								if fn.Observed {
+									<span class="px-cn-iface-observed"><i></i>Observed</span>
+								}
+							</summary>
+							<div class="px-cn-iface-fn-body">
+								if strings.TrimSpace(fn.Doc) != "" {
+									<p class="px-cn-iface-doc">{ fn.Doc }</p>
+								}
+								<div class="px-cn-iface-io">
+									<div><span class="label">Inputs</span>
+										if len(fn.Inputs) == 0 {
+											<span class="px-cn-iface-none">No arguments</span>
+										} else {
+											for _, input := range fn.Inputs {
+												<div class="px-cn-iface-value"><code>{ input.Name }</code><span>{ input.Type }</span></div>
+											}
+										}
+									</div>
+									<div><span class="label">Returns</span>
+										if len(fn.Outputs) == 0 {
+											<span class="px-cn-iface-none">No return value</span>
+										} else {
+											for _, output := range fn.Outputs {
+												<div class="px-cn-iface-value"><span>{ output }</span></div>
+											}
+										}
+									</div>
+								</div>
+							</div>
+						</details>
+					}
+				</div>
+			</section>
+			} else {
+				<div class="px-cn-empty compact"><b>No declared functions</b><p>The active executable did not publish any function specifications.</p></div>
+			}
+			if len(model.DeclaredTypes) > 0 {
+				<section class="px-cn-iface-section" aria-labelledby="px-cn-types-title">
+					<div class="px-cn-iface-section-head"><div><h4 id="px-cn-types-title">Declared types</h4><p>Structs, unions, enums, and contract errors referenced by the interface.</p></div></div>
+				<div class="px-cn-iface-types">
+					for _, declaredType := range model.DeclaredTypes {
+						<details class="px-cn-iface-type">
+							<summary><span class="px-cn-iface-type-kind">{ declaredType.Kind }</span><code>{ declaredType.Name }</code><span>{ fmt.Sprintf("%d members", len(declaredType.Fields)) }</span><span class="px-cn-iface-chevron" aria-hidden="true"></span></summary>
+							<div class="px-cn-iface-type-body">
+								if strings.TrimSpace(declaredType.Doc) != "" {
+									<p class="px-cn-iface-doc">{ declaredType.Doc }</p>
+								}
+								for _, field := range declaredType.Fields {
+									<div class="px-cn-iface-member"><code>{ field.Name }</code><span>{ cnFirst(field.Type, "unit") }</span>
+										if strings.TrimSpace(field.Doc) != "" {
+											<small>{ field.Doc }</small>
+										}
+									</div>
+								}
+							</div>
+						</details>
+					}
+				</div>
+			</section>
+			}
+			if len(model.Events) > 0 {
+				<section class="px-cn-iface-section" aria-labelledby="px-cn-events-title">
+					<div class="px-cn-iface-section-head"><div><h4 id="px-cn-events-title">Declared events</h4><p>Event shapes emitted by the active executable.</p></div></div>
+				<div class="px-cn-iface-types">
+					for _, event := range model.Events {
+						<details class="px-cn-iface-type"><summary><span class="px-cn-iface-type-kind">Event</span><code>{ event.Name }</code><span>{ cnFirst(event.DataFormat, "data") }</span><span class="px-cn-iface-chevron" aria-hidden="true"></span></summary><div class="px-cn-iface-type-body">
+							if strings.TrimSpace(event.Doc) != "" {
+								<p class="px-cn-iface-doc">{ event.Doc }</p>
+							}
+							for _, param := range event.Params {
+								<div class="px-cn-iface-member"><code>{ param.Name }</code><span>{ param.Type }</span><small>{ param.Detail }</small></div>
+							}
+						</div></details>
+					}
+				</div>
+			</section>
+			}
+			if len(model.ObservedOnlyFunctions) > 0 {
+				<section class="px-cn-iface-evidence"><div><span class="eyebrow">Historical evidence</span><h4>Observed outside the current declaration</h4><p>These names appeared in indexed calls but are not declared by the active executable. They may come from an earlier contract version or undecoded invocation data.</p></div><div class="px-cn-iface-evidence-names">
+					for _, name := range model.ObservedOnlyFunctions {
+						<code>{ name }</code>
+					}
+				</div></section>
+			}
+		}
+	</div>
+}
+
+templ contractInterfaceStat(value string, label string) {
+	<div><strong>{ value }</strong><span>{ label }</span></div>
+}
+
+// ContractArtifactFragment renders current executable identity and download
+// actions. The generated Rust view is explicitly not presented as source code.
+templ ContractArtifactFragment(model ui.ContractArtifact) {
+	@contractArtifactPanel(model)
+}
+
+templ contractArtifactPanel(model ui.ContractArtifact) {
+	<div id="artifact" class="px-cn-artifact">
+		if !model.Available {
+			<div class="px-cn-empty"><b>Executable artifact unavailable</b><p>The contract details remain usable. Refresh to retry the current executable lookup.</p></div>
+		}
+		if model.Available {
+			<header class="px-cn-artifact-head">
+				<div class={ "px-cn-artifact-mark", templ.KV("protocol", model.IsStellarAsset) }>
+					if model.IsStellarAsset {
+						<span>SAC</span>
+					} else {
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 4v5c0 4.4-2.8 7.5-7 9-4.2-1.5-7-4.6-7-9V7l7-4z"></path><path d="M8.5 12l2.2 2.2 4.8-5"></path></svg>
+					}
+				</div>
+				<div><span class="eyebrow">Active executable</span><h3>{ model.ProvenanceLabel }</h3>
+					if model.IsStellarAsset {
+						<p>This built-in Stellar Asset Contract uses the canonical protocol interface and has no standalone WASM file.</p>
+					} else {
+						<p>The executable hash is resolved for every request, so upgrades are reflected without relying on stale contract metadata.</p>
+					}
+				</div>
+			</header>
+			<div class="px-cn-artifact-grid">
+				<div class="px-cn-artifact-primary">
+					<div class="px-cn-artifact-hash"><span>SHA-256 executable hash</span>
+						if strings.TrimSpace(model.WASMHash) != "" {
+							<code>{ model.WASMHash }</code>
+						} else {
+							<strong>Protocol built-in</strong>
+						}
+					</div>
+					<div class="px-cn-artifact-actions">
+						if model.HasWASM {
+							<a class="px-tx-btn primary" href={ templ.SafeURL(model.DownloadHref) } download>Download verified WASM</a>
+						}
+						<a class="px-tx-btn" href={ templ.SafeURL(model.RustHref) } target="_blank" rel="noopener">Open generated Rust interface</a>
+					</div>
+					<div class="px-cn-artifact-note"><b>Interface view, not source code</b><p>The Rust-style file is generated from the declared contract specification embedded in the executable. It is useful for inspection, but it is not the original implementation.</p></div>
+				</div>
+				<dl class="px-cn-artifact-facts">
+					@contractArtifactFact("Executable", cnFirst(model.ExecutableType, "unknown"))
+					@contractArtifactFact("Artifact size", cnFirst(model.WASMSize, "not applicable"))
+					@contractArtifactFact("Resolved at ledger", model.ResolvedAtLedger)
+					@contractArtifactFact("Instance modified", model.InstanceLastModifiedLedger)
+					@contractArtifactFact("Code modified", model.CodeLastModifiedLedger)
+					@contractArtifactFact("Live until ledger", model.LiveUntilLedger)
+				</dl>
+			</div>
+			<section class="px-cn-artifact-provenance">
+				<div class="px-cn-iface-section-head"><div><h4>Provenance</h4><p>Where Prism resolved the executable identity and immutable code bytes.</p></div><span>{ cnFirst(model.ProtocolVersion, "Protocol version unknown") }</span></div>
+				<div class="px-cn-artifact-provenance-grid">
+					@contractArtifactFact("Executable identity", model.ExecutableSource)
+					@contractArtifactFact("Code bytes", model.CodeSource)
+					for _, item := range model.Metadata {
+						@contractArtifactFact(cnArtifactMetadataLabel(item.Key), item.Value)
+					}
+				</div>
+			</section>
+		}
+	</div>
+}
+
+templ contractArtifactFact(label string, value string) {
+	<div><dt>{ label }</dt><dd>{ cnFirst(value, "unknown") }</dd></div>
 }
 
 templ contractCalls(data legacy.ContractDetailData) {
@@ -260,18 +471,7 @@ templ contractStorageScript() {
 	})();</script>
 }
 
-templ contractCode(data legacy.ContractDetailData) {
-	<div id="code" class="px-cn-panel"><div class="px-cn-code">
-		<div class="px-cn-code-meta"><div><span>Wasm hash</span><code>{ cnFirst(data.WASMHash, "unknown") }</code></div><div><span>Wasm size</span><b>{ cnFirst(data.WASMSize, "unknown") }</b></div><div><span>Source</span><b>{ cnSourceLabel(data) }</b></div></div>
-		if strings.TrimSpace(data.CodePreview) != "" {
-			<pre><code>{ data.CodePreview }</code></pre>
-		} else {
-			<div class="px-cn-empty"><b>No code preview available</b><p>Wasm metadata is visible, but Prism does not have a source preview for this contract yet.</p></div>
-		}
-	</div></div>
-}
-
-templ contractTabsScript() { <script>(function(){if(window.__prismContractTabsBound)return;window.__prismContractTabsBound=true;function activate(root,name){if(!root)return;root.querySelectorAll('[data-cn-tab]').forEach(function(tab){var on=tab.getAttribute('data-cn-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-cn-panel]').forEach(function(panel){var on=panel.getAttribute('data-cn-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-cn-tab]');if(!tab)return;e.preventDefault();activate(tab.closest('[data-cn-tabs-root]'),tab.getAttribute('data-cn-tab'));});})();</script> }
+templ contractTabsScript() { <script>(function(){if(window.__prismContractTabsBound)return;window.__prismContractTabsBound=true;function loadPanel(panel){var src=panel&&panel.getAttribute('data-cn-src');if(!src||panel.getAttribute('data-cn-loaded')==='true')return;panel.setAttribute('data-cn-loaded','true');if(window.htmx&&window.htmx.ajax){window.htmx.ajax('GET',src,{target:panel,swap:'innerHTML'});}else{panel.setAttribute('data-cn-loaded','false');}}function activate(root,name){if(!root)return;root.querySelectorAll('[data-cn-tab]').forEach(function(tab){var on=tab.getAttribute('data-cn-tab')===name;tab.classList.toggle('active',on);tab.setAttribute('aria-selected',on?'true':'false');});root.querySelectorAll('[data-cn-panel]').forEach(function(panel){var on=panel.getAttribute('data-cn-panel')===name;panel.hidden=!on;panel.style.display=on?'':'none';if(on)loadPanel(panel);});}document.addEventListener('click',function(e){var tab=e.target.closest('[data-cn-tab]');if(!tab)return;e.preventDefault();activate(tab.closest('[data-cn-tabs-root]'),tab.getAttribute('data-cn-tab'));});})();</script> }
 
 func cnFirst(v string, fallback string) string { if strings.TrimSpace(v) != "" && strings.TrimSpace(v) != "—" { return v }; return fallback }
 func cnInterfaceCount(data legacy.ContractDetailData) string { return fmt.Sprintf("%d", len(cnFunctions(data))) }
@@ -293,5 +493,7 @@ func cnShort(v string) string { if len(v) <= 14 || v == "—" { return cnFirst(v
 func cnSourceLabel(data legacy.ContractDetailData) string { if data.IsVerified || data.IsSourceVerified { return "Verified" }; return "Unverified" }
 func cnSourceEvidence(data legacy.ContractDetailData) string { if data.IsVerified || data.IsSourceVerified { return "Wasm metadata is available for review" }; return "Source verification has not been confirmed" }
 func cnLiveLabel(data legacy.ContractDetailData) string { if cnFirst(data.LastInvoked, "") != "" { return "Live · " + data.LastInvoked }; return "No recent call data" }
-func cnCodeCount(data legacy.ContractDetailData) string { if strings.TrimSpace(data.CodePreview) != "" { return "1" }; if strings.TrimSpace(data.WASMHash) != "" && strings.TrimSpace(data.WASMHash) != "—" { return "hash" }; return "0" }
 func cnFunctions(data legacy.ContractDetailData) []legacy.ContractFunction { if len(data.Functions) > 0 { return data.Functions }; out := make([]legacy.ContractFunction, 0, len(data.ExportedFunctions)); for _, name := range data.ExportedFunctions { out = append(out, legacy.ContractFunction{Name:name, Category:"entrypoint", Description:"Exported function detected in the contract interface.", Calls24h:"—"}) }; return out }
+func cnInterfaceFragmentHref(contractID string, network string, mock bool) string { values := url.Values{}; if network != "" { values.Set("network", network) }; if mock { values.Set("mock", "true") }; path := "/fragments/contract/" + url.PathEscape(contractID) + "/interface"; if encoded := values.Encode(); encoded != "" { path += "?" + encoded }; return path }
+func cnArtifactFragmentHref(contractID string, network string, mock bool) string { values := url.Values{}; if network != "" { values.Set("network", network) }; if mock { values.Set("mock", "true") }; path := "/fragments/contract/" + url.PathEscape(contractID) + "/artifact"; if encoded := values.Encode(); encoded != "" { path += "?" + encoded }; return path }
+func cnArtifactMetadataLabel(key string) string { switch strings.ToLower(strings.TrimSpace(key)) { case "rsver": return "Rust compiler"; case "rssdkver": return "Soroban SDK"; default: return strings.ReplaceAll(strings.TrimSpace(key), "_", " ") } }
