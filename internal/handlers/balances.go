@@ -13,43 +13,54 @@ import (
 
 const detailBalanceTimeout = 1500 * time.Millisecond
 
-type balancePortfolioResult struct {
-	portfolio ui.BalancePortfolio
-	err       error
+func (h *Handlers) getAddressBalancePortfolio(ctx context.Context, network, address string) (ui.BalancePortfolio, error) {
+	lookupCtx, cancel := context.WithTimeout(ctx, detailBalanceTimeout)
+	defer cancel()
+	response, err := h.Gateway.GetAddressBalances(lookupCtx, network, address)
+	if err != nil {
+		return unavailableBalancePortfolio(address), err
+	}
+	return addressBalancePortfolio(response, network), nil
 }
 
-func (h *Handlers) startAddressBalanceLookup(ctx context.Context, network, address string) <-chan balancePortfolioResult {
-	result := make(chan balancePortfolioResult, 1)
-	go func() {
-		lookupCtx, cancel := context.WithTimeout(ctx, detailBalanceTimeout)
-		defer cancel()
-		response, err := h.Gateway.GetAddressBalances(lookupCtx, network, address)
-		if err != nil {
-			result <- balancePortfolioResult{portfolio: unavailableBalancePortfolio(address), err: err}
-			return
-		}
-		result <- balancePortfolioResult{portfolio: addressBalancePortfolio(response, network)}
-	}()
-	return result
-}
-
-func (h *Handlers) startSmartWalletBalanceLookup(ctx context.Context, network, contractID string) <-chan balancePortfolioResult {
-	result := make(chan balancePortfolioResult, 1)
-	go func() {
-		lookupCtx, cancel := context.WithTimeout(ctx, detailBalanceTimeout)
-		defer cancel()
-		response, err := h.Gateway.GetSmartWalletBalances(lookupCtx, network, contractID)
-		if err != nil {
-			result <- balancePortfolioResult{portfolio: unavailableBalancePortfolio(contractID), err: err}
-			return
-		}
-		result <- balancePortfolioResult{portfolio: smartWalletBalancePortfolio(response, network)}
-	}()
-	return result
+func (h *Handlers) getSmartWalletBalancePortfolio(ctx context.Context, network, contractID string) (ui.BalancePortfolio, error) {
+	lookupCtx, cancel := context.WithTimeout(ctx, detailBalanceTimeout)
+	defer cancel()
+	response, err := h.Gateway.GetSmartWalletBalances(lookupCtx, network, contractID)
+	if err != nil {
+		return unavailableBalancePortfolio(contractID), err
+	}
+	return smartWalletBalancePortfolio(response, network), nil
 }
 
 func unavailableBalancePortfolio(ownerID string) ui.BalancePortfolio {
 	return ui.BalancePortfolio{OwnerID: ownerID}
+}
+
+func currentBalanceFragmentHref(kind, ownerID, network, surface string, mock bool) string {
+	path := ""
+	switch kind {
+	case "contract":
+		path = "/fragments/contract/" + url.PathEscape(ownerID) + "/balances"
+	case "smart-account":
+		path = "/fragments/smart-account/" + url.PathEscape(ownerID) + "/balances"
+	default:
+		return ""
+	}
+	query := url.Values{}
+	if network != "" {
+		query.Set("network", network)
+	}
+	if surface != "" {
+		query.Set("surface", surface)
+	}
+	if mock {
+		query.Set("mock", "true")
+	}
+	if encoded := query.Encode(); encoded != "" {
+		path += "?" + encoded
+	}
+	return path
 }
 
 func addressBalancePortfolio(response *gateway.AddressBalancesResponse, network string) ui.BalancePortfolio {
@@ -230,7 +241,8 @@ func balanceEntityHref(id, network string) string {
 }
 
 func balanceSourceLabel(source string) string {
-	switch strings.ToLower(strings.TrimSpace(source)) {
+	trimmed := strings.TrimSpace(source)
+	switch strings.ToLower(trimmed) {
 	case "contract_storage_state":
 		return "Current contract storage"
 	case "stellar_native":
@@ -238,7 +250,7 @@ func balanceSourceLabel(source string) string {
 	case "":
 		return ""
 	default:
-		return strings.ReplaceAll(source, "_", " ")
+		return strings.ReplaceAll(trimmed, "_", " ")
 	}
 }
 

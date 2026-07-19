@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/withObsrvr/prism/internal/gateway"
@@ -33,6 +34,26 @@ func TestAddressBalancePortfolioPreservesDuplicateSymbols(t *testing.T) {
 	}
 	if portfolio.Items[1].IssuerHref != "/v2/account/GISSUER1?network=testnet" {
 		t.Fatalf("issuer href = %q", portfolio.Items[1].IssuerHref)
+	}
+}
+
+func TestBalanceSourceLabelTrimsUnknownSource(t *testing.T) {
+	if got := balanceSourceLabel("  custom_balance_source  "); got != "custom balance source" {
+		t.Fatalf("balanceSourceLabel = %q, want trimmed label", got)
+	}
+}
+
+func TestCurrentBalanceFragmentHrefPreservesPageContext(t *testing.T) {
+	got := currentBalanceFragmentHref("smart-account", "CWALLET", "testnet", "v2", true)
+	for _, want := range []string{
+		"/fragments/smart-account/CWALLET/balances?",
+		"mock=true",
+		"network=testnet",
+		"surface=v2",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("fragment href %q missing %q", got, want)
+		}
 	}
 }
 

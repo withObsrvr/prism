@@ -389,12 +389,14 @@ func (h *Handlers) buildPartialAccountData(ctx context.Context, network, account
 }
 
 func (h *Handlers) SmartAccountDashboard(w http.ResponseWriter, r *http.Request) {
-	data, _ := h.smartAccountDataForRequest(r)
+	data, network := h.smartAccountDataForRequest(r)
+	data.BalanceFragmentHref = currentBalanceFragmentHref("smart-account", r.PathValue("id"), network, "legacy", r.URL.Query().Get("mock") == "true")
 	pages.SmartAccountV2(data).Render(r.Context(), w)
 }
 
 func (h *Handlers) SmartAccountDashboardV2(w http.ResponseWriter, r *http.Request) {
 	data, network := h.smartAccountDataForRequest(r)
+	data.BalanceFragmentHref = currentBalanceFragmentHref("smart-account", r.PathValue("id"), network, "v2", r.URL.Query().Get("mock") == "true")
 	if err := pagesv2.SmartAccount(data, network).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render v2 smart account", "contract", r.PathValue("id"), "error", err)
 	}
@@ -473,37 +475,28 @@ func mockSmartAccountDetailData(contractID, network string) pages.SmartAccountDa
 
 func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {
 	ctx := r.Context()
-	balanceLookup := h.startSmartWalletBalanceLookup(ctx, network, contractID)
-	finish := func(data pages.SmartAccountData) pages.SmartAccountData {
-		result := <-balanceLookup
-		data.Portfolio = result.portfolio
-		if result.err != nil && h.Logger != nil {
-			h.Logger.Warn("smart account balances unavailable", "contract", contractID, "network", network, "error", result.err)
-		}
-		return data
-	}
 	rulesCtx, rulesCancel := context.WithTimeout(ctx, 2*time.Second)
 	defer rulesCancel()
 	rules, rulesErr := h.Gateway.GetSmartAccountRules(rulesCtx, network, contractID, nil)
 	if rulesErr == nil && smartAccountStateHasData(rules) {
-		return finish(h.buildSmartAccountDataFromRules(ctx, network, contractID, rules)), nil
+		return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
 	}
 	detailCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	detail, err := h.Gateway.GetSmartWalletDetail(detailCtx, network, contractID)
 	if err != nil {
 		if rulesErr == nil && smartAccountStateHasData(rules) {
-			return finish(h.buildSmartAccountDataFromRules(ctx, network, contractID, rules)), nil
+			return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
 		}
 		legacy, legacyErr := h.buildSmartAccountDataLegacy(r, network, contractID)
 		if legacyErr != nil {
 			return pages.SmartAccountData{}, legacyErr
 		}
-		return finish(legacy), nil
+		return legacy, nil
 	}
 	if detail == nil {
 		if rulesErr == nil && smartAccountStateHasData(rules) {
-			return finish(h.buildSmartAccountDataFromRules(ctx, network, contractID, rules)), nil
+			return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
 		}
 		return pages.SmartAccountData{}, fmt.Errorf("smart wallet detail returned nil for %s", contractID)
 	}
@@ -514,7 +507,7 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 		if legacyErr != nil {
 			return pages.SmartAccountData{}, legacyErr
 		}
-		return finish(legacy), nil
+		return legacy, nil
 	}
 
 	name := firstNonEmpty(detail.DisplayName, smartWalletDisplayName(detail.Wallet.WalletType, detail.Wallet.Implementation), gateway.ShortAddress(contractID))
@@ -739,7 +732,7 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 		applySmartAccountStateToData(&data, rules)
 	}
 
-	return finish(data), nil
+	return data, nil
 }
 
 func smartAccountStateHasData(state *gateway.SmartAccountStateResponse) bool {

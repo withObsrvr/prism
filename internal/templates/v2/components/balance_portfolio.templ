@@ -49,6 +49,33 @@ templ BalancePortfolio(portfolio ui.BalancePortfolio) {
 	</section>
 }
 
+templ BalancePortfolioLoader(href string) {
+	<section
+		class="px-balance px-balance-loading"
+		aria-labelledby="px-balance-title"
+		aria-busy="true"
+		hx-get={ templ.SafeURL(href) }
+		hx-trigger="load"
+		hx-swap="outerHTML"
+	>
+		<span class="px-sr-only">Loading current balances</span>
+		<header class="px-balance-head">
+			<div><h2 id="px-balance-title">Current balances</h2><p>Positive XLM and token holdings indexed for this address.</p></div>
+			<span class="px-balance-skeleton-line short" aria-hidden="true"></span>
+		</header>
+		<div class="px-balance-skeleton" aria-hidden="true">
+			for range 3 {
+				<div class="px-balance-skeleton-row">
+					<span class="px-balance-skeleton-line asset"></span>
+					<span class="px-balance-skeleton-line amount"></span>
+					<span class="px-balance-skeleton-line identity"></span>
+					<span class="px-balance-skeleton-line evidence"></span>
+				</div>
+			}
+		</div>
+	</section>
+}
+
 templ balanceRow(item ui.BalanceItem) {
 	<tr>
 		<td data-label="Asset"><strong>{ item.AssetCode }</strong><span>{ item.AssetType }</span></td>

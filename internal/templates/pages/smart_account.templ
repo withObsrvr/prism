@@ -11,6 +11,7 @@ type SmartAccountData struct {
 	Name                 string
 	ContractID           string
 	Portfolio            ui.BalancePortfolio
+	BalanceFragmentHref  string
 	BadgeLabel           string
 	ClassificationSource string
 	Confidence           string
@@ -162,7 +163,11 @@ templ SmartAccount(data SmartAccountData) {
 					}
 				</div>
 			</div>
-			@balancePortfolio(data.Portfolio)
+			if data.BalanceFragmentHref != "" {
+				@BalancePortfolioLoader(data.BalanceFragmentHref)
+			} else {
+				@BalancePortfolio(data.Portfolio)
+			}
 
 			<!-- Tabs -->
 			<div class="anim d2">

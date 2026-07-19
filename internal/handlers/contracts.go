@@ -24,6 +24,7 @@ func (h *Handlers) ContractDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	data.BalanceFragmentHref = currentBalanceFragmentHref("contract", r.PathValue("id"), networkFromRequest(r), "legacy", r.URL.Query().Get("mock") == "true")
 	pages.ContractDetail(data).Render(r.Context(), w)
 }
 
@@ -32,7 +33,9 @@ func (h *Handlers) ContractDetailV2(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	pagesv2.ContractDetail(data, networkFromRequest(r)).Render(r.Context(), w)
+	network := networkFromRequest(r)
+	data.BalanceFragmentHref = currentBalanceFragmentHref("contract", r.PathValue("id"), network, "v2", r.URL.Query().Get("mock") == "true")
+	pagesv2.ContractDetail(data, network).Render(r.Context(), w)
 }
 
 func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.Request) (pages.ContractDetailData, bool) {
@@ -93,7 +96,6 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {
 	ctx := r.Context()
-	balanceLookup := h.startAddressBalanceLookup(ctx, network, contractID)
 
 	storageResp, storageErr := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
 	if storageErr != nil {
@@ -295,12 +297,6 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 			Value: ev.Value,
 		})
 	}
-	balanceResult := <-balanceLookup
-	data.Portfolio = balanceResult.portfolio
-	if balanceResult.err != nil && h.Logger != nil {
-		h.Logger.Warn("contract balances unavailable", "contract", contractID, "network", network, "error", balanceResult.err)
-	}
-
 	return data, nil
 }
 

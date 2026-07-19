@@ -6,12 +6,12 @@ Date: 2026-07-19
 
 Implemented in the current uncommitted Prism worktree on 2026-07-19:
 
-- Smart-account pages use `/silver/smart-wallets/{contract_id}/balances` alongside the fast rules path.
-- Regular contract pages use `/silver/addresses/{contract_id}/balances` without `include_tokens=true`.
+- Smart-account pages load `/silver/smart-wallets/{contract_id}/balances` through an independent htmx fragment after the fast rules-backed shell renders.
+- Regular contract pages load `/silver/addresses/{contract_id}/balances` through an independent htmx fragment without `include_tokens=true`.
 - Both documents normalize into one precision-safe portfolio view model and one shared balance presentation.
 - The smart-account hero now reports native XLM or a holdings count, with no invented USD total.
 - Issuer and token-contract identity remain visible as separate fields, so duplicate symbols are not collapsed.
-- Balance reads have a 1.5 second deadline and fail softly without replacing the requested identity with unrelated mock data.
+- Balance fragment reads have a 1.5 second deadline and fail locally without delaying the page shell or replacing the requested identity with unrelated mock data.
 - Complete, empty, partial, not-materialized, and unavailable states render explicitly on v2 and legacy detail pages.
 
 Verification completed with gateway decoding tests, handler endpoint/soft-failure tests, template rendering tests, the full race-enabled Go suite, focused `go vet`, a production build, and desktop/mobile browser review.
@@ -256,7 +256,7 @@ Work:
 3. Add `GetSmartWalletBalances(ctx, network, contractID)` for the wallet-specific document. Smart-account pages should use this tailored response.
 4. Normalize both transport documents into the shared `BalancePortfolio` presentation model.
 5. Cache by network, endpoint kind, and address for 30 seconds, matching account data freshness.
-6. Add a strict request timeout shorter than the page write timeout. Balance failure must be soft at the handler layer.
+6. Add a strict request timeout to the independent balance fragments. Balance failure must be local to the balance section.
 7. Add string-based balance formatting and stable asset identity/sorting helpers with focused unit tests.
 
 Acceptance:
@@ -280,16 +280,17 @@ Files:
 
 Work:
 
-1. Start rules and balance reads concurrently with independent short deadlines.
-2. Keep the fast rules-backed smart-account path. Do not reintroduce wallet-detail, transfer-history, or account-overview calls into the primary render.
-3. Apply balance data to the rules-backed view model before returning it.
+1. Render the rules-backed smart-account shell without starting or waiting for a balance request.
+2. Load the dedicated wallet balance document from an htmx fragment with its own short deadline.
+3. Return the balance table and an out-of-band hero update from the same fragment so the shell stays internally consistent.
 4. Replace the overloaded `TotalBalance`/`BalanceCents` contract with the shared portfolio model.
 5. Correct the hero semantics and add the shared balance table.
 6. Replace real-route mock fallback with requested-identity unavailable data.
 
 Acceptance:
 
-- The existing test that protects the fast rules path continues to reject wallet-detail and transfer calls, but now expects one dedicated balance request.
+- The existing test that protects the fast rules path rejects wallet-detail, transfer, and balance calls from the initial render.
+- A fragment test expects exactly one dedicated wallet balance request and verifies the hero update.
 - CC3L3 shows XLM in the hero and all three assets in the table.
 - CA4ID shows `9 current holdings`, no USD label, and all duplicate symbols remain distinguishable.
 - A balance timeout does not remove rules, signers, policies, or health content.
@@ -307,8 +308,8 @@ Files:
 Work:
 
 1. Add `BalancePortfolio` to `ContractDetailData`.
-2. Fetch balances from the generic `/silver/addresses/{contract_id}/balances` document independently from metadata, analytics, storage, and recent calls. Do not request `include_tokens=true`.
-3. Prefer an htmx fragment or a concurrent soft dependency so a slow balance response cannot delay the full page.
+2. Fetch balances from the generic `/silver/addresses/{contract_id}/balances` document in an independent htmx fragment. Do not request `include_tokens=true`.
+3. Render the contract shell without starting or waiting for the balance request; the fragment owns its deadline and local error state.
 4. Add the shared section after contract identity and trust evidence.
 5. Keep the smart-account redirect unchanged. Classified smart accounts still land on the smart-account detail page.
 6. Use the four full non-wallet IDs recorded below as live smoke fixtures.

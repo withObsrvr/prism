@@ -54,3 +54,52 @@ func TestContractRendersBalanceUnavailableWithoutHidingDetail(t *testing.T) {
 		}
 	}
 }
+
+func TestSmartAccountShellLoadsBalancesWithoutRenderingUnavailableState(t *testing.T) {
+	data := legacy.SmartAccountData{
+		Name:                "Smart account",
+		ContractID:          "CWALLET",
+		BalanceFragmentHref: "/fragments/smart-account/CWALLET/balances?network=testnet&surface=v2",
+	}
+	var html strings.Builder
+	if err := SmartAccount(data, "testnet").Render(context.Background(), &html); err != nil {
+		t.Fatalf("render SmartAccount: %v", err)
+	}
+	output := html.String()
+	for _, want := range []string{
+		`hx-get="/fragments/smart-account/CWALLET/balances?network=testnet&amp;surface=v2"`,
+		`hx-trigger="load"`,
+		"Loading current balances",
+		`id="px-smart-balance-hero"`,
+		"Balance data",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("rendered smart-account shell missing %q", want)
+		}
+	}
+	if strings.Contains(output, "Balances are temporarily unavailable") {
+		t.Error("loading shell rendered a failure state before the fragment completed")
+	}
+}
+
+func TestContractShellLoadsBalancesWithoutBlockingDetail(t *testing.T) {
+	data := legacy.ContractDetailData{
+		Name:                "Market contract",
+		Address:             "CCONTRACT",
+		Narrative:           "A market contract with observed activity.",
+		BalanceFragmentHref: "/fragments/contract/CCONTRACT/balances?network=testnet&surface=v2",
+	}
+	var html strings.Builder
+	if err := ContractDetail(data, "testnet").Render(context.Background(), &html); err != nil {
+		t.Fatalf("render ContractDetail: %v", err)
+	}
+	output := html.String()
+	for _, want := range []string{"Market contract", "A market contract with observed activity.", `hx-trigger="load"`, "Loading current balances"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("rendered contract shell missing %q", want)
+		}
+	}
+	if strings.Contains(output, "Balances are temporarily unavailable") {
+		t.Error("loading shell rendered a failure state before the fragment completed")
+	}
+}

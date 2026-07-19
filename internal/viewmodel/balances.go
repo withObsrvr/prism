@@ -6,7 +6,8 @@ import (
 )
 
 // BalancePortfolio is the presentation contract shared by account and contract pages.
-// Balance strings remain decimal strings so the UI never loses ledger precision.
+// Balance amounts are formatted with string operations only, preserving ledger
+// precision while adding display separators and trimming redundant zeroes.
 type BalancePortfolio struct {
 	OwnerID       string
 	NativeBalance string
