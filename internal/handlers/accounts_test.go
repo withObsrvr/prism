@@ -196,6 +196,9 @@ func TestBuildSmartAccountDataUsesRulesWithoutSlowEnrichment(t *testing.T) {
 				"count":1,
 				"context_rules":[{"context_rule_id":1,"active":true,"signers":[{"signer_type":"external","credential_id":"cred"}],"policies":[{"policy_address":"CPOLICY"}]}]
 			}`, contractID, contractID)
+		case "/lake/v1/testnet/api/v1/silver/smart-wallets/" + contractID + "/balances":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{"contract_id":%q,"native_balance":"9995.0000000","balances":[{"asset_code":"XLM","asset_type":"native","balance":"9995.0000000","balance_source":"contract_storage_state"}],"count":1,"balance_status":"materialized"}`, contractID)
 		case "/lake/v1/testnet/api/v1/silver/smart-wallets/" + contractID,
 			"/lake/v1/testnet/api/v1/silver/smart-wallet/" + contractID,
 			"/lake/v1/testnet/api/v1/silver/transfers":
@@ -224,6 +227,9 @@ func TestBuildSmartAccountDataUsesRulesWithoutSlowEnrichment(t *testing.T) {
 	}
 	if len(data.ActivityLog) != 0 {
 		t.Fatalf("activity should not be loaded in primary render, got %d rows", len(data.ActivityLog))
+	}
+	if !data.Portfolio.Available || data.Portfolio.NativeBalance != "9,995" || len(data.Portfolio.Items) != 1 {
+		t.Fatalf("balance portfolio not mapped: %+v", data.Portfolio)
 	}
 }
 

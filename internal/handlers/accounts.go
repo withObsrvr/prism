@@ -413,68 +413,108 @@ func (h *Handlers) smartAccountDataForRequest(r *http.Request) (pages.SmartAccou
 		}
 	}
 	if data.ContractID == "" {
-		data = pages.SmartAccountData{
-			Name:                 "Treasury Multisig",
-			ContractID:           "CDLZ...Q8M4",
-			TotalBalance:         "$87,204",
-			BalanceCents:         ".51",
-			BadgeLabel:           "Smart Wallet",
-			ClassificationSource: "Mock",
-			ApprovalSummary:      "2 of 3 signers required for protected actions",
-			PartialData:          true,
-			ActiveWindows:        []string{"09:00-12:00 UTC"},
-			CommonFunctions: []pages.SmartFunctionSummary{
-				{Name: "execute", Count: "14"},
-				{Name: "approve", Count: "8"},
-			},
-			Signers: []pages.SmartSigner{
-				{Name: "Owner Key", Role: "Admin", RoleColor: "amber", Address: "GBXC...4K71", KeyType: "Ed25519", Weight: "10", IconSVG: "key", IconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-800"},
-				{Name: "Operations Signer", Role: "Signer", RoleColor: "blue", Address: "GDEF...9R23", KeyType: "Ed25519", Weight: "10", IconSVG: "user", IconBg: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-100 dark:ring-blue-800"},
-				{Name: "Recovery Signer", Role: "Recovery", RoleColor: "emerald", Address: "GHIJ...2M56", KeyType: "Ed25519", Weight: "10", IconSVG: "recovery", IconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-800"},
-			},
-			LowThreshold:   "10",
-			MedThreshold:   "20",
-			HighThreshold:  "20",
-			MasterWeight:   "10",
-			RequiredWeight: "20",
-			TotalWeight:    "30",
-			MinSigners:     "2 of 3",
-			Health:         pages.ContractHealth{RentStatus: "Healthy", TTLRemaining: "~58 days", WASMHash: "0xa4f2...c8b1", OZVersion: "v0.5.0", Deployed: "Oct 2, 2026"},
-		}
-		if len(data.SecurityLog) == 0 {
-			data.SecurityLog = []pages.SecurityEvent{{Action: "Wallet detected", Detail: "Using fallback mock data", Time: "—", Status: "Info", StatusColor: "blue"}}
+		if r.URL.Query().Get("mock") == "true" {
+			data = mockSmartAccountDetailData(id, network)
+		} else {
+			data = unavailableSmartAccountDetailData(id)
 		}
 	}
 	return data, network
 }
 
+func unavailableSmartAccountDetailData(contractID string) pages.SmartAccountData {
+	return pages.SmartAccountData{
+		Name:                 gateway.ShortAddress(contractID),
+		ContractID:           contractID,
+		Portfolio:            unavailableBalancePortfolio(contractID),
+		BadgeLabel:           "Smart Account",
+		ClassificationSource: "Live data unavailable",
+		ApprovalSummary:      "Smart-account controls could not be loaded from the selected network.",
+		PartialData:          true,
+		OverviewTabLabel:     "Overview",
+		SecurityTabLabel:     "Security",
+		ActivityTabLabel:     "Activity",
+		MinSigners:           "unknown",
+		Health:               pages.ContractHealth{RentStatus: "unknown", TTLRemaining: "unknown", WASMHash: "unknown", OZVersion: "unknown", Deployed: "unknown"},
+	}
+}
+
+func mockSmartAccountDetailData(contractID, network string) pages.SmartAccountData {
+	if contractID == "" {
+		contractID = "CDLZQ8M4"
+	}
+	data := pages.SmartAccountData{
+		Name:                 "Treasury Multisig",
+		ContractID:           contractID,
+		BadgeLabel:           "Smart Wallet",
+		ClassificationSource: "Mock",
+		ApprovalSummary:      "2 of 3 signers required for protected actions",
+		PartialData:          true,
+		OverviewTabLabel:     "Overview",
+		SecurityTabLabel:     "Security",
+		ActivityTabLabel:     "Activity",
+		ActiveWindows:        []string{"09:00-12:00 UTC"},
+		CommonFunctions:      []pages.SmartFunctionSummary{{Name: "execute", Count: "14"}, {Name: "approve", Count: "8"}},
+		Signers: []pages.SmartSigner{
+			{Name: "Owner Key", Role: "Admin", RoleColor: "amber", Address: "GBXC...4K71", KeyType: "Ed25519", Weight: "10", IconSVG: "key", IconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-800"},
+			{Name: "Operations Signer", Role: "Signer", RoleColor: "blue", Address: "GDEF...9R23", KeyType: "Ed25519", Weight: "10", IconSVG: "user", IconBg: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-100 dark:ring-blue-800"},
+			{Name: "Recovery Signer", Role: "Recovery", RoleColor: "emerald", Address: "GHIJ...2M56", KeyType: "Ed25519", Weight: "10", IconSVG: "recovery", IconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-800"},
+		},
+		LowThreshold: "10", MedThreshold: "20", HighThreshold: "20", MasterWeight: "10", RequiredWeight: "20", TotalWeight: "30", MinSigners: "2 of 3",
+		Health:      pages.ContractHealth{RentStatus: "Healthy", TTLRemaining: "~58 days", WASMHash: "0xa4f2...c8b1", OZVersion: "v0.5.0", Deployed: "Oct 2, 2026"},
+		SecurityLog: []pages.SecurityEvent{{Action: "Wallet detected", Detail: "Using explicit mock data", Time: "unknown", Status: "Info", StatusColor: "blue"}},
+	}
+	data.Portfolio = smartWalletBalancePortfolio(&gateway.SmartWalletBalancesResponse{
+		ContractID: contractID, NativeBalance: "87204.5100000", NativeBalanceSource: "contract_storage_state", Count: 1, BalanceStatus: "materialized",
+		Balances: []gateway.SmartWalletBalance{{AssetCode: "XLM", AssetType: "native", Balance: "87204.5100000", BalanceSource: "contract_storage_state"}},
+	}, network)
+	return data
+}
+
 func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID string) (pages.SmartAccountData, error) {
 	ctx := r.Context()
+	balanceLookup := h.startSmartWalletBalanceLookup(ctx, network, contractID)
+	finish := func(data pages.SmartAccountData) pages.SmartAccountData {
+		result := <-balanceLookup
+		data.Portfolio = result.portfolio
+		if result.err != nil && h.Logger != nil {
+			h.Logger.Warn("smart account balances unavailable", "contract", contractID, "network", network, "error", result.err)
+		}
+		return data
+	}
 	rulesCtx, rulesCancel := context.WithTimeout(ctx, 2*time.Second)
 	defer rulesCancel()
 	rules, rulesErr := h.Gateway.GetSmartAccountRules(rulesCtx, network, contractID, nil)
 	if rulesErr == nil && smartAccountStateHasData(rules) {
-		return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
+		return finish(h.buildSmartAccountDataFromRules(ctx, network, contractID, rules)), nil
 	}
 	detailCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	detail, err := h.Gateway.GetSmartWalletDetail(detailCtx, network, contractID)
 	if err != nil {
 		if rulesErr == nil && smartAccountStateHasData(rules) {
-			return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
+			return finish(h.buildSmartAccountDataFromRules(ctx, network, contractID, rules)), nil
 		}
-		return h.buildSmartAccountDataLegacy(r, network, contractID)
+		legacy, legacyErr := h.buildSmartAccountDataLegacy(r, network, contractID)
+		if legacyErr != nil {
+			return pages.SmartAccountData{}, legacyErr
+		}
+		return finish(legacy), nil
 	}
 	if detail == nil {
 		if rulesErr == nil && smartAccountStateHasData(rules) {
-			return h.buildSmartAccountDataFromRules(ctx, network, contractID, rules), nil
+			return finish(h.buildSmartAccountDataFromRules(ctx, network, contractID, rules)), nil
 		}
 		return pages.SmartAccountData{}, fmt.Errorf("smart wallet detail returned nil for %s", contractID)
 	}
 
 	walletLike := detail.IsSmartWallet || detail.Contract.InterfaceType == "smart_wallet" || len(detail.Timeline) > 0 || len(detail.Contract.ObservedFunctions) > 0 || smartAccountStateHasData(rules)
 	if !walletLike {
-		return h.buildSmartAccountDataLegacy(r, network, contractID)
+		legacy, legacyErr := h.buildSmartAccountDataLegacy(r, network, contractID)
+		if legacyErr != nil {
+			return pages.SmartAccountData{}, legacyErr
+		}
+		return finish(legacy), nil
 	}
 
 	name := firstNonEmpty(detail.DisplayName, smartWalletDisplayName(detail.Wallet.WalletType, detail.Wallet.Implementation), gateway.ShortAddress(contractID))
@@ -487,8 +527,6 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 	data := pages.SmartAccountData{
 		Name:                 name,
 		ContractID:           contractID,
-		TotalBalance:         "—",
-		BalanceCents:         "",
 		BadgeLabel:           badgeLabel,
 		OverviewTabLabel:     "Overview",
 		SecurityTabLabel:     "Security",
@@ -642,28 +680,6 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 		})
 	}
 
-	if bal := smartWalletPrimaryBalance(detail); bal != nil {
-		data.TotalBalance = firstNonEmpty(bal.Balance, "—")
-		if bal.AssetType == "native" || strings.EqualFold(bal.AssetCode, "XLM") || bal.AssetCode == "" {
-			data.BalanceCents = "XLM"
-		} else {
-			data.BalanceCents = strings.ToUpper(bal.AssetCode)
-		}
-	}
-
-	if acctData, err := h.buildAccountData(r, network, contractID); err == nil {
-		if (data.TotalBalance == "—" || data.TotalBalance == "0" || data.TotalBalance == "0.0000000") && acctData.XLMBalance != "" {
-			parts := strings.SplitN(acctData.XLMBalance, " ", 2)
-			data.TotalBalance = parts[0]
-			if len(parts) > 1 {
-				data.BalanceCents = parts[1]
-			}
-		}
-		if data.Health.Deployed == "—" {
-			data.Health.Deployed = acctData.CreatedAt
-		}
-	}
-
 	if len(data.Signers) == 0 {
 		if walletInfo, err := h.Gateway.GetSmartWalletInfo(ctx, network, contractID); err == nil && walletInfo != nil {
 			data.SignerSourceLabel = smartWalletSignerSourceLabel(true, false, "wallet_detection")
@@ -723,7 +739,7 @@ func (h *Handlers) buildSmartAccountData(r *http.Request, network, contractID st
 		applySmartAccountStateToData(&data, rules)
 	}
 
-	return data, nil
+	return finish(data), nil
 }
 
 func smartAccountStateHasData(state *gateway.SmartAccountStateResponse) bool {
@@ -736,7 +752,6 @@ func (h *Handlers) buildSmartAccountDataFromRules(ctx context.Context, network, 
 	data := pages.SmartAccountData{
 		Name:                 gateway.ShortAddress(contractID),
 		ContractID:           contractID,
-		TotalBalance:         "—",
 		BadgeLabel:           "Smart Account",
 		OverviewTabLabel:     "Overview",
 		SecurityTabLabel:     "Security",
@@ -1037,8 +1052,6 @@ func (h *Handlers) buildSmartAccountDataLegacy(r *http.Request, network, contrac
 	data := pages.SmartAccountData{
 		Name:                 name,
 		ContractID:           contractID,
-		TotalBalance:         "—",
-		BalanceCents:         "",
 		BadgeLabel:           "Smart Wallet",
 		OverviewTabLabel:     "Overview",
 		SecurityTabLabel:     "Security",
@@ -1568,19 +1581,6 @@ func smartWalletDateLabel(raw string) string {
 		}
 	}
 	return raw
-}
-
-func smartWalletPrimaryBalance(detail *gateway.SmartWalletDetail) *gateway.SmartWalletDetailBalance {
-	if detail == nil || len(detail.Account.Balances) == 0 {
-		return nil
-	}
-	for i := range detail.Account.Balances {
-		bal := &detail.Account.Balances[i]
-		if bal.AssetType == "native" || strings.EqualFold(bal.AssetCode, "XLM") {
-			return bal
-		}
-	}
-	return &detail.Account.Balances[0]
 }
 
 func firstRune(s string) string {

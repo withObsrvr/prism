@@ -81,7 +81,11 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 		}
 	}
 	if data.Address == "" {
-		data = mockContractDetailData()
+		if r.URL.Query().Get("mock") == "true" {
+			data = mockContractDetailData()
+		} else {
+			data = unavailableContractDetailData(id, network)
+		}
 	}
 
 	return data, true
@@ -89,6 +93,7 @@ func (h *Handlers) contractDetailDataForRequest(w http.ResponseWriter, r *http.R
 
 func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID string) (pages.ContractDetailData, error) {
 	ctx := r.Context()
+	balanceLookup := h.startAddressBalanceLookup(ctx, network, contractID)
 
 	storageResp, storageErr := h.Gateway.GetContractStorage(ctx, network, contractID, 100)
 	if storageErr != nil {
@@ -290,6 +295,11 @@ func (h *Handlers) buildContractDetailData(r *http.Request, network, contractID 
 			Value: ev.Value,
 		})
 	}
+	balanceResult := <-balanceLookup
+	data.Portfolio = balanceResult.portfolio
+	if balanceResult.err != nil && h.Logger != nil {
+		h.Logger.Warn("contract balances unavailable", "contract", contractID, "network", network, "error", balanceResult.err)
+	}
 
 	return data, nil
 }
@@ -362,6 +372,7 @@ func unavailableContractDetailData(contractID string, network string) pages.Cont
 		TotalInvocations: "—",
 		FunctionsCount:   "—",
 		SuccessRate:      "—",
+		Portfolio:        unavailableBalancePortfolio(contractID),
 		Narrative:        short + " could not be loaded from live " + network + " data right now.",
 		Context:          "Prism did not fall back to mock data for this page so the live-data issue is visible during QA.",
 		Signals: []pages.ContractHumanSignal{{

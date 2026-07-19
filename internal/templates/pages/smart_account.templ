@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/withObsrvr/prism/internal/templates/components"
 	"github.com/withObsrvr/prism/internal/templates/layouts"
+	ui "github.com/withObsrvr/prism/internal/viewmodel"
 )
 
 type SmartAccountData struct {
 	Name                 string
 	ContractID           string
-	TotalBalance         string
-	BalanceCents         string
+	Portfolio            ui.BalancePortfolio
 	BadgeLabel           string
 	ClassificationSource string
 	Confidence           string
@@ -154,12 +154,15 @@ templ SmartAccount(data SmartAccountData) {
 
 			<!-- Balance -->
 			<div class="anim d1 mb-10">
-				<div class="text-sm font-medium text-text-body mb-1">Total Balance</div>
+				<div class="text-sm font-medium text-text-body mb-1">{ data.Portfolio.HeroLabel() }</div>
 				<div class="flex items-baseline">
-					<span class="text-3xl md:text-[56px] font-semibold leading-none tracking-tight text-text-primary">{ data.TotalBalance }</span>
-					<span class="text-[28px] font-medium leading-none text-text-muted">{ data.BalanceCents }</span>
+					<span class="text-3xl md:text-[56px] font-semibold leading-none tracking-tight text-text-primary">{ data.Portfolio.HeroValue() }</span>
+					if data.Portfolio.HeroUnit() != "" {
+						<span class="ml-2 text-[28px] font-medium leading-none text-text-muted">{ data.Portfolio.HeroUnit() }</span>
+					}
 				</div>
 			</div>
+			@balancePortfolio(data.Portfolio)
 
 			<!-- Tabs -->
 			<div class="anim d2">

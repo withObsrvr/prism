@@ -14,6 +14,47 @@ import (
 	"time"
 )
 
+func TestClientBalanceEndpoints(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/lake/v1/testnet/api/v1/silver/addresses/CABC/balances":
+			_, _ = io.WriteString(w, `{"address":"CABC","balances":[{"asset_type":"native","asset_code":"XLM","balance_raw":"99950000000","balance":"9995.0000000","decimals":7,"decimals_source":"stellar_native","balance_source":"contract_storage_state","last_updated_ledger":3689307,"last_updated_at":"2026-07-19T12:00:00Z"}],"total_balances":1,"sources":["contract_storage_state"],"partial":true,"warnings":["optional transfer history omitted"]}`)
+		case "/lake/v1/testnet/api/v1/silver/smart-wallets/CABC/balances":
+			_, _ = io.WriteString(w, `{"contract_id":"CABC","native_balance":"9995.0000000","native_balance_source":"contract_storage_state","balances":[{"asset_code":"XLM","asset_type":"native","balance":"9995.0000000","decimals":7,"symbol":"XLM","balance_source":"contract_storage_state"},{"asset_code":"USDC","asset_type":"credit_alphanum4","asset_issuer":"GISSUER","balance":"7.0000000","decimals":7,"symbol":"USDC","token_contract_id":"CTOKEN","balance_source":"contract_storage_state"}],"count":2,"partial":false,"balance_status":"materialized"}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	address, err := client.GetAddressBalances(context.Background(), "testnet", "CABC")
+	if err != nil {
+		t.Fatalf("GetAddressBalances error: %v", err)
+	}
+	if address.Address != "CABC" || address.TotalBalances != 1 || !address.Partial {
+		t.Fatalf("address response = %+v", address)
+	}
+	if got := address.Balances[0]; got.BalanceRaw != "99950000000" || got.LastUpdatedLedger == nil || *got.LastUpdatedLedger != 3689307 {
+		t.Fatalf("address balance = %+v", got)
+	}
+
+	wallet, err := client.GetSmartWalletBalances(context.Background(), "testnet", "CABC")
+	if err != nil {
+		t.Fatalf("GetSmartWalletBalances error: %v", err)
+	}
+	if wallet.ContractID != "CABC" || wallet.NativeBalance != "9995.0000000" || wallet.Count != 2 || wallet.BalanceStatus != "materialized" {
+		t.Fatalf("wallet response = %+v", wallet)
+	}
+	if got := wallet.Balances[1]; got.AssetCode != "USDC" || got.AssetIssuer != "GISSUER" || got.TokenContractID != "CTOKEN" {
+		t.Fatalf("wallet balance = %+v", got)
+	}
+}
+
 func TestClientCoalescesRecentLedgerCacheMisses(t *testing.T) {
 	var calls atomic.Int32
 	started := make(chan struct{})

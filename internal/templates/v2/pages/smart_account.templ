@@ -16,6 +16,7 @@ templ SmartAccount(data legacy.SmartAccountData, network string) {
 		<div class="px-tx-page"><div class="px-tx-page-inner">
 			<main class="px-tx-main">
 				@smartIdentity(data)
+				@componentsv2.BalancePortfolio(data.Portfolio)
 				@smartControls(data)
 				@smartEvidenceTabs(data)
 			</main>
@@ -34,7 +35,12 @@ templ smartIdentity(data legacy.SmartAccountData) {
 					<div class="px-ga-hero-address"><span class="k">Contract</span><code>{ saChunk(data.ContractID) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.ContractID } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button></div>
 				</div>
 				<div class="px-ga-hero-portfolio" aria-label="Smart account summary">
-					<div class="px-ga-hero-balance"><span class="k">Estimated value</span><span class="v mono">{ data.TotalBalance }</span><span class="unit">{ data.BalanceCents } USD</span></div>
+					<div class="px-ga-hero-balance">
+						<span class="k">{ data.Portfolio.HeroLabel() }</span><span class="v mono">{ data.Portfolio.HeroValue() }</span>
+						if data.Portfolio.HeroUnit() != "" {
+							<span class="unit">{ data.Portfolio.HeroUnit() }</span>
+						}
+					</div>
 					<div class="px-ga-hero-facts"><div><span>Approval</span><b>{ saFirst(data.MinSigners, data.ApprovalSummary) }</b></div><div><span>Signers</span><b>{ fmt.Sprintf("%d keys", len(data.Signers)) }</b></div><div><span>TTL</span><b>{ saFirst(data.Health.TTLRemaining, "unknown") }</b></div></div>
 					<div class="px-sa-confidence"><span>Prism confidence</span><b>{ saFirst(data.Confidence, "behavior detected") }</b><p>{ saFirst(data.ApprovalSummary, "Prism detected smart-wallet behavior, signer hints, and contract metadata for this account.") }</p></div>
 				</div>

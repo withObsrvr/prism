@@ -465,6 +465,33 @@ type AccountAsset struct {
 	Limit          string `json:"limit"`
 }
 
+// AddressBalancesResponse matches /silver/addresses/{address}/balances.
+// It is the canonical current-balance document for both G-address accounts
+// and C-address contracts.
+type AddressBalancesResponse struct {
+	Address       string           `json:"address"`
+	Balances      []AddressBalance `json:"balances"`
+	TotalBalances int              `json:"total_balances"`
+	Sources       []string         `json:"sources"`
+	Partial       bool             `json:"partial"`
+	Warnings      []string         `json:"warnings,omitempty"`
+}
+
+type AddressBalance struct {
+	AssetType         string `json:"asset_type"`
+	AssetCode         string `json:"asset_code,omitempty"`
+	AssetIssuer       string `json:"asset_issuer,omitempty"`
+	ContractID        string `json:"contract_id,omitempty"`
+	Symbol            string `json:"symbol,omitempty"`
+	BalanceRaw        string `json:"balance_raw"`
+	Balance           string `json:"balance"`
+	Decimals          *int   `json:"decimals,omitempty"`
+	DecimalsSource    string `json:"decimals_source,omitempty"`
+	BalanceSource     string `json:"balance_source"`
+	LastUpdatedLedger *int64 `json:"last_updated_ledger,omitempty"`
+	LastUpdatedAt     string `json:"last_updated_at,omitempty"`
+}
+
 // AccountSigners matches /silver/accounts/signers response.
 type AccountSignersResp struct {
 	AccountID  string           `json:"account_id"`
@@ -921,6 +948,30 @@ type SmartWalletDetailBalance struct {
 	AssetType string `json:"asset_type,omitempty"`
 	Balance   string `json:"balance,omitempty"`
 	ValueUSD  any    `json:"value_usd,omitempty"`
+}
+
+// SmartWalletBalancesResponse matches
+// /silver/smart-wallets/{contract_id}/balances.
+type SmartWalletBalancesResponse struct {
+	ContractID          string               `json:"contract_id"`
+	NativeBalance       string               `json:"native_balance,omitempty"`
+	NativeBalanceSource string               `json:"native_balance_source,omitempty"`
+	Balances            []SmartWalletBalance `json:"balances"`
+	Count               int                  `json:"count"`
+	Partial             bool                 `json:"partial"`
+	BalanceStatus       string               `json:"balance_status,omitempty"`
+}
+
+type SmartWalletBalance struct {
+	AssetCode       string `json:"asset_code,omitempty"`
+	AssetType       string `json:"asset_type,omitempty"`
+	AssetIssuer     string `json:"asset_issuer,omitempty"`
+	Balance         string `json:"balance,omitempty"`
+	ValueUSD        any    `json:"value_usd,omitempty"`
+	Decimals        *int   `json:"decimals,omitempty"`
+	Symbol          string `json:"symbol,omitempty"`
+	TokenContractID string `json:"token_contract_id,omitempty"`
+	BalanceSource   string `json:"balance_source,omitempty"`
 }
 
 type SmartWalletDetailSignerConfig struct {

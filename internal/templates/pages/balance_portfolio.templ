@@ -1,0 +1,105 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/withObsrvr/prism/internal/gateway"
+	ui "github.com/withObsrvr/prism/internal/viewmodel"
+)
+
+templ balancePortfolio(portfolio ui.BalancePortfolio) {
+	<section class="anim d1 mb-8 rounded-xl border border-border-default bg-surface-card shadow-sm" aria-labelledby="balance-portfolio-title">
+		<div class="flex flex-wrap items-start justify-between gap-3 border-b border-border-default px-5 py-4">
+			<div>
+				<h2 id="balance-portfolio-title" class="text-base font-semibold text-text-primary">Current balances</h2>
+				<p class="mt-1 text-sm text-text-muted">Positive XLM and token holdings indexed for this address.</p>
+			</div>
+			if portfolio.Available {
+				<div class="text-right">
+					<div class="font-mono text-sm font-semibold text-text-primary">{ fmt.Sprintf("%d holdings", portfolio.DisplayCount()) }</div>
+					if portfolio.SourceLabel != "" {
+						<div class="mt-1 text-xs text-text-muted">{ portfolio.SourceLabel }</div>
+					}
+				</div>
+			}
+		</div>
+		if !portfolio.Available {
+			<div class="px-5 py-6 text-sm text-text-body">
+				<div class="font-medium text-text-primary">Balances are temporarily unavailable</div>
+				<p class="mt-1 text-text-muted">Other contract details remain available. Refresh to try this balance source again.</p>
+			</div>
+		} else if portfolio.NotMaterialized() {
+			<div class="px-5 py-6 text-sm text-text-muted">Current balances have not been materialized for this contract yet.</div>
+		} else if len(portfolio.Items) == 0 {
+			<div class="px-5 py-6 text-sm text-text-muted">No positive current balances were returned from the available sources.</div>
+		} else {
+			<div class="overflow-x-auto">
+				<table class="w-full min-w-[820px] text-left text-sm">
+					<thead class="bg-surface-subtle text-2xs font-semibold uppercase tracking-wider text-text-muted">
+						<tr><th class="px-5 py-3">Asset</th><th class="px-5 py-3 text-right">Balance</th><th class="px-5 py-3">Issuer</th><th class="px-5 py-3">Token contract</th><th class="px-5 py-3">Evidence</th></tr>
+					</thead>
+					<tbody class="divide-y divide-border-default">
+						for i, item := range portfolio.Items {
+							if i < 10 {
+								@balancePortfolioRow(item)
+							}
+						}
+					</tbody>
+				</table>
+			</div>
+			if portfolio.HasMore(10) {
+				<details class="border-t border-border-default">
+					<summary class="cursor-pointer px-5 py-3 text-sm font-medium text-emerald-700 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">{ fmt.Sprintf("Show %d more", portfolio.Remaining(10)) }</summary>
+					<div class="overflow-x-auto border-t border-border-default">
+						<table class="w-full min-w-[820px] text-left text-sm">
+							<tbody class="divide-y divide-border-default">
+								for i, item := range portfolio.Items {
+									if i >= 10 {
+										@balancePortfolioRow(item)
+									}
+								}
+							</tbody>
+						</table>
+					</div>
+				</details>
+			}
+			if portfolio.Partial {
+				<div class="border-t border-border-default bg-surface-subtle px-5 py-3 text-xs text-text-muted">Current materialized balances are shown. Optional transfer-history enrichment was not included.</div>
+			}
+		}
+	</section>
+}
+
+templ balancePortfolioRow(item ui.BalanceItem) {
+	<tr class="align-top">
+		<td class="px-5 py-3"><span class="font-semibold text-text-primary">{ item.AssetCode }</span><div class="mt-0.5 text-xs text-text-muted">{ item.AssetType }</div></td>
+		<td class="px-5 py-3 text-right font-mono font-semibold tabular-nums text-text-primary">{ item.Balance }</td>
+		<td class="px-5 py-3 font-mono text-xs text-text-body">
+			if item.AssetIssuer != "" {
+				if item.IssuerHref != "" {
+					<a class="text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" href={ templ.SafeURL(item.IssuerHref) } title={ item.AssetIssuer }>{ gateway.ShortAddress(item.AssetIssuer) }</a>
+				} else {
+					<span title={ item.AssetIssuer }>{ gateway.ShortAddress(item.AssetIssuer) }</span>
+				}
+			} else {
+				<span class="font-sans text-text-muted">Native asset</span>
+			}
+		</td>
+		<td class="px-5 py-3 font-mono text-xs text-text-body">
+			if item.TokenContractID != "" {
+				if item.TokenHref != "" {
+					<a class="text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" href={ templ.SafeURL(item.TokenHref) } title={ item.TokenContractID }>{ gateway.ShortAddress(item.TokenContractID) }</a>
+				} else {
+					<span title={ item.TokenContractID }>{ gateway.ShortAddress(item.TokenContractID) }</span>
+				}
+			} else {
+				<span class="font-sans text-text-muted">Not applicable</span>
+			}
+		</td>
+		<td class="px-5 py-3 text-xs text-text-muted">
+			<div>{ item.SourceLabel }</div>
+			if item.LastUpdatedLedger != nil {
+				<div class="mt-0.5 font-mono">Ledger { fmt.Sprintf("%d", *item.LastUpdatedLedger) }</div>
+			}
+		</td>
+	</tr>
+}
