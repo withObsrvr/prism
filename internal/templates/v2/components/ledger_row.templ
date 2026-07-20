@@ -8,15 +8,18 @@ type LedgerMetricChip struct {
 }
 
 type LedgerRowData struct {
-	LedgerNumber       string
-	TransactionCount   string
-	Meta               string
-	Chips              []LedgerMetricChip
-	InstructionsPct    int
-	ReadWritePct       int
-	CloseTime          string
-	Age                string
-	SideMeta           string
+	LedgerNumber             string
+	TransactionCount         string
+	IncludedOperationCount   string
+	SuccessfulOperationCount string
+	FailedOperationCount     string
+	Meta                     string
+	Chips                    []LedgerMetricChip
+	InstructionsPct          int
+	ReadWritePct             int
+	CloseTime                string
+	Age                      string
+	SideMeta                  string
 }
 
 templ LedgerRow(data LedgerRowData) {
@@ -78,6 +81,18 @@ func chipColor(kind string) string {
 		return "var(--v2-blue)"
 	case "classic":
 		return "#d6c29b"
+	case "account":
+		return "var(--v2-gold)"
+	case "payment", "trustline":
+		return "var(--v2-teal)"
+	case "market":
+		return "var(--v2-teal)"
+	case "claimable":
+		return "var(--v2-blue)"
+	case "sponsorship":
+		return "var(--v2-orange)"
+	case "soroban":
+		return "var(--v2-violet)"
 	default:
 		return "#c5b9a8"
 	}

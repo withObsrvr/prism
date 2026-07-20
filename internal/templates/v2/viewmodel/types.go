@@ -27,15 +27,18 @@ type FilterChipData struct {
 }
 
 type LedgerRowData struct {
-	LedgerNumber     string
-	TransactionCount string
-	Meta             string
-	Chips            []componentsv2.LedgerMetricChip
-	InstructionsPct  int
-	ReadWritePct     int
-	CloseTime        string
-	Age              string
-	SideMeta         string
+	LedgerNumber             string
+	TransactionCount         string
+	IncludedOperationCount   string
+	SuccessfulOperationCount string
+	FailedOperationCount     string
+	Meta                     string
+	Chips                    []componentsv2.LedgerMetricChip
+	InstructionsPct          int
+	ReadWritePct             int
+	CloseTime                string
+	Age                      string
+	SideMeta                 string
 }
 
 type LedgerFeedData struct {

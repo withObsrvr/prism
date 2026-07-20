@@ -55,21 +55,20 @@ templ Home(data vmv2.HomeData) {
 					age: document.getElementById('ph-focus-age'),
 					meta: document.getElementById('ph-focus-meta'),
 					chips: document.getElementById('ph-focus-chips'),
-					instructions: document.getElementById('ph-focus-instructions'),
-					instructionsBar: document.getElementById('ph-focus-instructions-bar'),
-					readwrite: document.getElementById('ph-focus-readwrite'),
-					readwriteBar: document.getElementById('ph-focus-readwrite-bar'),
+					includedOperations: document.getElementById('ph-focus-operations-included'),
+					successfulOperations: document.getElementById('ph-focus-operations-successful'),
+					failedOperations: document.getElementById('ph-focus-operations-failed'),
 					refraction: document.getElementById('ph-focus-refraction')
 				};
 				var inFlight = false;
 				function esc(s){ return String(s == null ? '' : s).replace(/[&<>\"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]; }); }
-				function cls(k){ return ({swap:'swap', call:'call', agent:'agent', classic:'classic', deploy:'deploy', confidential:'confid'})[k] || 'classic'; }
-				function refract(k){ return ({swap:'swap', call:'call', agent:'events', classic:'classic', deploy:'lending', confidential:'transfer'})[k] || 'other'; }
+				function cls(k){ return ({swap:'swap', call:'call', agent:'agent', classic:'classic', deploy:'deploy', confidential:'confid', account:'account', payment:'payment', market:'market', trustline:'trustline', claimable:'claimable', sponsorship:'sponsorship', soroban:'soroban', other:'other'})[k] || 'other'; }
+				function refract(k){ return ({swap:'swap', call:'call', agent:'events', classic:'classic', deploy:'lending', confidential:'transfer', account:'lending', payment:'transfer', market:'swap', trustline:'classic', claimable:'transfer', sponsorship:'events', soroban:'call', other:'other'})[k] || 'other'; }
 				function renderRefraction(chips){ chips = chips || []; if(!chips.length) chips = [{kind:'swap'}, {kind:'confidential'}, {kind:'call'}, {kind:'agent'}]; return chips.map(function(ch){ return '<span class="ph-refraction-seg '+refract(ch.kind)+'"></span>'; }).join(''); }
 				function seq(v){ return String(v || '').replace(/,/g,'').trim(); }
 				function renderLedger(row, isNew){
 					var chips = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
-					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+esc(row.meta)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-cap"><div class="ph-ledger-cap-row"><span class="k">instructions</span><span class="v">'+esc(row.instructionsPct)+'%</span></div><div class="ph-ledger-cap-row"><span class="k">read/write</span><span class="v">'+esc(row.readWritePct)+'%</span></div></div></a>';
+					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+esc(row.meta)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">'+esc(row.successfulOperationCount || '0')+'</span></div><div><span class="k">failed ops</span><span class="v failure">'+esc(row.failedOperationCount || '0')+'</span></div></div></a>';
 				}
 				function normalizeAges(rows){ (rows || []).forEach(function(row, i){ if(!row.age || root.dataset.live !== 'true') row.age = i === 0 ? 'just now' : (i * 5) + ' seconds ago'; }); }
 				function updateFocus(row){
@@ -82,10 +81,9 @@ templ Home(data vmv2.HomeData) {
 					if(focus.meta) focus.meta.textContent = String(row.meta || '');
 					if(focus.chips) focus.chips.innerHTML = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
 					if(focus.refraction) focus.refraction.innerHTML = renderRefraction(row.chips || []);
-					if(focus.instructions) focus.instructions.textContent = String(row.instructionsPct || 0) + '%';
-					if(focus.instructionsBar) focus.instructionsBar.style.width = String(row.instructionsPct || 0) + '%';
-					if(focus.readwrite) focus.readwrite.textContent = String(row.readWritePct || 0) + '%';
-					if(focus.readwriteBar) focus.readwriteBar.style.width = String(row.readWritePct || 0) + '%';
+					if(focus.includedOperations) focus.includedOperations.textContent = String(row.includedOperationCount || '0');
+					if(focus.successfulOperations) focus.successfulOperations.textContent = String(row.successfulOperationCount || '0');
+					if(focus.failedOperations) focus.failedOperations.textContent = String(row.failedOperationCount || '0');
 				}
 				function applyFeed(feed, isPoll){
 					var ledgers = (feed && feed.ledgers) || [];
@@ -128,8 +126,7 @@ templ phHeroLedger(row vmv2.LedgerRowData) {
 		</div>
 		<div class="ph-ledger-focus-evidence" aria-label="Ledger evidence summary">
 			<div class="ph-ledger-focus-evidence-label">Evidence snapshot</div>
-			<div class="ph-focus-meter"><div><span>instructions</span><b id="ph-focus-instructions">{ fmt.Sprintf("%d%%", row.InstructionsPct) }</b></div><i><span id="ph-focus-instructions-bar" style={ fmt.Sprintf("width: %d%%", row.InstructionsPct) }></span></i></div>
-			<div class="ph-focus-meter"><div><span>read/write</span><b id="ph-focus-readwrite">{ fmt.Sprintf("%d%%", row.ReadWritePct) }</b></div><i><span id="ph-focus-readwrite-bar" style={ fmt.Sprintf("width: %d%%", row.ReadWritePct) }></span></i></div>
+			<div class="ph-focus-facts"><div><span>included operations</span><b id="ph-focus-operations-included">{ row.IncludedOperationCount }</b></div><div><span>successful</span><b class="success" id="ph-focus-operations-successful">{ row.SuccessfulOperationCount }</b></div><div><span>failed</span><b class="failure" id="ph-focus-operations-failed">{ row.FailedOperationCount }</b></div></div>
 			<a class="ph-ledger-focus-open" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>Open ledger evidence →</a>
 		</div>
 	</div>
@@ -155,7 +152,7 @@ templ phLedger(row vmv2.LedgerRowData) {
 				<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
 			}
 		</div></div>
-		<div class="ph-ledger-cap"><div class="ph-ledger-cap-row"><span class="k">instructions</span><span class="v">{ fmt.Sprintf("%d%%", row.InstructionsPct) }</span></div><div class="ph-ledger-cap-row"><span class="k">read/write</span><span class="v">{ fmt.Sprintf("%d%%", row.ReadWritePct) }</span></div></div>
+		<div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">{ row.SuccessfulOperationCount }</span></div><div><span class="k">failed ops</span><span class="v failure">{ row.FailedOperationCount }</span></div></div>
 	</a>
 }
 
@@ -200,9 +197,9 @@ func boolStringHome(v bool) string { if v { return "true" }; return "false" }
 func networkTitle(v string) string { if strings.EqualFold(v,"testnet") { return "Testnet" }; if strings.EqualFold(v,"futurenet") { return "Futurenet" }; return "Mainnet" }
 func shortHeaderAge(v string) string { v=strings.TrimSpace(strings.TrimSuffix(v,"ago")); if v=="" { return "2s" }; return v }
 func topTxCount(data vmv2.HomeData) string { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0].TransactionCount }; return "187" }
-func topLedger(data vmv2.HomeData) vmv2.LedgerRowData { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0] }; return vmv2.LedgerRowData{LedgerNumber: data.Header.LedgerNumber, TransactionCount: topTxCount(data), Meta: "classified by activity type", Age: shortHeaderAge(data.Header.AgeLabel), InstructionsPct: 0, ReadWritePct: 0} }
+func topLedger(data vmv2.HomeData) vmv2.LedgerRowData { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0] }; return vmv2.LedgerRowData{LedgerNumber: data.Header.LedgerNumber, TransactionCount: topTxCount(data), IncludedOperationCount: "0", SuccessfulOperationCount: "0", FailedOperationCount: "0", Meta: "classification unavailable", Age: shortHeaderAge(data.Header.AgeLabel)} }
 func heroHeadline(data vmv2.HomeData) string { return fmt.Sprintf("The Stellar network is healthy and <em>busier than usual</em> right now: <b>%s</b> transactions every 5 seconds, with <b>2,314</b> smart contracts active today.", topTxCount(data)) }
-func chipClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "agent"; case "classic": return "classic"; case "deploy": return "deploy"; case "confidential": return "confid"; default: return "classic" } }
-func refractionClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "events"; case "classic": return "classic"; case "deploy": return "lending"; case "confidential": return "transfer"; default: return "other" } }
+func chipClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "agent"; case "classic": return "classic"; case "deploy": return "deploy"; case "confidential": return "confid"; case "account": return "account"; case "payment": return "payment"; case "market": return "market"; case "trustline": return "trustline"; case "claimable": return "claimable"; case "sponsorship": return "sponsorship"; case "soroban": return "soroban"; default: return "other" } }
+func refractionClass(kind string) string { switch kind { case "swap", "market": return "swap"; case "call", "soroban": return "call"; case "agent", "sponsorship": return "events"; case "classic", "trustline": return "classic"; case "deploy", "account": return "lending"; case "confidential", "payment", "claimable": return "transfer"; default: return "other" } }
 func firstRune(mark string, fallback string) string { if strings.TrimSpace(mark)!="" { return string([]rune(mark)[0]) }; if strings.TrimSpace(fallback)!="" { return string([]rune(fallback)[0]) }; return "•" }
 var _ componentsv2.HeaderData

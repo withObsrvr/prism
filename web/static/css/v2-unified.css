@@ -633,6 +633,7 @@ html[data-theme="dark"] .v2-card-rule { background: rgba(255,255,255,.08); }
   --ph-violet: #5E4FA8;
   --ph-amber: #B98429;
   --ph-green: #357A4E;
+  --ph-red: #B5483B;
   --ph-ff-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   --ph-ff-serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
   --ph-ff-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -1022,6 +1023,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .ph-ledger-chip.classic  { background: rgba(31, 78, 95, 0.10); color: var(--ph-teal); }
 .ph-ledger-chip.deploy   { background: rgba(185, 132, 41, 0.10); color: var(--ph-amber); }
 .ph-ledger-chip.confid   { background: rgba(74, 127, 192, 0.10); color: #4A7FC0; }
+.ph-ledger-chip.account  { background: rgba(185, 132, 41, 0.10); color: var(--ph-amber); }
+.ph-ledger-chip.payment  { background: rgba(31, 78, 95, 0.10); color: var(--ph-teal); }
+.ph-ledger-chip.market   { background: rgba(94, 79, 168, 0.10); color: var(--ph-violet); }
+.ph-ledger-chip.trustline { background: rgba(31, 78, 95, 0.07); color: var(--ph-teal); }
+.ph-ledger-chip.claimable { background: rgba(74, 127, 192, 0.10); color: #4A7FC0; }
+.ph-ledger-chip.sponsorship { background: rgba(217, 82, 30, 0.08); color: var(--ph-accent-ink); }
+.ph-ledger-chip.soroban  { background: rgba(94, 79, 168, 0.06); color: var(--ph-violet); }
+.ph-ledger-chip.other    { background: var(--ph-panel); color: var(--ph-text-2); }
 
 /* Per-card capacity meters — small mono pair */
 .ph-ledger-cap {
@@ -1035,6 +1044,18 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .ph-ledger-cap-row { display: flex; justify-content: space-between; gap: 10px; }
 .ph-ledger-cap-row .k { letter-spacing: 0.02em; }
 .ph-ledger-cap-row .v { color: var(--ph-text); font-weight: 600; }
+.ph-ledger-outcomes {
+  min-width: 142px;
+  display: grid;
+  gap: 7px;
+  font-family: var(--ph-ff-mono);
+  font-size: 11.5px;
+}
+.ph-ledger-outcomes > div { display: flex; justify-content: space-between; gap: 14px; }
+.ph-ledger-outcomes .k { color: var(--ph-text-3); }
+.ph-ledger-outcomes .v { font-weight: 600; color: var(--ph-text); font-variant-numeric: tabular-nums; }
+.ph-ledger-outcomes .v.success { color: var(--ph-green); }
+.ph-ledger-outcomes .v.failure { color: var(--ph-red); }
 
 /* ───── Two-column grid ───── */
 .ph-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -1274,7 +1295,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .ph-ledger {
     grid-template-columns: minmax(128px, 160px) 1fr;
   }
-  .ph-ledger-cap {
+  .ph-ledger-cap, .ph-ledger-outcomes {
     grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
@@ -1401,7 +1422,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .ph-ledger-num {
     font-size: 19px;
   }
-  .ph-ledger-cap {
+  .ph-ledger-cap, .ph-ledger-outcomes {
     grid-template-columns: 1fr;
   }
   .ph-grid-2,
@@ -2377,6 +2398,29 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   text-transform: uppercase;
   color: var(--ph-text-3);
 }
+.ph-focus-facts {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--ph-border);
+}
+.ph-focus-facts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ph-border);
+  color: var(--ph-text-2);
+  font-size: 12.5px;
+}
+.ph-focus-facts b {
+  color: var(--ph-text);
+  font-family: var(--ph-ff-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ph-focus-facts b.success { color: var(--ph-green); }
+.ph-focus-facts b.failure { color: var(--ph-red); }
 .ph-focus-meter {
   display: grid;
   gap: 8px;
