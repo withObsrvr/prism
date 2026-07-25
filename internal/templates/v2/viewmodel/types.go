@@ -33,6 +33,7 @@ type LedgerRowData struct {
 	SuccessfulOperationCount string
 	FailedOperationCount     string
 	Meta                     string
+	Introducer               string
 	Chips                    []componentsv2.LedgerMetricChip
 	InstructionsPct          int
 	ReadWritePct             int

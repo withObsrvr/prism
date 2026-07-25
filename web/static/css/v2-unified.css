@@ -1004,10 +1004,73 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   line-height: 1.45;
 }
 .ph-ledger-summary b { font-weight: 600; }
-.ph-ledger-summary .closer {
-  color: var(--ph-text-2);
-  font-family: var(--ph-ff-mono);
-  font-size: 12.5px;
+.ph-ledger-introducer {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--ph-text-2);
+	font-family: var(--ph-ff-mono);
+	font-size: 12.5px;
+	text-decoration: underline;
+	text-decoration-style: dotted;
+	text-decoration-color: var(--ph-border-strong);
+	text-underline-offset: 3px;
+	cursor: help;
+}
+.ph-ledger-introducer b {
+	font-weight: 600;
+	color: var(--ph-text);
+}
+.ph-ledger-introducer-icon {
+	display: inline-grid;
+	place-items: center;
+	width: 14px;
+	height: 14px;
+	border: 1px solid var(--ph-border-strong);
+	border-radius: 999px;
+	font-family: var(--ph-ff-sans);
+	font-size: 9px;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--ph-text-3);
+}
+.ph-ledger-introducer-tooltip {
+	position: absolute;
+	z-index: 20;
+	left: 50%;
+	bottom: calc(100% + 10px);
+	width: min(320px, calc(100vw - 32px));
+	padding: 10px 12px;
+	border: 1px solid var(--ph-border-strong);
+	border-radius: 8px;
+	background: var(--ph-text);
+	color: var(--ph-bg);
+	box-shadow: 0 8px 24px rgba(31, 27, 22, 0.14);
+	font-family: var(--ph-ff-sans);
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.45;
+	text-align: left;
+	text-decoration: none;
+	white-space: normal;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translate(-50%, 4px);
+	transition: opacity 160ms ease-out, transform 160ms ease-out, visibility 160ms;
+}
+.ph-ledger-introducer:hover .ph-ledger-introducer-tooltip,
+.ph-ledger-introducer:focus-visible .ph-ledger-introducer-tooltip,
+.ph-ledger:focus-visible .ph-ledger-introducer-tooltip {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, 0);
+}
+.ph-ledger-introducer:focus-visible {
+	outline: 2px solid var(--ph-accent-ink);
+	outline-offset: 3px;
+	border-radius: 3px;
 }
 .ph-ledger-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ph-ledger-chip {

@@ -48,14 +48,20 @@ func TestBuildHomeV2FeedLedgerUsesEnrichedRecentFacts(t *testing.T) {
 	if row.TransactionCount != "14" || row.IncludedOperationCount != "19" || row.SuccessfulOperationCount != "15" || row.FailedOperationCount != "4" {
 		t.Fatalf("explicit ledger facts were not mapped: %+v", row)
 	}
-	if !strings.Contains(row.Meta, "19 operations (4 failed)") || !strings.Contains(row.Meta, "closed by SDF Testnet 3") {
+	if !strings.Contains(row.Meta, "19 operations (4 failed)") || row.Introducer != "SDF Testnet 3" {
 		t.Fatalf("ledger meaning was not surfaced: %q", row.Meta)
+	}
+	if strings.Contains(row.Meta, "closed by") || strings.Contains(row.Meta, "introduced by") {
+		t.Fatalf("introducer should remain structured presentation data: %q", row.Meta)
 	}
 	if len(row.Chips) != 8 || row.Chips[1].Label != "2 payments" || row.Chips[6].Label != "8 Soroban ops" {
 		t.Fatalf("operation categories were not mapped: %+v", row.Chips)
 	}
 	if feed.IncludedOperationCount != row.IncludedOperationCount || feed.FailedOperationCount != row.FailedOperationCount || len(feed.Chips) != len(row.Chips) {
 		t.Fatalf("polling feed diverged from initial render: feed=%+v row=%+v", feed, row)
+	}
+	if feed.Introducer != row.Introducer {
+		t.Fatalf("polling feed lost introducer attribution: feed=%+v row=%+v", feed, row)
 	}
 }
 

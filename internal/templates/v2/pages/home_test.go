@@ -18,7 +18,8 @@ func TestHomeLedgerRowsRenderOperationEvidence(t *testing.T) {
 			IncludedOperationCount:   "19",
 			SuccessfulOperationCount: "15",
 			FailedOperationCount:     "4",
-			Meta:                     "with 19 operations (4 failed) · closed by SDF Testnet 3",
+			Meta:                     "with 19 operations (4 failed)",
+			Introducer:               "SDF Testnet 3",
 			Chips:                    []componentsv2.LedgerMetricChip{{Label: "8 Soroban ops", Kind: "soroban"}},
 		}}},
 		FeedJSON: `{"ledgers":[]}`,
@@ -31,11 +32,14 @@ func TestHomeLedgerRowsRenderOperationEvidence(t *testing.T) {
 	}
 	output := html.String()
 	for _, want := range []string{
-		"included operations", "successful ops", "failed ops", "SDF Testnet 3", "8 Soroban ops", "ph-ledger-chip soroban", "successfulOperationCount",
+		"included operations", "successful ops", "failed ops", "introduced by", "SDF Testnet 3", "This validator introduced the transaction-set value selected through SCP.", "8 Soroban ops", "ph-ledger-chip soroban", "successfulOperationCount",
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("home ledger evidence missing %q", want)
 		}
+	}
+	if strings.Contains(output, "closed by SDF Testnet 3") {
+		t.Fatal("home ledger still describes one validator as the ledger closer")
 	}
 	if strings.Contains(output, `id="ph-focus-instructions"`) || strings.Contains(output, `id="ph-focus-readwrite"`) {
 		t.Fatal("home hero still renders zero-valued utilization as ledger evidence")

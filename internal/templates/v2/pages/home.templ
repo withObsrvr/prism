@@ -61,14 +61,27 @@ templ Home(data vmv2.HomeData) {
 					refraction: document.getElementById('ph-focus-refraction')
 				};
 				var inFlight = false;
+				var introducerHelp = 'This validator introduced the transaction-set value selected through SCP. Stellar validators collectively agreed on the ledger; no single validator closed it.';
 				function esc(s){ return String(s == null ? '' : s).replace(/[&<>\"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]; }); }
+				function renderIntroducer(label, focusable){
+					label = String(label || '').trim();
+					if(!label) return '';
+					var focus = focusable ? ' tabindex="0"' : '';
+					var accessible = 'Introduced by ' + label + '. ' + introducerHelp;
+					return '<span class="ph-ledger-introducer" role="note" aria-label="'+esc(accessible)+'"'+focus+'><span>introduced by <b>'+esc(label)+'</b></span><span class="ph-ledger-introducer-icon" aria-hidden="true">i</span><span class="ph-ledger-introducer-tooltip" aria-hidden="true">'+esc(introducerHelp)+'</span></span>';
+				}
+				function renderLedgerMeta(row, focusable){
+					var result = esc(row.meta || '');
+					if(row.introducer) result += '<span aria-hidden="true"> · </span>' + renderIntroducer(row.introducer, focusable);
+					return result;
+				}
 				function cls(k){ return ({swap:'swap', call:'call', agent:'agent', classic:'classic', deploy:'deploy', confidential:'confid', account:'account', payment:'payment', market:'market', trustline:'trustline', claimable:'claimable', sponsorship:'sponsorship', soroban:'soroban', other:'other'})[k] || 'other'; }
 				function refract(k){ return ({swap:'swap', call:'call', agent:'events', classic:'classic', deploy:'lending', confidential:'transfer', account:'lending', payment:'transfer', market:'swap', trustline:'classic', claimable:'transfer', sponsorship:'events', soroban:'call', other:'other'})[k] || 'other'; }
 				function renderRefraction(chips){ chips = chips || []; if(!chips.length) chips = [{kind:'swap'}, {kind:'confidential'}, {kind:'call'}, {kind:'agent'}]; return chips.map(function(ch){ return '<span class="ph-refraction-seg '+refract(ch.kind)+'"></span>'; }).join(''); }
 				function seq(v){ return String(v || '').replace(/,/g,'').trim(); }
 				function renderLedger(row, isNew){
 					var chips = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
-					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+esc(row.meta)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">'+esc(row.successfulOperationCount || '0')+'</span></div><div><span class="k">failed ops</span><span class="v failure">'+esc(row.failedOperationCount || '0')+'</span></div></div></a>';
+					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+renderLedgerMeta(row, false)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">'+esc(row.successfulOperationCount || '0')+'</span></div><div><span class="k">failed ops</span><span class="v failure">'+esc(row.failedOperationCount || '0')+'</span></div></div></a>';
 				}
 				function normalizeAges(rows){ (rows || []).forEach(function(row, i){ if(!row.age || root.dataset.live !== 'true') row.age = i === 0 ? 'just now' : (i * 5) + ' seconds ago'; }); }
 				function updateFocus(row){
@@ -78,7 +91,7 @@ templ Home(data vmv2.HomeData) {
 					if(focus.ledgerLink) focus.ledgerLink.href = href;
 					if(focus.tx) focus.tx.textContent = String(row.transactionCount || '0');
 					if(focus.age) focus.age.textContent = String(row.age || 'just now');
-					if(focus.meta) focus.meta.textContent = String(row.meta || '');
+					if(focus.meta) focus.meta.innerHTML = renderLedgerMeta(row, true);
 					if(focus.chips) focus.chips.innerHTML = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
 					if(focus.refraction) focus.refraction.innerHTML = renderRefraction(row.chips || []);
 					if(focus.includedOperations) focus.includedOperations.textContent = String(row.includedOperationCount || '0');
@@ -116,7 +129,7 @@ templ phHeroLedger(row vmv2.LedgerRowData) {
 		<div class="ph-ledger-focus-main">
 			<div class="ph-ledger-focus-kicker"><span class="dot"></span><span>Latest ledger</span><span class="mono" id="ph-focus-age">{ row.Age }</span></div>
 			<h1 id="ph-ledger-focus-title">Ledger <a id="ph-focus-ledger-link" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }><span id="ph-focus-ledger">#{ row.LedgerNumber }</span></a> just closed with <b id="ph-focus-tx">{ row.TransactionCount }</b> transactions.</h1>
-			<p class="ph-ledger-focus-copy"><b>Interpretation:</b> Prism classified this ledger into human-readable activity before showing the raw rows. <span id="ph-focus-meta">{ row.Meta }</span></p>
+			<p class="ph-ledger-focus-copy"><b>Interpretation:</b> Prism classified this ledger into human-readable activity before showing the raw rows. <span id="ph-focus-meta">@phLedgerMeta(row, true)</span></p>
 			<div class="ph-ledger-focus-chips" id="ph-focus-chips">
 				for _, chip := range row.Chips {
 					<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
@@ -147,13 +160,25 @@ templ phRefractionBar(row vmv2.LedgerRowData) {
 templ phLedger(row vmv2.LedgerRowData) {
 	<a class="ph-ledger" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>
 		<div class="ph-ledger-id"><span class="ph-ledger-num">#{ row.LedgerNumber }</span><span class="ph-ledger-when">{ row.Age }</span></div>
-		<div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>{ row.TransactionCount } transactions</b> { row.Meta }</div><div class="ph-ledger-chips">
+		<div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>{ row.TransactionCount } transactions</b> @phLedgerMeta(row, false)</div><div class="ph-ledger-chips">
 			for _, chip := range row.Chips {
 				<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
 			}
 		</div></div>
 		<div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">{ row.SuccessfulOperationCount }</span></div><div><span class="k">failed ops</span><span class="v failure">{ row.FailedOperationCount }</span></div></div>
 	</a>
+}
+
+templ phLedgerMeta(row vmv2.LedgerRowData, focusable bool) {
+	{ row.Meta }
+	if row.Introducer != "" {
+		<span aria-hidden="true"> · </span>
+		if focusable {
+			@componentsv2.FocusableLedgerIntroducer(row.Introducer)
+		} else {
+			@componentsv2.LedgerIntroducer(row.Introducer)
+		}
+	}
 }
 
 templ attentionCard(card vmv2.AttentionCardData) {

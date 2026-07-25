@@ -14,6 +14,7 @@ type LedgerRowData struct {
 	SuccessfulOperationCount string
 	FailedOperationCount     string
 	Meta                     string
+	Introducer               string
 	Chips                    []LedgerMetricChip
 	InstructionsPct          int
 	ReadWritePct             int
@@ -32,7 +33,13 @@ templ LedgerRow(data LedgerRowData) {
 			<div class="v2-ledger-main-top">
 				<span class="v2-ledger-main-count">{ data.TransactionCount }</span>
 				<span class="v2-ledger-main-label">transactions</span>
-				<span class="v2-ledger-main-meta">{ data.Meta }</span>
+				<span class="v2-ledger-main-meta">
+					{ data.Meta }
+					if data.Introducer != "" {
+						<span aria-hidden="true"> · </span>
+						@FocusableLedgerIntroducer(data.Introducer)
+					}
+				</span>
 			</div>
 			<div class="v2-ledger-chip-row">
 				for _, chip := range data.Chips {
@@ -51,6 +58,33 @@ templ LedgerRow(data LedgerRowData) {
 		</div>
 	</div>
 }
+
+templ LedgerIntroducer(label string) {
+	<span
+		class="ph-ledger-introducer"
+		role="note"
+		aria-label={ "Introduced by " + label + ". " + ledgerIntroducerHelp }
+	>
+		<span>introduced by <b>{ label }</b></span>
+		<span class="ph-ledger-introducer-icon" aria-hidden="true">i</span>
+		<span class="ph-ledger-introducer-tooltip" aria-hidden="true">{ ledgerIntroducerHelp }</span>
+	</span>
+}
+
+templ FocusableLedgerIntroducer(label string) {
+	<span
+		class="ph-ledger-introducer"
+		role="note"
+		tabindex="0"
+		aria-label={ "Introduced by " + label + ". " + ledgerIntroducerHelp }
+	>
+		<span>introduced by <b>{ label }</b></span>
+		<span class="ph-ledger-introducer-icon" aria-hidden="true">i</span>
+		<span class="ph-ledger-introducer-tooltip" aria-hidden="true">{ ledgerIntroducerHelp }</span>
+	</span>
+}
+
+const ledgerIntroducerHelp = "This validator introduced the transaction-set value selected through SCP. Stellar validators collectively agreed on the ledger; no single validator closed it."
 
 templ ledgerChip(chip LedgerMetricChip) {
 	<div class="v2-ledger-chip">

@@ -69,35 +69,40 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 				{
 					LedgerNumber: "52,844,201", TransactionCount: "212",
 					IncludedOperationCount: "424", SuccessfulOperationCount: "420", FailedOperationCount: "4",
-					Meta:            "with 424 operations · closed by sdf-validator-1",
+					Meta:            "with 424 operations",
+					Introducer:      "sdf-validator-1",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "50 swaps", Kind: "swap"}, {Label: "67 calls", Kind: "call"}, {Label: "54 agent payments", Kind: "agent"}, {Label: "33 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}},
 					InstructionsPct: 61, ReadWritePct: 35, CloseTime: "4.9s", Age: "just now", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,200", TransactionCount: "226",
 					IncludedOperationCount: "452", SuccessfulOperationCount: "450", FailedOperationCount: "2",
-					Meta:            "with 452 operations · closed by whale-stack",
+					Meta:            "with 452 operations",
+					Introducer:      "whale-stack",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "42 swaps", Kind: "swap"}, {Label: "75 calls", Kind: "call"}, {Label: "37 agent payments", Kind: "agent"}, {Label: "67 classic", Kind: "classic"}, {Label: "3 deploys", Kind: "deploy"}, {Label: "1 confidential", Kind: "confidential"}},
 					InstructionsPct: 76, ReadWritePct: 45, CloseTime: "4.9s", Age: "5 seconds ago", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,199", TransactionCount: "187",
 					IncludedOperationCount: "561", SuccessfulOperationCount: "558", FailedOperationCount: "3",
-					Meta:            "with 561 operations · closed by publicnode",
+					Meta:            "with 561 operations",
+					Introducer:      "publicnode",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "35 swaps", Kind: "swap"}, {Label: "70 calls", Kind: "call"}, {Label: "30 agent payments", Kind: "agent"}, {Label: "52 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}},
 					InstructionsPct: 67, ReadWritePct: 36, CloseTime: "4.9s", Age: "10 seconds ago", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,198", TransactionCount: "199",
 					IncludedOperationCount: "388", SuccessfulOperationCount: "385", FailedOperationCount: "3",
-					Meta:            "with 388 operations · closed by lobstr",
+					Meta:            "with 388 operations",
+					Introducer:      "lobstr",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "50 swaps", Kind: "swap"}, {Label: "62 calls", Kind: "call"}, {Label: "55 agent payments", Kind: "agent"}, {Label: "32 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}},
 					InstructionsPct: 50, ReadWritePct: 50, CloseTime: "4.9s", Age: "15 seconds ago", SideMeta: "5 ledgers / min",
 				},
 				{
 					LedgerNumber: "52,844,197", TransactionCount: "197",
 					IncludedOperationCount: "788", SuccessfulOperationCount: "783", FailedOperationCount: "5",
-					Meta:            "with 788 operations · closed by coinbase-cloud",
+					Meta:            "with 788 operations",
+					Introducer:      "coinbase-cloud",
 					Chips:           []componentsv2.LedgerMetricChip{{Label: "53 swaps", Kind: "swap"}, {Label: "66 calls", Kind: "call"}, {Label: "33 agent payments", Kind: "agent"}, {Label: "41 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}},
 					InstructionsPct: 50, ReadWritePct: 38, CloseTime: "4.9s", Age: "20 seconds ago", SideMeta: "5 ledgers / min",
 				},
@@ -821,9 +826,7 @@ func buildHomeV2FeedLedger(network string, recent gateway.RecentLedger, next *ga
 			allTxs = append(allTxs, mapped)
 		}
 	}
-	if label := homeV2ValidatorLabel(validator, summary); label != "" {
-		meta += " · closed by " + label
-	}
+	introducer := homeV2IntroducerLabel(validator, summary)
 
 	if len(chips) == 0 {
 		chips = []componentsv2.LedgerMetricChip{{Label: pluralizeChip(int64(recent.SuccessfulTxCount), "successful tx", "successful txs"), Kind: "classic"}}
@@ -837,6 +840,7 @@ func buildHomeV2FeedLedger(network string, recent gateway.RecentLedger, next *ga
 		SuccessfulOperationCount: gateway.FormatNumber(successfulOperations),
 		FailedOperationCount:     gateway.FormatNumber(failedOperations),
 		Meta:                     meta,
+		Introducer:               introducer,
 		Chips:                    chips,
 		InstructionsPct:          instructionsPct,
 		ReadWritePct:             readWritePct,
@@ -851,6 +855,7 @@ func buildHomeV2FeedLedger(network string, recent gateway.RecentLedger, next *ga
 		SuccessfulOperationCount: gateway.FormatNumber(successfulOperations),
 		FailedOperationCount:     gateway.FormatNumber(failedOperations),
 		Meta:                     meta,
+		Introducer:               introducer,
 		Chips:                    feedChips,
 		InstructionsPct:          instructionsPct,
 		ReadWritePct:             readWritePct,
@@ -928,7 +933,7 @@ func homeV2RecentOperationChips(recent gateway.RecentLedger) ([]componentsv2.Led
 	return chips, feedChips
 }
 
-func homeV2ValidatorLabel(validator gateway.LedgerValidator, summary *gateway.LedgerFeedSummary) string {
+func homeV2IntroducerLabel(validator gateway.LedgerValidator, summary *gateway.LedgerFeedSummary) string {
 	for _, candidate := range []string{validator.DisplayName, validator.Name, validator.Alias, validator.HomeDomain} {
 		if label := strings.TrimSpace(candidate); label != "" {
 			return label
@@ -1226,6 +1231,7 @@ type homeV2FeedLedger struct {
 	SuccessfulOperationCount string                  `json:"successfulOperationCount"`
 	FailedOperationCount     string                  `json:"failedOperationCount"`
 	Meta                     string                  `json:"meta"`
+	Introducer               string                  `json:"introducer,omitempty"`
 	Chips                    []homeV2FeedLedgerChip  `json:"chips"`
 	InstructionsPct          int                     `json:"instructionsPct"`
 	ReadWritePct             int                     `json:"readWritePct"`
@@ -1274,11 +1280,11 @@ func mockHomeV2Feed(network string) homeV2Feed {
 	}
 	return homeV2Feed{
 		Ledgers: []homeV2FeedLedger{
-			{LedgerNumber: base, TransactionCount: "212", IncludedOperationCount: "424", SuccessfulOperationCount: "420", FailedOperationCount: "4", Meta: titlePrefix + "with 424 operations · closed by sdf-validator-1", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "67 calls", Kind: "call"}, {Label: "54 agent payments", Kind: "agent"}, {Label: "33 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 61, ReadWritePct: 35, CloseTime: "4.9s", Age: "just now", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[1], txs[0], txs[2]}},
-			{LedgerNumber: decLedger(base, 1), TransactionCount: "226", IncludedOperationCount: "452", SuccessfulOperationCount: "450", FailedOperationCount: "2", Meta: titlePrefix + "with 452 operations · closed by whale-stack", Chips: []homeV2FeedLedgerChip{{Label: "42 swaps", Kind: "swap"}, {Label: "75 calls", Kind: "call"}, {Label: "37 agent payments", Kind: "agent"}, {Label: "67 classic", Kind: "classic"}, {Label: "3 deploys", Kind: "deploy"}, {Label: "1 confidential", Kind: "confidential"}}, InstructionsPct: 76, ReadWritePct: 45, CloseTime: "4.9s", Age: "5 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[6], txs[7], txs[5]}},
-			{LedgerNumber: decLedger(base, 2), TransactionCount: "187", IncludedOperationCount: "561", SuccessfulOperationCount: "558", FailedOperationCount: "3", Meta: titlePrefix + "with 561 operations · closed by publicnode", Chips: []homeV2FeedLedgerChip{{Label: "35 swaps", Kind: "swap"}, {Label: "70 calls", Kind: "call"}, {Label: "30 agent payments", Kind: "agent"}, {Label: "52 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 67, ReadWritePct: 36, CloseTime: "4.9s", Age: "10 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[3], txs[4], txs[5]}},
-			{LedgerNumber: decLedger(base, 3), TransactionCount: "199", IncludedOperationCount: "388", SuccessfulOperationCount: "385", FailedOperationCount: "3", Meta: titlePrefix + "with 388 operations · closed by lobstr", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "62 calls", Kind: "call"}, {Label: "55 agent payments", Kind: "agent"}, {Label: "32 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 50, ReadWritePct: 50, CloseTime: "4.9s", Age: "15 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[2], txs[0], txs[5]}},
-			{LedgerNumber: decLedger(base, 4), TransactionCount: "197", IncludedOperationCount: "788", SuccessfulOperationCount: "783", FailedOperationCount: "5", Meta: titlePrefix + "with 788 operations · closed by coinbase-cloud", Chips: []homeV2FeedLedgerChip{{Label: "53 swaps", Kind: "swap"}, {Label: "66 calls", Kind: "call"}, {Label: "33 agent payments", Kind: "agent"}, {Label: "41 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 50, ReadWritePct: 38, CloseTime: "4.9s", Age: "20 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[4], txs[6], txs[1]}},
+			{LedgerNumber: base, TransactionCount: "212", IncludedOperationCount: "424", SuccessfulOperationCount: "420", FailedOperationCount: "4", Meta: titlePrefix + "with 424 operations", Introducer: "sdf-validator-1", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "67 calls", Kind: "call"}, {Label: "54 agent payments", Kind: "agent"}, {Label: "33 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 61, ReadWritePct: 35, CloseTime: "4.9s", Age: "just now", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[1], txs[0], txs[2]}},
+			{LedgerNumber: decLedger(base, 1), TransactionCount: "226", IncludedOperationCount: "452", SuccessfulOperationCount: "450", FailedOperationCount: "2", Meta: titlePrefix + "with 452 operations", Introducer: "whale-stack", Chips: []homeV2FeedLedgerChip{{Label: "42 swaps", Kind: "swap"}, {Label: "75 calls", Kind: "call"}, {Label: "37 agent payments", Kind: "agent"}, {Label: "67 classic", Kind: "classic"}, {Label: "3 deploys", Kind: "deploy"}, {Label: "1 confidential", Kind: "confidential"}}, InstructionsPct: 76, ReadWritePct: 45, CloseTime: "4.9s", Age: "5 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[6], txs[7], txs[5]}},
+			{LedgerNumber: decLedger(base, 2), TransactionCount: "187", IncludedOperationCount: "561", SuccessfulOperationCount: "558", FailedOperationCount: "3", Meta: titlePrefix + "with 561 operations", Introducer: "publicnode", Chips: []homeV2FeedLedgerChip{{Label: "35 swaps", Kind: "swap"}, {Label: "70 calls", Kind: "call"}, {Label: "30 agent payments", Kind: "agent"}, {Label: "52 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 67, ReadWritePct: 36, CloseTime: "4.9s", Age: "10 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[3], txs[4], txs[5]}},
+			{LedgerNumber: decLedger(base, 3), TransactionCount: "199", IncludedOperationCount: "388", SuccessfulOperationCount: "385", FailedOperationCount: "3", Meta: titlePrefix + "with 388 operations", Introducer: "lobstr", Chips: []homeV2FeedLedgerChip{{Label: "50 swaps", Kind: "swap"}, {Label: "62 calls", Kind: "call"}, {Label: "55 agent payments", Kind: "agent"}, {Label: "32 classic", Kind: "classic"}, {Label: "1 deploy", Kind: "deploy"}}, InstructionsPct: 50, ReadWritePct: 50, CloseTime: "4.9s", Age: "15 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[2], txs[0], txs[5]}},
+			{LedgerNumber: decLedger(base, 4), TransactionCount: "197", IncludedOperationCount: "788", SuccessfulOperationCount: "783", FailedOperationCount: "5", Meta: titlePrefix + "with 788 operations", Introducer: "coinbase-cloud", Chips: []homeV2FeedLedgerChip{{Label: "53 swaps", Kind: "swap"}, {Label: "66 calls", Kind: "call"}, {Label: "33 agent payments", Kind: "agent"}, {Label: "41 classic", Kind: "classic"}, {Label: "2 deploys", Kind: "deploy"}, {Label: "2 confidential", Kind: "confidential"}}, InstructionsPct: 50, ReadWritePct: 38, CloseTime: "4.9s", Age: "20 seconds ago", SideMeta: sideMeta, Samples: []homeV2FeedTransaction{txs[4], txs[6], txs[1]}},
 		},
 		Transactions: txs,
 	}
