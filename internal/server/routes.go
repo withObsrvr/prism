@@ -17,7 +17,7 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
 	// Create handlers with shared dependencies.
-	h := handlers.New(app.Logger, app.Gateway)
+	h := handlers.New(app.Logger, app.Gateway, app.Config.DataSource)
 
 	// ─────────────────────────────────────────────
 	// Explorer routes
@@ -28,7 +28,7 @@ func (app *Application) Routes() http.Handler {
 		http.Redirect(w, r, "/v2/home", http.StatusFound)
 	})
 	mux.HandleFunc("GET /v2/home", h.HomeV2)
-	mux.HandleFunc("GET /v2/home/feed", h.HomeV2Feed)
+	mux.HandleFunc("GET /v2/home/timeline", h.HomeV2Timeline)
 	mux.HandleFunc("GET /v2/home/ledger", h.HomeLedgerFirstV2)
 	mux.HandleFunc("GET /v2/explore", h.ExploreV2)
 	mux.HandleFunc("GET /v2/explore/header", h.ExploreV2Header)
@@ -37,6 +37,7 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /search/suggest", h.SearchSuggest)
 	mux.HandleFunc("GET /search/submit", h.SearchSubmit)
 	mux.HandleFunc("POST /search/submit", h.SearchSubmit)
+	mux.HandleFunc("GET /v2/search/unsupported", h.SearchUnsupportedV2)
 	mux.HandleFunc("GET /v2/ask", h.AskV2)
 
 	// Ledgers

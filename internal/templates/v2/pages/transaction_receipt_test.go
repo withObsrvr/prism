@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/withObsrvr/prism/internal/gateway"
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
 	txv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
@@ -182,6 +183,102 @@ func TestTransactionOperationUsesCompactSummaryAndOneContractLink(t *testing.T) 
 	}
 	if strings.Contains(html, `>summary</span>`) {
 		t.Errorf("operation includes redundant summary label: %s", html)
+	}
+}
+
+func TestFailureHeroUsesAuthoritativeOutcomeEvidence(t *testing.T) {
+	operationIndex := 1
+	contractID := "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4"
+	data := legacy.TxReceiptData{
+		Hash:                strings.Repeat("a", 64),
+		ShortHash:           "aaaa...aaaa",
+		Status:              "failed",
+		EffectiveActorShort: "GABC...WXYZ",
+		EffectiveActorAddr:  "GABC",
+		OutcomeEvidence: &gateway.TransactionOutcome{
+			EvidenceVersion: "transaction_outcome_v1",
+			Status:          "partial",
+			Outcome:         "failed",
+			Failure: &gateway.TransactionFailureEvidence{
+				Status:         "ready",
+				Phase:          "soroban_host",
+				Scope:          "host_function",
+				NormalizedCode: "invoke_host_function_trapped",
+				OperationIndex: &operationIndex,
+				OperationType:  "INVOKE_HOST_FUNCTION",
+			},
+			Operations: []gateway.TransactionOutcomeOperation{
+				{OperationIndex: 0, ExecutionOutcome: "succeeded", AppliedToLedger: false},
+				{OperationIndex: 1, ExecutionOutcome: "failed", AppliedToLedger: false},
+			},
+			PrimaryInvocation: &gateway.TransactionPrimaryInvocation{
+				OperationIndex: 1,
+				ContractID:     contractID,
+				FunctionName:   "swap",
+				Arguments: []gateway.DecodedScVal{
+					{Type: "address", Display: "GAAA...AWHF"},
+					{Type: "u32", Display: "7"},
+				},
+			},
+			Caveats: []gateway.TransactionOutcomeCaveat{{Code: "diagnostic_evidence_incomplete", Message: "Diagnostic coverage is incomplete."}},
+		},
+	}
+
+	var out strings.Builder
+	if err := TxReceiptHeroFragment(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render hero fragment: %v", err)
+	}
+	html := out.String()
+	for _, want := range []string{
+		"swap() failed",
+		"Contract execution trapped",
+		"invoke_host_function_trapped",
+		"Evidence partial",
+		"Authoritative result with evidence limitations",
+		"Operation #2",
+		"GAAA...AWHF",
+		"Diagnostic coverage is incomplete.",
+		"One earlier operation executed successfully",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("failure hero missing %q: %s", want, html)
+		}
+	}
+	if strings.Contains(html, "Execution reverted") || strings.Contains(html, ">reverted<") {
+		t.Errorf("failure hero retained generic reverted copy: %s", html)
+	}
+}
+
+func TestFailureHeroWithoutE1ADoesNotGuessRevert(t *testing.T) {
+	data := legacy.TxReceiptData{Status: "failed", SourceAddr: "GABC...WXYZ"}
+	var out strings.Builder
+	if err := TxReceiptHeroFragment(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render hero fragment: %v", err)
+	}
+	html := out.String()
+	if !strings.Contains(html, "Failure reason unavailable") || !strings.Contains(html, "could not load the structured transaction outcome evidence") || !strings.Contains(html, "Structured outcome evidence unavailable") {
+		t.Fatalf("missing truthful unavailable state: %s", html)
+	}
+	if strings.Contains(html, "Execution reverted") {
+		t.Fatalf("unavailable evidence was rendered as a revert: %s", html)
+	}
+}
+
+func TestTransactionOperationsDistinguishRollbackFromFailure(t *testing.T) {
+	data := legacy.TxReceiptData{Operations: []legacy.TxOperation{
+		{Index: "1", Type: "Manage Data", Status: "Executed, not applied"},
+		{Index: "2", Type: "Payment", Status: "Failed"},
+		{Index: "3", Type: "Payment", Status: "Not executed"},
+	}}
+	var out strings.Builder
+	if err := txOperations(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render operations: %v", err)
+	}
+	html := out.String()
+	for _, want := range []string{`px-tx-op-status rolled-back`, `px-tx-op-status failed`, `px-tx-op-status not-executed`, `Executed, not applied`} {
+		if !strings.Contains(html, want) {
+			t.Errorf("operation states missing %q: %s", want, html)
+		}
 	}
 }
 

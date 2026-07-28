@@ -30,9 +30,9 @@ type Registry struct{ Entries []Entity }
 
 func DefaultRegistry() *Registry {
 	return &Registry{Entries: []Entity{
-		{Type: EntityAsset, Name: "USDC", Subtitle: "Asset code", Value: "USDC", Href: "/v2/explore?asset=USDC", Frequency: 100},
-		{Type: EntityAsset, Name: "XLM", Subtitle: "Native asset", Value: "XLM", Href: "/v2/explore?asset=XLM", Frequency: 100},
-		{Type: EntityAsset, Name: "EURC", Subtitle: "Asset code", Value: "EURC", Href: "/v2/explore?asset=EURC", Frequency: 80},
+		{Type: EntityAsset, Name: "USDC", Subtitle: "Asset", Value: "USDC", Href: "/v2/assets/USDC", Frequency: 100},
+		{Type: EntityAsset, Name: "XLM", Subtitle: "Native asset", Value: "XLM", Href: "/v2/assets/XLM", Frequency: 100},
+		{Type: EntityAsset, Name: "EURC", Subtitle: "Asset", Value: "EURC", Href: "/v2/assets/EURC", Frequency: 80},
 		{Type: EntityFunction, Name: "swap", Subtitle: "Function call", Value: "swap", Href: "/v2/explore?fn=swap&topic=swap", Frequency: 95},
 		{Type: EntityFunction, Name: "add_liquidity", Subtitle: "Function call", Value: "add_liquidity", Href: "/v2/explore?fn=add_liquidity", Frequency: 75},
 		{Type: EntityFunction, Name: "approve", Subtitle: "Function call", Value: "approve", Href: "/v2/explore?fn=approve&topic=approve", Frequency: 70},

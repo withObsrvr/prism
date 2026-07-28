@@ -18,9 +18,10 @@ import (
 func (h *Handlers) ExploreV2(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	filters := exploreFiltersFromRequest(r)
-	data := mockExploreV2Data(network, filters)
-	if h.useLiveData(r) {
-		data = exploreV2ShellData(network, filters)
+	data := exploreV2ShellData(network, filters)
+	if h.useExplicitMockData(r) {
+		data = mockExploreV2Data(network, filters)
+		data.DemoData = true
 	}
 	data.LiveHref = exploreLiveURL(r)
 	if err := pagesv2.Explore(data).Render(r.Context(), w); err != nil {
@@ -31,8 +32,10 @@ func (h *Handlers) ExploreV2(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) ExploreV2Header(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
-	header := exploreHeader(network)
-	if h.useLiveData(r) {
+	header := unavailableExploreHeader(network)
+	if h.useExplicitMockData(r) {
+		header = exploreHeader(network)
+	} else if h.Gateway != nil {
 		ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
 		defer cancel()
 		if recent, err := h.Gateway.GetSilverRecentLedgers(ctx, network, 1); err == nil && recent != nil && len(recent.Ledgers) > 0 {
@@ -41,6 +44,7 @@ func (h *Handlers) ExploreV2Header(w http.ResponseWriter, r *http.Request) {
 			if t, err := time.Parse(time.RFC3339, ledger.ClosedAt); err == nil {
 				header.AgeLabel = gateway.FormatAge(t)
 			}
+			header.Status = "live"
 		} else if err != nil {
 			h.Logger.Warn("explore header ledger refresh failed", "network", network, "error", err)
 		}
@@ -53,13 +57,19 @@ func (h *Handlers) ExploreV2Header(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) ExploreV2Live(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
-	data := mockExploreV2Data(network, exploreFiltersFromRequest(r))
-	if h.useLiveData(r) {
+	filters := exploreFiltersFromRequest(r)
+	data := unavailableExploreV2Data(network, filters, "Matching activity is temporarily unavailable.")
+	if h.useExplicitMockData(r) {
+		data = mockExploreV2Data(network, filters)
+		data.DemoData = true
+	} else if h.Gateway != nil {
 		if live, err := h.buildExploreV2Data(r, network); err == nil {
 			data = live
 		} else {
-			h.Logger.Warn("live explore v2 failed, falling back to mock", "network", network, "error", err)
-			data.ErrorMessage = "Showing a design fallback while the gateway connection recovers."
+			if h.Logger != nil {
+				h.Logger.Warn("live explore v2 unavailable", "network", network, "error", err)
+			}
+			data = unavailableExploreV2Data(network, filters, "Matching activity is temporarily unavailable.")
 		}
 	}
 	if err := pagesv2.ExploreMain(data).Render(r.Context(), w); err != nil {
@@ -101,9 +111,11 @@ func (h *Handlers) buildExploreV2Data(r *http.Request, network string) (vmv2.Exp
 		rows = h.exploreRowsForTokenContract(r, network, params.ContractID, filters)
 	}
 
-	header := exploreHeader(network)
+	header := unavailableExploreHeader(network)
 	if resp.Meta.LedgerRange.Max > 0 {
 		header.LedgerNumber = gateway.FormatNumber(resp.Meta.LedgerRange.Max)
+		header.Status = "live"
+		header.AgeLabel = "latest serving ledger"
 	}
 	matched := int64(resp.Meta.MatchedCount)
 	if params.ContractID != "" && matched == 0 && len(rows) > 0 {
@@ -370,19 +382,28 @@ func exploreRowMatches(row vmv2.ExploreRow, f vmv2.ExploreFilters) bool {
 }
 
 func exploreV2ShellData(network string, filters vmv2.ExploreFilters) vmv2.ExploreData {
-	data := mockExploreV2Data(network, filters)
+	summary := exploreSummary(filters, 0, 0, 0, nil, true)
+	summary.MatchedLabel = ""
+	summary.LedgerRange = "Fetching live ledger range"
+	summary.EvidenceLabel = "Loading live gateway data"
+	return vmv2.ExploreData{
+		Header:  vmv2.ExploreHeaderData{Network: network, LedgerNumber: "Unavailable", AgeLabel: "Waiting for evidence", Status: "loading"},
+		Filters: filters,
+		Summary: summary,
+		Presets: explorePresets(),
+		Loading: true,
+	}
+}
+
+func unavailableExploreV2Data(network string, filters vmv2.ExploreFilters, message string) vmv2.ExploreData {
+	data := exploreV2ShellData(network, filters)
+	data.Loading = false
 	data.Rows = nil
-	data.SourceLive = false
-	data.Loading = true
-	data.HasMore = false
-	data.NextCursor = ""
-	data.NextHref = ""
-	data.Header.LedgerNumber = "syncing"
-	data.Header.AgeLabel = "latest ledger"
-	data.Summary.MatchedLabel = "…"
-	data.Summary.LedgerRange = "Fetching live ledger range"
-	data.Summary.EvidenceLabel = "Loading live gateway data"
-	data.Summary.EventsPerSec = ""
+	data.ErrorMessage = message
+	data.Header = unavailableExploreHeader(network)
+	data.Summary.MatchedLabel = ""
+	data.Summary.LedgerRange = "Ledger range unavailable"
+	data.Summary.EvidenceLabel = "Live evidence unavailable"
 	return data
 }
 
@@ -404,7 +425,11 @@ func mockExploreV2Data(network string, filters vmv2.ExploreFilters) vmv2.Explore
 }
 
 func exploreHeader(network string) vmv2.ExploreHeaderData {
-	return vmv2.ExploreHeaderData{Network: network, LedgerNumber: "52,844,201", AgeLabel: "2 seconds ago"}
+	return vmv2.ExploreHeaderData{Network: network, LedgerNumber: "52,844,201", AgeLabel: "Synthetic fixture", Status: "demo"}
+}
+
+func unavailableExploreHeader(network string) vmv2.ExploreHeaderData {
+	return vmv2.ExploreHeaderData{Network: network, LedgerNumber: "Unavailable", AgeLabel: "Waiting for evidence", Status: "unavailable"}
 }
 
 func exploreSummary(f vmv2.ExploreFilters, count int64, minLedger int64, maxLedger int64, eps *float64, live bool) vmv2.ExploreSummary {
@@ -435,7 +460,7 @@ func exploreSummary(f vmv2.ExploreFilters, count int64, minLedger int64, maxLedg
 	if live {
 		summary.EvidenceLabel = "Live gateway data"
 	} else {
-		summary.EvidenceLabel = "Fallback sample"
+		summary.EvidenceLabel = "Demo fixture"
 	}
 	if eps != nil {
 		summary.EventsPerSec = fmt.Sprintf("%.1f", *eps)

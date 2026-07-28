@@ -20,7 +20,7 @@ templ Explore(data vmv2.ExploreData) {
 
 templ ExploreHeartbeat(data vmv2.ExploreHeaderData, loading bool) {
 	<div id="px-ex-heartbeat" class="ph-heartbeat" hx-get="/v2/explore/header" hx-trigger={ exploreHeartbeatTrigger(loading) } hx-swap="outerHTML">
-		<span class="dot"></span><span>live</span><span class="sep">·</span><span>ledger <b>{ exploreHeartbeatLedger(data, loading) }</b></span><span class="sep">·</span><span>{ exploreHeartbeatAge(data, loading) }</span>
+		<span class={ "dot", exploreHeartbeatDotClass(data, loading) }></span><span>{ exploreHeartbeatStatus(data, loading) }</span><span class="sep">·</span><span>ledger <b>{ exploreHeartbeatLedger(data, loading) }</b></span><span class="sep">·</span><span>{ exploreHeartbeatAge(data, loading) }</span>
 	</div>
 }
 
@@ -34,7 +34,15 @@ templ ExploreMain(data vmv2.ExploreData) {
 				<div class="px-ex-summary">
 					<div class="px-ex-summary-kicker">Query builder</div>
 					<h1 id="explore-title">@templ.Raw(data.Summary.SentenceHTML)</h1>
-					<div class="px-ex-summary-meta"><span><b>{ data.Summary.MatchedLabel }</b> matched</span><span>{ data.Summary.WindowLabel }</span><span>{ data.Summary.LedgerRange }</span><span>{ data.Summary.EvidenceLabel }</span>
+					<div class="px-ex-summary-meta">
+						if data.Loading {
+							<span>Match count pending</span>
+						} else if strings.TrimSpace(data.ErrorMessage) != "" {
+							<span>Match count unavailable</span>
+						} else {
+							<span><b>{ data.Summary.MatchedLabel }</b> matched</span>
+						}
+						<span>{ data.Summary.WindowLabel }</span><span>{ data.Summary.LedgerRange }</span><span>{ data.Summary.EvidenceLabel }</span>
 						if strings.TrimSpace(data.Summary.EventsPerSec) != "" {
 							<span>{ data.Summary.EventsPerSec } events/s</span>
 						}
@@ -73,6 +81,8 @@ templ ExploreMain(data vmv2.ExploreData) {
 			</section>
 			if data.Loading {
 				<div class="px-ex-notice" role="status"><strong>Loading live evidence.</strong><span>The query shell is ready while Prism fetches matching activity.</span></div>
+			} else if data.DemoData {
+				<div class="px-ex-notice" role="status"><strong>Demo fixture.</strong><span>The activity below is synthetic and is not a claim about this network.</span></div>
 			} else if strings.TrimSpace(data.ErrorMessage) != "" {
 				<div class="px-ex-notice" role="status"><strong>Live data unavailable.</strong><span>{ data.ErrorMessage }</span></div>
 			}
@@ -82,12 +92,14 @@ templ ExploreMain(data vmv2.ExploreData) {
 						<span>Loading gateway</span>
 					} else if data.SourceLive {
 						<span>Live gateway</span>
+					} else if data.DemoData {
+						<span>Demo fixture</span>
 					} else {
-						<span>Design fallback</span>
+						<span>Unavailable</span>
 					}
 				</div></div>
 				if len(data.Rows) == 0 {
-					@exploreEmpty(data.Filters)
+					@exploreEmpty(data.Filters, data.ErrorMessage)
 				} else {
 					<div class="px-ex-table" role="table" aria-label="Matching activity"><div class="px-ex-thead" role="row"><span>When</span><span>Meaning</span><span>Protocol</span><span>Evidence</span><span>Status</span></div>
 						for _, row := range data.Rows {
@@ -126,8 +138,12 @@ templ exploreRow(row vmv2.ExploreRow) {
 	</a>
 }
 
-templ exploreEmpty(filters vmv2.ExploreFilters) {
-	<div class="px-ex-empty"><h3>No matching activity yet</h3><p>Relax one filter or broaden the time window. Prism keeps the query sentence intact so you can adjust without starting over.</p><a href="/v2/explore">Show all recent activity</a></div>
+templ exploreEmpty(filters vmv2.ExploreFilters, errorMessage string) {
+	if strings.TrimSpace(errorMessage) != "" {
+		<div class="px-ex-empty"><h3>Evidence unavailable</h3><p>Prism could not verify this query against live activity. The filters remain intact so you can retry without reconstructing the search.</p><a href="/v2/explore">Retry recent activity</a></div>
+	} else {
+		<div class="px-ex-empty"><h3>No matching activity yet</h3><p>Relax one filter or broaden the time window. Prism keeps the query sentence intact so you can adjust without starting over.</p><a href="/v2/explore">Show all recent activity</a></div>
+	}
 }
 
 templ exploreQueryScript() { <script>(function(){var form=document.querySelector('[data-explore-query-form]');if(!form||form.dataset.bound==='true')return;form.dataset.bound='true';function target(){var fd=new FormData(form);var q=new URLSearchParams();function set(k,skip){var v=String(fd.get(k)||'').trim();if(!v||v===skip)return;q.set(k,v);}set('scope','all');set('topic','');set('fn','');set('asset','');set('time','1h');set('status','');set('q','');var s=q.toString();return form.action+(s?'?'+s:'');}form.addEventListener('submit',function(e){e.preventDefault();window.location.assign(target());});form.querySelectorAll('select').forEach(function(el){el.addEventListener('change',function(){window.location.assign(target());});});})();</script> }
@@ -139,6 +155,8 @@ templ exploreFilterChip(key string, value string, filters vmv2.ExploreFilters) {
 }
 
 func exploreHeartbeatTrigger(loading bool) string { if loading { return "load, every 5s" }; return "every 5s" }
+func exploreHeartbeatStatus(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "loading" }; if data.Status == "" { return "live" }; return data.Status }
+func exploreHeartbeatDotClass(data vmv2.ExploreHeaderData, loading bool) string { status := exploreHeartbeatStatus(data, loading); if status == "live" { return "is-live" }; if status == "demo" { return "is-demo" }; if status == "loading" { return "is-pending" }; return "is-unavailable" }
 func exploreHeartbeatLedger(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "syncing" }; return data.LedgerNumber }
 func exploreHeartbeatAge(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "latest ledger" }; return data.AgeLabel }
 func exploreEventLabel(count string) string { count = strings.TrimSpace(count); if count == "" { return "event" }; if count == "1" { return "1 event" }; return count + " events" }

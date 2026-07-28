@@ -14,12 +14,14 @@ type ExploreData struct {
 	NextHref     string
 	LiveHref     string
 	Loading      bool
+	DemoData     bool
 }
 
 type ExploreHeaderData struct {
 	Network      string
 	LedgerNumber string
 	AgeLabel     string
+	Status       string
 }
 
 type ExploreFilters struct {

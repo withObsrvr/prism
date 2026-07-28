@@ -3,6 +3,7 @@ package search
 import (
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -47,6 +48,14 @@ func (c Classification) URL() string {
 
 var federationRE = regexp.MustCompile(`^[A-Za-z0-9._%+-]+\*[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`)
 
+var (
+	embeddedTxRE         = regexp.MustCompile(`(?i)(^|[^0-9a-f])([0-9a-f]{64})([^0-9a-f]|$)`)
+	embeddedStrKeyRE     = regexp.MustCompile(`(?i)(^|[^a-z2-7])([gc][a-z2-7]{55})([^a-z2-7]|$)`)
+	embeddedMuxedRE      = regexp.MustCompile(`(?i)(^|[^a-z2-7])(m[a-z2-7]{55,69})([^a-z2-7]|$)`)
+	embeddedLedgerRE     = regexp.MustCompile(`(?i)\bledger(?:\s+(?:number|sequence))?\s*#?\s*([1-9][0-9]*)\b`)
+	embeddedFederationRE = regexp.MustCompile(`[A-Za-z0-9._%+-]+\*[A-Za-z0-9.-]+\.[A-Za-z]{2,}`)
+)
+
 func Classify(input string) Classification {
 	q := strings.TrimSpace(input)
 	if q == "" {
@@ -76,6 +85,39 @@ func Classify(input string) Classification {
 		return Classification{Type: ClassFederation, Value: q}
 	}
 	return Classification{Type: ClassUnknown, Value: q}
+}
+
+// ExtractIdentifier finds a supported identifier inside surrounding prose.
+// Exact identifiers continue to use Classify so both paths share canonical
+// routing behavior.
+func ExtractIdentifier(input string) Classification {
+	if exact := Classify(input); exact.Known() {
+		return exact
+	}
+
+	type candidate struct {
+		start int
+		value string
+	}
+	candidates := make([]candidate, 0, 5)
+	appendMatch := func(re *regexp.Regexp, group int) {
+		match := re.FindStringSubmatchIndex(input)
+		groupStart := group * 2
+		if match == nil || groupStart+1 >= len(match) || match[groupStart] < 0 {
+			return
+		}
+		candidates = append(candidates, candidate{start: match[groupStart], value: input[match[groupStart]:match[groupStart+1]]})
+	}
+	appendMatch(embeddedTxRE, 2)
+	appendMatch(embeddedStrKeyRE, 2)
+	appendMatch(embeddedMuxedRE, 2)
+	appendMatch(embeddedLedgerRE, 1)
+	appendMatch(embeddedFederationRE, 0)
+	if len(candidates) == 0 {
+		return Classification{Type: ClassUnknown, Value: strings.TrimSpace(input)}
+	}
+	sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].start < candidates[j].start })
+	return Classify(candidates[0].value)
 }
 
 func isHex(s string) bool {

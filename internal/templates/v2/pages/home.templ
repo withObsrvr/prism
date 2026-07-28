@@ -1,230 +1,198 @@
 package pagesv2
 
 import (
-	"fmt"
-	"strings"
 	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
 	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
 templ Home(data vmv2.HomeData) {
-	@layoutsv2.Base("Prism: Stellar's Soroban-first explorer") {
+	@layoutsv2.Base("Prism: understand what is happening on Stellar") {
 		@componentsv2.MainHeader("home", data.Header.Network) {
-			<div class="ph-heartbeat"><span class="dot"></span><span>live</span><span class="sep">·</span><span>last ledger <b id="ph-heartbeat-age">{ shortHeaderAge(data.Header.AgeLabel) }</b></span><span class="sep">·</span><span><b id="ph-heartbeat-tx">{ topTxCount(data) }</b> tx/5s</span></div>
+			<div class="ph-heartbeat" aria-label="Latest ledger status">
+				<span class="dot is-pending" id="ph-heartbeat-dot"></span>
+				<span id="ph-heartbeat-state">Loading ledger data</span>
+				<span class="sep" aria-hidden="true">·</span>
+				<span>ledger <b id="ph-heartbeat-ledger">{ data.Header.LedgerNumber }</b></span>
+				<span class="sep" aria-hidden="true">·</span>
+				<span id="ph-heartbeat-age">{ data.Header.AgeLabel }</span>
+				<span class="sep" aria-hidden="true">·</span>
+				<span><b id="ph-heartbeat-tx">Unavailable</b> tx</span>
+			</div>
 		}
-		<main class="ph-page">
-			<section class="ph-hero ph-hybrid-hero">
-				@phHeroLedger(topLedger(data))
-				<div class="ph-search-wrap ph-hybrid-search"><div class="ph-search-label">Ask a question, paste evidence, or jump to an entity</div><form class="ph-search" action="/search/submit" method="GET"><span class="ph-search-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"></circle><path d="M12 12l4 4"></path></svg></span><input id="ph-search-input" type="search" name="q" placeholder={ firstNonEmptyHome(data.Prompt.Placeholder, "Paste a tx hash, address, contract, or ask what happened") } autocomplete="off" hx-get="/search/suggest" hx-trigger="keyup changed delay:120ms" hx-target="#ph-search-results" hx-swap="innerHTML" hx-on::after-request="document.getElementById('ph-search-results').hidden = !this.value.trim()"/><button class="ph-search-submit" type="submit">Open</button></form><div id="ph-search-results" class="ph-search-results" hidden></div><div class="ph-tryline"><span class="label">Try</span><button type="button" class="ph-trychip" data-href="/v2/explore?asset=USDC&fn=swap&time=24h&topic=swap">Show USDC swaps today</button><button type="button" class="ph-trychip" data-href="/v2/explore?fn=transfer&status=failed&topic=transfer">Failed transfers last hour</button><button type="button" class="ph-trychip" data-href="/v2/explore?scope=soroban&time=24h">Contract calls today</button><button type="button" class="ph-trychip" data-href="/v2/explore?topic=transfer&asset=EURC&time=24h">EURC transfers today</button></div></div>
+		if data.MockMode {
+			<div class="ph-demo-banner" role="status"><strong>Demo data</strong><span>This page is rendering explicit synthetic fixtures.</span></div>
+		}
+		<main class="ph-home-page">
+			@homeTimelineLoading(data.TimelineURL)
+			@homeSearch(data.Prompt)
+			@homeDeferredSection("changes", "What changed", "Latest completed hour compared with the prior seven-day hourly median", "The latest-hour comparison is temporarily unavailable.")
+			@homeDeferredSection("archival", "Nearing archival", "Persistent and contract-instance storage only", "Contract archival evidence is temporarily unavailable.")
+			@homeDeferredSection("contracts", "Most called, 24 hours", "Ranked by call count, not TVL", "Contract ranking evidence is temporarily unavailable.")
+			@homeDeferredSection("utilization", "Network utilization", "Instructions, read and write bytes, and transaction size", "Ledger utilization evidence is temporarily unavailable.")
+			<section class="ph-home-open" id="why" aria-labelledby="ph-home-open-title">
+				<div><span class="ph-home-kicker">Open source</span><h2 id="ph-home-open-title">Inspect the explorer, too.</h2></div>
+				<p>Prism keeps interpretations connected to evidence, and its implementation is available for review.</p>
+				<a href="https://github.com/withObsrvr/prism">github.com/withObsrvr/prism <span aria-hidden="true">→</span></a>
 			</section>
-			<div class="ph-alert"><div class="ph-alert-icon">!</div><div class="ph-alert-body"><div class="ph-alert-title">{ firstNonEmptyHome(data.Alert.Title, "Three contracts are running out of room") }</div><div class="ph-alert-desc">{ firstNonEmptyHome(data.Alert.Body, "Blend's lending pool, Soroswap's router, and Phoenix's AMM have under four days of persistent-storage life left.") }</div><div class="ph-alert-why">{ firstNonEmptyHome(data.Alert.Meta, "Why this matters: contract operators need to extend TTL before it hits zero, otherwise their users see failures.") }</div><a class="ph-alert-cta" href="#contracts">{ firstNonEmptyHome(data.Alert.CTA, "Review →") }</a></div><button class="ph-alert-close" type="button" aria-label="Dismiss storage warning" onclick="this.closest('.ph-alert').remove()">×</button></div>
-			<section id="activity" class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">What just happened</h2><p class="ph-sec-sub">Each card is a ledger, Stellar's 5-second heartbeat, with everything that settled inside it. Pick a classification to drill into individual transactions instead. </p></div><div class="ph-sec-toolbar"><button class="ph-sec-pill active">Everything by ledger</button><button class="ph-sec-pill">All transactions</button><button class="ph-sec-pill">Swaps</button><button class="ph-sec-pill">Contract calls</button><button class="ph-sec-pill">Agent payments</button><button class="ph-sec-pill">New deployments</button><button class="ph-sec-pill">Confidential</button><button class="ph-sec-pill">Classic</button></div><div id="ph-ledger-root" class="ph-ledgers" data-feed={ data.FeedJSON } data-live={ boolStringHome(data.FeedLive) }>
-				for _, row := range data.LedgerFeed.Rows {
-					@phLedger(row)
-				}
-			</div></section>
-			<section class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">Contracts that might need attention</h2><p class="ph-sec-sub">Smart contracts on Stellar archive their storage after a while unless someone renews it. <b>No other explorer shows you this.</b></p></div><div class="ph-grid-4">
-				for _, card := range data.Attention.Cards {
-					@attentionCard(card)
-				}
-			</div></section>
-			<section id="contracts" class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">Today's most active contracts</h2><p class="ph-sec-sub">Ranked by how many times each contract was called in the last 24 hours, not dollars or TVL. The actual activity.</p></div><div class="ph-grid-4">
-				for i, card := range data.Leaders.Cards {
-					@activeCard(card, i)
-				}
-			</div></section>
-			<section class="ph-sec"><div class="ph-sec-head"><h2 class="ph-sec-h">How much of the network is being used</h2><p class="ph-sec-sub">Every ledger has limits. When they fill up, fees rise sharply. Here's where we sit right now.</p></div><div class="ph-grid-3">
-				for _, card := range data.Utilization.Cards {
-					@gaugeCard(card)
-				}
-			</div></section>
-			<section id="why" class="ph-why"><div class="ph-why-head"><div class="ph-why-eyebrow">Why Prism</div><h3 class="ph-why-h">Built to be the explorer Soroban developers can actually rely on.</h3></div><div class="ph-why-grid"><div class="ph-why-card"><div class="ph-why-stat">protocol v20 →</div><div class="ph-why-label">Complete history from launch, no gaps. Every ledger, every event, every state change.</div></div><div class="ph-why-card"><div class="ph-why-stat">94 ms <span style="color: var(--ph-text-3); font-weight: 500;">avg</span></div><div class="ph-why-label">Lookup latency on any tx, account, or contract. <b>99th percentile 312 ms</b>.</div></div><div class="ph-why-card"><div class="ph-why-stat">412 protocols</div><div class="ph-why-label">Named automatically. Calls into Soroswap, Blend, Phoenix, x402, and 408 others get human labels, not just raw addresses.</div></div><div class="ph-why-card"><div class="ph-why-stat serif">Open source</div><div class="ph-why-label"><a href="https://github.com/withObsrvr/prism" style="color: var(--ph-accent-ink); border-bottom: 1px dotted currentColor;"><code>github.com/withObsrvr/prism</code></a> · self-host the explorer, audit the classifier, contribute back.</div></div></div></section>
 		</main>
 		<script>
 			(function(){
-				document.querySelectorAll('.ph-trychip').forEach(function(b){b.addEventListener('click',function(){var href=b.getAttribute('data-href'); if(href){ window.location.href = href; return; } var i=document.getElementById('ph-search-input'); if(i){i.value=b.textContent; i.focus(); i.dispatchEvent(new Event('keyup', {bubbles:true}));}})});
-				var root = document.getElementById('ph-ledger-root');
-				if(!root) return;
-				var ageEl = document.getElementById('ph-heartbeat-age');
-				var txEl = document.getElementById('ph-heartbeat-tx');
-				var focus = {
-					ledger: document.getElementById('ph-focus-ledger'),
-					ledgerLink: document.getElementById('ph-focus-ledger-link'),
-					tx: document.getElementById('ph-focus-tx'),
-					age: document.getElementById('ph-focus-age'),
-					meta: document.getElementById('ph-focus-meta'),
-					chips: document.getElementById('ph-focus-chips'),
-					includedOperations: document.getElementById('ph-focus-operations-included'),
-					successfulOperations: document.getElementById('ph-focus-operations-successful'),
-					failedOperations: document.getElementById('ph-focus-operations-failed'),
-					refraction: document.getElementById('ph-focus-refraction')
-				};
-				var inFlight = false;
-				var introducerHelp = 'This validator introduced the transaction-set value selected through SCP. Stellar validators collectively agreed on the ledger; no single validator closed it.';
-				function esc(s){ return String(s == null ? '' : s).replace(/[&<>\"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]; }); }
-				function renderIntroducer(label, focusable){
-					label = String(label || '').trim();
-					if(!label) return '';
-					var focus = focusable ? ' tabindex="0"' : '';
-					var accessible = 'Introduced by ' + label + '. ' + introducerHelp;
-					return '<span class="ph-ledger-introducer" role="note" aria-label="'+esc(accessible)+'"'+focus+'><span>introduced by <b>'+esc(label)+'</b></span><span class="ph-ledger-introducer-icon" aria-hidden="true">i</span><span class="ph-ledger-introducer-tooltip" aria-hidden="true">'+esc(introducerHelp)+'</span></span>';
-				}
-				function renderLedgerMeta(row, focusable){
-					var result = esc(row.meta || '');
-					if(row.introducer) result += '<span aria-hidden="true"> · </span>' + renderIntroducer(row.introducer, focusable);
-					return result;
-				}
-				function cls(k){ return ({swap:'swap', call:'call', agent:'agent', classic:'classic', deploy:'deploy', confidential:'confid', account:'account', payment:'payment', market:'market', trustline:'trustline', claimable:'claimable', sponsorship:'sponsorship', soroban:'soroban', other:'other'})[k] || 'other'; }
-				function refract(k){ return ({swap:'swap', call:'call', agent:'events', classic:'classic', deploy:'lending', confidential:'transfer', account:'lending', payment:'transfer', market:'swap', trustline:'classic', claimable:'transfer', sponsorship:'events', soroban:'call', other:'other'})[k] || 'other'; }
-				function renderRefraction(chips){ chips = chips || []; if(!chips.length) chips = [{kind:'swap'}, {kind:'confidential'}, {kind:'call'}, {kind:'agent'}]; return chips.map(function(ch){ return '<span class="ph-refraction-seg '+refract(ch.kind)+'"></span>'; }).join(''); }
-				function seq(v){ return String(v || '').replace(/,/g,'').trim(); }
-				function renderLedger(row, isNew){
-					var chips = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
-					return '<a class="ph-ledger '+(isNew ? 'is-new' : '')+'" href="/v2/ledger/'+encodeURIComponent(seq(row.ledgerNumber))+'"><div class="ph-ledger-id"><span class="ph-ledger-num">#'+esc(row.ledgerNumber)+'</span><span class="ph-ledger-when">'+esc(row.age)+'</span></div><div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>'+esc(row.transactionCount)+' transactions</b> '+renderLedgerMeta(row, false)+'</div><div class="ph-ledger-chips">'+chips+'</div></div><div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">'+esc(row.successfulOperationCount || '0')+'</span></div><div><span class="k">failed ops</span><span class="v failure">'+esc(row.failedOperationCount || '0')+'</span></div></div></a>';
-				}
-				function normalizeAges(rows){ (rows || []).forEach(function(row, i){ if(!row.age || root.dataset.live !== 'true') row.age = i === 0 ? 'just now' : (i * 5) + ' seconds ago'; }); }
-				function updateFocus(row){
-					if(!row) return;
-					var href = '/v2/ledger/' + encodeURIComponent(seq(row.ledgerNumber));
-					if(focus.ledger) focus.ledger.textContent = '#' + String(row.ledgerNumber || '');
-					if(focus.ledgerLink) focus.ledgerLink.href = href;
-					if(focus.tx) focus.tx.textContent = String(row.transactionCount || '0');
-					if(focus.age) focus.age.textContent = String(row.age || 'just now');
-					if(focus.meta) focus.meta.innerHTML = renderLedgerMeta(row, true);
-					if(focus.chips) focus.chips.innerHTML = (row.chips || []).map(function(ch){ return '<span class="ph-ledger-chip '+cls(ch.kind)+'">'+esc(ch.label)+'</span>'; }).join('');
-					if(focus.refraction) focus.refraction.innerHTML = renderRefraction(row.chips || []);
-					if(focus.includedOperations) focus.includedOperations.textContent = String(row.includedOperationCount || '0');
-					if(focus.successfulOperations) focus.successfulOperations.textContent = String(row.successfulOperationCount || '0');
-					if(focus.failedOperations) focus.failedOperations.textContent = String(row.failedOperationCount || '0');
-				}
-				function applyFeed(feed, isPoll){
-					var ledgers = (feed && feed.ledgers) || [];
-					if(!ledgers.length) return;
-					normalizeAges(ledgers);
-					var current = root.querySelector('.ph-ledger-num');
-					var currentSeq = current ? current.textContent.replace('#','') : '';
-					var incomingSeq = ledgers[0].ledgerNumber || '';
-					root.innerHTML = ledgers.map(function(row, i){ return renderLedger(row, isPoll && i === 0 && incomingSeq !== currentSeq); }).join('');
-					updateFocus(ledgers[0]);
-					if(txEl) txEl.textContent = ledgers[0].transactionCount || txEl.textContent;
-					if(ageEl) ageEl.textContent = String(ledgers[0].age || 'just now');
-				}
-				try { applyFeed(JSON.parse(root.dataset.feed || '{}'), false); } catch(_) {}
-				function refresh(){
-					if(inFlight) return;
-					inFlight = true;
-					fetch('/v2/home/feed', { headers: { Accept: 'application/json' } }).then(function(r){ return r.ok ? r.json() : null; }).then(function(payload){
-						if(payload && payload.feed){ root.dataset.live = payload.live ? 'true' : 'false'; applyFeed(payload.feed, true); if(payload.header && ageEl) ageEl.textContent = String(payload.header.ageLabel || ageEl.textContent); }
-					}).catch(function(){}).finally(function(){ inFlight = false; });
-				}
-				setInterval(refresh, 5000);
+				document.querySelectorAll('.ph-trychip').forEach(function(button){
+					button.addEventListener('click', function(){
+						var href = button.getAttribute('data-href');
+						if (href) window.location.href = href;
+					});
+				});
 			})();
 		</script>
 	}
 }
 
-templ phHeroLedger(row vmv2.LedgerRowData) {
-	<div class="ph-ledger-focus" aria-labelledby="ph-ledger-focus-title">
-		<div class="ph-ledger-focus-main">
-			<div class="ph-ledger-focus-kicker"><span class="dot"></span><span>Latest ledger</span><span class="mono" id="ph-focus-age">{ row.Age }</span></div>
-			<h1 id="ph-ledger-focus-title">Ledger <a id="ph-focus-ledger-link" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }><span id="ph-focus-ledger">#{ row.LedgerNumber }</span></a> just closed with <b id="ph-focus-tx">{ row.TransactionCount }</b> transactions.</h1>
-			<p class="ph-ledger-focus-copy"><b>Interpretation:</b> Prism classified this ledger into human-readable activity before showing the raw rows. <span id="ph-focus-meta">@phLedgerMeta(row, true)</span></p>
-			<div class="ph-ledger-focus-chips" id="ph-focus-chips">
-				for _, chip := range row.Chips {
-					<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
-				}
+templ homeSearch(data vmv2.PromptData) {
+	<section class="ph-home-search" aria-labelledby="ph-home-search-title">
+		<div class="ph-home-search-copy">
+			<span class="ph-home-kicker">Lookup and explore</span>
+			<h1 id="ph-home-search-title">Find anything on Stellar</h1>
+			<p>Paste a transaction, account, contract, asset, or describe recent activity.</p>
+		</div>
+		<div class="ph-search-wrap">
+			<form class="ph-search" action="/search/submit" method="GET">
+				<span class="ph-search-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"></circle><path d="M12 12l4 4"></path></svg></span>
+				<label class="sr-only" for="ph-search-input">Search Stellar activity and entities</label>
+				<input id="ph-search-input" type="search" name="q" placeholder={ data.Placeholder } autocomplete="off" hx-get="/search/suggest" hx-trigger="keyup changed delay:120ms" hx-target="#ph-search-results" hx-swap="innerHTML" hx-on::after-request="document.getElementById('ph-search-results').hidden = !this.value.trim()"/>
+				<button class="ph-search-submit" type="submit">Search</button>
+			</form>
+			<div id="ph-search-results" class="ph-search-results" hidden></div>
+			<div class="ph-tryline" aria-label="Example searches">
+				<span class="label">Try</span>
+				<button type="button" class="ph-trychip" data-href="/v2/explore?asset=USDC&fn=swap&time=24h&topic=swap">USDC swaps today</button>
+				<button type="button" class="ph-trychip" data-href="/v2/explore?fn=transfer&status=failed&topic=transfer">Failed transfers last hour</button>
+				<button type="button" class="ph-trychip" data-href="/v2/explore?scope=soroban&time=24h">Contract calls today</button>
+				<button type="button" class="ph-trychip" data-href="/v2/ask?q=Which%20contracts%20are%20nearing%20archival%3F">Contracts nearing archival</button>
 			</div>
-			@phRefractionBar(row)
 		</div>
-		<div class="ph-ledger-focus-evidence" aria-label="Ledger evidence summary">
-			<div class="ph-ledger-focus-evidence-label">Evidence snapshot</div>
-			<div class="ph-focus-facts"><div><span>included operations</span><b id="ph-focus-operations-included">{ row.IncludedOperationCount }</b></div><div><span>successful</span><b class="success" id="ph-focus-operations-successful">{ row.SuccessfulOperationCount }</b></div><div><span>failed</span><b class="failure" id="ph-focus-operations-failed">{ row.FailedOperationCount }</b></div></div>
-			<a class="ph-ledger-focus-open" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>Open ledger evidence →</a>
+	</section>
+}
+
+templ homeTimelineLoading(url string) {
+	<section id="ph-home-timeline" class="ph-spectrum-section" aria-labelledby="ph-spectrum-title" aria-busy="true" aria-live="polite" hx-get={ url } hx-trigger="load" hx-swap="outerHTML">
+		<div class="ph-spectrum-head">
+			<div><span class="ph-home-kicker">Live ledger signal</span><h2 id="ph-spectrum-title">Reading the latest ledgers</h2></div>
+			<span class="ph-spectrum-instruction">Classifying activity from one serving snapshot</span>
 		</div>
-	</div>
-}
-
-templ phRefractionBar(row vmv2.LedgerRowData) {
-	<div class="ph-refraction" id="ph-focus-refraction" aria-hidden="true">
-		if len(row.Chips) > 0 {
-			for _, chip := range row.Chips {
-				<span class={ "ph-refraction-seg", refractionClass(chip.Kind) }></span>
+		<div class="ph-spectrum-skeleton" aria-hidden="true">
+			for index := range 32 {
+				<span class={ "ph-spectrum-skeleton-column", homeSkeletonClass(index) }></span>
 			}
-		} else {
-			<span class="ph-refraction-seg swap"></span><span class="ph-refraction-seg transfer"></span><span class="ph-refraction-seg call"></span><span class="ph-refraction-seg events"></span>
-		}
-	</div>
+		</div>
+		<span class="sr-only">Loading recent ledger activity.</span>
+	</section>
 }
 
-templ phLedger(row vmv2.LedgerRowData) {
-	<a class="ph-ledger" href={ templ.SafeURL("/v2/ledger/" + strings.ReplaceAll(row.LedgerNumber, ",", "")) }>
-		<div class="ph-ledger-id"><span class="ph-ledger-num">#{ row.LedgerNumber }</span><span class="ph-ledger-when">{ row.Age }</span></div>
-		<div class="ph-ledger-mid"><div class="ph-ledger-summary"><b>{ row.TransactionCount } transactions</b> @phLedgerMeta(row, false)</div><div class="ph-ledger-chips">
-			for _, chip := range row.Chips {
-				<span class={ "ph-ledger-chip", chipClass(chip.Kind) }>{ chip.Label }</span>
+templ HomeTimeline(data vmv2.HomeTimelineData) {
+	<span class={ "dot", homeHeartbeatDotClass(data) } id="ph-heartbeat-dot" hx-swap-oob="true"></span>
+	<span id="ph-heartbeat-state" hx-swap-oob="true">{ data.HeaderState }</span>
+	<b id="ph-heartbeat-ledger" hx-swap-oob="true">{ data.HeaderLedger }</b>
+	<span id="ph-heartbeat-age" hx-swap-oob="true">{ data.HeaderAge }</span>
+	<b id="ph-heartbeat-tx" hx-swap-oob="true">{ data.HeaderTxCount }</b>
+	<section id="ph-home-timeline" class={ "ph-spectrum-section", "is-" + string(data.Status.State) } aria-labelledby="ph-spectrum-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 5s" hx-swap="outerHTML">
+		<div class="ph-spectrum-head">
+			<div>
+				<span class="ph-home-kicker">Live ledger signal</span>
+				<h2 id="ph-spectrum-title">
+					if data.WindowLabel != "" {
+						{ data.WindowLabel }
+					} else {
+						Recent ledger activity
+					}
+				</h2>
+			</div>
+			if data.DetailLabel != "" {
+				<span class="ph-spectrum-instruction">{ data.DetailLabel }</span>
 			}
-		</div></div>
-		<div class="ph-ledger-outcomes"><div><span class="k">successful ops</span><span class="v success">{ row.SuccessfulOperationCount }</span></div><div><span class="k">failed ops</span><span class="v failure">{ row.FailedOperationCount }</span></div></div>
-	</a>
+		</div>
+		if data.DemoData {
+			<div class="ph-inline-state is-demo"><strong>Demo fixture</strong><span>The chart below is synthetic and is not a claim about this network.</span></div>
+		}
+		if data.Status.Message != "" {
+			<div class={ "ph-inline-state", "is-" + string(data.Status.State) } role="status">
+				<strong>{ homeStateLabel(data.Status.State) }</strong><span>{ data.Status.Message }</span>
+			</div>
+		}
+		if len(data.Columns) > 0 {
+			<div class="ph-spectrum-layout">
+				<div class="ph-spectrum-chart-wrap">
+					<div class="ph-spectrum-chart" style={ data.ColumnGridStyle } role="group" aria-label="Composition of recent ledgers by activity class">
+						for _, column := range data.Columns {
+							<a class={ "ph-spectrum-column", templ.KV("is-latest", column.Latest) } href={ templ.SafeURL(column.Href) } style={ column.HeightStyle + ";" + column.FailureStyle } aria-label={ column.AccessibleLabel } title={ column.AccessibleLabel }>
+								<span class="ph-spectrum-stack" aria-hidden="true">
+									for _, segment := range column.Segments {
+										<span class={ "ph-spectrum-segment", "is-" + segment.Kind } style={ segment.Style }></span>
+									}
+								</span>
+								<span class="ph-spectrum-failure" aria-hidden="true"></span>
+								<span class="ph-spectrum-tooltip" aria-hidden="true">
+									<strong>Ledger { column.SequenceLabel }</strong>
+									<span>{ column.ClosedAt } · { column.AgeLabel }</span>
+									<span>{ column.TransactionCount } tx · { column.IncludedOperations } ops · { column.FailedOperations } failed</span>
+									if column.Introducer != "" {
+										<span>Introduced by { column.Introducer }</span>
+									}
+								</span>
+							</a>
+						}
+					</div>
+					<div class="ph-spectrum-axis" aria-hidden="true"><span>{ data.StartSequence }</span><span>Failed operations</span><span>{ data.EndSequence }</span></div>
+				</div>
+				<div class="ph-spectrum-legend" aria-label="Activity legend">
+					<span class="ph-spectrum-legend-title">Classified as</span>
+					for _, item := range data.Legend {
+						<div class="ph-spectrum-legend-row"><span class={ "ph-spectrum-swatch", "is-" + item.Kind }></span><span>{ item.Label }</span><b>{ item.Percentage }</b><span class="sr-only">{ item.Count } operations</span></div>
+					}
+					<div class="ph-spectrum-legend-row is-failure"><span class="ph-spectrum-swatch is-failure"></span><span>Failed</span><b>{ data.FailurePercent }</b><span class="sr-only">{ data.FailureCount } failed operations</span></div>
+					if data.Status.AsOfLedger > 0 {
+						<div class="ph-spectrum-provenance"><span>As of ledger</span><b>{ data.AsOfLedgerLabel }</b></div>
+					}
+				</div>
+			</div>
+		} else if data.Status.State == vmv2.HomeSectionUnavailable {
+			<button class="ph-inline-retry" type="button" hx-get={ data.PollURL } hx-target="#ph-home-timeline" hx-swap="outerHTML">Retry ledger activity</button>
+		}
+	</section>
 }
 
-templ phLedgerMeta(row vmv2.LedgerRowData, focusable bool) {
-	{ row.Meta }
-	if row.Introducer != "" {
-		<span aria-hidden="true"> · </span>
-		if focusable {
-			@componentsv2.FocusableLedgerIntroducer(row.Introducer)
-		} else {
-			@componentsv2.LedgerIntroducer(row.Introducer)
-		}
+templ homeDeferredSection(id string, title string, scope string, message string) {
+	<section class="ph-home-deferred" id={ id } aria-labelledby={ "ph-home-" + id + "-title" }>
+		<div class="ph-home-deferred-heading"><div><span class="ph-home-kicker">Evidence section</span><h2 id={ "ph-home-" + id + "-title" }>{ title }</h2></div><span>{ scope }</span></div>
+		<div class="ph-inline-state is-unavailable"><strong>Unavailable</strong><span>{ message }</span></div>
+	</section>
+}
+
+func homeSkeletonClass(index int) string {
+	switch index % 4 {
+	case 0: return "is-tall"
+	case 1: return "is-medium"
+	case 2: return "is-short"
+	default: return "is-mid-tall"
 	}
 }
 
-templ attentionCard(card vmv2.AttentionCardData) {
-	<div class={ "ph-attn", templ.KV("urgent", card.Tone=="urgent" || card.Tone=="warn") }>
-		<div class="ph-attn-name">
-			if card.Href != "" {
-				<a href={ templ.SafeURL(card.Href) }>{ card.Kicker }</a>
-			} else {
-				{ card.Kicker }
-			}
-		</div>
-		<div class="ph-attn-runway">{ card.Value }</div>
-		<div class="ph-attn-desc">{ card.Body }</div>
-		<a href={ templ.SafeURL(firstNonEmptyHome(card.Href, "#contracts")) } class={ "ph-attn-cta", templ.KV("calm", card.Tone=="calm") }>{ firstNonEmptyHome(card.CTA, "Review →") }</a>
-	</div>
+func homeStateLabel(state vmv2.HomeSectionState) string {
+	switch state {
+	case vmv2.HomeSectionPartial: return "Partial evidence"
+	case vmv2.HomeSectionStale: return "Data delayed"
+	case vmv2.HomeSectionEmpty: return "No recent ledgers"
+	case vmv2.HomeSectionUnavailable: return "Unavailable"
+	default: return "Live evidence"
+	}
 }
 
-templ activeCard(card vmv2.LeaderCardData, i int) {
-	<div class={ "ph-active", templ.KV("growing", i==3 || strings.Contains(strings.ToLower(card.Label), "grow")) }>
-		<div class="ph-active-head">
-			<div class="ph-active-logo">{ firstRune(card.EntityMark, card.Entity) }</div>
-			<div class="ph-active-name">
-				if card.Href != "" {
-					<a href={ templ.SafeURL(card.Href) }>{ card.Entity }</a>
-				} else {
-					{ card.Entity }
-				}
-			</div>
-		</div>
-		if i==3 || strings.Contains(strings.ToLower(card.Label), "grow") {
-			<div class="ph-active-growing-tag">↑ growing</div>
-		}
-		<div class="ph-active-num">{ card.Value }<span class="ph-active-num-unit">calls</span></div><div class="ph-active-desc">{ card.Body }</div>
-	</div>
+func homeHeartbeatDotClass(data vmv2.HomeTimelineData) string {
+	if data.DemoData { return "is-demo" }
+	switch data.Status.State {
+	case vmv2.HomeSectionReady: return "is-live"
+	case vmv2.HomeSectionPartial, vmv2.HomeSectionStale: return "is-delayed"
+	default: return "is-unavailable"
+	}
 }
-
-templ gaugeCard(card vmv2.UtilizationCardData) { <div class={ "ph-gauge", templ.KV("warn", card.Tone=="warn") }><div class="ph-gauge-name">{ card.Label }</div><div class={ "ph-gauge-pct", templ.KV("warn", card.Tone=="warn") }>{ card.ValueMain }{ card.ValueUnit }</div><div class="ph-gauge-bar"><span style={ "width: " + firstNonEmptyHome(card.BarWidth, "50%") }></span></div><div class="ph-gauge-desc">{ card.Body }</div></div> }
-
-func firstNonEmptyHome(v string, fallback string) string { if strings.TrimSpace(v)!="" { return v }; return fallback }
-func boolStringHome(v bool) string { if v { return "true" }; return "false" }
-func networkTitle(v string) string { if strings.EqualFold(v,"testnet") { return "Testnet" }; if strings.EqualFold(v,"futurenet") { return "Futurenet" }; return "Mainnet" }
-func shortHeaderAge(v string) string { v=strings.TrimSpace(strings.TrimSuffix(v,"ago")); if v=="" { return "2s" }; return v }
-func topTxCount(data vmv2.HomeData) string { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0].TransactionCount }; return "187" }
-func topLedger(data vmv2.HomeData) vmv2.LedgerRowData { if len(data.LedgerFeed.Rows)>0 { return data.LedgerFeed.Rows[0] }; return vmv2.LedgerRowData{LedgerNumber: data.Header.LedgerNumber, TransactionCount: topTxCount(data), IncludedOperationCount: "0", SuccessfulOperationCount: "0", FailedOperationCount: "0", Meta: "classification unavailable", Age: shortHeaderAge(data.Header.AgeLabel)} }
-func heroHeadline(data vmv2.HomeData) string { return fmt.Sprintf("The Stellar network is healthy and <em>busier than usual</em> right now: <b>%s</b> transactions every 5 seconds, with <b>2,314</b> smart contracts active today.", topTxCount(data)) }
-func chipClass(kind string) string { switch kind { case "swap": return "swap"; case "call": return "call"; case "agent": return "agent"; case "classic": return "classic"; case "deploy": return "deploy"; case "confidential": return "confid"; case "account": return "account"; case "payment": return "payment"; case "market": return "market"; case "trustline": return "trustline"; case "claimable": return "claimable"; case "sponsorship": return "sponsorship"; case "soroban": return "soroban"; default: return "other" } }
-func refractionClass(kind string) string { switch kind { case "swap", "market": return "swap"; case "call", "soroban": return "call"; case "agent", "sponsorship": return "events"; case "classic", "trustline": return "classic"; case "deploy", "account": return "lending"; case "confidential", "payment", "claimable": return "transfer"; default: return "other" } }
-func firstRune(mark string, fallback string) string { if strings.TrimSpace(mark)!="" { return string([]rune(mark)[0]) }; if strings.TrimSpace(fallback)!="" { return string([]rune(fallback)[0]) }; return "•" }
-var _ componentsv2.HeaderData

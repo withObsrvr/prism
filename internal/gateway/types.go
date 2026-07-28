@@ -383,6 +383,117 @@ type TxReceiptDiff struct {
 	Account string `json:"account"`
 }
 
+// TransactionOutcome matches the frozen transaction_outcome_v1 evidence packet
+// returned by /silver/tx/{hash}/failure-evidence. Transaction result XDR owns
+// the enclosing outcome; optional serving components may only enrich it.
+type TransactionOutcome struct {
+	EvidenceVersion   string                           `json:"evidence_version"`
+	Status            string                           `json:"status"`
+	Network           string                           `json:"network"`
+	TransactionHash   string                           `json:"transaction_hash"`
+	LedgerSequence    int64                            `json:"ledger_sequence"`
+	ClosedAt          string                           `json:"closed_at,omitempty"`
+	Outcome           string                           `json:"outcome"`
+	AppliedToLedger   bool                             `json:"applied_to_ledger"`
+	TransactionResult TransactionOutcomeResult         `json:"transaction_result"`
+	Failure           *TransactionFailureEvidence      `json:"failure,omitempty"`
+	Operations        []TransactionOutcomeOperation    `json:"operations"`
+	PrimaryInvocation *TransactionPrimaryInvocation    `json:"primary_invocation,omitempty"`
+	InvocationRefs    []TransactionInvocationReference `json:"invocation_references,omitempty"`
+	Components        map[string]TransactionComponent  `json:"components"`
+	Caveats           []TransactionOutcomeCaveat       `json:"caveats,omitempty"`
+	Locators          []TransactionEvidenceLocator     `json:"locators"`
+	Provenance        TransactionOutcomeProvenance     `json:"provenance"`
+}
+
+type TransactionOutcomeResult struct {
+	NormalizedCode string `json:"normalized_code"`
+	RawCode        string `json:"raw_code"`
+	Source         string `json:"source"`
+}
+
+type TransactionFailureEvidence struct {
+	Status             string `json:"status"`
+	Phase              string `json:"phase"`
+	Scope              string `json:"scope"`
+	NormalizedCode     string `json:"normalized_code"`
+	RawCode            string `json:"raw_code"`
+	Source             string `json:"source"`
+	OperationIndex     *int   `json:"operation_index,omitempty"`
+	OperationType      string `json:"operation_type,omitempty"`
+	TransactionRawCode string `json:"transaction_raw_code"`
+}
+
+type TransactionOutcomeOperation struct {
+	OperationIndex   int                       `json:"operation_index"`
+	OperationType    string                    `json:"operation_type"`
+	ExecutionOutcome string                    `json:"execution_outcome"`
+	AppliedToLedger  bool                      `json:"applied_to_ledger"`
+	Result           *TransactionOutcomeResult `json:"result,omitempty"`
+}
+
+type TransactionPrimaryInvocation struct {
+	OperationIndex   int                           `json:"operation_index"`
+	ContractID       string                        `json:"contract_id"`
+	FunctionName     string                        `json:"function_name"`
+	Arguments        []DecodedScVal                `json:"arguments"`
+	DecodeStatus     string                        `json:"decode_status"`
+	ExecutionOutcome string                        `json:"execution_outcome"`
+	AppliedToLedger  bool                          `json:"applied_to_ledger"`
+	Identity         TransactionInvocationIdentity `json:"identity"`
+}
+
+type DecodedScVal struct {
+	Type    string `json:"type"`
+	Value   any    `json:"value"`
+	Display string `json:"display"`
+}
+
+type TransactionInvocationIdentity struct {
+	Kind               string `json:"kind"`
+	ID                 string `json:"id"`
+	VerificationStatus string `json:"verification_status"`
+	Source             string `json:"source"`
+}
+
+type TransactionInvocationReference struct {
+	FromContract   string `json:"from_contract"`
+	ToContract     string `json:"to_contract"`
+	FunctionName   string `json:"function_name"`
+	Depth          int    `json:"depth"`
+	ExecutionOrder int    `json:"execution_order"`
+	Successful     bool   `json:"execution_successful"`
+}
+
+type TransactionComponent struct {
+	Status         string `json:"status"`
+	Source         string `json:"source,omitempty"`
+	Count          *int   `json:"count,omitempty"`
+	MaterializedAt string `json:"materialized_at,omitempty"`
+	SourceVersion  string `json:"source_version,omitempty"`
+	Limitation     string `json:"limitation,omitempty"`
+}
+
+type TransactionOutcomeCaveat struct {
+	Code    string   `json:"code"`
+	Message string   `json:"message"`
+	Affects []string `json:"affects"`
+}
+
+type TransactionEvidenceLocator struct {
+	Kind           string `json:"kind"`
+	Href           string `json:"href"`
+	OperationIndex *int   `json:"operation_index,omitempty"`
+	EventID        string `json:"event_id,omitempty"`
+}
+
+type TransactionOutcomeProvenance struct {
+	TransactionSourceLedger int64    `json:"transaction_source_ledger"`
+	CompleteThroughLedger   int64    `json:"complete_through_ledger"`
+	Sources                 []string `json:"sources"`
+	ResolvedAt              string   `json:"resolved_at"`
+}
+
 // --- Phase 2: Operations ---
 
 // Operation matches /bronze/operations response items.
@@ -1589,12 +1700,20 @@ type RecentLedgerTransactionStats struct {
 }
 
 type RecentLedgerOperationStats struct {
-	Included             int                             `json:"included"`
-	Successful           int                             `json:"successful"`
-	Failed               int                             `json:"failed"`
-	ClassificationStatus string                          `json:"classification_status,omitempty"`
-	Categories           RecentLedgerOperationCategories `json:"categories"`
-	SuccessfulCategories RecentLedgerOperationCategories `json:"successful_categories"`
+	Included                int                             `json:"included"`
+	Successful              int                             `json:"successful"`
+	Failed                  int                             `json:"failed"`
+	ClassificationStatus    string                          `json:"classification_status,omitempty"`
+	Categories              RecentLedgerOperationCategories `json:"categories"`
+	SuccessfulCategories    RecentLedgerOperationCategories `json:"successful_categories"`
+	SorobanDetail           RecentLedgerSorobanDetail       `json:"soroban_detail"`
+	SuccessfulSorobanDetail RecentLedgerSorobanDetail       `json:"successful_soroban_detail"`
+}
+
+type RecentLedgerSorobanDetail struct {
+	ContractCalls       int `json:"contract_calls"`
+	ContractDeployments int `json:"contract_deployments"`
+	Other               int `json:"other"`
 }
 
 type RecentLedgerOperationCategories struct {
@@ -1611,9 +1730,26 @@ type RecentLedgerOperationCategories struct {
 // RecentLedgersResponse matches /silver/ledgers/recent response.
 // Single-call replacement for the bronze/stats + bronze/ledgers pattern.
 type RecentLedgersResponse struct {
-	LatestSequence int64          `json:"latest_sequence"`
-	Count          int            `json:"count"`
-	Ledgers        []RecentLedger `json:"ledgers"`
+	LatestSequence int64                  `json:"latest_sequence"`
+	Count          int                    `json:"count"`
+	GeneratedAt    string                 `json:"generated_at,omitempty"`
+	SourceLedger   RecentLedgerSource     `json:"source_ledger"`
+	Ledgers        []RecentLedger         `json:"ledgers"`
+	Provenance     RecentLedgerProvenance `json:"provenance"`
+}
+
+type RecentLedgerSource struct {
+	Sequence   int64  `json:"sequence"`
+	ClosedAt   string `json:"closed_at,omitempty"`
+	AgeSeconds int64  `json:"age_seconds,omitempty"`
+	Freshness  string `json:"freshness,omitempty"`
+}
+
+type RecentLedgerProvenance struct {
+	DataSource            string   `json:"data_source,omitempty"`
+	CompleteThroughLedger int64    `json:"complete_through_ledger,omitempty"`
+	Partial               bool     `json:"partial"`
+	Warnings              []string `json:"warnings,omitempty"`
 }
 
 // BatchDecodedResponse matches /silver/tx/batch/decoded response.
@@ -1818,14 +1954,41 @@ type LedgerFeedSummaryProvenance struct {
 type HomeSummaryResponse struct {
 	Network                   string                         `json:"network"`
 	GeneratedAt               string                         `json:"generated_at,omitempty"`
+	Freshness                 HomeSummaryFreshness           `json:"freshness"`
+	Components                HomeSummaryComponents          `json:"components"`
 	Header                    HomeSummaryHeader              `json:"header"`
 	Hero                      HomeSummaryHero                `json:"hero"`
 	Alert                     HomeSummaryAlert               `json:"alert"`
 	ContractsNeedingAttention []HomeSummaryAttentionContract `json:"contracts_needing_attention,omitempty"`
 	Leaders                   []HomeSummaryLeader            `json:"leaders,omitempty"`
+	Insights                  []HomeSummaryInsight           `json:"insights,omitempty"`
 	Utilization               HomeSummaryUtilization         `json:"utilization"`
 	Meta                      HomeSummaryMeta                `json:"meta"`
 	Provenance                HomeSummaryProvenance          `json:"provenance"`
+}
+
+type HomeSummaryFreshness struct {
+	SourceLedger   int64  `json:"source_ledger"`
+	SourceClosedAt string `json:"source_closed_at,omitempty"`
+	AgeSeconds     *int64 `json:"age_seconds,omitempty"`
+	Status         string `json:"status,omitempty"`
+}
+
+type HomeSummaryComponents struct {
+	Header       HomeSummaryComponent `json:"header"`
+	Utilization  HomeSummaryComponent `json:"utilization"`
+	ActivityMix  HomeSummaryComponent `json:"activity_mix"`
+	TTLAttention HomeSummaryComponent `json:"ttl_attention"`
+	Leaders      HomeSummaryComponent `json:"leaders"`
+	Insights     HomeSummaryComponent `json:"insights"`
+}
+
+type HomeSummaryComponent struct {
+	Status                string `json:"status,omitempty"`
+	Source                string `json:"source,omitempty"`
+	AsOfLedger            *int64 `json:"as_of_ledger,omitempty"`
+	CompleteThroughLedger *int64 `json:"complete_through_ledger,omitempty"`
+	WarningCode           string `json:"warning_code,omitempty"`
 }
 
 type HomeSummaryHeader struct {
@@ -1846,6 +2009,7 @@ type HomeSummaryHero struct {
 
 type HomeSummaryHeroHealth struct {
 	Status       string `json:"status,omitempty"`
+	DataStatus   string `json:"data_status,omitempty"`
 	LoadBand     string `json:"load_band,omitempty"`
 	ActivityBand string `json:"activity_band,omitempty"`
 }
@@ -1899,38 +2063,113 @@ type HomeSummaryAlert struct {
 }
 
 type HomeSummaryAttentionContract struct {
-	ContractID       string  `json:"contract_id"`
-	ProtocolName     string  `json:"protocol_name,omitempty"`
-	ContractName     string  `json:"contract_name,omitempty"`
-	Severity         string  `json:"severity,omitempty"`
-	RemainingLedgers int64   `json:"remaining_ledgers,omitempty"`
-	RemainingHours   int64   `json:"remaining_hours,omitempty"`
-	RemainingHuman   string  `json:"remaining_human,omitempty"`
-	RunwayPct        float64 `json:"runway_pct,omitempty"`
-	Status           string  `json:"status,omitempty"`
+	ContractID             string   `json:"contract_id"`
+	NearestLiveUntilLedger int64    `json:"nearest_live_until_ledger,omitempty"`
+	ProtocolName           string   `json:"protocol_name,omitempty"`
+	ContractName           string   `json:"contract_name,omitempty"`
+	Severity               string   `json:"severity,omitempty"`
+	RemainingLedgers       int64    `json:"remaining_ledgers,omitempty"`
+	RemainingHours         int64    `json:"remaining_hours,omitempty"`
+	RemainingHuman         string   `json:"remaining_human,omitempty"`
+	RunwayPct              float64  `json:"runway_pct,omitempty"`
+	Status                 string   `json:"status,omitempty"`
+	TrackedEntryCount      int64    `json:"tracked_entry_count,omitempty"`
+	ExpiringEntryCount     int64    `json:"expiring_entry_count,omitempty"`
+	DurabilityClasses      []string `json:"durability_classes,omitempty"`
 }
 
 type HomeSummaryLeader struct {
-	ContractID       string   `json:"contract_id"`
-	ProtocolName     string   `json:"protocol_name,omitempty"`
-	ContractName     string   `json:"contract_name,omitempty"`
-	CallCount24h     int64    `json:"call_count_24h,omitempty"`
-	UniqueCallers24h int64    `json:"unique_callers_24h,omitempty"`
-	DominantActions  []string `json:"dominant_actions,omitempty"`
-	GrowthPct        float64  `json:"growth_pct,omitempty"`
+	ContractID       string                      `json:"contract_id"`
+	DisplayName      string                      `json:"display_name,omitempty"`
+	Identity         HomeSummaryContractIdentity `json:"identity"`
+	ProtocolName     string                      `json:"protocol_name,omitempty"`
+	ContractName     string                      `json:"contract_name,omitempty"`
+	CallCount24h     int64                       `json:"call_count_24h,omitempty"`
+	UniqueCallers24h int64                       `json:"unique_callers_24h,omitempty"`
+	DominantActions  []string                    `json:"dominant_actions,omitempty"`
+	GrowthPct        float64                     `json:"growth_pct,omitempty"`
+	TotalCalls       int                         `json:"total_calls"`
+	UniqueCallers    int                         `json:"unique_callers"`
+	SuccessCount     *int64                      `json:"success_count,omitempty"`
+	FailureCount     *int64                      `json:"failure_count,omitempty"`
+	SuccessRate      *float64                    `json:"success_rate,omitempty"`
+	FailureRate      *float64                    `json:"failure_rate,omitempty"`
+	TopFunction      string                      `json:"top_function,omitempty"`
+	LastActivity     string                      `json:"last_activity,omitempty"`
+	Window           string                      `json:"window,omitempty"`
+	AsOfLedger       int64                       `json:"as_of_ledger,omitempty"`
+	UpdatedAt        string                      `json:"updated_at,omitempty"`
+}
+
+type HomeSummaryContractIdentity struct {
+	Kind               string `json:"kind,omitempty"`
+	VerificationStatus string `json:"verification_status,omitempty"`
+	Source             string `json:"source,omitempty"`
+}
+
+type HomeSummaryInsight struct {
+	Type             string                    `json:"type"`
+	ObservedValue    float64                   `json:"observed_value"`
+	BaselineValue    float64                   `json:"baseline_value"`
+	Ratio            float64                   `json:"ratio"`
+	ComparisonMethod string                    `json:"comparison_method"`
+	WindowStart      string                    `json:"window_start"`
+	WindowEnd        string                    `json:"window_end"`
+	Subject          HomeSummaryInsightSubject `json:"subject"`
+	EvidenceCount    int64                     `json:"evidence_count"`
+	AsOfLedger       int64                     `json:"as_of_ledger"`
+	Status           string                    `json:"status"`
+	UpdatedAt        string                    `json:"updated_at"`
+}
+
+type HomeSummaryInsightSubject struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
 }
 
 type HomeSummaryUtilization struct {
-	InstructionPct      float64 `json:"instruction_pct,omitempty"`
-	InstructionUsed     int64   `json:"instruction_used,omitempty"`
-	InstructionLimit    int64   `json:"instruction_limit,omitempty"`
-	ReadWritePct        float64 `json:"read_write_pct,omitempty"`
-	ReadWriteUsedBytes  int64   `json:"read_write_used_bytes,omitempty"`
-	ReadWriteLimitBytes int64   `json:"read_write_limit_bytes,omitempty"`
-	TxSizePct           float64 `json:"tx_size_pct,omitempty"`
-	AvgTxSizeBytes      int64   `json:"avg_tx_size_bytes,omitempty"`
-	TxSizeLimitBytes    int64   `json:"tx_size_limit_bytes,omitempty"`
-	SourceLedger        int64   `json:"source_ledger,omitempty"`
+	InstructionStatus       string                        `json:"instruction_status,omitempty"`
+	InstructionPct          float64                       `json:"instruction_pct,omitempty"`
+	InstructionUsed         int64                         `json:"instruction_used,omitempty"`
+	InstructionLimit        int64                         `json:"instruction_limit,omitempty"`
+	ReadWritePct            float64                       `json:"read_write_pct,omitempty"`
+	ReadWriteUsedBytes      int64                         `json:"read_write_used_bytes,omitempty"`
+	ReadWriteLimitBytes     int64                         `json:"read_write_limit_bytes,omitempty"`
+	TxSizePct               float64                       `json:"tx_size_pct,omitempty"`
+	InstructionLimitSource  string                        `json:"instruction_limit_source,omitempty"`
+	ReadWriteStatus         string                        `json:"read_write_status,omitempty"`
+	ReadWriteLimitSource    string                        `json:"read_write_limit_source,omitempty"`
+	TxSizeStatus            string                        `json:"tx_size_status,omitempty"`
+	AvgTxSizeBytes          float64                       `json:"avg_tx_size_bytes,omitempty"`
+	P95TxSizeBytes          int64                         `json:"p95_tx_size_bytes,omitempty"`
+	MaxTxSizeBytes          int64                         `json:"max_tx_size_bytes,omitempty"`
+	TxSizeLimitBytes        int64                         `json:"tx_size_limit_bytes,omitempty"`
+	TxSizeLimitSource       string                        `json:"tx_size_limit_source,omitempty"`
+	SourceLedger            int64                         `json:"source_ledger,omitempty"`
+	Instructions            *HomeSummaryUtilizationMetric `json:"instructions,omitempty"`
+	ReadWriteBytes          *HomeSummaryUtilizationMetric `json:"read_write_bytes,omitempty"`
+	TransactionEnvelopeSize *HomeSummaryTxSizeMetric      `json:"transaction_envelope_size,omitempty"`
+}
+
+type HomeSummaryUtilizationMetric struct {
+	Status       string   `json:"status,omitempty"`
+	Used         *int64   `json:"used,omitempty"`
+	Limit        *int64   `json:"limit,omitempty"`
+	Ratio        *float64 `json:"ratio,omitempty"`
+	Pct          *float64 `json:"pct,omitempty"`
+	SourceLedger int64    `json:"source_ledger,omitempty"`
+	LimitSource  string   `json:"limit_source,omitempty"`
+}
+
+type HomeSummaryTxSizeMetric struct {
+	Status           string   `json:"status,omitempty"`
+	AvgTxSizeBytes   *float64 `json:"avg_tx_size_bytes,omitempty"`
+	P95TxSizeBytes   *int64   `json:"p95_tx_size_bytes,omitempty"`
+	MaxTxSizeBytes   *int64   `json:"max_tx_size_bytes,omitempty"`
+	TxSizeLimitBytes *int64   `json:"tx_size_limit_bytes,omitempty"`
+	AvgRatio         *float64 `json:"avg_ratio,omitempty"`
+	SourceLedger     int64    `json:"source_ledger,omitempty"`
+	LimitSource      string   `json:"limit_source,omitempty"`
 }
 
 type HomeSummaryMeta struct {
@@ -1942,10 +2181,18 @@ type HomeSummaryMeta struct {
 }
 
 type HomeSummaryProvenance struct {
-	Route         string   `json:"route,omitempty"`
-	DataSource    string   `json:"data_source,omitempty"`
-	Partial       bool     `json:"partial"`
-	GeneratedFrom []string `json:"generated_from,omitempty"`
+	Route          string                     `json:"route,omitempty"`
+	DataSource     string                     `json:"data_source,omitempty"`
+	Partial        bool                       `json:"partial"`
+	Warnings       []string                   `json:"warnings,omitempty"`
+	WarningDetails []HomeSummaryWarningDetail `json:"warning_details,omitempty"`
+	GeneratedFrom  []string                   `json:"generated_from,omitempty"`
+}
+
+type HomeSummaryWarningDetail struct {
+	Code      string `json:"code,omitempty"`
+	Component string `json:"component,omitempty"`
+	Retryable bool   `json:"retryable"`
 }
 
 // --- Explorer Events ---

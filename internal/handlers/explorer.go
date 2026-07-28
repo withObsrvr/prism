@@ -1184,8 +1184,9 @@ func stripHTML(s string) string {
 }
 
 const (
-	txPageGatewayTimeout  = 15 * time.Second
-	txDiffsGatewayTimeout = 1500 * time.Millisecond
+	txPageGatewayTimeout    = 15 * time.Second
+	txDiffsGatewayTimeout   = 1500 * time.Millisecond
+	txOutcomeGatewayTimeout = 1200 * time.Millisecond
 )
 
 // TransactionReceipt renders a single transaction page.
@@ -1331,6 +1332,20 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 	h.Logger.Debug("tx receipt stage complete", "hash", shortHash, "stage", "receipt", "duration", time.Since(stageStart))
 
+	// E1A is an additive, soft dependency for the transaction page. The receipt
+	// still supplies the full detail view, while the outcome packet owns the
+	// enclosing result and failure explanation when it is available.
+	outcomeStart := time.Now()
+	outcomeCtx, outcomeCancel := context.WithTimeout(ctx, txOutcomeGatewayTimeout)
+	outcome, outcomeErr := h.Gateway.GetTransactionOutcome(outcomeCtx, network, hash)
+	outcomeCancel()
+	if outcomeErr != nil {
+		h.Logger.Debug("transaction outcome evidence unavailable", "hash", shortHash, "stage", "outcome", "duration", time.Since(outcomeStart), "error", outcomeErr)
+		outcome = nil
+	} else {
+		h.Logger.Debug("transaction outcome stage complete", "hash", shortHash, "stage", "outcome", "duration", time.Since(outcomeStart), "status", outcome.Status)
+	}
+
 	opsDecoded := make([]gateway.DecodedOperation, 0, len(receipt.Full.Operations))
 	for _, op := range receipt.Full.Operations {
 		idx := op.OperationIndex
@@ -1446,7 +1461,11 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 	}
 
 	status := "success"
-	if !tx.Successful {
+	if outcome != nil && outcome.Outcome == "failed" {
+		status = "failed"
+	} else if outcome != nil && outcome.Outcome == "succeeded" {
+		status = "success"
+	} else if !tx.Successful {
 		status = "failed"
 	}
 
@@ -1545,14 +1564,23 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			}
 		}
 	}
+	if outcome != nil && outcome.PrimaryInvocation != nil {
+		invocation := outcome.PrimaryInvocation
+		isSoroban = true
+		if invocation.ContractID != "" {
+			contractAddr = gateway.ShortAddress(invocation.ContractID)
+			contractAddrFull = invocation.ContractID
+			contractName = contractAddr
+		}
+		if invocation.FunctionName != "" {
+			contractFn = invocation.FunctionName + "()"
+		}
+	}
 
 	// Build operations list.
 	ops := make([]pages.TxOperation, 0, len(txFull.Operations))
-	for _, op := range txFull.Operations {
-		opStatus := "Success"
-		if !tx.Successful {
-			opStatus = "Failed"
-		}
+	for operationPosition, op := range txFull.Operations {
+		opStatus := transactionOperationStatus(outcome, operationPosition, tx.Successful)
 
 		opSummary := buildOperationSummary(op)
 
@@ -1768,11 +1796,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			}
 			return ""
 		}(),
-		Operations:     ops,
-		Events:         evts,
-		BalanceChanges: balChanges,
-		StateChanges:   stateChanges,
-		Effects:        effects,
+		Operations:      ops,
+		Events:          evts,
+		BalanceChanges:  balChanges,
+		StateChanges:    stateChanges,
+		Effects:         effects,
+		OutcomeEvidence: outcome,
 	}
 
 	if semanticTx != nil {
@@ -1889,6 +1918,37 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 func gatewayStatus(err error, status int) bool {
 	var apiErr *gateway.APIError
 	return errors.As(err, &apiErr) && apiErr.StatusCode == status
+}
+
+func transactionOperationStatus(outcome *gateway.TransactionOutcome, operationPosition int, receiptSuccessful bool) string {
+	if outcome != nil {
+		for _, operation := range outcome.Operations {
+			if operation.OperationIndex != operationPosition {
+				continue
+			}
+			switch {
+			case operation.ExecutionOutcome == "succeeded" && operation.AppliedToLedger:
+				return "Success"
+			case operation.ExecutionOutcome == "succeeded":
+				return "Executed, not applied"
+			case operation.ExecutionOutcome == "failed":
+				return "Failed"
+			case operation.ExecutionOutcome == "not_executed":
+				return "Not executed"
+			default:
+				return "Unknown"
+			}
+		}
+		// Once the authoritative outcome packet is present, do not let the
+		// receipt's aggregate success flag fill an operation-level evidence gap.
+		return "Unknown"
+	}
+	if receiptSuccessful {
+		return "Success"
+	}
+	// A failed aggregate receipt does not identify which operation failed or
+	// whether earlier operations executed before rollback.
+	return "Unknown"
 }
 
 func txReceiptFromDecoded(tx gateway.DecodedTransaction) gateway.TxReceipt {

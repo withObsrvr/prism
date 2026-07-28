@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
+	"github.com/withObsrvr/prism/internal/txoutcome"
 )
 
 type TxHeroKind string
@@ -81,12 +82,21 @@ type TxLifecycleHero struct {
 }
 
 type TxFailureHero struct {
-	Actor       string
-	Contract    string
-	Function    string
-	ErrorCode   string
-	SummaryHTML string
-	Frames      []TxFailureFrame
+	Actor                string
+	Contract             string
+	Function             string
+	Heading              string
+	ErrorCode            string
+	ReasonLabel          string
+	EvidenceStatus       string
+	PhaseLabel           string
+	OperationLabel       string
+	OperationNumber      int
+	Arguments            []string
+	RolledBackOperations int
+	SummaryHTML          string
+	Caveats              []string
+	Frames               []TxFailureFrame
 }
 
 type TxFailureFrame struct {
@@ -159,14 +169,31 @@ type txHeroFacts struct {
 	LifecycleVerb  string
 	StateChanges   []legacy.TxStateChange
 	BalanceChanges []legacy.TxBalanceChange
+	Outcome        txoutcome.Interpretation
+	HasOutcome     bool
 }
 
 func factsFromReceipt(data legacy.TxReceiptData) txHeroFacts {
 	f := txHeroFacts{Data: data, Successful: !strings.EqualFold(data.Status, "failed"), TxType: strings.ToLower(data.SemanticTxType), Subtype: strings.ToLower(data.SemanticSubtype), StateChanges: data.StateChanges, BalanceChanges: data.BalanceChanges}
+	if data.OutcomeEvidence != nil {
+		f.Outcome = txoutcome.Interpret(data.OutcomeEvidence)
+		f.HasOutcome = true
+		f.Successful = f.Outcome.Outcome == "succeeded"
+	}
 	f.Actor = firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SubmitterShort))
 	f.ActorFull = firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SubmitterAddr))
 	f.Contract = firstNonEmpty(data.DownstreamContractShort, firstNonEmpty(data.ContractAddr, data.ContractAddrFull))
 	f.Function = strings.TrimSuffix(firstNonEmpty(data.DownstreamFunctionName, data.ContractFn), "()")
+	if data.OutcomeEvidence != nil && data.OutcomeEvidence.PrimaryInvocation != nil {
+		invocation := data.OutcomeEvidence.PrimaryInvocation
+		if invocation.ContractID != "" {
+			f.Contract = shortEntity(invocation.ContractID)
+		}
+		if invocation.FunctionName != "" {
+			f.Function = invocation.FunctionName
+		}
+		f.HasSoroban = true
+	}
 	for _, op := range data.Operations {
 		name := strings.ToLower(strings.TrimSpace(op.Type))
 		if name != "" {
@@ -260,12 +287,43 @@ func buildLifecycleHero(f txHeroFacts) *TxLifecycleHero {
 }
 
 func buildFailureHero(f txHeroFacts) *TxFailureHero {
-	frames := []TxFailureFrame{{Name: firstNonEmpty(f.Actor, "Source"), Detail: f.ActorFull, Status: "source"}}
-	if f.Contract != "" || f.Function != "" {
-		frames = append(frames, TxFailureFrame{Name: firstNonEmpty(f.Contract, "Contract"), Detail: callLabel(f.Function), Status: "failed here", Failed: true})
+	interpretation := f.Outcome
+	if !f.HasOutcome {
+		interpretation = txoutcome.Interpret(nil)
 	}
-	summary := fmt.Sprintf("Execution reverted while calling <code>%s()</code> on <b>%s</b>. Fees were still charged, but successful value/state changes were not applied.", esc(firstNonEmpty(f.Function, "function")), esc(firstNonEmpty(f.Contract, "the target contract")))
-	return &TxFailureHero{Actor: f.Actor, Contract: f.Contract, Function: f.Function, ErrorCode: "reverted", SummaryHTML: summary, Frames: frames}
+	frames := []TxFailureFrame{{Name: firstNonEmpty(f.Actor, "Source"), Detail: f.ActorFull, Status: "source"}}
+	if interpretation.OperationNumber > 0 {
+		frames = append(frames, TxFailureFrame{
+			Name:   firstNonEmpty(interpretation.OperationLabel, "Operation"),
+			Detail: fmt.Sprintf("Operation #%d · %s", interpretation.OperationNumber, firstNonEmpty(interpretation.PhaseLabel, "execution")),
+			Status: "failed here",
+			Failed: true,
+		})
+	}
+	if f.Contract != "" || f.Function != "" {
+		frames = append(frames, TxFailureFrame{Name: firstNonEmpty(f.Contract, "Contract"), Detail: callLabel(f.Function), Status: invocationFrameStatus(interpretation), Failed: interpretation.OperationNumber == 0})
+	}
+	summary := esc(interpretation.Summary)
+	if f.Function != "" || f.Contract != "" {
+		summary += fmt.Sprintf(" The primary invocation was <code>%s()</code> on <b>%s</b>.", esc(firstNonEmpty(f.Function, "contract function")), esc(firstNonEmpty(f.Contract, "the target contract")))
+	}
+	return &TxFailureHero{
+		Actor:                f.Actor,
+		Contract:             f.Contract,
+		Function:             f.Function,
+		Heading:              firstNonEmpty(interpretation.Heading, "Transaction failed"),
+		ErrorCode:            firstNonEmpty(interpretation.ReasonCode, "reason_unavailable"),
+		ReasonLabel:          firstNonEmpty(interpretation.ReasonLabel, "Reason unavailable"),
+		EvidenceStatus:       firstNonEmpty(interpretation.EvidenceStatus, "unavailable"),
+		PhaseLabel:           interpretation.PhaseLabel,
+		OperationLabel:       interpretation.OperationLabel,
+		OperationNumber:      interpretation.OperationNumber,
+		Arguments:            interpretation.ArgumentLabels,
+		RolledBackOperations: interpretation.RolledBackOperations,
+		SummaryHTML:          summary,
+		Caveats:              interpretation.Caveats,
+		Frames:               frames,
+	}
 }
 
 func buildGenericCallHero(f txHeroFacts) *TxGenericCallHero {
@@ -335,7 +393,10 @@ func stateEntries(changes []legacy.TxStateChange) []TxStateEntry {
 func titleHTML(kind TxHeroKind, f txHeroFacts) string {
 	switch kind {
 	case TxHeroFailure:
-		return fmt.Sprintf(`<span class="px-tx-actor">%s</span> <span class="px-tx-verb">reverted</span>`, esc(firstNonEmpty(f.Function, "Transaction")))
+		if f.HasOutcome {
+			return fmt.Sprintf(`<span class="px-tx-actor">%s</span>`, esc(firstNonEmpty(f.Outcome.Heading, "Transaction failed")))
+		}
+		return `<span class="px-tx-actor">Transaction failed</span>`
 	case TxHeroLifecycle:
 		return fmt.Sprintf(`<span class="px-tx-verb">%s</span> <span class="px-tx-actor">%s</span>`, strings.Title(f.LifecycleVerb), esc(firstNonEmpty(f.Contract, "on-chain state")))
 	case TxHeroStateChange:
@@ -353,6 +414,9 @@ func titleHTML(kind TxHeroKind, f txHeroFacts) string {
 }
 
 func subtitleHTML(kind TxHeroKind, f txHeroFacts) string {
+	if kind == TxHeroFailure && f.HasOutcome {
+		return esc(f.Outcome.Summary)
+	}
 	if kind == TxHeroValueFlow && f.Data.AISummaryHTML != "" {
 		return f.Data.AISummaryHTML
 	}
@@ -383,7 +447,21 @@ func statusLabel(ok bool) string {
 	if ok {
 		return "Successful"
 	}
-	return "Reverted"
+	return "Failed"
+}
+
+func invocationFrameStatus(interpretation txoutcome.Interpretation) string {
+	if interpretation.OperationNumber > 0 {
+		return "invoked"
+	}
+	return "failure target"
+}
+
+func shortEntity(value string) string {
+	if len(value) <= 12 {
+		return value
+	}
+	return value[:6] + "..." + value[len(value)-4:]
 }
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {

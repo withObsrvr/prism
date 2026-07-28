@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/withObsrvr/prism/internal/buildinfo"
 	"github.com/withObsrvr/prism/internal/gateway"
@@ -14,15 +16,20 @@ import (
 // Each handler is a method on this struct, receiving dependencies
 // via the receiver rather than closures or globals.
 type Handlers struct {
-	Logger  *slog.Logger
-	Gateway *gateway.Client
+	Logger     *slog.Logger
+	Gateway    *gateway.Client
+	DataSource string
 }
 
 // New creates a Handlers instance with all shared dependencies.
-func New(logger *slog.Logger, gw *gateway.Client) *Handlers {
+func New(logger *slog.Logger, gw *gateway.Client, dataSource string) *Handlers {
+	if dataSource == "" {
+		dataSource = "auto"
+	}
 	return &Handlers{
-		Logger:  logger,
-		Gateway: gw,
+		Logger:     logger,
+		Gateway:    gw,
+		DataSource: dataSource,
 	}
 }
 
@@ -35,11 +42,22 @@ func networkFromRequest(r *http.Request) string {
 	}
 	cookie, err := r.Cookie("prism_network")
 	if err != nil {
-		return "mainnet"
+		return configuredDefaultNetwork()
 	}
 	switch cookie.Value {
 	case "mainnet", "testnet", "futurenet":
 		return cookie.Value
+	default:
+		return configuredDefaultNetwork()
+	}
+}
+
+func configuredDefaultNetwork() string {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PRISM_NETWORK"))) {
+	case "testnet":
+		return "testnet"
+	case "futurenet":
+		return "futurenet"
 	default:
 		return "mainnet"
 	}
@@ -91,6 +109,12 @@ func (h *Handlers) useLiveData(r *http.Request) bool {
 		return false
 	}
 	return true
+}
+
+// useExplicitMockData reports whether a request may render synthetic facts. A
+// missing Gateway in auto or gateway mode is not permission to use fixtures.
+func (h *Handlers) useExplicitMockData(r *http.Request) bool {
+	return h.DataSource == "mock" || r.URL.Query().Get("mock") == "true"
 }
 
 // renderFragmentError logs the primary error, sets a 500 status, and renders

@@ -690,6 +690,58 @@ func (c *Client) GetTransactionReceipt(ctx context.Context, network string, hash
 	return &result, nil
 }
 
+// GetTransactionOutcome returns the frozen transaction_outcome_v1 packet. A
+// ready packet with only complete optional components is immutable for Prism's
+// purposes. Partial packets use a short cache because diagnostics, receipt, or
+// call-graph projections may catch up after the transaction result is known.
+type txOutcomeNegativeEntry struct{ err error }
+
+func (c *Client) GetTransactionOutcome(ctx context.Context, network string, hash string) (*TransactionOutcome, error) {
+	cacheKey := network + ":tx_outcome:" + hash
+	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*txOutcomeNegativeEntry); isNeg {
+			return nil, neg.err
+		}
+		return v.(*TransactionOutcome), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tx/"+hash+"/failure-evidence"))
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == http.StatusNotFound {
+			c.cache.Set(cacheKey, &txOutcomeNegativeEntry{err: err}, TTLTxReceiptFailure)
+		}
+		return nil, err
+	}
+
+	var result TransactionOutcome
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing transaction outcome: %w", err)
+	}
+	if result.EvidenceVersion != "transaction_outcome_v1" {
+		return nil, fmt.Errorf("gateway: unsupported transaction outcome evidence version %q", result.EvidenceVersion)
+	}
+
+	ttl := TTLImmutable
+	if transactionOutcomeMayImprove(result) {
+		ttl = TTLContracts
+	}
+	c.cache.Set(cacheKey, &result, ttl)
+	return &result, nil
+}
+
+func transactionOutcomeMayImprove(outcome TransactionOutcome) bool {
+	if outcome.Status != "ready" {
+		return true
+	}
+	for _, component := range outcome.Components {
+		switch component.Status {
+		case "partial", "stale", "unavailable":
+			return true
+		}
+	}
+	return false
+}
+
 // GetTransactionFull returns the full decoded transaction with operations, events, and call graph.
 func (c *Client) GetTransactionFull(ctx context.Context, network string, hash string) (*TxFull, error) {
 	cacheKey := network + ":tx_full:" + hash

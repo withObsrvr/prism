@@ -113,7 +113,7 @@ func TestClientDecodesEnrichedRecentLedger(t *testing.T) {
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"latest_sequence":3707457,"count":1,"ledgers":[{"ledger_sequence":3707457,"successful_tx_count":13,"failed_tx_count":1,"operation_count":15,"transaction_count":14,"transaction_set_operation_count":19,"successful_operation_count":15,"failed_operation_count":4,"validator":{"public_key":"GVALIDATOR","attribution_available":true,"status":"resolved","display_name":"SDF Testnet 3","source":"radar"},"operations":{"included":19,"successful":15,"failed":4,"classification_status":"materialized","categories":{"account_creation":1,"payments":2,"offers_and_amms":3,"trustlines":1,"claimable_balances":1,"sponsorship":1,"soroban":8,"other":2},"successful_categories":{"account_creation":1,"payments":2,"offers_and_amms":2,"trustlines":1,"claimable_balances":1,"sponsorship":1,"soroban":5,"other":2}}}]}`)
+		_, _ = io.WriteString(w, `{"latest_sequence":3707457,"count":1,"generated_at":"2026-07-28T12:00:10Z","source_ledger":{"sequence":3707457,"closed_at":"2026-07-28T12:00:05Z","age_seconds":5,"freshness":"fresh"},"ledgers":[{"ledger_sequence":3707457,"successful_tx_count":13,"failed_tx_count":1,"operation_count":15,"transaction_count":14,"transaction_set_operation_count":19,"successful_operation_count":15,"failed_operation_count":4,"validator":{"public_key":"GVALIDATOR","attribution_available":true,"status":"resolved","display_name":"SDF Testnet 3","source":"radar"},"operations":{"included":19,"successful":15,"failed":4,"classification_status":"materialized","categories":{"account_creation":1,"payments":2,"offers_and_amms":3,"trustlines":1,"claimable_balances":1,"sponsorship":1,"soroban":8,"other":2},"successful_categories":{"account_creation":1,"payments":2,"offers_and_amms":2,"trustlines":1,"claimable_balances":1,"sponsorship":1,"soroban":5,"other":2},"soroban_detail":{"contract_calls":5,"contract_deployments":1,"other":2},"successful_soroban_detail":{"contract_calls":4,"contract_deployments":1,"other":0}}}],"provenance":{"data_source":"serving.sv_ledger_stats_recent","complete_through_ledger":3707457,"partial":false,"warnings":[]}}`)
 	}))
 	defer server.Close()
 
@@ -136,6 +136,12 @@ func TestClientDecodesEnrichedRecentLedger(t *testing.T) {
 	}
 	if got.Operations.ClassificationStatus != "materialized" || got.Operations.Categories.Soroban != 8 {
 		t.Fatalf("operation categories were not decoded: %+v", got.Operations)
+	}
+	if got.Operations.SorobanDetail.ContractCalls != 5 || got.Operations.SorobanDetail.ContractDeployments != 1 {
+		t.Fatalf("Soroban detail was not decoded: %+v", got.Operations.SorobanDetail)
+	}
+	if resp.SourceLedger.Freshness != "fresh" || resp.SourceLedger.Sequence != 3707457 || resp.Provenance.CompleteThroughLedger != 3707457 {
+		t.Fatalf("recent-ledger envelope was not decoded: source=%+v provenance=%+v", resp.SourceLedger, resp.Provenance)
 	}
 }
 
