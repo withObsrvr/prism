@@ -1549,15 +1549,63 @@ func (r *LedgerFullResponse) HasCompleteTransactions() bool {
 // RecentLedger matches a single entry in /silver/ledgers/recent response.
 // Leaner shape than the bronze Ledger type (no total_coins, base_reserve, etc.).
 type RecentLedger struct {
-	LedgerSequence     int64  `json:"ledger_sequence"`
-	ClosedAt           string `json:"closed_at"`
-	LedgerHash         string `json:"ledger_hash"`
-	PreviousLedgerHash string `json:"previous_ledger_hash"`
-	ProtocolVersion    int    `json:"protocol_version"`
-	BaseFeeStroops     int64  `json:"base_fee_stroops"`
-	SuccessfulTxCount  int    `json:"successful_tx_count"`
-	FailedTxCount      int    `json:"failed_tx_count"`
-	OperationCount     int    `json:"operation_count"`
+	LedgerSequence               int64                        `json:"ledger_sequence"`
+	ClosedAt                     string                       `json:"closed_at"`
+	LedgerHash                   string                       `json:"ledger_hash"`
+	PreviousLedgerHash           string                       `json:"previous_ledger_hash"`
+	ProtocolVersion              int                          `json:"protocol_version"`
+	BaseFeeStroops               int64                        `json:"base_fee_stroops"`
+	SuccessfulTxCount            int                          `json:"successful_tx_count"`
+	FailedTxCount                int                          `json:"failed_tx_count"`
+	OperationCount               int                          `json:"operation_count"`
+	TransactionCount             int                          `json:"transaction_count"`
+	TransactionSetOperationCount int                          `json:"transaction_set_operation_count"`
+	SuccessfulOperationCount     int                          `json:"successful_operation_count"`
+	FailedOperationCount         int                          `json:"failed_operation_count"`
+	LedgerCloseSignature         string                       `json:"ledger_close_signature,omitempty"`
+	Validator                    LedgerValidator              `json:"validator"`
+	Transactions                 RecentLedgerTransactionStats `json:"transactions"`
+	Operations                   RecentLedgerOperationStats   `json:"operations"`
+}
+
+type LedgerValidator struct {
+	PublicKey            string `json:"public_key,omitempty"`
+	AttributionAvailable bool   `json:"attribution_available"`
+	Status               string `json:"status,omitempty"`
+	Name                 string `json:"name,omitempty"`
+	DisplayName          string `json:"display_name,omitempty"`
+	Alias                string `json:"alias,omitempty"`
+	HomeDomain           string `json:"home_domain,omitempty"`
+	OrganizationID       string `json:"organization_id,omitempty"`
+	Source               string `json:"source,omitempty"`
+	SourceUpdatedAt      string `json:"source_updated_at,omitempty"`
+	ObservedAt           string `json:"observed_at,omitempty"`
+}
+
+type RecentLedgerTransactionStats struct {
+	Total      int `json:"total"`
+	Successful int `json:"successful"`
+	Failed     int `json:"failed"`
+}
+
+type RecentLedgerOperationStats struct {
+	Included             int                             `json:"included"`
+	Successful           int                             `json:"successful"`
+	Failed               int                             `json:"failed"`
+	ClassificationStatus string                          `json:"classification_status,omitempty"`
+	Categories           RecentLedgerOperationCategories `json:"categories"`
+	SuccessfulCategories RecentLedgerOperationCategories `json:"successful_categories"`
+}
+
+type RecentLedgerOperationCategories struct {
+	AccountCreation   int `json:"account_creation"`
+	Payments          int `json:"payments"`
+	OffersAndAMMs     int `json:"offers_and_amms"`
+	Trustlines        int `json:"trustlines"`
+	ClaimableBalances int `json:"claimable_balances"`
+	Sponsorship       int `json:"sponsorship"`
+	Soroban           int `json:"soroban"`
+	Other             int `json:"other"`
 }
 
 // RecentLedgersResponse matches /silver/ledgers/recent response.
@@ -1668,23 +1716,27 @@ type LedgerFeedSummary struct {
 }
 
 type LedgerFeedSummaryLedger struct {
-	Sequence          int64  `json:"sequence"`
-	ClosedAt          string `json:"closed_at"`
-	ClosedByNodeID    string `json:"closed_by_node_id,omitempty"`
-	ClosedByValidator string `json:"closed_by_validator,omitempty"`
-	ProtocolVersion   int    `json:"protocol_version"`
-	Hash              string `json:"hash,omitempty"`
-	PreviousHash      string `json:"previous_hash,omitempty"`
+	Sequence          int64            `json:"sequence"`
+	ClosedAt          string           `json:"closed_at"`
+	ClosedByNodeID    string           `json:"closed_by_node_id,omitempty"`
+	ClosedByValidator string           `json:"closed_by_validator,omitempty"`
+	Validator         *LedgerValidator `json:"validator,omitempty"`
+	ProtocolVersion   int              `json:"protocol_version"`
+	Hash              string           `json:"hash,omitempty"`
+	PreviousHash      string           `json:"previous_hash,omitempty"`
 }
 
 type LedgerFeedSummaryTotals struct {
-	TransactionCount   int64 `json:"transaction_count"`
-	SuccessfulTxCount  int64 `json:"successful_tx_count"`
-	FailedTxCount      int64 `json:"failed_tx_count"`
-	OperationCount     int64 `json:"operation_count"`
-	ContractEventCount int64 `json:"contract_event_count"`
-	SorobanOpCount     int64 `json:"soroban_op_count"`
-	TotalFeeCharged    int64 `json:"total_fee_charged"`
+	TransactionCount             int64 `json:"transaction_count"`
+	SuccessfulTxCount            int64 `json:"successful_tx_count"`
+	FailedTxCount                int64 `json:"failed_tx_count"`
+	OperationCount               int64 `json:"operation_count"`
+	TransactionSetOperationCount int64 `json:"transaction_set_operation_count"`
+	SuccessfulOperationCount     int64 `json:"successful_operation_count"`
+	FailedOperationCount         int64 `json:"failed_operation_count"`
+	ContractEventCount           int64 `json:"contract_event_count"`
+	SorobanOpCount               int64 `json:"soroban_op_count"`
+	TotalFeeCharged              int64 `json:"total_fee_charged"`
 }
 
 type LedgerFeedSummaryClassificationCounts struct {

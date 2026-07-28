@@ -217,7 +217,7 @@ The feed needs, per ledger:
 - ledger number
 - transaction count
 - operation count
-- validator / closer label if available
+- consensus-value introducer identity, if available
 - classification counts
 - utilization percentages
 - close time
@@ -238,12 +238,18 @@ This is already close to:
 
 ## Required per-ledger fields
 
+The deployed summary currently exposes the introducer through the legacy
+`closed_by_validator` field. Prism treats that field only as the node that
+introduced the selected SCP value. An additive API revision should expose
+`value_introducer_node_id` and deprecate the misleading legacy name without
+requiring a ledger backfill.
+
 ```json
 {
   "ledger": {
     "sequence": 2144030,
     "closed_at": "2026-04-20T22:51:10Z",
-    "closed_by_validator": "GC...",
+    "value_introducer_node_id": "GC...",
     "protocol_version": 26
   },
   "totals": {

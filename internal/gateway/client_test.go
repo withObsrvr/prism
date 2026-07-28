@@ -107,6 +107,38 @@ func TestClientCoalescesRecentLedgerCacheMisses(t *testing.T) {
 	}
 }
 
+func TestClientDecodesEnrichedRecentLedger(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/ledgers/recent" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"latest_sequence":3707457,"count":1,"ledgers":[{"ledger_sequence":3707457,"successful_tx_count":13,"failed_tx_count":1,"operation_count":15,"transaction_count":14,"transaction_set_operation_count":19,"successful_operation_count":15,"failed_operation_count":4,"validator":{"public_key":"GVALIDATOR","attribution_available":true,"status":"resolved","display_name":"SDF Testnet 3","source":"radar"},"operations":{"included":19,"successful":15,"failed":4,"classification_status":"materialized","categories":{"account_creation":1,"payments":2,"offers_and_amms":3,"trustlines":1,"claimable_balances":1,"sponsorship":1,"soroban":8,"other":2},"successful_categories":{"account_creation":1,"payments":2,"offers_and_amms":2,"trustlines":1,"claimable_balances":1,"sponsorship":1,"soroban":5,"other":2}}}]}`)
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	resp, err := client.GetSilverRecentLedgers(context.Background(), "testnet", 6)
+	if err != nil {
+		t.Fatalf("GetSilverRecentLedgers error: %v", err)
+	}
+	if len(resp.Ledgers) != 1 {
+		t.Fatalf("ledgers = %d, want 1", len(resp.Ledgers))
+	}
+	got := resp.Ledgers[0]
+	if got.TransactionCount != 14 || got.TransactionSetOperationCount != 19 || got.Operations.Included != 19 || got.Operations.Failed != 4 {
+		t.Fatalf("explicit ledger counts were not decoded: %+v", got)
+	}
+	if got.Validator.Status != "resolved" || got.Validator.DisplayName != "SDF Testnet 3" {
+		t.Fatalf("validator identity was not decoded: %+v", got.Validator)
+	}
+	if got.Operations.ClassificationStatus != "materialized" || got.Operations.Categories.Soroban != 8 {
+		t.Fatalf("operation categories were not decoded: %+v", got.Operations)
+	}
+}
+
 func TestClientDoesNotNegativeCacheAccountOverviewContextFailure(t *testing.T) {
 	var calls atomic.Int32
 	accountID := "GTESTACCOUNT"
