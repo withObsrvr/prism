@@ -1,0 +1,215 @@
+package pagesv2
+
+import (
+	"fmt"
+	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
+)
+
+templ HomeInsights(data vmv2.HomeInsightsData) {
+	<section class={ "ph-home-deferred", "is-" + string(data.Status.State) } id="changes" aria-labelledby="ph-home-changes-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 60s" hx-swap="outerHTML">
+		@homeEvidenceHeading("changes", "What changed", "Latest completed hour compared with the prior seven-day hourly median")
+		@homeEvidenceState(data.Status, data.PollURL, "changes", data.DemoData)
+		if len(data.Cards) > 0 {
+			<div class="ph-insight-list">
+				for _, card := range data.Cards {
+					<article class={ "ph-insight", "is-" + card.Tone }>
+						<div class="ph-insight-main">
+							<div class="ph-insight-signal"><span class={ "ph-signal-dot", "is-" + card.Tone }></span><span>{ homeInsightToneLabel(card.Tone, card.Generic) }</span></div>
+							<h3>{ card.Title }</h3>
+							<p class="ph-insight-summary">{ card.Summary }</p>
+							if card.Detail != "" {
+								<p class="ph-insight-detail">{ card.Detail }</p>
+							}
+							if card.SubjectID != "" {
+								<div class="ph-evidence-subject">
+									<span>Subject</span>
+									if card.SubjectHref != "" {
+										<a href={ templ.SafeURL(card.SubjectHref) }>{ card.SubjectLabel }</a>
+									} else {
+										<strong>{ card.SubjectLabel }</strong>
+									}
+									if card.IdentityDetail != "" {
+										<small>{ card.IdentityDetail }</small>
+									}
+								</div>
+							}
+							if len(card.Caveats) > 0 {
+								<ul class="ph-evidence-caveats">
+									for _, caveat := range card.Caveats {
+										<li>{ caveat }</li>
+									}
+								</ul>
+							}
+						</div>
+						<div class="ph-insight-evidence">
+							<dl class="ph-evidence-metrics">
+								for _, metric := range card.Metrics {
+									<div><dt>{ metric.Label }</dt><dd>{ metric.Value }</dd></div>
+								}
+							</dl>
+							<div class="ph-evidence-meta">
+								if card.WindowLabel != "" {
+									<span>{ card.WindowLabel }</span>
+								}
+								if card.AsOfLedger != "" {
+									<span>Complete through ledger { card.AsOfLedger }</span>
+								}
+								if card.UpdatedLabel != "" {
+									<span>Updated { card.UpdatedLabel }</span>
+								}
+								if card.RuleLabel != "" {
+									<span>Prism rule { card.RuleLabel }</span>
+								}
+							</div>
+							for _, link := range card.Evidence {
+								<a class="ph-evidence-link" href={ templ.SafeURL(link.Href) }>{ link.Label } <span aria-hidden="true">→</span></a>
+							}
+						</div>
+					</article>
+				}
+			</div>
+		}
+	</section>
+}
+
+templ HomeTTL(data vmv2.HomeTTLData) {
+	<section class={ "ph-home-deferred", "is-" + string(data.Status.State) } id="archival" aria-labelledby="ph-home-archival-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 60s" hx-swap="outerHTML">
+		@homeEvidenceHeading("archival", "Nearing archival", "Persistent and contract-instance storage only")
+		@homeEvidenceState(data.Status, data.PollURL, "archival", data.DemoData)
+		if len(data.Cards) > 0 {
+			<div class="ph-evidence-rows">
+				for _, card := range data.Cards {
+					<article class="ph-evidence-row">
+						<div class="ph-evidence-row-primary">
+							<span class={ "ph-status-label", "is-" + card.Tone }>{ homeTTLToneLabel(card.Tone) }</span>
+							<h3><a href={ templ.SafeURL(card.Href) }>{ card.Name }</a></h3>
+							<code>{ card.ContractID }</code>
+						</div>
+						<div class="ph-evidence-row-measure"><strong>{ card.RunwayLabel }</strong><span>Absolute ledger runway</span></div>
+						<div class="ph-evidence-row-detail">
+							if card.LiveUntilLedger != "" {
+								<span>Live until ledger <b>{ card.LiveUntilLedger }</b></span>
+							}
+							if card.Detail != "" {
+								<span>{ card.Detail }</span>
+							}
+							<a href={ templ.SafeURL(card.Href) }>Inspect contract evidence <span aria-hidden="true">→</span></a>
+						</div>
+					</article>
+				}
+			</div>
+		}
+	</section>
+}
+
+templ HomeLeaders(data vmv2.HomeLeadersData) {
+	<section class={ "ph-home-deferred", "is-" + string(data.Status.State) } id="contracts" aria-labelledby="ph-home-contracts-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 60s" hx-swap="outerHTML">
+		@homeEvidenceHeading("contracts", "Most called, 24 hours", "Ranked by call count, not TVL")
+		@homeEvidenceState(data.Status, data.PollURL, "contracts", data.DemoData)
+		if len(data.Cards) > 0 {
+			<ol class="ph-leader-list">
+				for index, card := range data.Cards {
+					<li class="ph-leader-row">
+						<span class="ph-leader-rank">{ fmt.Sprintf("%02d", index + 1) }</span>
+						<div class="ph-leader-identity"><h3><a href={ templ.SafeURL(card.Href) }>{ card.Name }</a></h3><code>{ card.ContractID }</code><span>{ card.IdentityDetail }</span></div>
+						<div class="ph-leader-measure"><strong>{ card.CallCount }</strong><span>calls</span></div>
+						<div class="ph-leader-context">
+							<span>{ card.CallerCount } { card.CallerUnit }</span>
+							<span>{ card.OutcomeLabel }</span>
+							if card.TopFunction != "" {
+								<span>Most called function: <code>{ card.TopFunction }</code></span>
+							}
+							<small>
+								{ card.WindowLabel }
+								if card.UpdatedLabel != "" {
+									<span> · updated { card.UpdatedLabel }</span>
+								}
+							</small>
+						</div>
+					</li>
+				}
+			</ol>
+		}
+	</section>
+}
+
+templ HomeUtilization(data vmv2.HomeUtilizationData) {
+	<section class={ "ph-home-deferred", "is-" + string(data.Status.State) } id="utilization" aria-labelledby="ph-home-utilization-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 30s" hx-swap="outerHTML">
+		@homeEvidenceHeading("utilization", "Network utilization", "Instructions, read and write bytes, and transaction size")
+		@homeEvidenceState(data.Status, data.PollURL, "utilization", data.DemoData)
+		if len(data.Metrics) > 0 {
+			<div class="ph-utilization-list">
+				for _, metric := range data.Metrics {
+					<article class={ "ph-utilization-row", "is-" + metric.State }>
+						<div class="ph-utilization-heading"><h3>{ metric.Label }</h3><strong>{ metric.PercentLabel }</strong></div>
+						<div class="ph-utilization-meter" role="img" aria-label={ metric.Label + " at " + metric.PercentLabel }><span style={ metric.BarStyle }></span></div>
+						<div class="ph-utilization-values"><span>{ metric.UsedLabel }</span><span>{ metric.LimitLabel }</span></div>
+						<p>{ metric.Detail }</p>
+						<div class="ph-evidence-meta">
+							if metric.SourceLedger != "" {
+								<span>Source ledger { metric.SourceLedger }</span>
+							}
+							if metric.LimitSource != "" {
+								<span>Limit source: { metric.LimitSource }</span>
+							}
+						</div>
+					</article>
+				}
+			</div>
+		}
+	</section>
+}
+
+templ homeEvidenceHeading(id string, title string, scope string) {
+	<div class="ph-home-deferred-heading"><div><span class="ph-home-kicker">Evidence section</span><h2 id={ "ph-home-" + id + "-title" }>{ title }</h2></div><span>{ scope }</span></div>
+}
+
+templ homeEvidenceState(status vmv2.HomeSectionStatus, pollURL string, targetID string, demo bool) {
+	if demo {
+		<div class="ph-inline-state is-demo"><strong>Demo fixture</strong><span>This section is synthetic and is not a claim about this network.</span></div>
+	}
+	if status.Message != "" {
+		<div class={ "ph-inline-state", "is-" + string(status.State) } role="status"><strong>{ homeEvidenceStateLabel(status.State) }</strong><span>{ status.Message }</span></div>
+	}
+	if len(status.Warnings) > 0 {
+		<ul class="ph-section-warnings">
+			for _, warning := range status.Warnings {
+				<li>{ warning }</li>
+			}
+		</ul>
+	}
+	if status.AsOfLedgerLabel != "" {
+		<div class="ph-section-provenance">Component snapshot: ledger { status.AsOfLedgerLabel }</div>
+	}
+	if status.State == vmv2.HomeSectionUnavailable && status.Retryable {
+		<button class="ph-inline-retry" type="button" hx-get={ pollURL } hx-target={ "#" + targetID } hx-swap="outerHTML">Retry this evidence</button>
+	}
+}
+
+func homeEvidenceStateLabel(state vmv2.HomeSectionState) string {
+	switch state {
+	case vmv2.HomeSectionPartial: return "Partial evidence"
+	case vmv2.HomeSectionStale: return "Data delayed"
+	case vmv2.HomeSectionEmpty: return "No matching evidence"
+	case vmv2.HomeSectionUnavailable: return "Unavailable"
+	default: return "Live evidence"
+	}
+}
+
+func homeInsightToneLabel(tone string, generic bool) string {
+	if generic { return "Measured evidence" }
+	switch tone {
+	case "critical": return "Failure signal"
+	case "signal": return "Deployment signal"
+	case "info": return "Activity signal"
+	default: return "Measured evidence"
+	}
+}
+
+func homeTTLToneLabel(tone string) string {
+	switch tone {
+	case "critical": return "Shortest runway"
+	case "warning": return "Needs attention"
+	default: return "Monitor"
+	}
+}

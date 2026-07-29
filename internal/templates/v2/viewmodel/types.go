@@ -17,12 +17,13 @@ const (
 )
 
 type HomeSectionStatus struct {
-	State      HomeSectionState
-	Message    string
-	AsOfLedger int64
-	AsOfTime   time.Time
-	Warnings   []string
-	Retryable  bool
+	State           HomeSectionState
+	Message         string
+	AsOfLedger      int64
+	AsOfLedgerLabel string
+	AsOfTime        time.Time
+	Warnings        []string
+	Retryable       bool
 }
 
 type HomeSpectrogramSegment struct {
@@ -77,6 +78,107 @@ type HomeTimelineData struct {
 	FailurePercent  string
 	AsOfLedgerLabel string
 	DemoData        bool
+}
+
+type HomeInsightMetric struct {
+	Label string
+	Value string
+}
+
+type HomeInsightEvidenceLink struct {
+	Label string
+	Href  string
+}
+
+type HomeInsightCard struct {
+	Title           string
+	Summary         string
+	Detail          string
+	Tone            string
+	State           string
+	WindowLabel     string
+	ComparisonLabel string
+	SubjectLabel    string
+	SubjectID       string
+	SubjectHref     string
+	IdentityDetail  string
+	EvidenceCount   string
+	Metrics         []HomeInsightMetric
+	Evidence        []HomeInsightEvidenceLink
+	Caveats         []string
+	AsOfLedger      string
+	UpdatedLabel    string
+	RuleLabel       string
+	Generic         bool
+}
+
+type HomeInsightsData struct {
+	Status   HomeSectionStatus
+	Network  string
+	PollURL  string
+	Cards    []HomeInsightCard
+	DemoData bool
+}
+
+type HomeTTLCard struct {
+	Name             string
+	ContractID       string
+	Href             string
+	Tone             string
+	RunwayLabel      string
+	RemainingLedgers string
+	LiveUntilLedger  string
+	Detail           string
+}
+
+type HomeTTLData struct {
+	Status   HomeSectionStatus
+	Network  string
+	PollURL  string
+	Cards    []HomeTTLCard
+	DemoData bool
+}
+
+type HomeLeaderCard struct {
+	Name           string
+	ContractID     string
+	Href           string
+	IdentityDetail string
+	CallCount      string
+	CallerCount    string
+	CallerUnit     string
+	OutcomeLabel   string
+	TopFunction    string
+	WindowLabel    string
+	UpdatedLabel   string
+}
+
+type HomeLeadersData struct {
+	Status   HomeSectionStatus
+	Network  string
+	PollURL  string
+	Cards    []HomeLeaderCard
+	DemoData bool
+}
+
+type HomeUtilizationMetric struct {
+	Label        string
+	State        string
+	PercentLabel string
+	BarStyle     string
+	UsedLabel    string
+	LimitLabel   string
+	Detail       string
+	SourceLedger string
+	LimitSource  string
+}
+
+type HomeUtilizationData struct {
+	Status   HomeSectionStatus
+	Network  string
+	PollURL  string
+	Metrics  []HomeUtilizationMetric
+	DemoData bool
 }
 
 type HeroData struct {
@@ -177,17 +279,21 @@ type UtilizationSectionData struct {
 }
 
 type HomeData struct {
-	Header      componentsv2.HeaderData
-	MockMode    bool
-	TimelineURL string
-	Hero        HeroData
-	Prompt      PromptData
-	Alert       AlertData
-	LedgerFeed  LedgerFeedData
-	FeedJSON    string
-	FeedLive    bool
-	Attention   AttentionSectionData
-	Leaders     LeadersSectionData
-	Utilization UtilizationSectionData
-	FooterItems []string
+	Header         componentsv2.HeaderData
+	MockMode       bool
+	TimelineURL    string
+	InsightsURL    string
+	TTLURL         string
+	LeadersURL     string
+	UtilizationURL string
+	Hero           HeroData
+	Prompt         PromptData
+	Alert          AlertData
+	LedgerFeed     LedgerFeedData
+	FeedJSON       string
+	FeedLive       bool
+	Attention      AttentionSectionData
+	Leaders        LeadersSectionData
+	Utilization    UtilizationSectionData
+	FooterItems    []string
 }

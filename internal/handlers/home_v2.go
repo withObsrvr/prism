@@ -34,7 +34,11 @@ func emptyHomeV2Data(network string) vmv2.HomeData {
 			AgeLabel:     "Waiting for ledger data",
 			Network:      network,
 		},
-		TimelineURL: homeV2TimelineURL(network, false),
+		TimelineURL:    homeV2FragmentURL("timeline", network, false),
+		InsightsURL:    homeV2FragmentURL("insights", network, false),
+		TTLURL:         homeV2FragmentURL("ttl", network, false),
+		LeadersURL:     homeV2FragmentURL("leaders", network, false),
+		UtilizationURL: homeV2FragmentURL("utilization", network, false),
 		Prompt: vmv2.PromptData{
 			Placeholder: "Transaction, account, contract, asset, ledger, or recent activity",
 		},
@@ -42,6 +46,10 @@ func emptyHomeV2Data(network string) vmv2.HomeData {
 }
 
 func homeV2TimelineURL(network string, mock bool) string {
+	return homeV2FragmentURL("timeline", network, mock)
+}
+
+func homeV2FragmentURL(fragment, network string, mock bool) string {
 	query := url.Values{}
 	if network != "" {
 		query.Set("network", network)
@@ -49,5 +57,5 @@ func homeV2TimelineURL(network string, mock bool) string {
 	if mock {
 		query.Set("mock", "true")
 	}
-	return "/v2/home/timeline?" + query.Encode()
+	return "/v2/home/" + fragment + "?" + query.Encode()
 }

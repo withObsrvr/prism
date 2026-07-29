@@ -12,9 +12,13 @@ import (
 
 func TestHomeRendersTruthfulShellAndInformationArchitecture(t *testing.T) {
 	data := vmv2.HomeData{
-		Header:      componentsv2.HeaderData{Network: "testnet", LedgerNumber: "Unavailable", AgeLabel: "Waiting for ledger data"},
-		TimelineURL: "/v2/home/timeline?network=testnet",
-		Prompt:      vmv2.PromptData{Placeholder: "Transaction, account, contract, asset, ledger, or recent activity"},
+		Header:         componentsv2.HeaderData{Network: "testnet", LedgerNumber: "Unavailable", AgeLabel: "Waiting for ledger data"},
+		TimelineURL:    "/v2/home/timeline?network=testnet",
+		InsightsURL:    "/v2/home/insights?network=testnet",
+		TTLURL:         "/v2/home/ttl?network=testnet",
+		LeadersURL:     "/v2/home/leaders?network=testnet",
+		UtilizationURL: "/v2/home/utilization?network=testnet",
+		Prompt:         vmv2.PromptData{Placeholder: "Transaction, account, contract, asset, ledger, or recent activity"},
 	}
 
 	var html strings.Builder
@@ -31,6 +35,10 @@ func TestHomeRendersTruthfulShellAndInformationArchitecture(t *testing.T) {
 		"Most called, 24 hours",
 		"Network utilization",
 		`hx-get="/v2/home/timeline?network=testnet"`,
+		`hx-get="/v2/home/insights?network=testnet"`,
+		`hx-get="/v2/home/ttl?network=testnet"`,
+		`hx-get="/v2/home/leaders?network=testnet"`,
+		`hx-get="/v2/home/utilization?network=testnet"`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("home shell missing %q", want)

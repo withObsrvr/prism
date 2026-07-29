@@ -181,12 +181,12 @@ Data sections load independently:
 | `GET /v2/home/timeline` | `/silver/ledgers/recent?limit=60` | 5 seconds |
 | `GET /v2/home/insights` | `/home/summary` | 60 seconds |
 | `GET /v2/home/ttl` | `/home/summary` | 60 seconds |
-| `GET /v2/home/leaders` | `/silver/contracts/top?limit=5` | 60 seconds |
+| `GET /v2/home/leaders` | `/home/summary` | 60 seconds |
 | `GET /v2/home/utilization` | `/home/summary` | 30 seconds |
 
 Each fragment gets a bounded request context. Expected upstream failures render the relevant section state. Internal rendering failures remain HTTP 500 responses.
 
-The summary may be fetched once through a short-lived server-side cache and projected into several fragments. Independent presentation states must still be preserved. Do not make the browser call the Gateway directly.
+The summary is fetched through one short-lived server-side cache and projected into the insights, TTL, leaders, and utilization fragments. This keeps their snapshot ledger coherent while preserving independent component states. Do not make the browser call the Gateway directly.
 
 ## Ledger heartbeat and spectrogram
 
@@ -420,7 +420,7 @@ Use `contracts_needing_attention` and the typed `ttl_attention` component state 
 
 ## Most called contracts
 
-Use `/silver/contracts/top?limit=5&period=24h` for:
+Use the `leaders` component from `/home/summary` for:
 
 - identity, identity source, and verification status;
 - contract ID and kind;
@@ -558,6 +558,8 @@ Testnet acceptance covers the known two-event exact fixture, an exact failed tra
 
 ### Slice 4: What changed v1
 
+Status: Prism implementation and testnet browser acceptance completed on 2026-07-29; populated mainnet acceptance remains pending.
+
 1. Add typed Gateway insight and evidence models.
 2. Add the `internal/insight` rule registry.
 3. Implement deterministic templates for the three deployed types.
@@ -566,6 +568,8 @@ Testnet acceptance covers the known two-event exact fixture, an exact failed tra
 6. Add identity source, comparison rule, exact window, ledger, and updated-time disclosure.
 7. Add fixture tests for ready, authoritative empty, partial, stale, unavailable, unknown type, and unknown evidence version.
 8. Accept populated mainnet and authoritative-empty testnet behavior.
+
+Prism now validates `home_insight_evidence_v1` packets, applies deterministic rules for all three deployed insight types, generates evidence destinations from typed locators, and renders ready, partial, stale, authoritative-empty, unavailable, unknown-type, and unknown-version states without synthesizing facts. Testnet currently reports an authoritative empty insight set, so the live empty state is accepted there. A labeled mock fixture exercises the rich failure-insight path without acting as a live fallback. Populated live acceptance will follow the API promotion.
 
 ### Slice 5: Evidence-rich interpretation
 
@@ -580,6 +584,8 @@ This slice begins after the API evidence phase is deployed.
 
 ### Slice 6: Remaining sections and rollout
 
+Status: TTL, leaders, utilization, responsive behavior, explicit outcome labels, and reduced-motion foundations completed and browser-accepted on testnet on 2026-07-29; product evidence, rollout cleanup, and mainnet acceptance remain pending.
+
 1. Add TTL, leaders, utilization, and API-backed product-evidence fragments.
 2. Complete responsive behavior for desktop, tablet, and mobile.
 3. Verify status never relies on color alone.
@@ -588,6 +594,8 @@ This slice begins after the API evidence phase is deployed.
 6. Roll out behind a home-layout feature flag or internal preview.
 7. Accept testnet first, then mainnet.
 8. Remove `/v2/home/feed` and obsolete home-only rendering code after fragment acceptance.
+
+The completed fragments consume the same cached `/home/summary` snapshot. Partial and stale packets keep valid rows visible with scoped warnings; unavailable packets never become zero or empty states. Utilization metrics fail independently, so a missing transaction-size value does not suppress instructions or read/write bytes. Testnet acceptance is recorded in `PRISM_HOME_EVIDENCE_TESTNET_ACCEPTANCE_2026-07-29.md`.
 
 ## Expected file changes
 

@@ -26,10 +26,10 @@ templ Home(data vmv2.HomeData) {
 		<main class="ph-home-page">
 			@homeTimelineLoading(data.TimelineURL)
 			@homeSearch(data.Prompt)
-			@homeDeferredSection("changes", "What changed", "Latest completed hour compared with the prior seven-day hourly median", "The latest-hour comparison is temporarily unavailable.")
-			@homeDeferredSection("archival", "Nearing archival", "Persistent and contract-instance storage only", "Contract archival evidence is temporarily unavailable.")
-			@homeDeferredSection("contracts", "Most called, 24 hours", "Ranked by call count, not TVL", "Contract ranking evidence is temporarily unavailable.")
-			@homeDeferredSection("utilization", "Network utilization", "Instructions, read and write bytes, and transaction size", "Ledger utilization evidence is temporarily unavailable.")
+			@homeEvidenceLoading("changes", "What changed", "Latest completed hour compared with the prior seven-day hourly median", data.InsightsURL)
+			@homeEvidenceLoading("archival", "Nearing archival", "Persistent and contract-instance storage only", data.TTLURL)
+			@homeEvidenceLoading("contracts", "Most called, 24 hours", "Ranked by call count, not TVL", data.LeadersURL)
+			@homeEvidenceLoading("utilization", "Network utilization", "Instructions, read and write bytes, and transaction size", data.UtilizationURL)
 			<section class="ph-home-open" id="why" aria-labelledby="ph-home-open-title">
 				<div><span class="ph-home-kicker">Open source</span><h2 id="ph-home-open-title">Inspect the explorer, too.</h2></div>
 				<p>Prism keeps interpretations connected to evidence, and its implementation is available for review.</p>
@@ -162,10 +162,11 @@ templ HomeTimeline(data vmv2.HomeTimelineData) {
 	</section>
 }
 
-templ homeDeferredSection(id string, title string, scope string, message string) {
-	<section class="ph-home-deferred" id={ id } aria-labelledby={ "ph-home-" + id + "-title" }>
+templ homeEvidenceLoading(id string, title string, scope string, url string) {
+	<section class="ph-home-deferred is-loading" id={ id } aria-labelledby={ "ph-home-" + id + "-title" } aria-busy="true" aria-live="polite" hx-get={ url } hx-trigger="load" hx-swap="outerHTML">
 		<div class="ph-home-deferred-heading"><div><span class="ph-home-kicker">Evidence section</span><h2 id={ "ph-home-" + id + "-title" }>{ title }</h2></div><span>{ scope }</span></div>
-		<div class="ph-inline-state is-unavailable"><strong>Unavailable</strong><span>{ message }</span></div>
+		<div class="ph-evidence-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+		<span class="sr-only">Loading { title } evidence.</span>
 	</section>
 }
 
