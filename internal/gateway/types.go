@@ -2225,11 +2225,33 @@ type HomeSummaryWarningDetail struct {
 
 // ExplorerEventsResponse matches /explorer/events response.
 type ExplorerEventsResponse struct {
-	Meta       ExplorerEventMeta `json:"meta"`
-	Events     []ExplorerEvent   `json:"events"`
-	HasMore    bool              `json:"has_more"`
-	NextCursor *string           `json:"next_cursor"`
-	Count      int               `json:"count"`
+	EvidenceVersion string                   `json:"evidence_version"`
+	Status          string                   `json:"status"`
+	Coverage        *ServingCoverageMetadata `json:"coverage,omitempty"`
+	Provenance      ExplorerEventsProvenance `json:"provenance"`
+	Meta            ExplorerEventMeta        `json:"meta"`
+	Events          []ExplorerEvent          `json:"events"`
+	HasMore         bool                     `json:"has_more"`
+	NextCursor      *string                  `json:"next_cursor"`
+	Count           int                      `json:"count"`
+	Warnings        []string                 `json:"warnings,omitempty"`
+}
+
+type ServingCoverageMetadata struct {
+	Source       string  `json:"source"`
+	Status       string  `json:"status"`
+	CompleteFrom int64   `json:"complete_from"`
+	CompleteThru int64   `json:"complete_thru"`
+	UpdatedAt    *string `json:"updated_at,omitempty"`
+}
+
+type ExplorerEventsProvenance struct {
+	Source               string         `json:"source"`
+	RequestPath          string         `json:"request_path"`
+	AppliedFilters       map[string]any `json:"applied_filters"`
+	CountCap             int64          `json:"count_cap"`
+	AvailableFromTime    *string        `json:"available_from_time,omitempty"`
+	AvailableThroughTime *string        `json:"available_through_time,omitempty"`
 }
 
 type ExplorerEventMeta struct {
@@ -2245,27 +2267,39 @@ type ExplorerEventLedgerRange struct {
 }
 
 type ExplorerEvent struct {
-	EventID                  string  `json:"event_id"`
-	Type                     string  `json:"type"`
-	Protocol                 *string `json:"protocol"`
-	ContractID               *string `json:"contract_id"`
-	ContractName             *string `json:"contract_name"`
-	ContractSymbol           *string `json:"contract_symbol"`
-	LedgerSequence           int64   `json:"ledger_sequence"`
-	TransactionHash          string  `json:"transaction_hash"`
-	ClosedAt                 string  `json:"closed_at"`
-	Successful               bool    `json:"successful"` // Deprecated API alias; use TransactionSuccessful for UI status.
-	TransactionSuccessful    *bool   `json:"transaction_successful"`
-	InSuccessfulContractCall *bool   `json:"in_successful_contract_call"`
-	Topic0                   *string `json:"topic0"`
-	Topic1                   *string `json:"topic1"`
-	Topic2                   *string `json:"topic2"`
-	Topic3                   *string `json:"topic3"`
-	TopicsDecoded            *string `json:"topics_decoded"`
-	Data                     *string `json:"data"`
-	DataDecoded              *string `json:"data_decoded"`
-	EventIndex               int     `json:"event_index"`
-	OperationIndex           int     `json:"operation_index"`
+	EventID                  string               `json:"event_id"`
+	Type                     string               `json:"type"`
+	Protocol                 *string              `json:"protocol"`
+	ContractID               *string              `json:"contract_id"`
+	ContractName             *string              `json:"contract_name"`
+	ContractSymbol           *string              `json:"contract_symbol"`
+	ContractCategory         *string              `json:"contract_category"`
+	FunctionName             *string              `json:"function_name"`
+	AssetKey                 *string              `json:"asset_key"`
+	Actors                   []ExplorerEventActor `json:"actors,omitempty"`
+	FromAddress              *string              `json:"from_address"`
+	ToAddress                *string              `json:"to_address"`
+	LedgerSequence           int64                `json:"ledger_sequence"`
+	TransactionHash          string               `json:"transaction_hash"`
+	ClosedAt                 string               `json:"closed_at"`
+	Successful               bool                 `json:"successful"` // Deprecated API alias; use TransactionSuccessful for UI status.
+	TransactionSuccessful    *bool                `json:"transaction_successful"`
+	InSuccessfulContractCall *bool                `json:"in_successful_contract_call"`
+	Topic0                   *string              `json:"topic0"`
+	Topic1                   *string              `json:"topic1"`
+	Topic2                   *string              `json:"topic2"`
+	Topic3                   *string              `json:"topic3"`
+	TopicsDecoded            *string              `json:"topics_decoded"`
+	Data                     *string              `json:"data"`
+	DataDecoded              *string              `json:"data_decoded"`
+	EventIndex               int                  `json:"event_index"`
+	OperationIndex           int                  `json:"operation_index"`
+}
+
+type ExplorerEventActor struct {
+	Address string `json:"address"`
+	Type    string `json:"type"`
+	Role    string `json:"role"`
 }
 
 // PublicSuccessful returns the transaction-scoped event status for explorer UI.
@@ -2309,7 +2343,7 @@ type EffectAsset struct {
 
 // ExplorerEventsParams holds query parameters for GetExplorerEvents.
 type ExplorerEventsParams struct {
-	Type         string
+	Types        []string
 	Tab          string
 	ContractID   string
 	ContractName string
@@ -2317,6 +2351,12 @@ type ExplorerEventsParams struct {
 	TopicMatch   string
 	StartLedger  int64
 	EndLedger    int64
+	StartTime    time.Time
+	EndTime      time.Time
+	Successful   *bool
+	Function     string
+	Asset        string
+	Actor        string
 	Limit        int
 	Cursor       string
 	Order        string

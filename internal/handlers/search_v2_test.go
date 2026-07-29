@@ -120,7 +120,7 @@ func TestEntitySearchPreservesAmbiguousAssetsAndEvidence(t *testing.T) {
 	handler := &Handlers{Logger: testSearchLogger(), Gateway: client, DataSource: "auto"}
 
 	resolution, evidence := handler.resolveSearchWithEntities(context.Background(), "testnet", "USDC")
-	if resolution.Kind != prismsearch.SearchExplore || resolution.RuleID != "gateway.entity.ambiguous" || resolution.Destination != "/v2/explore?asset=USDC" {
+	if resolution.Kind != prismsearch.SearchExplore || resolution.RuleID != "gateway.entity.ambiguous" || resolution.Destination != "/v2/explore?q=USDC" {
 		t.Fatalf("ambiguous resolution = %+v", resolution)
 	}
 	if len(evidence.Entities) != 2 || !evidence.HasMore {
@@ -287,14 +287,14 @@ func TestGatewaySearchEntitySupportsSmartAccountsAndTokens(t *testing.T) {
 func TestExploreLiveModeNeverFallsBackToMockRows(t *testing.T) {
 	handler := &Handlers{Logger: testSearchLogger(), DataSource: "auto"}
 
-	shellRequest := httptest.NewRequest(http.MethodGet, "/v2/explore?asset=USDC", nil)
+	shellRequest := httptest.NewRequest(http.MethodGet, "/v2/explore?asset=XLM", nil)
 	shellRecorder := httptest.NewRecorder()
 	handler.ExploreV2(shellRecorder, shellRequest)
-	if output := shellRecorder.Body.String(); strings.Contains(output, "Alice swapped") || strings.Contains(output, "52,844,201") || !strings.Contains(output, "/v2/explore/live?asset=USDC") {
+	if output := shellRecorder.Body.String(); strings.Contains(output, "Alice swapped") || strings.Contains(output, "52,844,201") || !strings.Contains(output, "/v2/explore/live?asset=XLM") {
 		t.Fatalf("live Explore shell leaked fixtures or lost hydration: %s", output)
 	}
 
-	liveRequest := httptest.NewRequest(http.MethodGet, "/v2/explore/live?asset=USDC", nil)
+	liveRequest := httptest.NewRequest(http.MethodGet, "/v2/explore/live?asset=XLM", nil)
 	liveRecorder := httptest.NewRecorder()
 	handler.ExploreV2Live(liveRecorder, liveRequest)
 	output := liveRecorder.Body.String()

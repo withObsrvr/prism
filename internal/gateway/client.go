@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1988,8 +1989,8 @@ func (c *Client) GetTransactionEffects(ctx context.Context, network string, hash
 // GetExplorerEvents returns enriched explorer events with classification and pagination.
 func (c *Client) GetExplorerEvents(ctx context.Context, network string, p ExplorerEventsParams) (*ExplorerEventsResponse, error) {
 	params := url.Values{}
-	if p.Type != "" {
-		params.Set("type", p.Type)
+	if len(p.Types) > 0 {
+		params.Set("type", strings.Join(p.Types, ","))
 	}
 	if p.Tab != "" {
 		params.Set("tab", p.Tab)
@@ -2012,6 +2013,24 @@ func (c *Client) GetExplorerEvents(ctx context.Context, network string, p Explor
 	if p.EndLedger > 0 {
 		params.Set("end_ledger", fmt.Sprintf("%d", p.EndLedger))
 	}
+	if !p.StartTime.IsZero() {
+		params.Set("start_time", p.StartTime.UTC().Format(time.RFC3339))
+	}
+	if !p.EndTime.IsZero() {
+		params.Set("end_time", p.EndTime.UTC().Format(time.RFC3339))
+	}
+	if p.Successful != nil {
+		params.Set("successful", strconv.FormatBool(*p.Successful))
+	}
+	if p.Function != "" {
+		params.Set("function", p.Function)
+	}
+	if p.Asset != "" {
+		params.Set("asset", p.Asset)
+	}
+	if p.Actor != "" {
+		params.Set("actor", p.Actor)
+	}
 	if p.Limit > 0 {
 		params.Set("limit", fmt.Sprintf("%d", p.Limit))
 	}
@@ -2029,14 +2048,30 @@ func (c *Client) GetExplorerEvents(ctx context.Context, network string, p Explor
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/explorer/events")+"?"+params.Encode())
 	if err != nil {
-		return nil, err
+		apiErr, ok := err.(*APIError)
+		if !ok || apiErr.StatusCode != http.StatusServiceUnavailable {
+			return nil, err
+		}
+		body = []byte(apiErr.Message)
 	}
 
 	var result ExplorerEventsResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("gateway: parsing explorer events: %w", err)
 	}
+	if result.EvidenceVersion != "explorer_events_v1" {
+		return nil, fmt.Errorf("gateway: unsupported explorer events evidence version %q", result.EvidenceVersion)
+	}
+	switch result.Status {
+	case "ready", "empty", "partial", "unavailable":
+	default:
+		return nil, fmt.Errorf("gateway: unsupported explorer events status %q", result.Status)
+	}
 
-	c.cache.Set(cacheKey, &result, TTLRecentList)
+	ttl := TTLRecentList
+	if result.Status == "partial" || result.Status == "unavailable" {
+		ttl = TTLSearchImprovable
+	}
+	c.cache.Set(cacheKey, &result, ttl)
 	return &result, nil
 }

@@ -50,7 +50,6 @@ func (h *Handlers) buildEventsFirehoseData(r *http.Request, network string) (pag
 	}
 
 	params := gateway.ExplorerEventsParams{
-		Type:         q.Get("type"),
 		Tab:          q.Get("tab"),
 		ContractID:   q.Get("contract_id"),
 		ContractName: q.Get("contract_name"),
@@ -58,6 +57,9 @@ func (h *Handlers) buildEventsFirehoseData(r *http.Request, network string) (pag
 		Cursor:       q.Get("cursor"),
 		Limit:        limit,
 		Order:        "desc",
+	}
+	if eventTypes := strings.TrimSpace(q.Get("type")); eventTypes != "" {
+		params.Types = strings.Split(eventTypes, ",")
 	}
 
 	resp, err := h.Gateway.GetExplorerEvents(ctx, network, params)

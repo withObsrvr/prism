@@ -1,7 +1,13 @@
 # Prism E1B Testnet Acceptance
 
-Date: 2026-07-28
-Status: Prism consumer accepted on testnet; full cross-system corpus blocked by two API evidence regressions
+Date: 2026-07-28; regression closure verified 2026-07-29
+Status: Accepted on testnet; full Prism and API corpus passes, mainnet pending
+
+## Regression closure
+
+The API projection repair restored the known SAC forward lookup and classic-asset reverse SAC mapping. The 2026-07-29 rerun passed the full browser corpus with no Prism or API findings, console errors, page errors, or failed local HTTP requests.
+
+E1C exact-asset filtering also tightened the issuer ambiguity boundary. The issuer-neutral `USDC` action now routes to `/v2/explore?q=USDC` and is labeled `Explore matching USDC contract activity`; it does not send the invalid exact filter `asset=USDC`. Selecting a specific issuer continues to route to its canonical asset page.
 
 ## Scope
 
@@ -19,13 +25,13 @@ Screenshots are stored at:
 
 ## Prism acceptance
 
-All 18 Prism-owned browser assertions passed. The run recorded no console errors, page errors, or failed local HTTP requests.
+All Prism-owned browser assertions and the two cross-system SAC assertions pass. The final run recorded no console errors, page errors, failed local HTTP requests, or API findings.
 
 Accepted behavior:
 
 - ambiguous `USDC` preserved distinct issuer-specific assets and omitted the issuer-free shortcut;
 - `has_more`, exact symbol matching, verification status, identity source, and serving watermark were visible;
-- suggest and submit both resolved ambiguous `USDC` to `/v2/explore?asset=USDC`;
+- suggest and submit both resolve ambiguous `USDC` to issuer-neutral contract activity at `/v2/explore?q=USDC`;
 - `USDCC` used asset and SAC type filters, returned asset identities instead of pool-name noise, and required an explicit fuzzy-result click;
 - pool prefix `001041ac` rendered a unique prefix match with an explicit `Explore` action;
 - the native SAC resolved to canonical `XLM`;
@@ -36,9 +42,9 @@ Accepted behavior:
 - the suggestion surface had no horizontal overflow at a 390px viewport;
 - desktop and mobile rendering stayed within Prism's current restrained palette and product component vocabulary.
 
-## API evidence findings
+## Initial API evidence findings, resolved 2026-07-29
 
-Two cross-system assertions remain open. Prism's fixture and mapping tests pass for both, but the live testnet `entity_search_v1` packets did not supply the required evidence.
+The initial run exposed two cross-system regressions. Both are retained below as historical evidence and now pass in the live testnet `entity_search_v1` packets.
 
 ### 1. Known SAC contract did not resolve as a SAC
 
@@ -74,9 +80,9 @@ Observed through Prism:
 - the exact classic asset resolved correctly;
 - the result did not include a usable `sac_contract_id`, so Prism could not disclose the reverse mapping.
 
-## API follow-up
+## Closed API follow-up
 
-The API owner should rerun the accepted E1B SAC forward/reverse corpus against the currently deployed testnet projection and Gateway, then verify:
+The API owner reran the accepted E1B SAC forward/reverse corpus against the repaired testnet projection and Gateway and verified:
 
 1. the SAC map, canonical identity table, and denormalized search table share a complete watermark;
 2. the known SAC row remains present in `serving.sv_entity_search_current` with `entity_kind = 'sac'` and the canonical asset slug;
@@ -84,4 +90,4 @@ The API owner should rerun the accepted E1B SAC forward/reverse corpus against t
 4. repeated and comma-separated `contract,sac,protocol_contract` and `asset,sac` filters preserve those rows;
 5. a later projector publish did not replace the previously accepted SAC-enriched snapshot with a search snapshot missing the join.
 
-After those two packets are corrected, rerun the existing browser script. No Prism code change should be necessary because fixture tests already cover both mappings.
+The final browser rerun confirms both mappings reach Prism correctly. Mainnet deployment and acceptance remain pending.

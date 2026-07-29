@@ -80,19 +80,9 @@ func (h *Handlers) ExploreV2Live(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) buildExploreV2Data(r *http.Request, network string) (vmv2.ExploreData, error) {
 	filters := exploreFiltersFromRequest(r)
-	params := gateway.ExplorerEventsParams{
-		Tab:          exploreTabForFilters(filters),
-		TopicMatch:   exploreFirstNonEmpty(filters.Fn, filters.Asset, filters.Q),
-		TxHash:       txHashIfLikely(filters.Q),
-		ContractID:   contractIDIfLikely(filters.Q),
-		ContractName: contractNameIfLikely(filters.Q),
-		Cursor:       r.URL.Query().Get("cursor"),
-		Limit:        48,
-		Order:        "desc",
-	}
-	if params.TxHash != "" || params.ContractID != "" {
-		params.TopicMatch = ""
-		params.ContractName = ""
+	params, validationMessage := explorerParamsForFilters(filters, r.URL.Query().Get("cursor"), time.Now().UTC())
+	if validationMessage != "" {
+		return invalidExploreV2Data(network, filters, validationMessage), nil
 	}
 	resp, err := h.Gateway.GetExplorerEvents(r.Context(), network, params)
 	if err != nil {
@@ -101,34 +91,43 @@ func (h *Handlers) buildExploreV2Data(r *http.Request, network string) (vmv2.Exp
 
 	rows := make([]vmv2.ExploreRow, 0, len(resp.Events))
 	for _, event := range resp.Events {
-		row := exploreRowFromGateway(event)
-		if !exploreRowMatches(row, filters) {
-			continue
-		}
-		rows = append(rows, row)
-	}
-	if params.ContractID != "" && len(rows) == 0 {
-		rows = h.exploreRowsForTokenContract(r, network, params.ContractID, filters)
+		rows = append(rows, exploreRowFromGateway(event))
 	}
 
 	header := unavailableExploreHeader(network)
-	if resp.Meta.LedgerRange.Max > 0 {
-		header.LedgerNumber = gateway.FormatNumber(resp.Meta.LedgerRange.Max)
-		header.Status = "live"
-		header.AgeLabel = "latest serving ledger"
+	if resp.Coverage != nil && resp.Coverage.CompleteThru > 0 {
+		header.LedgerNumber = gateway.FormatNumber(resp.Coverage.CompleteThru)
+		header.Status = resp.Status
+		if header.Status == "ready" || header.Status == "empty" {
+			header.Status = "live"
+		}
+		header.AgeLabel = "serving coverage"
+		if resp.Coverage.UpdatedAt != nil {
+			if updatedAt, parseErr := time.Parse(time.RFC3339, *resp.Coverage.UpdatedAt); parseErr == nil {
+				header.AgeLabel = gateway.FormatAge(updatedAt)
+			}
+		}
 	}
 	matched := int64(resp.Meta.MatchedCount)
-	if params.ContractID != "" && matched == 0 && len(rows) > 0 {
-		matched = int64(len(rows))
-	}
+	summary := exploreSummary(filters, matched, resp.Meta.LedgerRange.Min, resp.Meta.LedgerRange.Max, resp.Meta.EventsPerSecond, true)
+	summary.CountCapped = resp.Meta.CountCapped
+	summary.MatchedLabel = exploreMatchedLabel(matched, resp.Meta.CountCapped)
+	summary.LedgerRange = exploreCoverageLabel(resp.Coverage)
+	summary.EvidenceLabel = exploreEvidenceLabel(resp)
 	data := vmv2.ExploreData{
 		Header:     header,
 		Filters:    filters,
-		Summary:    exploreSummary(filters, matched, resp.Meta.LedgerRange.Min, resp.Meta.LedgerRange.Max, resp.Meta.EventsPerSecond, true),
+		Summary:    summary,
 		Presets:    explorePresets(),
 		Rows:       rows,
-		SourceLive: true,
+		State:      resp.Status,
+		Warnings:   append([]string(nil), resp.Warnings...),
+		SourceLive: resp.Status != "unavailable",
 		HasMore:    resp.HasMore,
+	}
+	if resp.Status == "unavailable" {
+		data.ErrorMessage = exploreFirstNonEmpty(firstExploreWarning(resp.Warnings), "The serving event projection is unavailable.")
+		data.HasMore = false
 	}
 	if resp.NextCursor != nil {
 		data.NextCursor = *resp.NextCursor
@@ -139,17 +138,26 @@ func (h *Handlers) buildExploreV2Data(r *http.Request, network string) (vmv2.Exp
 
 func exploreFiltersFromRequest(r *http.Request) vmv2.ExploreFilters {
 	q := r.URL.Query()
+	startLedger := strings.TrimSpace(q.Get("start_ledger"))
+	endLedger := strings.TrimSpace(q.Get("end_ledger"))
+	timeFilter := cleanOneOf(q.Get("time"), "1h", "24h", "7d", "30d", "coverage")
+	if strings.TrimSpace(q.Get("time")) == "" && (startLedger != "" || endLedger != "") {
+		timeFilter = "coverage"
+	}
 	filters := vmv2.ExploreFilters{
-		Scope:  cleanOneOf(q.Get("scope"), "all", "soroban", "classic"),
-		Topic:  cleanOneOf(q.Get("topic"), "", "transfer", "swap", "mint", "burn", "approve", "deposit", "withdraw", "custom"),
-		Fn:     strings.TrimSpace(q.Get("fn")),
-		Asset:  strings.ToUpper(strings.TrimSpace(q.Get("asset"))),
-		Time:   cleanOneOf(q.Get("time"), "1h", "24h", "7d", "30d"),
-		Status: cleanOneOf(q.Get("status"), "", "success", "failed"),
-		Q:      strings.TrimSpace(q.Get("q")),
+		Scope:       cleanOneOf(q.Get("scope"), "soroban", "classic"),
+		Topic:       cleanOneOf(q.Get("topic"), "", "transfer", "swap", "mint", "burn", "approve", "contract_call"),
+		Fn:          strings.TrimSpace(q.Get("fn")),
+		Asset:       strings.TrimSpace(q.Get("asset")),
+		Actor:       strings.ToUpper(strings.TrimSpace(q.Get("actor"))),
+		Time:        timeFilter,
+		Status:      cleanOneOf(q.Get("status"), "", "success", "failed"),
+		StartLedger: startLedger,
+		EndLedger:   endLedger,
+		Q:           strings.TrimSpace(q.Get("q")),
 	}
 	if filters.Scope == "" {
-		filters.Scope = "all"
+		filters.Scope = "soroban"
 	}
 	if filters.Time == "" {
 		filters.Time = "1h"
@@ -170,94 +178,65 @@ func cleanOneOf(value string, allowed ...string) string {
 	return ""
 }
 
-func exploreTabForFilters(f vmv2.ExploreFilters) string {
-	switch f.Topic {
-	case "transfer":
-		return "transfers"
-	case "swap":
-		return "swaps"
-	case "mint", "burn":
-		return "mints_burns"
-	case "approve", "deposit", "withdraw", "custom":
-		return "contract_calls"
-	default:
-		if f.Scope == "classic" {
-			return "transfers"
-		}
-		return ""
+func explorerParamsForFilters(filters vmv2.ExploreFilters, cursor string, now time.Time) (gateway.ExplorerEventsParams, string) {
+	params := gateway.ExplorerEventsParams{Cursor: strings.TrimSpace(cursor), Limit: 48, Order: "desc"}
+	if filters.Scope == "classic" {
+		return params, "Classic operations are not part of the serving contract-event index yet. Use the Soroban event scope or inspect a classic transaction directly."
 	}
-}
+	if filters.Topic != "" {
+		params.Types = []string{filters.Topic}
+	}
+	params.Function = filters.Fn
+	if filters.Asset != "" {
+		normalized, ok := normalizeExploreAssetFilter(filters.Asset)
+		if !ok {
+			return params, "Choose one exact asset: XLM, CODE:G… with its issuer, or a C… token contract. A bare code can refer to multiple issuers."
+		}
+		params.Asset = normalized
+	}
+	if filters.Actor != "" {
+		if !looksLikeExploreActor(filters.Actor) {
+			return params, "Actor must be a complete G…, C…, or M… address."
+		}
+		params.Actor = filters.Actor
+	}
+	if filters.Status != "" {
+		successful := filters.Status == "success"
+		params.Successful = &successful
+	}
+	startLedger, message := parseExploreLedger(filters.StartLedger, "From ledger")
+	if message != "" {
+		return params, message
+	}
+	endLedger, message := parseExploreLedger(filters.EndLedger, "Through ledger")
+	if message != "" {
+		return params, message
+	}
+	if startLedger > 0 && endLedger > 0 && startLedger > endLedger {
+		return params, "From ledger must be less than or equal to through ledger."
+	}
+	params.StartLedger = startLedger
+	params.EndLedger = endLedger
+	window := map[string]time.Duration{"1h": time.Hour, "24h": 24 * time.Hour, "7d": 7 * 24 * time.Hour, "30d": 30 * 24 * time.Hour}[filters.Time]
+	if window > 0 {
+		params.StartTime = now.UTC().Truncate(time.Minute).Add(-window)
+	}
 
-func (h *Handlers) exploreRowsForTokenContract(r *http.Request, network string, contractID string, filters vmv2.ExploreFilters) []vmv2.ExploreRow {
-	transfers, err := h.Gateway.GetTokenTransfers(r.Context(), network, contractID, 48)
-	if err == nil && transfers != nil && len(transfers.Transfers) > 0 {
-		rows := make([]vmv2.ExploreRow, 0, len(transfers.Transfers))
-		for _, transfer := range transfers.Transfers {
-			row := exploreRowFromTokenTransfer(transfer, contractID)
-			if !exploreRowMatches(row, filters) {
-				continue
-			}
-			rows = append(rows, row)
+	query := strings.TrimSpace(filters.Q)
+	switch {
+	case txHashIfLikely(query) != "":
+		params.TxHash = strings.ToLower(query)
+	case contractIDIfLikely(query) != "":
+		params.ContractID = strings.ToUpper(query)
+	case looksLikeExploreActor(query):
+		if params.Actor != "" && !strings.EqualFold(params.Actor, query) {
+			return params, "Use either the actor field or an address in the search field, not two different actors."
 		}
-		return rows
+		params.Actor = strings.ToUpper(query)
+	case query != "":
+		params.ContractName = query
 	}
-	if err != nil {
-		h.Logger.Warn("token transfer fallback failed for explore contract search", "contract", contractID, "network", network, "error", err)
-	}
-	generic, err := h.Gateway.GetGenericEvents(r.Context(), network, contractID, "", 48)
-	if err != nil || generic == nil {
-		if err != nil {
-			h.Logger.Warn("generic event fallback failed for explore contract search", "contract", contractID, "network", network, "error", err)
-		}
-		return nil
-	}
-	rows := make([]vmv2.ExploreRow, 0, len(generic.Events))
-	for _, event := range generic.Events {
-		row := exploreRowFromGenericEvent(event)
-		if !exploreRowMatches(row, filters) {
-			continue
-		}
-		rows = append(rows, row)
-	}
-	return rows
-}
-
-func exploreRowFromTokenTransfer(t gateway.TokenTransfer, contractID string) vmv2.ExploreRow {
-	closed, _ := time.Parse(time.RFC3339, t.ClosedAt)
-	when := "recent"
-	age := "just now"
-	if !closed.IsZero() {
-		when = closed.Format("15:04:05")
-		age = gateway.FormatAge(closed)
-	}
-	topic := normalizeExploreTopic(t.EventType)
-	if topic == "custom" && t.EventType == "" {
-		topic = "transfer"
-	}
-	amount := strings.TrimSpace(t.Amount)
-	headline := gateway.ShortAddress(t.From) + " sent value to " + gateway.ShortAddress(t.To)
-	if amount != "" {
-		headline = gateway.ShortAddress(t.From) + " sent " + amount + " token units to " + gateway.ShortAddress(t.To)
-	}
-	if strings.EqualFold(t.EventType, "mint") {
-		headline = "Token contract minted " + exploreFirstNonEmpty(amount, "value") + " to " + gateway.ShortAddress(t.To)
-	}
-	return vmv2.ExploreRow{
-		When: when, Age: age, Scope: "soroban", Protocol: "Token contract", Topic: topic, Function: exploreFirstNonEmpty(t.EventType, "transfer"), Headline: headline,
-		From: t.From, Contract: contractID, TxHash: t.TxHash, Ledger: gateway.FormatNumber(t.LedgerSequence), Events: "1", Status: "Success", StatusTone: "success", EvidenceHref: "/v2/tx/" + t.TxHash, ContractHref: "/v2/contract/" + contractID, LedgerHref: "/v2/ledger/" + strconv.FormatInt(t.LedgerSequence, 10),
-	}
-}
-
-func exploreRowFromGenericEvent(e gateway.GenericEvent) vmv2.ExploreRow {
-	closed, _ := time.Parse(time.RFC3339, e.ClosedAt)
-	when := "recent"
-	age := "just now"
-	if !closed.IsZero() {
-		when = closed.Format("15:04:05")
-		age = gateway.FormatAge(closed)
-	}
-	topic := normalizeExploreTopic(e.EventType + " " + e.TopicsDecoded)
-	return vmv2.ExploreRow{When: when, Age: age, Scope: "soroban", Protocol: "Contract event", Topic: topic, Function: exploreFirstNonEmpty(e.EventType, "event"), Headline: "Contract emitted " + exploreFirstNonEmpty(e.EventType, "an event"), Contract: e.ContractID, TxHash: e.TxHash, Ledger: gateway.FormatNumber(e.LedgerSequence), Events: "1", Status: "Success", StatusTone: "success", EvidenceHref: "/v2/tx/" + e.TxHash, ContractHref: "/v2/contract/" + e.ContractID, LedgerHref: "/v2/ledger/" + strconv.FormatInt(e.LedgerSequence, 10)}
+	return params, ""
 }
 
 func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
@@ -268,10 +247,10 @@ func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
 		when = closed.Format("15:04:05")
 		age = gateway.FormatAge(closed)
 	}
-	topic := normalizeExploreTopic(exploreFirstNonEmpty(derefString(e.Topic0), e.Type))
+	topic := normalizeExploreTopic(exploreFirstNonEmpty(e.Type, derefString(e.Topic0)))
 	protocol := exploreFirstNonEmpty(derefString(e.Protocol), derefString(e.ContractName), derefString(e.ContractSymbol), "Soroban")
-	asset := strings.ToUpper(exploreFirstNonEmpty(derefString(e.ContractSymbol), extractAssetFromExplorerEvent(e)))
-	fn := exploreFirstNonEmpty(derefString(e.Topic0), e.Type)
+	asset := strings.ToUpper(exploreFirstNonEmpty(derefString(e.AssetKey), derefString(e.ContractSymbol), extractAssetFromExplorerEvent(e)))
+	fn := exploreFirstNonEmpty(derefString(e.FunctionName), derefString(e.Topic0), e.Type)
 	status := "Success"
 	statusTone := "success"
 	if !e.PublicSuccessful() {
@@ -279,6 +258,7 @@ func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
 		statusTone = "failed"
 	}
 	headline := buildExploreHeadline(topic, protocol, asset, e)
+	from := exploreFirstNonEmpty(derefString(e.FromAddress), explorerActorForRole(e.Actors, "from", "sender", "source"), derefString(e.Topic1))
 	return vmv2.ExploreRow{
 		When:         when,
 		Age:          age,
@@ -287,7 +267,7 @@ func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
 		Topic:        topic,
 		Function:     fn,
 		Headline:     headline,
-		From:         derefString(e.Topic1),
+		From:         from,
 		Contract:     derefString(e.ContractID),
 		TxHash:       e.TransactionHash,
 		Ledger:       gateway.FormatNumber(e.LedgerSequence),
@@ -303,8 +283,8 @@ func exploreRowFromGateway(e gateway.ExplorerEvent) vmv2.ExploreRow {
 
 func buildExploreHeadline(topic string, protocol string, asset string, e gateway.ExplorerEvent) string {
 	amount := extractAmountFromText(exploreFirstNonEmpty(derefString(e.DataDecoded), derefString(e.Data)))
-	from := gateway.ShortAddress(derefString(e.Topic1))
-	to := gateway.ShortAddress(derefString(e.Topic2))
+	from := gateway.ShortAddress(exploreFirstNonEmpty(derefString(e.FromAddress), explorerActorForRole(e.Actors, "from", "sender", "source"), derefString(e.Topic1)))
+	to := gateway.ShortAddress(exploreFirstNonEmpty(derefString(e.ToAddress), explorerActorForRole(e.Actors, "to", "recipient", "destination"), derefString(e.Topic2)))
 	subject := "A contract"
 	if from != "" {
 		subject = from
@@ -391,6 +371,7 @@ func exploreV2ShellData(network string, filters vmv2.ExploreFilters) vmv2.Explor
 		Filters: filters,
 		Summary: summary,
 		Presets: explorePresets(),
+		State:   "loading",
 		Loading: true,
 	}
 }
@@ -398,12 +379,25 @@ func exploreV2ShellData(network string, filters vmv2.ExploreFilters) vmv2.Explor
 func unavailableExploreV2Data(network string, filters vmv2.ExploreFilters, message string) vmv2.ExploreData {
 	data := exploreV2ShellData(network, filters)
 	data.Loading = false
+	data.State = "unavailable"
 	data.Rows = nil
 	data.ErrorMessage = message
 	data.Header = unavailableExploreHeader(network)
 	data.Summary.MatchedLabel = ""
 	data.Summary.LedgerRange = "Ledger range unavailable"
 	data.Summary.EvidenceLabel = "Live evidence unavailable"
+	return data
+}
+
+func invalidExploreV2Data(network string, filters vmv2.ExploreFilters, message string) vmv2.ExploreData {
+	data := exploreV2ShellData(network, filters)
+	data.Loading = false
+	data.State = "invalid"
+	data.ErrorMessage = message
+	data.Header = unavailableExploreHeader(network)
+	data.Summary.MatchedLabel = ""
+	data.Summary.LedgerRange = "Query not sent"
+	data.Summary.EvidenceLabel = "No evidence claimed"
 	return data
 }
 
@@ -421,7 +415,7 @@ func mockExploreV2Data(network string, filters vmv2.ExploreFilters) vmv2.Explore
 			filtered = append(filtered, row)
 		}
 	}
-	return vmv2.ExploreData{Header: exploreHeader(network), Filters: filters, Summary: exploreSummary(filters, int64(len(filtered)), 52844190, 52844201, nil, false), Presets: explorePresets(), Rows: filtered, SourceLive: false}
+	return vmv2.ExploreData{Header: exploreHeader(network), Filters: filters, Summary: exploreSummary(filters, int64(len(filtered)), 52844190, 52844201, nil, false), Presets: explorePresets(), Rows: filtered, State: "demo", SourceLive: false}
 }
 
 func exploreHeader(network string) vmv2.ExploreHeaderData {
@@ -433,9 +427,9 @@ func unavailableExploreHeader(network string) vmv2.ExploreHeaderData {
 }
 
 func exploreSummary(f vmv2.ExploreFilters, count int64, minLedger int64, maxLedger int64, eps *float64, live bool) vmv2.ExploreSummary {
-	scope := map[string]string{"all": "all Stellar activity", "soroban": "Soroban activity", "classic": "classic activity"}[f.Scope]
+	scope := map[string]string{"soroban": "Soroban contract events", "classic": "classic activity"}[f.Scope]
 	if scope == "" {
-		scope = "all Stellar activity"
+		scope = "Soroban contract events"
 	}
 	parts := []string{"Show", "<b class=\"scope\">" + html.EscapeString(scope) + "</b>"}
 	if f.Q != "" {
@@ -449,6 +443,9 @@ func exploreSummary(f vmv2.ExploreFilters, count int64, minLedger int64, maxLedg
 	}
 	if f.Asset != "" {
 		parts = append(parts, "touching <b class=\"asset\">"+html.EscapeString(f.Asset)+"</b>")
+	}
+	if f.Actor != "" {
+		parts = append(parts, "involving <b class=\"actor\"><code>"+html.EscapeString(gateway.ShortAddress(f.Actor))+"</code></b>")
 	}
 	if f.Status == "failed" {
 		parts = append(parts, "that <b class=\"status\">failed</b>")
@@ -488,6 +485,8 @@ func exploreQueryHTML(q string) string {
 
 func timeWindowLabel(v string) string {
 	switch v {
+	case "coverage":
+		return "retained serving coverage"
 	case "24h":
 		return "last 24 hours"
 	case "7d":
@@ -502,10 +501,106 @@ func timeWindowLabel(v string) string {
 func explorePresets() []vmv2.ExplorePreset {
 	return []vmv2.ExplorePreset{
 		{Name: "Soroswap swaps", Body: "Swap events and router calls in the last 24 hours.", Href: "/v2/explore?scope=soroban&topic=swap&q=Soroswap&time=24h"},
-		{Name: "USDC movement", Body: "All visible USDC transfers, mints, burns, and approvals.", Href: "/v2/explore?scope=all&asset=USDC&time=1h"},
+		{Name: "XLM movement", Body: "Contract events that reference the native asset.", Href: "/v2/explore?asset=XLM&topic=transfer&time=1h"},
 		{Name: "Blend lending", Body: "Supply, borrow, repay, and withdraw activity.", Href: "/v2/explore?scope=soroban&q=Blend&time=24h"},
 		{Name: "Failed calls", Body: "Recent reverted Soroban activity with evidence links.", Href: "/v2/explore?scope=soroban&status=failed&time=1h"},
 	}
+}
+
+func exploreMatchedLabel(count int64, capped bool) string {
+	label := gateway.FormatNumber(count)
+	if capped {
+		return label + "+"
+	}
+	return label
+}
+
+func exploreCoverageLabel(coverage *gateway.ServingCoverageMetadata) string {
+	if coverage == nil || coverage.CompleteThru <= 0 {
+		return "Serving coverage unavailable"
+	}
+	return "Coverage ledgers " + gateway.FormatNumber(coverage.CompleteFrom) + " to " + gateway.FormatNumber(coverage.CompleteThru)
+}
+
+func exploreEvidenceLabel(response *gateway.ExplorerEventsResponse) string {
+	if response == nil {
+		return "Evidence unavailable"
+	}
+	switch response.Status {
+	case "partial":
+		return "Serving-only, partial coverage"
+	case "unavailable":
+		return "Serving evidence unavailable"
+	default:
+		return "Serving-only evidence"
+	}
+}
+
+func firstExploreWarning(warnings []string) string {
+	for _, warning := range warnings {
+		if warning = strings.TrimSpace(warning); warning != "" {
+			return warning
+		}
+	}
+	return ""
+}
+
+func parseExploreLedger(value string, label string) (int64, string) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, ""
+	}
+	ledger, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || ledger < 1 {
+		return 0, label + " must be a positive ledger number."
+	}
+	return ledger, ""
+}
+
+func normalizeExploreAssetFilter(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	if strings.EqualFold(value, "XLM") || strings.EqualFold(value, "native") {
+		return "XLM", true
+	}
+	upper := strings.ToUpper(value)
+	if strings.HasPrefix(upper, "C") && looksLikeExploreActor(upper) {
+		return upper, true
+	}
+	parts := strings.Split(upper, ":")
+	if len(parts) != 2 || len(parts[0]) < 1 || len(parts[0]) > 12 || !strings.HasPrefix(parts[1], "G") || !looksLikeExploreActor(parts[1]) {
+		return "", false
+	}
+	for _, char := range parts[0] {
+		if !(char >= 'A' && char <= 'Z') && !(char >= '0' && char <= '9') {
+			return "", false
+		}
+	}
+	return upper, true
+}
+
+func looksLikeExploreActor(value string) bool {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	validLength := (len(value) == 56 && (strings.HasPrefix(value, "G") || strings.HasPrefix(value, "C"))) || (len(value) == 69 && strings.HasPrefix(value, "M"))
+	if !validLength {
+		return false
+	}
+	for _, char := range value {
+		if !(char >= 'A' && char <= 'Z') && !(char >= '2' && char <= '7') {
+			return false
+		}
+	}
+	return true
+}
+
+func explorerActorForRole(actors []gateway.ExplorerEventActor, roles ...string) string {
+	for _, role := range roles {
+		for _, actor := range actors {
+			if strings.EqualFold(strings.TrimSpace(actor.Role), role) && strings.TrimSpace(actor.Address) != "" {
+				return strings.TrimSpace(actor.Address)
+			}
+		}
+	}
+	return ""
 }
 
 func derefString(v *string) string {

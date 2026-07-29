@@ -413,8 +413,8 @@ func ambiguousGatewayResolution(query string, entities []prismsearch.Entity, has
 	destination := "/v2/explore?q=" + url.QueryEscape(trimmed)
 	action := "Explore matching activity"
 	if allGatewayEntitiesAreAssets(entities) {
-		destination = "/v2/explore?asset=" + url.QueryEscape(strings.ToUpper(trimmed))
-		action = "Explore all " + strings.ToUpper(trimmed) + " activity"
+		destination = "/v2/explore?q=" + url.QueryEscape(strings.ToUpper(trimmed))
+		action = "Explore matching " + strings.ToUpper(trimmed) + " contract activity"
 	}
 	return prismsearch.SearchResolution{
 		Kind:        prismsearch.SearchExplore,

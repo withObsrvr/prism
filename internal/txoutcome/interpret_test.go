@@ -109,7 +109,7 @@ func TestInterpretTrapPropagatesDiagnosticComponentLimitation(t *testing.T) {
 		Outcome:         "failed",
 		AppliedToLedger: false,
 		Failure: &gateway.TransactionFailureEvidence{
-			Status:         "ready",
+			Status:         "partial",
 			Phase:          "soroban_host",
 			Scope:          "host_function",
 			NormalizedCode: "invoke_host_function_trapped",
@@ -125,6 +125,9 @@ func TestInterpretTrapPropagatesDiagnosticComponentLimitation(t *testing.T) {
 	got := Interpret(packet)
 	if got.EvidenceStatus != "partial" || got.DiagnosticStatus != "partial" {
 		t.Fatalf("evidence status = %q, diagnostic status = %q", got.EvidenceStatus, got.DiagnosticStatus)
+	}
+	if got.ReasonLabel != "Contract stopped unexpectedly" || got.CauseSpecificity != "category" || !got.ReasonAvailable {
+		t.Fatalf("partial category evidence was discarded: %+v", got)
 	}
 	if len(got.Caveats) != 1 || !strings.Contains(got.Caveats[0], "Detailed diagnostic evidence is incomplete") {
 		t.Fatalf("caveats = %#v", got.Caveats)

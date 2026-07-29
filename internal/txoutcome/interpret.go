@@ -130,15 +130,18 @@ func Interpret(packet *gateway.TransactionOutcome) Interpretation {
 }
 
 func explainFailure(code, status string) (label, summary, specificity string, available bool) {
+	// Some normalized codes are deliberately category-only. A partial evidence
+	// packet can still establish that broad category even when the diagnostic
+	// evidence needed for an exact cause is unavailable.
+	if code == "invoke_host_function_trapped" {
+		known := failureReasons[code]
+		return known.label, known.summary, "category", true
+	}
 	if status != "ready" || code == "" || code == "unknown" || code == "transaction_failed" {
 		return "Reason unresolved", "The transaction failed, but the available result evidence does not identify a more specific reason.", "unresolved", false
 	}
 	if known, ok := failureReasons[code]; ok {
-		specificity := "exact"
-		if code == "invoke_host_function_trapped" {
-			specificity = "category"
-		}
-		return known.label, known.summary, specificity, true
+		return known.label, known.summary, "exact", true
 	}
 	return humanCode(code), "The transaction returned result code " + code + ".", "category", true
 }

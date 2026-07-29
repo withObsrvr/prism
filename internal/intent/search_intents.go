@@ -275,7 +275,7 @@ func (assetActivityHandler) Execute(ctx context.Context, env Env, match Match) (
 		result.Warnings = append(result.Warnings, "The asset record supplies 24-hour activity, not "+humanTime(requested)+".")
 	}
 	result.Evidence = []EvidenceLink{{Label: label + " asset record", Href: "/v2/assets/" + url.PathEscape(slug)}}
-	result.Actions = []ActionLink{{Label: "Open " + label, Href: "/v2/assets/" + url.PathEscape(slug)}, {Label: "Explore transfers", Href: "/v2/explore?asset=" + url.QueryEscape(asset) + "&topic=transfer&time=24h"}}
+	result.Actions = []ActionLink{{Label: "Open " + label, Href: "/v2/assets/" + url.PathEscape(slug)}, {Label: "Explore transfers", Href: "/v2/explore?asset=" + url.QueryEscape(slug) + "&topic=transfer&time=24h"}}
 	return result, nil
 }
 
@@ -482,7 +482,11 @@ func recentFailureExploreHref(match Match) string {
 		values.Set("fn", value)
 	}
 	if value := match.Slots["asset"]; value != "" {
-		values.Set("asset", value)
+		if strings.EqualFold(value, "XLM") {
+			values.Set("asset", "XLM")
+		} else {
+			values.Set("q", value)
+		}
 	}
 	return "/v2/explore?" + values.Encode()
 }

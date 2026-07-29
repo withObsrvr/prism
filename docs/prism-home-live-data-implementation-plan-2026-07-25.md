@@ -487,7 +487,7 @@ This slice can begin immediately against frozen API fixtures.
 
 #### Slice 3A: E1A transaction-outcome consumption
 
-Status: Implemented in Prism on 2026-07-28; testnet API acceptance is available, while mainnet API rollout remains pending.
+Status: Implemented and browser-accepted on testnet. The focused 2026-07-29 corpus passes 20/20; mainnet API rollout remains pending.
 
 This is the Prism consumer for API Emergency Slice E1A. It is additive to the remaining Slice 3 search families and does not depend on E1B.
 
@@ -506,12 +506,12 @@ The 2026-07-28 human-readable failure refinement now distinguishes exact causes 
 Remaining before this sub-slice is deployable across both networks:
 
 - deploy and accept E1A on mainnet;
-- run browser acceptance against populated testnet and mainnet transactions;
+- repeat browser acceptance against populated mainnet transactions;
 - confirm the Gateway base-path configuration exposes the endpoint in each environment.
 
 #### Slice 3B: E1B entity-search consumption
 
-Status: Implemented in Prism on 2026-07-28. Automated tests and all Prism-owned testnet browser assertions pass. Full cross-system acceptance remains pending because the live testnet API omitted two previously accepted SAC evidence mappings, and the API mainnet rollout has not occurred.
+Status: Implemented and fully accepted on testnet. The repaired live SAC mappings and the full Prism browser corpus pass as of 2026-07-29; mainnet rollout remains pending.
 
 This is the Prism consumer for the frozen `entity_search_v1` contract from `GET /silver/search`. It replaces the previous compatibility-only `query/results` decoder and prevents local convenience shortcuts from overriding authoritative live identity evidence.
 
@@ -535,11 +535,26 @@ Current route limitation:
 
 Remaining acceptance work:
 
-- resolve the two live API evidence findings in `PRISM_E1B_TESTNET_ACCEPTANCE_2026-07-28.md`: the known SAC contract did not return an E1B SAC result, and its known classic asset omitted `details.sac_contract_id`;
-- rerun the full testnet corpus after those API packets are corrected; Prism-owned ambiguity, fuzzy symbol, pool prefix, exact account, authoritative empty, keyboard, desktop, and mobile assertions already pass;
 - exercise typed partial and unavailable packets against a controlled live testnet state when the API owner can safely induce or replay them; fixture and handler regression coverage already passes;
 - deploy and accept E1B on mainnet, then repeat the live Prism corpus there;
 - add dedicated pool and protocol destinations when those Prism detail surfaces exist.
+
+#### Slice 3C: E1C exact Explorer filtering
+
+Status: Implemented and browser-accepted on testnet on 2026-07-29; mainnet pending.
+
+1. Decode and validate the versioned `explorer_events_v1` packet, including status, coverage, provenance, applied-filter evidence, count caps, warnings, normalized function, asset, actors, sender, recipient, and stable cursor.
+2. Translate Prism filters into exact server-side `type`, function, asset, actor, outcome, time, ledger, contract, and transaction parameters.
+3. Remove live row filtering and the token-transfer or generic-event fallback. An authoritative empty E1C packet remains empty and never triggers a broader query.
+4. Render ready, authoritative empty, partial, unavailable, and invalid-query states distinctly. Partial results disclose their warning and never claim completeness.
+5. Require an exact asset identity (`XLM`, `CODE:G…`, or a `C…` token contract). A bare code such as `USDC` requests issuer selection instead of silently broadening the query.
+6. Use normalized actor and function fields for the default row instead of parsing decoder JSON.
+7. Preserve the full active filter set during stable cursor pagination.
+8. Disclose serving-only provenance, complete ledger coverage, capped counts, and explicit success or failure text.
+9. Keep long hashes, assets, actors, and filter chips within the mobile viewport.
+10. Treat a ledger-bounded query without an explicit close-time selection as a retained-coverage query, so historical ledgers are not accidentally constrained by the default one-hour window.
+
+Testnet acceptance covers the known two-event exact fixture, an exact failed transaction, authoritative empty behavior, ambiguous-asset validation, and desktop/mobile rendering. The report is frozen in `PRISM_E1C_TESTNET_ACCEPTANCE_2026-07-29.md`.
 
 ### Slice 4: What changed v1
 
