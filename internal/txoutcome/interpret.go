@@ -16,6 +16,7 @@ type Interpretation struct {
 	Summary               string
 	ReasonCode            string
 	ReasonLabel           string
+	CauseSpecificity      string
 	PhaseLabel            string
 	OperationLabel        string
 	OperationNumber       int
@@ -25,7 +26,9 @@ type Interpretation struct {
 	RolledBackOperations  int
 	NotExecutedOperations int
 	EvidenceStatus        string
+	DiagnosticStatus      string
 	ReasonAvailable       bool
+	Impact                string
 	Caveats               []string
 }
 
@@ -40,8 +43,9 @@ func Interpret(packet *gateway.TransactionOutcome) Interpretation {
 	}
 
 	result := Interpretation{
-		Outcome:        strings.ToLower(strings.TrimSpace(packet.Outcome)),
-		EvidenceStatus: strings.ToLower(strings.TrimSpace(packet.Status)),
+		Outcome:          strings.ToLower(strings.TrimSpace(packet.Outcome)),
+		EvidenceStatus:   strings.ToLower(strings.TrimSpace(packet.Status)),
+		DiagnosticStatus: componentStatus(packet.Components, "diagnostics"),
 	}
 	if result.EvidenceStatus == "" {
 		result.EvidenceStatus = "unavailable"
@@ -83,6 +87,9 @@ func Interpret(packet *gateway.TransactionOutcome) Interpretation {
 
 	result.Heading = "Transaction failed"
 	result.Summary = "The authoritative transaction result confirms that no transaction effects were applied to the ledger."
+	if !packet.AppliedToLedger {
+		result.Impact = "No changes from this transaction were saved to the ledger."
+	}
 	failure := packet.Failure
 	if failure == nil {
 		result.Summary = "The transaction failed, but the evidence packet does not include a resolved failure reason."
@@ -90,11 +97,18 @@ func Interpret(packet *gateway.TransactionOutcome) Interpretation {
 	}
 
 	result.ReasonCode = strings.TrimSpace(failure.NormalizedCode)
-	result.ReasonLabel, result.Summary, result.ReasonAvailable = explainFailure(result.ReasonCode, failure.Status)
+	result.ReasonLabel, result.Summary, result.CauseSpecificity, result.ReasonAvailable = explainFailure(result.ReasonCode, failure.Status)
 	result.PhaseLabel = phaseLabel(failure.Phase)
 	result.OperationLabel = operationLabel(failure.OperationType)
 	if failure.OperationIndex != nil {
 		result.OperationNumber = *failure.OperationIndex + 1
+	}
+	if result.ReasonCode == "invoke_host_function_trapped" {
+		result.Summary = trappedSummary(result.FunctionName)
+		if result.DiagnosticStatus != "" && result.DiagnosticStatus != "ready" {
+			result.EvidenceStatus = "partial"
+			result.Caveats = appendUnique(result.Caveats, "Detailed diagnostic evidence is incomplete, so Prism cannot identify the exact contract error.")
+		}
 	}
 
 	switch {
@@ -107,7 +121,7 @@ func Interpret(packet *gateway.TransactionOutcome) Interpretation {
 	}
 
 	if result.RolledBackOperations > 0 {
-		result.Summary += fmt.Sprintf(" %s executed successfully earlier, but %s not applied because the transaction failed.", operationCountLabel(result.RolledBackOperations), wasWere(result.RolledBackOperations))
+		result.Summary += fmt.Sprintf(" %s executed successfully, but %s not applied because the transaction failed.", operationCountLabel(result.RolledBackOperations), wasWere(result.RolledBackOperations))
 	}
 	if result.NotExecutedOperations > 0 {
 		result.Summary += " " + notExecutedLabel(result.NotExecutedOperations) + " did not execute."
@@ -115,14 +129,18 @@ func Interpret(packet *gateway.TransactionOutcome) Interpretation {
 	return result
 }
 
-func explainFailure(code, status string) (label, summary string, available bool) {
+func explainFailure(code, status string) (label, summary, specificity string, available bool) {
 	if status != "ready" || code == "" || code == "unknown" || code == "transaction_failed" {
-		return "Reason unresolved", "The transaction failed, but the available result evidence does not identify a more specific reason.", false
+		return "Reason unresolved", "The transaction failed, but the available result evidence does not identify a more specific reason.", "unresolved", false
 	}
 	if known, ok := failureReasons[code]; ok {
-		return known.label, known.summary, true
+		specificity := "exact"
+		if code == "invoke_host_function_trapped" {
+			specificity = "category"
+		}
+		return known.label, known.summary, specificity, true
 	}
-	return humanCode(code), "The transaction returned result code " + code + ".", true
+	return humanCode(code), "The transaction returned result code " + code + ".", "category", true
 }
 
 type failureReason struct {
@@ -153,8 +171,37 @@ var failureReasons = map[string]failureReason{
 	"create_account_underfunded":                   {"Account creation underfunded", "The source account did not have enough balance to create the destination account."},
 	"create_account_low_reserve":                   {"Starting balance below reserve", "The requested starting balance was below the network minimum reserve."},
 	"create_account_already_exist":                 {"Destination account already exists", "The account-creation operation targeted an account that already exists."},
-	"invoke_host_function_trapped":                 {"Contract execution trapped", "The Soroban host stopped the contract invocation because execution trapped."},
+	"invoke_host_function_trapped":                 {"Contract stopped unexpectedly", "The contract stopped unexpectedly while it was running. The result identifies a general failure category, not the exact cause."},
 	"invoke_host_function_resource_limit_exceeded": {"Resource limit exceeded", "The contract invocation exceeded an applicable Soroban resource limit."},
+}
+
+func trappedSummary(functionName string) string {
+	action := "the contract function"
+	if functionName = strings.TrimSpace(functionName); functionName != "" {
+		action = functionName + "()"
+	}
+	return "The contract stopped unexpectedly while running " + action + ". Stellar recorded only a general contract-execution failure, so the exact cause is not available."
+}
+
+func componentStatus(components map[string]gateway.TransactionComponent, name string) string {
+	component, ok := components[name]
+	if !ok {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(component.Status))
+}
+
+func appendUnique(values []string, value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return values
+	}
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
 }
 
 func phaseLabel(phase string) string {

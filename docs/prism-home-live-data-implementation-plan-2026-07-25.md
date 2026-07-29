@@ -501,6 +501,8 @@ This is the Prism consumer for API Emergency Slice E1A. It is additive to the re
 8. Preserve a visible receipt-only fallback while E1A is unavailable on a network; the fallback must state that it cannot identify the underlying cause.
 9. Cover classic failure, Soroban host failure, rollback, unresolved evidence, unavailable evidence, unknown versions, and caching with regression tests.
 
+The 2026-07-28 human-readable failure refinement now distinguishes exact causes from broad protocol categories, propagates diagnostic component limitations defensively, condenses duplicate receipt facts, and keeps raw result codes behind technical disclosure. The API status/caveat correction and versioned diagnostic-evidence recommendation are specified in `PRISM_TRANSACTION_FAILURE_EXPLANATION_API_FOLLOWUP_2026-07-28.md`.
+
 Remaining before this sub-slice is deployable across both networks:
 
 - deploy and accept E1A on mainnet;

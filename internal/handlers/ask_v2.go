@@ -237,7 +237,7 @@ func ruleText(m intent.Match) string {
 		return "contracts are included when gateway TTL data flags them as needing attention"
 	}
 	if m.ID == intent.TransactionFailure {
-		return "a transaction hash and failure wording must resolve to a consolidated receipt"
+		return "a transaction hash and failure wording must resolve to structured transaction outcome evidence or disclose a receipt-only fallback"
 	}
 	if m.ID == intent.ContractActivity {
 		return "a contract identifier and activity wording must resolve to contract analytics"

@@ -115,6 +115,45 @@ func TestTransactionQuickFactsRouteSmartWalletSourceToV2SmartPage(t *testing.T) 
 	}
 }
 
+func TestTransactionSidebarOmitsContractCardWithoutContractEvidence(t *testing.T) {
+	classic := legacy.TxReceiptData{Hash: "abc", ShortHash: "abc", Ledger: "123", LedgerRaw: "123", ContractName: "—", ContractAddr: "—"}
+	contract := classic
+	contract.ContractName = "Example contract"
+	contract.ContractAddr = "CABC...WXYZ"
+	contract.ContractAddrFull = "CABCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWXYZ"
+
+	components := map[string]struct {
+		render func(legacy.TxReceiptData, *strings.Builder) error
+	}{
+		"full page": {render: func(data legacy.TxReceiptData, out *strings.Builder) error {
+			return TransactionReceipt(data, "testnet").Render(context.Background(), out)
+		}},
+		"sidebar fragment": {render: func(data legacy.TxReceiptData, out *strings.Builder) error {
+			return TxReceiptSidebarFragment(data).Render(context.Background(), out)
+		}},
+	}
+
+	for name, component := range components {
+		t.Run(name, func(t *testing.T) {
+			var out strings.Builder
+			if err := component.render(classic, &out); err != nil {
+				t.Fatalf("render classic sidebar: %v", err)
+			}
+			if strings.Contains(out.String(), "About this contract") || strings.Contains(out.String(), "/contracts/—") {
+				t.Fatalf("classic sidebar invented contract context: %s", out.String())
+			}
+
+			out.Reset()
+			if err := component.render(contract, &out); err != nil {
+				t.Fatalf("render contract sidebar: %v", err)
+			}
+			if !strings.Contains(out.String(), "About this contract") || !strings.Contains(out.String(), contract.ContractAddrFull) {
+				t.Fatalf("contract sidebar omitted available evidence: %s", out.String())
+			}
+		})
+	}
+}
+
 func TestGenericCallHeroUsesLayeredCardStructure(t *testing.T) {
 	hero := txv2.TxHeroModel{
 		GenericCall: &txv2.TxGenericCallHero{
@@ -231,10 +270,12 @@ func TestFailureHeroUsesAuthoritativeOutcomeEvidence(t *testing.T) {
 	html := out.String()
 	for _, want := range []string{
 		"swap() failed",
-		"Contract execution trapped",
+		"Contract stopped unexpectedly",
 		"invoke_host_function_trapped",
-		"Evidence partial",
-		"Authoritative result with evidence limitations",
+		"General failure category",
+		"Exact cause unavailable",
+		"What Prism knows",
+		"No changes from this transaction were saved to the ledger.",
 		"Operation #2",
 		"GAAA...AWHF",
 		"Diagnostic coverage is incomplete.",
@@ -246,6 +287,58 @@ func TestFailureHeroUsesAuthoritativeOutcomeEvidence(t *testing.T) {
 	}
 	if strings.Contains(html, "Execution reverted") || strings.Contains(html, ">reverted<") {
 		t.Errorf("failure hero retained generic reverted copy: %s", html)
+	}
+	if strings.Contains(strings.ToLower(html), "execution trapped") {
+		t.Errorf("failure hero exposed unexplained trapped jargon: %s", html)
+	}
+	if got := strings.Count(html, "swap() failed"); got != 1 {
+		t.Errorf("failure heading rendered %d times, want once: %s", got, html)
+	}
+	if got := strings.Count(html, ">Fee<"); got != 1 {
+		t.Errorf("fee rendered %d times in hero, want once: %s", got, html)
+	}
+}
+
+func TestSingleOperationFailureOmitsRedundantExecutionStack(t *testing.T) {
+	operationIndex := 0
+	data := legacy.TxReceiptData{
+		Hash:                strings.Repeat("b", 64),
+		ShortHash:           "bbbb...bbbb",
+		Status:              "failed",
+		EffectiveActorShort: "GABC...WXYZ",
+		EffectiveActorAddr:  "GABC",
+		OutcomeEvidence: &gateway.TransactionOutcome{
+			EvidenceVersion: "transaction_outcome_v1",
+			Status:          "ready",
+			Outcome:         "failed",
+			Failure: &gateway.TransactionFailureEvidence{
+				Status:         "ready",
+				Phase:          "soroban_host",
+				Scope:          "host_function",
+				NormalizedCode: "invoke_host_function_trapped",
+				OperationIndex: &operationIndex,
+				OperationType:  "INVOKE_HOST_FUNCTION",
+			},
+			Operations: []gateway.TransactionOutcomeOperation{{OperationIndex: 0, ExecutionOutcome: "failed"}},
+			PrimaryInvocation: &gateway.TransactionPrimaryInvocation{
+				OperationIndex: 0,
+				ContractID:     "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+				FunctionName:   "open_with_price",
+				Arguments:      []gateway.DecodedScVal{{Type: "u32", Display: "7"}},
+			},
+		},
+	}
+
+	var out strings.Builder
+	if err := TxReceiptHeroFragment(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render hero fragment: %v", err)
+	}
+	html := out.String()
+	if strings.Contains(html, "px-hero-stack") {
+		t.Fatalf("single-operation failure retained redundant execution stack: %s", html)
+	}
+	if !strings.Contains(html, "Invocation details") || !strings.Contains(html, "Technical details") {
+		t.Fatalf("progressive failure details are missing: %s", html)
 	}
 }
 

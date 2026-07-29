@@ -82,21 +82,25 @@ type TxLifecycleHero struct {
 }
 
 type TxFailureHero struct {
-	Actor                string
-	Contract             string
-	Function             string
-	Heading              string
-	ErrorCode            string
-	ReasonLabel          string
-	EvidenceStatus       string
-	PhaseLabel           string
-	OperationLabel       string
-	OperationNumber      int
-	Arguments            []string
-	RolledBackOperations int
-	SummaryHTML          string
-	Caveats              []string
-	Frames               []TxFailureFrame
+	Actor                 string
+	Contract              string
+	Function              string
+	Heading               string
+	ErrorCode             string
+	ReasonLabel           string
+	CauseSpecificity      string
+	EvidenceStatus        string
+	DiagnosticStatus      string
+	PhaseLabel            string
+	OperationLabel        string
+	OperationNumber       int
+	Arguments             []string
+	RolledBackOperations  int
+	NotExecutedOperations int
+	Impact                string
+	SummaryHTML           string
+	Caveats               []string
+	Frames                []TxFailureFrame
 }
 
 type TxFailureFrame struct {
@@ -291,38 +295,42 @@ func buildFailureHero(f txHeroFacts) *TxFailureHero {
 	if !f.HasOutcome {
 		interpretation = txoutcome.Interpret(nil)
 	}
-	frames := []TxFailureFrame{{Name: firstNonEmpty(f.Actor, "Source"), Detail: f.ActorFull, Status: "source"}}
-	if interpretation.OperationNumber > 0 {
-		frames = append(frames, TxFailureFrame{
-			Name:   firstNonEmpty(interpretation.OperationLabel, "Operation"),
-			Detail: fmt.Sprintf("Operation #%d · %s", interpretation.OperationNumber, firstNonEmpty(interpretation.PhaseLabel, "execution")),
-			Status: "failed here",
-			Failed: true,
-		})
-	}
-	if f.Contract != "" || f.Function != "" {
-		frames = append(frames, TxFailureFrame{Name: firstNonEmpty(f.Contract, "Contract"), Detail: callLabel(f.Function), Status: invocationFrameStatus(interpretation), Failed: interpretation.OperationNumber == 0})
+	var frames []TxFailureFrame
+	if interpretation.RolledBackOperations > 0 || interpretation.NotExecutedOperations > 0 {
+		frames = append(frames, TxFailureFrame{Name: firstNonEmpty(f.Actor, "Source"), Detail: f.ActorFull, Status: "source"})
+		if interpretation.OperationNumber > 0 {
+			frames = append(frames, TxFailureFrame{
+				Name:   firstNonEmpty(interpretation.OperationLabel, "Operation"),
+				Detail: fmt.Sprintf("Operation #%d · %s", interpretation.OperationNumber, firstNonEmpty(interpretation.PhaseLabel, "execution")),
+				Status: "failed here",
+				Failed: true,
+			})
+		}
+		if f.Contract != "" || f.Function != "" {
+			frames = append(frames, TxFailureFrame{Name: firstNonEmpty(f.Contract, "Contract"), Detail: callLabel(f.Function), Status: invocationFrameStatus(interpretation), Failed: interpretation.OperationNumber == 0})
+		}
 	}
 	summary := esc(interpretation.Summary)
-	if f.Function != "" || f.Contract != "" {
-		summary += fmt.Sprintf(" The primary invocation was <code>%s()</code> on <b>%s</b>.", esc(firstNonEmpty(f.Function, "contract function")), esc(firstNonEmpty(f.Contract, "the target contract")))
-	}
 	return &TxFailureHero{
-		Actor:                f.Actor,
-		Contract:             f.Contract,
-		Function:             f.Function,
-		Heading:              firstNonEmpty(interpretation.Heading, "Transaction failed"),
-		ErrorCode:            firstNonEmpty(interpretation.ReasonCode, "reason_unavailable"),
-		ReasonLabel:          firstNonEmpty(interpretation.ReasonLabel, "Reason unavailable"),
-		EvidenceStatus:       firstNonEmpty(interpretation.EvidenceStatus, "unavailable"),
-		PhaseLabel:           interpretation.PhaseLabel,
-		OperationLabel:       interpretation.OperationLabel,
-		OperationNumber:      interpretation.OperationNumber,
-		Arguments:            interpretation.ArgumentLabels,
-		RolledBackOperations: interpretation.RolledBackOperations,
-		SummaryHTML:          summary,
-		Caveats:              interpretation.Caveats,
-		Frames:               frames,
+		Actor:                 f.Actor,
+		Contract:              f.Contract,
+		Function:              f.Function,
+		Heading:               firstNonEmpty(interpretation.Heading, "Transaction failed"),
+		ErrorCode:             firstNonEmpty(interpretation.ReasonCode, "reason_unavailable"),
+		ReasonLabel:           firstNonEmpty(interpretation.ReasonLabel, "Reason unavailable"),
+		CauseSpecificity:      firstNonEmpty(interpretation.CauseSpecificity, "unresolved"),
+		EvidenceStatus:        firstNonEmpty(interpretation.EvidenceStatus, "unavailable"),
+		DiagnosticStatus:      interpretation.DiagnosticStatus,
+		PhaseLabel:            interpretation.PhaseLabel,
+		OperationLabel:        interpretation.OperationLabel,
+		OperationNumber:       interpretation.OperationNumber,
+		Arguments:             interpretation.ArgumentLabels,
+		RolledBackOperations:  interpretation.RolledBackOperations,
+		NotExecutedOperations: interpretation.NotExecutedOperations,
+		Impact:                interpretation.Impact,
+		SummaryHTML:           summary,
+		Caveats:               interpretation.Caveats,
+		Frames:                frames,
 	}
 }
 
@@ -396,7 +404,7 @@ func titleHTML(kind TxHeroKind, f txHeroFacts) string {
 		if f.HasOutcome {
 			return fmt.Sprintf(`<span class="px-tx-actor">%s</span>`, esc(firstNonEmpty(f.Outcome.Heading, "Transaction failed")))
 		}
-		return `<span class="px-tx-actor">Transaction failed</span>`
+		return `<span class="px-tx-actor">Failure reason unavailable</span>`
 	case TxHeroLifecycle:
 		return fmt.Sprintf(`<span class="px-tx-verb">%s</span> <span class="px-tx-actor">%s</span>`, strings.Title(f.LifecycleVerb), esc(firstNonEmpty(f.Contract, "on-chain state")))
 	case TxHeroStateChange:
@@ -414,8 +422,11 @@ func titleHTML(kind TxHeroKind, f txHeroFacts) string {
 }
 
 func subtitleHTML(kind TxHeroKind, f txHeroFacts) string {
-	if kind == TxHeroFailure && f.HasOutcome {
-		return esc(f.Outcome.Summary)
+	if kind == TxHeroFailure {
+		if f.HasOutcome {
+			return esc(f.Outcome.Summary)
+		}
+		return esc(txoutcome.Interpret(nil).Summary)
 	}
 	if kind == TxHeroValueFlow && f.Data.AISummaryHTML != "" {
 		return f.Data.AISummaryHTML

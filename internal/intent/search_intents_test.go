@@ -47,7 +47,7 @@ func TestDeterministicSearchIntentsUseOnlyGatewayEvidence(t *testing.T) {
 		id          ID
 		answerParts []string
 	}{
-		{"why did " + hash + " fail?", TransactionFailure, []string{"Soroban host stopped the contract invocation", "earlier operation executed successfully", "primary invocation was swap(GABC, 7)"}},
+		{"why did " + hash + " fail?", TransactionFailure, []string{"contract stopped unexpectedly while running swap()", "earlier operation executed successfully", "primary invocation was swap(GABC, 7)"}},
 		{"How active is contract " + contractID + " today?", ContractActivity, []string{"20 calls across 2 returned daily buckets", "most observed function is swap"}},
 		{"How active is XLM today?", AssetActivity, []string{"125 transfers", "44 unique accounts", "12500.00"}},
 		{"Are any recent transfers failing?", RecentFailures, []string{"Among 2 transfer transactions", "1 failed"}},
