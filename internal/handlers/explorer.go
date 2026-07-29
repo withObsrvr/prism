@@ -355,6 +355,16 @@ func searchResultHref(sr gateway.SearchResult) string {
 	if route, ok := searchResultStringDetail(sr, "route"); ok && route != "" {
 		return route
 	}
+	switch strings.ToLower(strings.TrimSpace(sr.EntityKind)) {
+	case "classic_asset", "sac":
+		return "/v2/assets/" + url.PathEscape(firstNonEmpty(assetSearchSlug(sr), sr.ID))
+	case "liquidity_pool":
+		return "/v2/explore?q=" + url.QueryEscape(sr.ID)
+	case "protocol":
+		return "/v2/explore?q=" + url.QueryEscape(firstNonEmpty(sr.DisplayName, sr.Label, sr.CanonicalSlug, sr.ID))
+	case "protocol_contract":
+		return "/v2/contract/" + url.PathEscape(sr.ID)
+	}
 	switch sr.Type {
 	case "account":
 		return "/account/" + sr.ID
@@ -382,6 +392,9 @@ func searchResultHref(sr gateway.SearchResult) string {
 }
 
 func assetSearchSlug(sr gateway.SearchResult) string {
+	if slug := strings.TrimSpace(sr.CanonicalSlug); slug != "" {
+		return slug
+	}
 	if slug, ok := searchResultStringDetail(sr, "canonical_slug"); ok && slug != "" {
 		return slug
 	}

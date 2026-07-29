@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -22,6 +23,8 @@ const (
 	TTLLedgerFeedFailure  = 30 * time.Second
 	TTLTxReceiptFailure   = 2 * time.Minute
 	TTLAccountFailure     = 15 * time.Second
+	TTLSearchReady        = 30 * time.Second
+	TTLSearchImprovable   = 5 * time.Second
 	TTLImmutable          = 24 * time.Hour
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
@@ -1353,19 +1356,63 @@ func (c *Client) GetTransfersFiltered(ctx context.Context, network string, filte
 	return resp.Transfers, nil
 }
 
-// Search performs a unified search across accounts, contracts, transactions, ledgers, and assets.
+// Search performs a bounded unified search using the default API limit.
 func (c *Client) Search(ctx context.Context, network string, query string) (*SearchResults, error) {
+	return c.SearchEntities(ctx, network, query, SearchOptions{})
+}
+
+// SearchOptions controls the bounded entity search request. The Query API
+// validates the public maximum and supported entity kinds.
+type SearchOptions struct {
+	Limit int
+	Types []string
+}
+
+// SearchEntities returns the frozen entity_search_v1 evidence packet. Typed
+// unavailable packets are returned as data so consumers can distinguish an
+// index outage from an authoritative empty result.
+func (c *Client) SearchEntities(ctx context.Context, network string, query string, options SearchOptions) (*SearchResults, error) {
 	params := url.Values{"q": {query}}
+	if options.Limit > 0 {
+		params.Set("limit", fmt.Sprintf("%d", options.Limit))
+	}
+	for _, entityType := range options.Types {
+		if entityType = strings.TrimSpace(entityType); entityType != "" {
+			params.Add("type", entityType)
+		}
+	}
+	cacheKey := fmt.Sprintf("%s:entity_search:%s", network, params.Encode())
+	if value, ok := c.cache.Get(cacheKey); ok {
+		return value.(*SearchResults), nil
+	}
+
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/search")+"?"+params.Encode())
 	if err != nil {
-		return nil, err
+		apiErr, ok := err.(*APIError)
+		if !ok || apiErr.StatusCode != http.StatusServiceUnavailable {
+			return nil, err
+		}
+		body = []byte(apiErr.Message)
 	}
 
 	var result SearchResults
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("gateway: parsing search: %w", err)
+		return nil, fmt.Errorf("gateway: parsing entity search: %w", err)
+	}
+	if result.EvidenceVersion != "entity_search_v1" {
+		return nil, fmt.Errorf("gateway: unsupported entity search evidence version %q", result.EvidenceVersion)
+	}
+	switch result.Status {
+	case "ready", "partial", "unavailable":
+	default:
+		return nil, fmt.Errorf("gateway: unsupported entity search status %q", result.Status)
 	}
 
+	ttl := TTLSearchReady
+	if result.Status != "ready" {
+		ttl = TTLSearchImprovable
+	}
+	c.cache.Set(cacheKey, &result, ttl)
 	return &result, nil
 }
 

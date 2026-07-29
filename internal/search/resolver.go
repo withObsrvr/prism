@@ -277,6 +277,8 @@ func entityLabel(value ClassType) string {
 		return "account"
 	case ClassContract:
 		return "contract"
+	case ClassAsset:
+		return "asset"
 	case ClassMuxed:
 		return "muxed account"
 	case ClassLedger:

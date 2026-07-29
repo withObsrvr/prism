@@ -509,6 +509,38 @@ Remaining before this sub-slice is deployable across both networks:
 - run browser acceptance against populated testnet and mainnet transactions;
 - confirm the Gateway base-path configuration exposes the endpoint in each environment.
 
+#### Slice 3B: E1B entity-search consumption
+
+Status: Implemented in Prism on 2026-07-28. Automated tests and all Prism-owned testnet browser assertions pass. Full cross-system acceptance remains pending because the live testnet API omitted two previously accepted SAC evidence mappings, and the API mainnet rollout has not occurred.
+
+This is the Prism consumer for the frozen `entity_search_v1` contract from `GET /silver/search`. It replaces the previous compatibility-only `query/results` decoder and prevents local convenience shortcuts from overriding authoritative live identity evidence.
+
+Implemented behavior:
+
+1. Decode the complete versioned packet: status, bounds, type filters, truncation, warnings, provenance, canonical entity kind, canonical slug, match field and type, identity source, verification state, and typed source facts.
+2. Reject unknown evidence versions and response states.
+3. Cache `ready` identity snapshots briefly and retry `partial` or `unavailable` packets sooner.
+4. Decode typed HTTP `503 unavailable` packets as evidence so Prism can distinguish an index outage from an authoritative empty search.
+5. Route accounts, classic assets, contracts, SACs, liquidity pools, protocols, protocol contracts, transactions, and ledgers without relying on the compatibility `type` alone.
+6. Route SAC identities to their canonical classic-asset or XLM slug, preserving the API's reverse mapping rather than presenting the contract as an unrelated generic contract.
+7. Preserve ambiguous asset codes such as `USDC`; list distinct issuers, disclose `has_more`, and never select an issuer implicitly.
+8. Open a unique exact match, allow a unique bounded prefix match, and require an explicit result click for fuzzy matches.
+9. Render match quality, verification status, friendly identity source, serving-only provenance, and complete-through ledger in the suggestion surface.
+10. Render distinct authoritative-empty, partial, unavailable, and capped-result states. If the live index is incomplete or unavailable, Prism does not fall back to a built-in asset identity guess.
+11. Keep suggest and submit on the same resolver so the previewed action and submitted destination remain consistent.
+
+Current route limitation:
+
+- Prism does not yet have dedicated liquidity-pool or protocol detail pages. Those canonical entity kinds route into a scoped Explore query. The search result remains explicitly labeled `Explore`, not `Open`.
+
+Remaining acceptance work:
+
+- resolve the two live API evidence findings in `PRISM_E1B_TESTNET_ACCEPTANCE_2026-07-28.md`: the known SAC contract did not return an E1B SAC result, and its known classic asset omitted `details.sac_contract_id`;
+- rerun the full testnet corpus after those API packets are corrected; Prism-owned ambiguity, fuzzy symbol, pool prefix, exact account, authoritative empty, keyboard, desktop, and mobile assertions already pass;
+- exercise typed partial and unavailable packets against a controlled live testnet state when the API owner can safely induce or replay them; fixture and handler regression coverage already passes;
+- deploy and accept E1B on mainnet, then repeat the live Prism corpus there;
+- add dedicated pool and protocol destinations when those Prism detail surfaces exist.
+
 ### Slice 4: What changed v1
 
 1. Add typed Gateway insight and evidence models.

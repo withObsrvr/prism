@@ -905,17 +905,43 @@ type EventsResponse struct {
 	NextCursor string         `json:"next_cursor,omitempty"`
 }
 
-// SearchResult matches /silver/search response.
+// SearchResults matches the frozen entity_search_v1 response from
+// /silver/search. A ready response with no results is an authoritative empty
+// search result; an unavailable response is evidence that the serving index
+// could not be read and must not be presented as an empty result set.
 type SearchResults struct {
-	Query   string         `json:"query"`
-	Results []SearchResult `json:"results"`
+	EvidenceVersion string           `json:"evidence_version"`
+	Query           string           `json:"query"`
+	Status          string           `json:"status"`
+	Limit           int              `json:"limit"`
+	TypeFilters     []string         `json:"type_filters,omitempty"`
+	HasMore         bool             `json:"has_more"`
+	Results         []SearchResult   `json:"results"`
+	Warnings        []string         `json:"warnings,omitempty"`
+	Provenance      SearchProvenance `json:"provenance"`
 }
 
 type SearchResult struct {
-	Type    string         `json:"type"` // account, contract, transaction, ledger, asset
-	ID      string         `json:"id"`
-	Label   string         `json:"label"`
-	Details map[string]any `json:"details,omitempty"`
+	Type               string         `json:"type"` // compatibility type
+	EntityKind         string         `json:"entity_kind"`
+	ID                 string         `json:"id"`
+	CanonicalSlug      string         `json:"canonical_slug"`
+	Label              string         `json:"label"`
+	DisplayName        string         `json:"display_name,omitempty"`
+	Symbol             string         `json:"symbol,omitempty"`
+	MatchedField       string         `json:"matched_field"`
+	MatchType          string         `json:"match_type"`
+	IdentitySource     string         `json:"identity_source"`
+	VerificationStatus string         `json:"verification_status"`
+	Details            map[string]any `json:"details,omitempty"`
+}
+
+type SearchProvenance struct {
+	Source                string  `json:"source"`
+	CompleteThroughLedger int64   `json:"complete_through_ledger"`
+	UpdatedAt             *string `json:"updated_at,omitempty"`
+	RequestPath           string  `json:"request_path"`
+	FuzzyThreshold        float64 `json:"fuzzy_threshold"`
 }
 
 // --- Smart Wallet Detection ---

@@ -15,6 +15,7 @@ const (
 	ClassTxHash     ClassType = "transaction"
 	ClassAccount    ClassType = "account"
 	ClassContract   ClassType = "contract"
+	ClassAsset      ClassType = "asset"
 	ClassMuxed      ClassType = "muxed_account"
 	ClassLedger     ClassType = "ledger"
 	ClassFederation ClassType = "federation"
@@ -35,6 +36,8 @@ func (c Classification) URL() string {
 		return "/v2/account/" + c.Value
 	case ClassContract:
 		return "/v2/contract/" + c.Value
+	case ClassAsset:
+		return "/v2/assets/" + url.PathEscape(c.Value)
 	case ClassLedger:
 		return "/v2/ledger/" + c.Value
 	case ClassMuxed:
@@ -47,9 +50,11 @@ func (c Classification) URL() string {
 }
 
 var federationRE = regexp.MustCompile(`^[A-Za-z0-9._%+-]+\*[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`)
+var classicAssetRE = regexp.MustCompile(`(?i)^([a-z0-9]{1,12}):(g[a-z2-7]{55})$`)
 
 var (
 	embeddedTxRE         = regexp.MustCompile(`(?i)(^|[^0-9a-f])([0-9a-f]{64})([^0-9a-f]|$)`)
+	embeddedAssetRE      = regexp.MustCompile(`(?i)(^|[^a-z0-9])([a-z0-9]{1,12}:g[a-z2-7]{55})([^a-z2-7]|$)`)
 	embeddedStrKeyRE     = regexp.MustCompile(`(?i)(^|[^a-z2-7])([gc][a-z2-7]{55})([^a-z2-7]|$)`)
 	embeddedMuxedRE      = regexp.MustCompile(`(?i)(^|[^a-z2-7])(m[a-z2-7]{55,69})([^a-z2-7]|$)`)
 	embeddedLedgerRE     = regexp.MustCompile(`(?i)\bledger(?:\s+(?:number|sequence))?\s*#?\s*([1-9][0-9]*)\b`)
@@ -65,6 +70,9 @@ func Classify(input string) Classification {
 		return Classification{Type: ClassTxHash, Value: strings.ToLower(q)}
 	}
 	upper := strings.ToUpper(q)
+	if match := classicAssetRE.FindStringSubmatch(upper); len(match) == 3 {
+		return Classification{Type: ClassAsset, Value: match[1] + ":" + match[2]}
+	}
 	if len(upper) == 56 && isStrkeyBody(upper) {
 		switch upper[0] {
 		case 'G':
@@ -99,7 +107,7 @@ func ExtractIdentifier(input string) Classification {
 		start int
 		value string
 	}
-	candidates := make([]candidate, 0, 5)
+	candidates := make([]candidate, 0, 6)
 	appendMatch := func(re *regexp.Regexp, group int) {
 		match := re.FindStringSubmatchIndex(input)
 		groupStart := group * 2
@@ -109,6 +117,7 @@ func ExtractIdentifier(input string) Classification {
 		candidates = append(candidates, candidate{start: match[groupStart], value: input[match[groupStart]:match[groupStart+1]]})
 	}
 	appendMatch(embeddedTxRE, 2)
+	appendMatch(embeddedAssetRE, 2)
 	appendMatch(embeddedStrKeyRE, 2)
 	appendMatch(embeddedMuxedRE, 2)
 	appendMatch(embeddedLedgerRE, 1)

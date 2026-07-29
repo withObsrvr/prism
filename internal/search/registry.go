@@ -17,13 +17,21 @@ const (
 )
 
 type Entity struct {
-	Type      EntityType
-	Name      string
-	Subtitle  string
-	Value     string
-	Href      string
-	Frequency int
-	Recent    int
+	Type               EntityType
+	Name               string
+	Subtitle           string
+	Value              string
+	Href               string
+	Frequency          int
+	Recent             int
+	EntityKind         string
+	CanonicalSlug      string
+	Symbol             string
+	MatchedField       string
+	MatchType          string
+	IdentitySource     string
+	VerificationStatus string
+	SACContractID      string
 }
 
 type Registry struct{ Entries []Entity }
