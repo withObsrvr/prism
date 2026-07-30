@@ -18,7 +18,7 @@ func TestHomeRendersTruthfulShellAndInformationArchitecture(t *testing.T) {
 		TTLURL:         "/v2/home/ttl?network=testnet",
 		LeadersURL:     "/v2/home/leaders?network=testnet",
 		UtilizationURL: "/v2/home/utilization?network=testnet",
-		Prompt:         vmv2.PromptData{Placeholder: "Transaction, account, contract, asset, ledger, or recent activity"},
+		Prompt:         vmv2.PromptData{Placeholder: "Transaction, account, contract, asset, or ledger"},
 	}
 
 	var html strings.Builder
@@ -27,13 +27,15 @@ func TestHomeRendersTruthfulShellAndInformationArchitecture(t *testing.T) {
 	}
 	output := html.String()
 	for _, want := range []string{
-		"Find anything on Stellar",
-		"Paste a transaction, account, contract, asset, or describe recent activity.",
+		"Search Stellar",
+		"Paste a hash or address, or ask a question about the network.",
+		`placeholder="Transaction, account, contract, asset, or ledger"`,
 		"Reading the latest ledgers",
 		"What changed",
-		"Nearing archival",
-		"Most called, 24 hours",
-		"Network utilization",
+		"Contract data expiring soon",
+		"Busiest contracts, 24h",
+		"Smart contract capacity",
+		`class="ph-home-evidence-grid"`,
 		`hx-get="/v2/home/timeline?network=testnet"`,
 		`hx-get="/v2/home/insights?network=testnet"`,
 		`hx-get="/v2/home/ttl?network=testnet"`,
@@ -44,7 +46,23 @@ func TestHomeRendersTruthfulShellAndInformationArchitecture(t *testing.T) {
 			t.Errorf("home shell missing %q", want)
 		}
 	}
-	for _, forbidden := range []string{"52,844,201", "Three contracts are running out of room", "94 ms", "412 protocols"} {
+	for _, forbidden := range []string{
+		"52,844,201",
+		"Three contracts are running out of room",
+		"94 ms",
+		"412 protocols",
+		"Evidence section",
+		"Lookup and explore",
+		"Live ledger signal",
+		"Persistent and contract-instance storage only",
+		"Ranked by call count, not TVL",
+		"Instructions, read and write bytes, and transaction size",
+		"Find anything on Stellar",
+		"Nearing archival",
+		"Most called, 24 hours",
+		"Network utilization",
+		"Network load",
+	} {
 		if strings.Contains(output, forbidden) {
 			t.Errorf("home shell leaked factual fallback %q", forbidden)
 		}
@@ -111,5 +129,61 @@ func TestHomeTimelineRendersAccessibleEvidenceAndPolling(t *testing.T) {
 	}
 	if strings.Contains(output, "closed by SDF Testnet 3") {
 		t.Fatal("timeline describes one validator as the ledger closer")
+	}
+}
+
+func TestHomeInsightsRendersACompactEvidenceRow(t *testing.T) {
+	data := vmv2.HomeInsightsData{
+		Status:  vmv2.HomeSectionStatus{State: vmv2.HomeSectionPartial, Warnings: []string{"Insight evidence is incomplete."}},
+		Network: "testnet",
+		PollURL: "/v2/home/insights?network=testnet",
+		Cards: []vmv2.HomeInsightCard{{
+			Title:        "Contract deployments increased",
+			Summary:      "80 contracts were deployed in the last completed hour, 4 times the usual 20.",
+			Detail:       "The most active new contract received 14 calls after deployment.",
+			Tone:         "signal",
+			SubjectID:    "testnet",
+			SubjectLabel: "testnet",
+			Metrics: []vmv2.HomeInsightMetric{
+				{Label: "Last hour", Value: "80"},
+				{Label: "Typical hour", Value: "20"},
+				{Label: "Change", Value: "4×"},
+			},
+			Evidence: []vmv2.HomeInsightEvidenceLink{{Label: "View deployment ledgers", Href: "/v2/explore?time=coverage"}},
+			Caveats:  []string{"The contributor list is bounded."},
+		}},
+	}
+
+	var html strings.Builder
+	if err := HomeInsights(data).Render(context.Background(), &html); err != nil {
+		t.Fatalf("render home insights: %v", err)
+	}
+	output := html.String()
+	for _, want := range []string{
+		`class="ph-insight-list has-1"`,
+		`class="ph-insight-proof"`,
+		`class="ph-insight-facts"`,
+		"Last hour",
+		"Typical hour",
+		"Change",
+		"View deployment ledgers",
+		`class="ph-insight-coverage"`,
+		"Coverage note",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("home insight missing %q", want)
+		}
+	}
+	if strings.Contains(output, "Subject</span><strong>testnet") {
+		t.Fatal("network-wide insight rendered a redundant testnet subject")
+	}
+
+	data.Cards = append(data.Cards, data.Cards[0], data.Cards[0])
+	html.Reset()
+	if err := HomeInsights(data).Render(context.Background(), &html); err != nil {
+		t.Fatalf("render three home insights: %v", err)
+	}
+	if !strings.Contains(html.String(), `class="ph-insight-list has-3"`) {
+		t.Fatal("three insights did not receive the wide-screen comparison layout")
 	}
 }

@@ -40,7 +40,7 @@ func emptyHomeV2Data(network string) vmv2.HomeData {
 		LeadersURL:     homeV2FragmentURL("leaders", network, false),
 		UtilizationURL: homeV2FragmentURL("utilization", network, false),
 		Prompt: vmv2.PromptData{
-			Placeholder: "Transaction, account, contract, asset, ledger, or recent activity",
+			Placeholder: "Transaction, account, contract, asset, or ledger",
 		},
 	}
 }

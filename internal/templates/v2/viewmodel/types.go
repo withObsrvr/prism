@@ -123,6 +123,8 @@ type HomeInsightsData struct {
 type HomeTTLCard struct {
 	Name             string
 	ContractID       string
+	ContractLabel    string
+	ShowContractID   bool
 	Href             string
 	Tone             string
 	RunwayLabel      string
@@ -142,12 +144,16 @@ type HomeTTLData struct {
 type HomeLeaderCard struct {
 	Name           string
 	ContractID     string
+	ContractLabel  string
+	ShowContractID bool
 	Href           string
 	IdentityDetail string
 	CallCount      string
 	CallerCount    string
 	CallerUnit     string
 	OutcomeLabel   string
+	FailureLabel   string
+	FailureTone    string
 	TopFunction    string
 	WindowLabel    string
 	UpdatedLabel   string

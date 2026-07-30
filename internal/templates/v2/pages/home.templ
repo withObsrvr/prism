@@ -26,12 +26,14 @@ templ Home(data vmv2.HomeData) {
 		<main class="ph-home-page">
 			@homeTimelineLoading(data.TimelineURL)
 			@homeSearch(data.Prompt)
-			@homeEvidenceLoading("changes", "What changed", "Latest completed hour compared with the prior seven-day hourly median", data.InsightsURL)
-			@homeEvidenceLoading("archival", "Nearing archival", "Persistent and contract-instance storage only", data.TTLURL)
-			@homeEvidenceLoading("contracts", "Most called, 24 hours", "Ranked by call count, not TVL", data.LeadersURL)
-			@homeEvidenceLoading("utilization", "Network utilization", "Instructions, read and write bytes, and transaction size", data.UtilizationURL)
+			<div class="ph-home-evidence-grid">
+				@homeEvidenceLoading("changes", "What changed", "Compared with a typical hour", data.InsightsURL)
+				@homeEvidenceLoading("contracts", "Busiest contracts, 24h", "", data.LeadersURL)
+				@homeEvidenceLoading("archival", "Contract data expiring soon", "", data.TTLURL)
+				@homeEvidenceLoading("utilization", "Smart contract capacity", "", data.UtilizationURL)
+			</div>
 			<section class="ph-home-open" id="why" aria-labelledby="ph-home-open-title">
-				<div><span class="ph-home-kicker">Open source</span><h2 id="ph-home-open-title">Inspect the explorer, too.</h2></div>
+				<h2 id="ph-home-open-title">Inspect the explorer, too.</h2>
 				<p>Prism keeps interpretations connected to evidence, and its implementation is available for review.</p>
 				<a href="https://github.com/withObsrvr/prism">github.com/withObsrvr/prism <span aria-hidden="true">→</span></a>
 			</section>
@@ -52,9 +54,8 @@ templ Home(data vmv2.HomeData) {
 templ homeSearch(data vmv2.PromptData) {
 	<section class="ph-home-search" aria-labelledby="ph-home-search-title">
 		<div class="ph-home-search-copy">
-			<span class="ph-home-kicker">Lookup and explore</span>
-			<h1 id="ph-home-search-title">Find anything on Stellar</h1>
-			<p>Paste a transaction, account, contract, asset, or describe recent activity.</p>
+			<h1 id="ph-home-search-title">Search Stellar</h1>
+			<p>Paste a hash or address, or ask a question about the network.</p>
 		</div>
 		<div class="ph-search-wrap">
 			<form class="ph-search" action="/search/submit" method="GET">
@@ -78,7 +79,7 @@ templ homeSearch(data vmv2.PromptData) {
 templ homeTimelineLoading(url string) {
 	<section id="ph-home-timeline" class="ph-spectrum-section" aria-labelledby="ph-spectrum-title" aria-busy="true" aria-live="polite" hx-get={ url } hx-trigger="load" hx-swap="outerHTML">
 		<div class="ph-spectrum-head">
-			<div><span class="ph-home-kicker">Live ledger signal</span><h2 id="ph-spectrum-title">Reading the latest ledgers</h2></div>
+			<h2 id="ph-spectrum-title">Reading the latest ledgers</h2>
 			<span class="ph-spectrum-instruction">Classifying activity from one serving snapshot</span>
 		</div>
 		<div class="ph-spectrum-skeleton" aria-hidden="true">
@@ -99,7 +100,6 @@ templ HomeTimeline(data vmv2.HomeTimelineData) {
 	<section id="ph-home-timeline" class={ "ph-spectrum-section", "is-" + string(data.Status.State) } aria-labelledby="ph-spectrum-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 5s" hx-swap="outerHTML">
 		<div class="ph-spectrum-head">
 			<div>
-				<span class="ph-home-kicker">Live ledger signal</span>
 				<h2 id="ph-spectrum-title">
 					if data.WindowLabel != "" {
 						{ data.WindowLabel }
@@ -164,7 +164,12 @@ templ HomeTimeline(data vmv2.HomeTimelineData) {
 
 templ homeEvidenceLoading(id string, title string, scope string, url string) {
 	<section class="ph-home-deferred is-loading" id={ id } aria-labelledby={ "ph-home-" + id + "-title" } aria-busy="true" aria-live="polite" hx-get={ url } hx-trigger="load" hx-swap="outerHTML">
-		<div class="ph-home-deferred-heading"><div><span class="ph-home-kicker">Evidence section</span><h2 id={ "ph-home-" + id + "-title" }>{ title }</h2></div><span>{ scope }</span></div>
+		<div class="ph-home-deferred-heading">
+			<h2 id={ "ph-home-" + id + "-title" }>{ title }</h2>
+			if scope != "" {
+				<span>{ scope }</span>
+			}
+		</div>
 		<div class="ph-evidence-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
 		<span class="sr-only">Loading { title } evidence.</span>
 	</section>

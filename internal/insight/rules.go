@@ -264,7 +264,11 @@ func interpretDeployments(item gateway.HomeSummaryInsight) Interpretation {
 	}
 	primary := facts.PrimaryContract
 	if primary.ContractID != "" {
-		result.Detail = printer.Sprintf("The most active new contract received %d calls from %d callers after deployment; %d succeeded and %d failed.", primary.CallsSinceDeployment, primary.DistinctCallerCount, primary.SuccessCount, primary.FailureCount)
+		callerLabel := "callers"
+		if primary.DistinctCallerCount == 1 {
+			callerLabel = "caller"
+		}
+		result.Detail = printer.Sprintf("The most active new contract received %d calls from %d %s after deployment; %d succeeded and %d failed.", primary.CallsSinceDeployment, primary.DistinctCallerCount, callerLabel, primary.SuccessCount, primary.FailureCount)
 	}
 	return result
 }
@@ -360,7 +364,7 @@ func evidenceLinks(locator *gateway.HomeInsightEvidenceLocator) []EvidenceLink {
 	query.Set("from_ledger", fmt.Sprintf("%d", locator.LedgerStart))
 	query.Set("to_ledger", fmt.Sprintf("%d", locator.LedgerEnd))
 	query.Set("time", "coverage")
-	label := "Inspect ledger-range evidence"
+	label := "View ledger evidence"
 	switch locator.Kind {
 	case "contract_invocations":
 		if locator.ContractID != "" {
@@ -371,20 +375,21 @@ func evidenceLinks(locator *gateway.HomeInsightEvidenceLocator) []EvidenceLink {
 		} else if locator.Status == "successful" {
 			query.Set("status", "success")
 		}
-		label = "Inspect matching contract activity"
+		label = "View matching contract calls"
 	case "contract_deployments":
 		if locator.ContractID != "" {
 			query.Set("contract", locator.ContractID)
 		}
-		label = "Inspect the deployment ledger range"
+		label = "View deployment ledgers"
 	case "transactions":
 		if locator.Status == "failed" {
 			query.Set("status", "failed")
 		} else if locator.Status == "successful" {
 			query.Set("status", "success")
 		}
+		label = "View transactions"
 	case "ledger_activity":
-		label = "Inspect activity in this ledger range"
+		label = "View activity ledgers"
 	default:
 		return nil
 	}

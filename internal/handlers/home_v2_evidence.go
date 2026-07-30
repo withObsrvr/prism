@@ -100,7 +100,7 @@ func buildHomeInsightsData(summary *gateway.HomeSummaryResponse, network, pollUR
 		}
 	}
 	data.Status = homeComponentStatus(summary.Components.Insights, len(data.Cards), warnings,
-		"No material changes were detected in the last completed hour.",
+		"No significant changes in the last completed hour.",
 		"The seven-day comparison is temporarily unavailable.")
 	return data
 }
@@ -131,7 +131,21 @@ func homeInsightCard(value insight.Interpretation) vmv2.HomeInsightCard {
 		}
 	}
 	for _, metric := range value.Metrics {
-		card.Metrics = append(card.Metrics, vmv2.HomeInsightMetric{Label: metric.Label, Value: metric.Value})
+		label := metric.Label
+		switch label {
+		case "Observed":
+			label = "Last hour"
+		case "Baseline":
+			label = "Typical hour"
+		case "Ratio":
+			label = "Change"
+		case "Evidence":
+			continue
+		}
+		card.Metrics = append(card.Metrics, vmv2.HomeInsightMetric{Label: label, Value: metric.Value})
+		if len(card.Metrics) == 3 {
+			break
+		}
 	}
 	for _, link := range value.Evidence {
 		card.Evidence = append(card.Evidence, vmv2.HomeInsightEvidenceLink{Label: link.Label, Href: link.Href})
@@ -153,16 +167,21 @@ func buildHomeTTLData(summary *gateway.HomeSummaryResponse, network, pollURL str
 			continue
 		}
 		remaining, known := remainingLedgerEvidence(contract, summary)
-		runway := "Runway unavailable"
+		runway := "Expiration unavailable"
 		remainingLabel := ""
 		if known {
-			runway = gateway.FormatNumber(remaining) + " ledgers remaining"
+			runway = gateway.FormatNumber(remaining) + " ledgers left"
 			if remaining == 1 {
-				runway = "1 ledger remaining"
+				runway = "1 ledger left"
 			}
 			remainingLabel = gateway.FormatNumber(remaining)
 		}
-		name := firstNonEmpty(strings.TrimSpace(contract.ProtocolName+" "+contract.ContractName), contract.ContractName, contract.ProtocolName, shortHomeID(contract.ContractID))
+		contractLabel := shortHomeID(contract.ContractID)
+		name := firstNonEmpty(strings.TrimSpace(contract.ProtocolName+" "+contract.ContractName), contract.ContractName, contract.ProtocolName, contractLabel)
+		showContractID := !homeDisplayIsIdentifier(name, contract.ContractID)
+		if !showContractID {
+			name = contractLabel
+		}
 		detailParts := make([]string, 0, 3)
 		if contract.RemainingHuman != "" {
 			detailParts = append(detailParts, contract.RemainingHuman+" at the serving estimate")
@@ -176,6 +195,8 @@ func buildHomeTTLData(summary *gateway.HomeSummaryResponse, network, pollURL str
 		data.Cards = append(data.Cards, vmv2.HomeTTLCard{
 			Name:             name,
 			ContractID:       contract.ContractID,
+			ContractLabel:    contractLabel,
+			ShowContractID:   showContractID,
 			Href:             "/v2/contract/" + url.PathEscape(contract.ContractID),
 			Tone:             homeTTLTone(contract, remaining, known),
 			RunwayLabel:      runway,
@@ -204,16 +225,26 @@ func buildHomeLeadersData(summary *gateway.HomeSummaryResponse, network, pollURL
 		if strings.TrimSpace(leader.ContractID) == "" {
 			continue
 		}
+		contractLabel := shortHomeID(leader.ContractID)
 		name := homeLeaderName(leader)
+		showContractID := !homeDisplayIsIdentifier(name, leader.ContractID)
+		if !showContractID {
+			name = contractLabel
+		}
+		failureLabel, failureTone := homeLeaderFailure(leader)
 		data.Cards = append(data.Cards, vmv2.HomeLeaderCard{
 			Name:           name,
 			ContractID:     leader.ContractID,
+			ContractLabel:  contractLabel,
+			ShowContractID: showContractID,
 			Href:           "/v2/contract/" + url.PathEscape(leader.ContractID),
 			IdentityDetail: homeLeaderIdentity(leader),
 			CallCount:      gateway.FormatNumber(homeLeaderCalls(leader)),
 			CallerCount:    gateway.FormatNumber(homeLeaderCallers(leader)),
 			CallerUnit:     homeCallerUnit(homeLeaderCallers(leader)),
 			OutcomeLabel:   homeLeaderOutcome(leader),
+			FailureLabel:   failureLabel,
+			FailureTone:    failureTone,
 			TopFunction:    leader.TopFunction,
 			WindowLabel:    firstNonEmpty(leader.Window, "Window not supplied"),
 			UpdatedLabel:   formatHomeEvidenceTime(leader.UpdatedAt),
@@ -250,16 +281,16 @@ func buildHomeUtilizationData(summary *gateway.HomeSummaryResponse, network, pol
 
 func homeInstructionMetric(utilization gateway.HomeSummaryUtilization) *vmv2.HomeUtilizationMetric {
 	if metric := utilization.Instructions; metric != nil {
-		return homeBoundedMetric("Instructions", metric.Status, metric.Used, metric.Limit, metric.Ratio, metric.Pct, metric.SourceLedger, metric.LimitSource, false)
+		return homeBoundedMetric("Contract computation", metric.Status, metric.Used, metric.Limit, metric.Ratio, metric.Pct, metric.SourceLedger, metric.LimitSource, false)
 	}
-	return homeBoundedMetric("Instructions", utilization.InstructionStatus, utilization.InstructionUsed, utilization.InstructionLimit, nil, utilization.InstructionPct, utilization.SourceLedger, utilization.InstructionLimitSource, false)
+	return homeBoundedMetric("Contract computation", utilization.InstructionStatus, utilization.InstructionUsed, utilization.InstructionLimit, nil, utilization.InstructionPct, utilization.SourceLedger, utilization.InstructionLimitSource, false)
 }
 
 func homeReadWriteMetric(utilization gateway.HomeSummaryUtilization) *vmv2.HomeUtilizationMetric {
 	if metric := utilization.ReadWriteBytes; metric != nil {
-		return homeBoundedMetric("Read and write bytes", metric.Status, metric.Used, metric.Limit, metric.Ratio, metric.Pct, metric.SourceLedger, metric.LimitSource, true)
+		return homeBoundedMetric("Contract state access", metric.Status, metric.Used, metric.Limit, metric.Ratio, metric.Pct, metric.SourceLedger, metric.LimitSource, true)
 	}
-	return homeBoundedMetric("Read and write bytes", utilization.ReadWriteStatus, utilization.ReadWriteUsedBytes, utilization.ReadWriteLimitBytes, nil, utilization.ReadWritePct, utilization.SourceLedger, utilization.ReadWriteLimitSource, true)
+	return homeBoundedMetric("Contract state access", utilization.ReadWriteStatus, utilization.ReadWriteUsedBytes, utilization.ReadWriteLimitBytes, nil, utilization.ReadWritePct, utilization.SourceLedger, utilization.ReadWriteLimitSource, true)
 }
 
 func homeTxSizeMetric(utilization gateway.HomeSummaryUtilization) *vmv2.HomeUtilizationMetric {
@@ -554,6 +585,48 @@ func homeLeaderOutcome(leader gateway.HomeSummaryLeader) string {
 	return "Outcome breakdown unavailable"
 }
 
+func homeLeaderFailure(leader gateway.HomeSummaryLeader) (string, string) {
+	rate, ok := homeLeaderFailureRate(leader)
+	if !ok {
+		return "Unavailable", "neutral"
+	}
+	if rate < 0 {
+		rate = 0
+	} else if rate > 1 {
+		rate = 1
+	}
+	percent := rate * 100
+	label := fmt.Sprintf("%.0f%% failed", percent)
+	if percent > 0 && percent < 0.1 {
+		label = "<0.1% failed"
+	} else if percent > 0 && percent < 10 {
+		label = fmt.Sprintf("%.1f%% failed", percent)
+	}
+	tone := "healthy"
+	if rate >= 0.2 {
+		tone = "critical"
+	} else if rate >= 0.05 {
+		tone = "warning"
+	}
+	return label, tone
+}
+
+func homeLeaderFailureRate(leader gateway.HomeSummaryLeader) (float64, bool) {
+	if leader.FailureRate != nil {
+		return normalizeRate(*leader.FailureRate), true
+	}
+	if leader.SuccessRate != nil {
+		return 1 - normalizeRate(*leader.SuccessRate), true
+	}
+	if leader.SuccessCount != nil && leader.FailureCount != nil {
+		total := *leader.SuccessCount + *leader.FailureCount
+		if total > 0 {
+			return float64(*leader.FailureCount) / float64(total), true
+		}
+	}
+	return 0, false
+}
+
 func normalizeRate(value float64) float64 {
 	if value > 1 {
 		return value / 100
@@ -639,6 +712,21 @@ func shortHomeID(value string) string {
 		return value
 	}
 	return value[:8] + "…" + value[len(value)-6:]
+}
+
+func homeDisplayIsIdentifier(name, identifier string) bool {
+	name = strings.ToUpper(strings.TrimSpace(name))
+	identifier = strings.ToUpper(strings.TrimSpace(identifier))
+	if name == "" || identifier == "" {
+		return false
+	}
+	if name == identifier || name == strings.ToUpper(shortHomeID(identifier)) {
+		return true
+	}
+	if len(identifier) < 8 || len(name) > 24 {
+		return false
+	}
+	return strings.HasPrefix(name, identifier[:4]) && strings.HasSuffix(name, identifier[len(identifier)-4:])
 }
 
 func uniqueStrings(values []string) []string {

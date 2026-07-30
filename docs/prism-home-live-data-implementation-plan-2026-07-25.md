@@ -101,9 +101,9 @@ The page order is intentional:
 1. **Network heartbeat and spectrogram.** Show the most recent 60 ledgers as a compact classified signal.
 2. **Unified search.** Let users open known entities or describe supported recent activity.
 3. **What changed.** Interpret material deviations from a documented baseline.
-4. **Nearing archival.** Surface contracts whose persistent state needs attention.
-5. **Most called, 24 hours.** Rank contracts by calls, with identity and failure evidence.
-6. **Network utilization.** Explain current resource use without implying unsupported causality.
+4. **Contract data expiring soon.** Surface contracts whose persistent state needs attention in plain language.
+5. **Busiest contracts, 24h.** Rank contracts by calls, with identity and comparable failure evidence.
+6. **Smart contract capacity.** Explain current Soroban resource use without implying unsupported causality or presenting it as whole-network traffic.
 7. **Product evidence.** Render only API-backed metadata plus the static open-source link.
 
 The prototype's watchlist pane is omitted until persistence exists. Do not render an `Add a contract` control that cannot save anything.
@@ -242,7 +242,7 @@ Use this homepage language:
 
 Recommended placeholder:
 
-> Transaction, account, contract, asset, ledger, or recent activity
+> Transaction, account, contract, asset, or ledger
 
 Do not use `Look up anything on Stellar, in plain language` until Prism supports open-ended semantic questions and a clear unsupported-query state.
 
@@ -309,9 +309,11 @@ An unsupported question must never appear to have been semantically answered by 
 
 ### Initial product contract
 
-The section title is `What changed`. Its scope label is:
+The section title is `What changed`. Its compact scope label is:
 
-> Latest completed hour compared with the prior seven-day hourly median
+> Compared with a typical hour
+
+The deterministic narration defines the typical hour as the prior seven-day hourly median. The shorter heading keeps the comparison visible without repeating the full method above every result.
 
 Do not say `today`, `compared 12 minutes ago`, or imply that an hourly insight refreshes every ledger.
 
@@ -370,14 +372,14 @@ Use locale-aware formatting and round only for presentation. Keep raw values in 
 
 Each insight preview shows:
 
-- observed and baseline values;
-- ratio and comparison method;
-- exact observed window;
-- subject and identity status;
-- evidence count;
-- source ledger and update time;
-- component state and caveats;
-- `Inspect evidence` destination.
+- the signal type, deterministic title, summary, and supported evidence detail;
+- `Last hour`, `Typical hour`, and `Change` as comparable facts;
+- a linked contract subject when the subject is a specific contract, but not a redundant network subject;
+- component state in the section scan path;
+- coverage caveats behind an on-demand disclosure;
+- a type-specific `View …` evidence destination.
+
+The validated view model preserves the exact observed window, comparison method, evidence count, identity source and verification, source ledger, update time, rule version, and caveats. The homepage does not repeat all of that metadata in the default scan path; it belongs in progressive evidence disclosure and the planned insight-detail surface.
 
 The evidence destination is generated in Prism from typed API evidence locators, not from an API-authored frontend URL. A detailed insight page may progressively disclose contributors, first and last affected ledger, functions, result codes, callers, transactions, and representative samples as the evidence API gains them.
 
@@ -385,7 +387,7 @@ Claims such as `one contract is most of it`, `every call followed the same swap 
 
 ### Empty and degraded states
 
-- `empty`: `No material changes were detected in the last completed hour.`
+- `empty`: `No significant changes in the last completed hour.`
 - `partial`: render supported facts and identify which evidence is incomplete.
 - `stale`: keep the last insight visible with its actual window and a delayed label.
 - `unavailable`: `The seven-day comparison is temporarily unavailable.`
@@ -407,18 +409,27 @@ If an LLM renderer is added later, it must be:
 
 The LLM must never detect anomalies or decide whether evidence is complete.
 
-## Nearing archival
+## Contract data expiring soon
 
 Use `contracts_needing_attention` and the typed `ttl_attention` component state from `/home/summary`.
 
-- include persistent and contract-instance state only;
-- display absolute `live_until` evidence and derive remaining ledgers against the component snapshot;
+- include restorable persistent data, contract-instance, and contract-code evidence when the API proves the exact state kind; exclude temporary data from homepage eligibility;
+- display absolute final-live-ledger evidence and reconcile its presentation against the live homepage heartbeat;
 - convert to approximate time only when ledger cadence evidence is present;
-- show tracked and expiring entry counts plus durability classes in detail;
+- present Contract, Affected state, and Availability as one compact comparison row;
+- use the exact count and state kinds at the nearest deadline, not the total count inside the attention window;
+- explain the consequence first, such as persistent data that may need restoration, then retain the exact final live ledger as supporting evidence;
+- render the final-live-ledger, may-already-require-restoration, confirmed-archived, extended, partial, and unavailable states explicitly;
+- reserve total tracked entries, total entries inside the attention window, entry keys, lifecycle history, and full provenance for contract detail;
 - do not describe a partial or unavailable result as zero contracts at risk;
 - do not run normal per-contract `validate_ttl=true` fan-out.
 
-## Most called contracts
+The focused UX, API dependency, interaction model, and acceptance matrix are frozen in
+`prism-contract-state-archival-experience-plan-2026-07-29.md`. Its corrected
+contract-state wording supersedes the earlier `Expires in` presentation while keeping
+the one-summary-read architecture.
+
+## Busiest contracts, 24h
 
 Use the `leaders` component from `/home/summary` for:
 
@@ -431,18 +442,18 @@ Use the `leaders` component from `/home/summary` for:
 - last activity;
 - source ledger and update time.
 
-Render this as a table, matching the prototype's information hierarchy and Prism's table system. Rates remain visibly tied to counts so a high rate over two calls does not imply the same weight as a high rate over thousands.
+Render this as a comparison table with stable Contract, Calls, Failed, and Callers / top function columns. The homepage shows the failure percentage beside total calls; exact success and failure counts are reserved for detail. Rates remain visibly tied to call volume so a high rate over two calls does not imply the same weight as a high rate over thousands. Suppress a second contract-ID line when the display name is only another shortening of the same identifier.
 
 Identity enrichment must be a bounded set lookup. Prism must not call contract analytics once per row.
 
-## Network utilization
+## Smart contract capacity
 
-Render instructions, read and write bytes, and transaction-envelope size independently.
+Render contract computation, contract state access, and transaction-envelope size independently. The UI labels translate Soroban instruction metering and combined ledger read/write bytes into user-facing language; the typed Gateway fields retain the protocol terminology.
 
 - preserve reported percentages above 100;
 - clamp only visual width to 100 percent;
 - require used and ledger-specific limit values before explanatory copy;
-- show source ledger and limit source;
+- preserve source ledger and limit source in the view model and detail evidence without repeating them in every homepage metric;
 - treat a missing metric independently;
 - do not claim that fees rose because of a value unless the API supplies fee evidence for the same window.
 
@@ -558,18 +569,18 @@ Testnet acceptance covers the known two-event exact fixture, an exact failed tra
 
 ### Slice 4: What changed v1
 
-Status: Prism implementation and testnet browser acceptance completed on 2026-07-29; populated mainnet acceptance remains pending.
+Status: Prism implementation and populated testnet browser acceptance completed on 2026-07-29; populated mainnet acceptance remains pending.
 
 1. Add typed Gateway insight and evidence models.
 2. Add the `internal/insight` rule registry.
 3. Implement deterministic templates for the three deployed types.
 4. Add the insights fragment and state handling.
 5. Generate evidence links from typed subject and window filters.
-6. Add identity source, comparison rule, exact window, ledger, and updated-time disclosure.
+6. Preserve identity source, comparison rule, exact window, ledger, and updated time for progressive evidence disclosure while keeping the homepage preview distilled.
 7. Add fixture tests for ready, authoritative empty, partial, stale, unavailable, unknown type, and unknown evidence version.
-8. Accept populated mainnet and authoritative-empty testnet behavior.
+8. Accept populated and authoritative-empty testnet behavior, then repeat against mainnet.
 
-Prism now validates `home_insight_evidence_v1` packets, applies deterministic rules for all three deployed insight types, generates evidence destinations from typed locators, and renders ready, partial, stale, authoritative-empty, unavailable, unknown-type, and unknown-version states without synthesizing facts. Testnet currently reports an authoritative empty insight set, so the live empty state is accepted there. A labeled mock fixture exercises the rich failure-insight path without acting as a live fallback. Populated live acceptance will follow the API promotion.
+Prism now validates `home_insight_evidence_v1` packets, applies deterministic rules for all three deployed insight types, generates evidence destinations from typed locators, and renders ready, partial, stale, authoritative-empty, unavailable, unknown-type, and unknown-version states without synthesizing facts. Testnet now supplies a live deployment insight, accepted as a compact horizontal evidence row. Prism renders zero to three truthful results: one result fills the available width; two or three use flat comparison columns above 1024 pixels; narrower layouts stack them. A labeled demo fixture continues to exercise the rich failure-insight path without acting as a live fallback.
 
 ### Slice 5: Evidence-rich interpretation
 
@@ -585,6 +596,13 @@ This slice begins after the API evidence phase is deployed.
 ### Slice 6: Remaining sections and rollout
 
 Status: TTL, leaders, utilization, responsive behavior, explicit outcome labels, and reduced-motion foundations completed and browser-accepted on testnet on 2026-07-29; product evidence, rollout cleanup, and mainnet acceptance remain pending.
+
+The initial TTL table acceptance exposed a semantic gap: its relative countdown is
+snapshot-bound, its refresh cadence can trail the live ledger heartbeat, and the
+aggregate does not prove which entries share the nearest deadline. Complete focused
+Slices TTL-P0 through TTL-P3 in
+`prism-contract-state-archival-experience-plan-2026-07-29.md` before treating the TTL
+portion of Slice 6 as production-ready or promoting it to mainnet.
 
 1. Add TTL, leaders, utilization, and API-backed product-evidence fragments.
 2. Complete responsive behavior for desktop, tablet, and mobile.

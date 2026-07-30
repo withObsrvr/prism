@@ -139,7 +139,7 @@ func TestHomeV2LiveModeNeverSeedsMockFacts(t *testing.T) {
 			t.Errorf("live shell leaked mock fact %q", forbidden)
 		}
 	}
-	for _, required := range []string{"Find anything on Stellar", "Reading the latest ledgers", "/v2/home/timeline?network=mainnet", "/v2/home/insights?network=mainnet", "/v2/home/ttl?network=mainnet", "/v2/home/leaders?network=mainnet", "/v2/home/utilization?network=mainnet"} {
+	for _, required := range []string{"Search Stellar", "Reading the latest ledgers", "/v2/home/timeline?network=mainnet", "/v2/home/insights?network=mainnet", "/v2/home/ttl?network=mainnet", "/v2/home/leaders?network=mainnet", "/v2/home/utilization?network=mainnet"} {
 		if !strings.Contains(output, required) {
 			t.Errorf("live shell missing %q", required)
 		}
