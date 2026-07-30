@@ -59,7 +59,11 @@ func (h *Handlers) buildEventsFirehoseData(r *http.Request, network string) (pag
 		Order:        "desc",
 	}
 	if eventTypes := strings.TrimSpace(q.Get("type")); eventTypes != "" {
-		params.Types = strings.Split(eventTypes, ",")
+		for _, t := range strings.Split(eventTypes, ",") {
+			if t = strings.TrimSpace(t); t != "" {
+				params.Types = append(params.Types, t)
+			}
+		}
 	}
 
 	resp, err := h.Gateway.GetExplorerEvents(ctx, network, params)

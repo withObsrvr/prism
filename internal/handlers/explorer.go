@@ -1592,8 +1592,11 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 
 	// Build operations list.
 	ops := make([]pages.TxOperation, 0, len(txFull.Operations))
-	for operationPosition, op := range txFull.Operations {
-		opStatus := transactionOperationStatus(outcome, operationPosition, tx.Successful)
+	for _, op := range txFull.Operations {
+		// Match outcome evidence by the operation's authoritative index, not the
+		// slice position, so status stays aligned if operations are ever filtered
+		// or reordered.
+		opStatus := transactionOperationStatus(outcome, op.Index, tx.Successful)
 
 		opSummary := buildOperationSummary(op)
 
@@ -1933,10 +1936,10 @@ func gatewayStatus(err error, status int) bool {
 	return errors.As(err, &apiErr) && apiErr.StatusCode == status
 }
 
-func transactionOperationStatus(outcome *gateway.TransactionOutcome, operationPosition int, receiptSuccessful bool) string {
+func transactionOperationStatus(outcome *gateway.TransactionOutcome, operationIndex int, receiptSuccessful bool) string {
 	if outcome != nil {
 		for _, operation := range outcome.Operations {
-			if operation.OperationIndex != operationPosition {
+			if operation.OperationIndex != operationIndex {
 				continue
 			}
 			switch {
