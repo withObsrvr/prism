@@ -20,7 +20,7 @@ templ Explore(data vmv2.ExploreData) {
 
 templ ExploreHeartbeat(data vmv2.ExploreHeaderData, loading bool) {
 	<div id="px-ex-heartbeat" class="ph-heartbeat" hx-get="/v2/explore/header" hx-trigger={ exploreHeartbeatTrigger(loading) } hx-swap="outerHTML">
-		<span class="dot"></span><span>live</span><span class="sep">·</span><span>ledger <b>{ exploreHeartbeatLedger(data, loading) }</b></span><span class="sep">·</span><span>{ exploreHeartbeatAge(data, loading) }</span>
+		<span class={ "dot", exploreHeartbeatDotClass(data, loading) }></span><span>{ exploreHeartbeatStatus(data, loading) }</span><span class="sep">·</span><span>ledger <b>{ exploreHeartbeatLedger(data, loading) }</b></span><span class="sep">·</span><span>{ exploreHeartbeatAge(data, loading) }</span>
 	</div>
 }
 
@@ -34,7 +34,19 @@ templ ExploreMain(data vmv2.ExploreData) {
 				<div class="px-ex-summary">
 					<div class="px-ex-summary-kicker">Query builder</div>
 					<h1 id="explore-title">@templ.Raw(data.Summary.SentenceHTML)</h1>
-					<div class="px-ex-summary-meta"><span><b>{ data.Summary.MatchedLabel }</b> matched</span><span>{ data.Summary.WindowLabel }</span><span>{ data.Summary.LedgerRange }</span><span>{ data.Summary.EvidenceLabel }</span>
+					<div class="px-ex-summary-meta">
+						if data.Loading {
+							<span>Match count pending</span>
+						} else if strings.TrimSpace(data.ErrorMessage) != "" {
+							<span>Match count unavailable</span>
+						} else {
+							<span><b>{ data.Summary.MatchedLabel }</b> matched
+								if data.Summary.CountCapped {
+									<span class="sr-only">, count capped</span>
+								}
+							</span>
+						}
+						<span>{ data.Summary.WindowLabel }</span><span>{ data.Summary.LedgerRange }</span><span>{ data.Summary.EvidenceLabel }</span>
 						if strings.TrimSpace(data.Summary.EventsPerSec) != "" {
 							<span>{ data.Summary.EventsPerSec } events/s</span>
 						}
@@ -44,25 +56,29 @@ templ ExploreMain(data vmv2.ExploreData) {
 					</div>
 					if hasExploreFilters(data.Filters) {
 						<div class="px-ex-chips" aria-label="Active filters">
-							@exploreFilterChip("scope", data.Filters.Scope, data.Filters)
 							@exploreFilterChip("topic", data.Filters.Topic, data.Filters)
 							@exploreFilterChip("fn", data.Filters.Fn, data.Filters)
 							@exploreFilterChip("asset", data.Filters.Asset, data.Filters)
+							@exploreFilterChip("actor", data.Filters.Actor, data.Filters)
 							@exploreFilterChip("time", data.Filters.Time, data.Filters)
 							@exploreFilterChip("status", data.Filters.Status, data.Filters)
+							@exploreFilterChip("start_ledger", data.Filters.StartLedger, data.Filters)
+							@exploreFilterChip("end_ledger", data.Filters.EndLedger, data.Filters)
 							@exploreFilterChip("q", data.Filters.Q, data.Filters)
 						</div>
 					}
 				</div>
 				<form class="px-ex-form" action="/v2/explore" method="GET" data-explore-query-form>
-					<label class="px-ex-search"><span>Search events</span><input type="search" name="q" value={ data.Filters.Q } placeholder="Contract, tx hash, topic, protocol, or event text" autocomplete="off"/><button type="submit">Run</button></label>
+					<label class="px-ex-search"><span>Search events</span><input type="search" name="q" value={ data.Filters.Q } placeholder="Contract name, contract ID, actor, or tx hash" autocomplete="off"/><button type="submit">Run</button></label>
 					<div class="px-ex-filter-grid">
-						@exploreSelect("Scope", "scope", data.Filters.Scope, []exploreOption{{"all", "All worlds"}, {"soroban", "Soroban"}, {"classic", "Classic"}})
-						@exploreSelect("Topic", "topic", data.Filters.Topic, []exploreOption{{"", "Any topic"}, {"transfer", "Transfer"}, {"swap", "Swap"}, {"mint", "Mint"}, {"burn", "Burn"}, {"approve", "Approve"}, {"deposit", "Deposit"}, {"withdraw", "Withdraw"}, {"custom", "Custom"}})
-						<label class="px-ex-field"><span>Function</span><input name="fn" value={ data.Filters.Fn } placeholder="swap, approve, submit"/></label>
-						<label class="px-ex-field"><span>Asset</span><input name="asset" value={ data.Filters.Asset } placeholder="USDC, XLM, EURC"/></label>
-						@exploreSelect("Time", "time", data.Filters.Time, []exploreOption{{"1h", "Last hour"}, {"24h", "Last 24 hours"}, {"7d", "Last 7 days"}, {"30d", "Last 30 days"}})
+						@exploreSelect("Event type", "topic", data.Filters.Topic, []exploreOption{{"", "Any event"}, {"transfer", "Transfer"}, {"swap", "Swap"}, {"mint", "Mint"}, {"burn", "Burn"}, {"approve", "Approve"}, {"contract_call", "Contract call"}})
+						<label class="px-ex-field"><span>Function</span><input name="fn" value={ data.Filters.Fn } placeholder="Exact function name"/></label>
+						<label class="px-ex-field"><span>Asset</span><input name="asset" value={ data.Filters.Asset } placeholder="XLM or CODE:G…"/></label>
+						<label class="px-ex-field"><span>Actor</span><input name="actor" value={ data.Filters.Actor } placeholder="Exact G…, C…, or M…"/></label>
+						@exploreSelect("Time", "time", data.Filters.Time, []exploreOption{{"1h", "Last hour"}, {"24h", "Last 24 hours"}, {"7d", "Last 7 days"}, {"30d", "Last 30 days"}, {"coverage", "Retained coverage"}})
 						@exploreSelect("Status", "status", data.Filters.Status, []exploreOption{{"", "Any status"}, {"success", "Successful"}, {"failed", "Failed"}})
+						<label class="px-ex-field"><span>From ledger</span><input name="start_ledger" inputmode="numeric" value={ data.Filters.StartLedger } placeholder="Optional"/></label>
+						<label class="px-ex-field"><span>Through ledger</span><input name="end_ledger" inputmode="numeric" value={ data.Filters.EndLedger } placeholder="Optional"/></label>
 					</div>
 				</form>
 			</section>
@@ -73,6 +89,12 @@ templ ExploreMain(data vmv2.ExploreData) {
 			</section>
 			if data.Loading {
 				<div class="px-ex-notice" role="status"><strong>Loading live evidence.</strong><span>The query shell is ready while Prism fetches matching activity.</span></div>
+			} else if data.DemoData {
+				<div class="px-ex-notice" role="status"><strong>Demo fixture.</strong><span>The activity below is synthetic and is not a claim about this network.</span></div>
+			} else if data.State == "invalid" {
+				<div class="px-ex-notice is-query" role="status"><strong>Query needs more detail.</strong><span>{ data.ErrorMessage }</span></div>
+			} else if data.State == "partial" {
+				<div class="px-ex-notice is-partial" role="status"><strong>Coverage is incomplete.</strong><span>{ exploreWarningText(data.Warnings, "These results cover only the retained serving window. Do not treat the count as complete.") }</span></div>
 			} else if strings.TrimSpace(data.ErrorMessage) != "" {
 				<div class="px-ex-notice" role="status"><strong>Live data unavailable.</strong><span>{ data.ErrorMessage }</span></div>
 			}
@@ -81,13 +103,15 @@ templ ExploreMain(data vmv2.ExploreData) {
 					if data.Loading {
 						<span>Loading gateway</span>
 					} else if data.SourceLive {
-						<span>Live gateway</span>
+						<span>{ exploreSourceLabel(data.State) }</span>
+					} else if data.DemoData {
+						<span>Demo fixture</span>
 					} else {
-						<span>Design fallback</span>
+						<span>Unavailable</span>
 					}
 				</div></div>
 				if len(data.Rows) == 0 {
-					@exploreEmpty(data.Filters)
+					@exploreEmpty(data.Filters, data.State, data.ErrorMessage)
 				} else {
 					<div class="px-ex-table" role="table" aria-label="Matching activity"><div class="px-ex-thead" role="row"><span>When</span><span>Meaning</span><span>Protocol</span><span>Evidence</span><span>Status</span></div>
 						for _, row := range data.Rows {
@@ -126,25 +150,37 @@ templ exploreRow(row vmv2.ExploreRow) {
 	</a>
 }
 
-templ exploreEmpty(filters vmv2.ExploreFilters) {
-	<div class="px-ex-empty"><h3>No matching activity yet</h3><p>Relax one filter or broaden the time window. Prism keeps the query sentence intact so you can adjust without starting over.</p><a href="/v2/explore">Show all recent activity</a></div>
+templ exploreEmpty(filters vmv2.ExploreFilters, state string, errorMessage string) {
+	if state == "invalid" {
+		<div class="px-ex-empty"><h3>Query not run</h3><p>Prism did not send a broader substitute query or claim that no matches exist. Adjust the exact filter above and try again.</p><a href="/v2/explore">Start with recent Soroban events</a></div>
+	} else if strings.TrimSpace(errorMessage) != "" {
+		<div class="px-ex-empty"><h3>Evidence unavailable</h3><p>Prism could not verify this query against live activity. The filters remain intact so you can retry without reconstructing the search.</p><a href="/v2/explore">Retry recent activity</a></div>
+	} else if state == "partial" {
+		<div class="px-ex-empty"><h3>No matches in available coverage</h3><p>The serving window is incomplete for this query, so Prism cannot claim there was no matching activity outside the reported coverage.</p><a href="/v2/explore">Show recent Soroban events</a></div>
+	} else {
+		<div class="px-ex-empty"><h3>No matches in retained coverage</h3><p>The serving index returned an authoritative empty result for these exact filters. Relax one filter or broaden the time window.</p><a href="/v2/explore">Show recent Soroban events</a></div>
+	}
 }
 
-templ exploreQueryScript() { <script>(function(){var form=document.querySelector('[data-explore-query-form]');if(!form||form.dataset.bound==='true')return;form.dataset.bound='true';function target(){var fd=new FormData(form);var q=new URLSearchParams();function set(k,skip){var v=String(fd.get(k)||'').trim();if(!v||v===skip)return;q.set(k,v);}set('scope','all');set('topic','');set('fn','');set('asset','');set('time','1h');set('status','');set('q','');var s=q.toString();return form.action+(s?'?'+s:'');}form.addEventListener('submit',function(e){e.preventDefault();window.location.assign(target());});form.querySelectorAll('select').forEach(function(el){el.addEventListener('change',function(){window.location.assign(target());});});})();</script> }
+templ exploreQueryScript() { <script>(function(){var form=document.querySelector('[data-explore-query-form]');if(!form||form.dataset.bound==='true')return;form.dataset.bound='true';function target(){var fd=new FormData(form);var q=new URLSearchParams();function set(k,skip){var v=String(fd.get(k)||'').trim();if(!v||v===skip)return;q.set(k,v);}set('topic','');set('fn','');set('asset','');set('actor','');set('time','1h');set('status','');set('start_ledger','');set('end_ledger','');set('q','');var s=q.toString();return form.action+(s?'?'+s:'');}form.addEventListener('submit',function(e){e.preventDefault();window.location.assign(target());});form.querySelectorAll('select').forEach(function(el){el.addEventListener('change',function(){window.location.assign(target());});});})();</script> }
 
 templ exploreFilterChip(key string, value string, filters vmv2.ExploreFilters) {
 	if shouldShowExploreChip(key, value) {
-		<a class="px-ex-chip" href={ templ.SafeURL(exploreRemoveFilterHref(key, filters)) }><span>{ key }</span>{ value }<b>×</b></a>
+		<a class="px-ex-chip" href={ templ.SafeURL(exploreRemoveFilterHref(key, filters)) }><span class="px-ex-chip-key">{ key }</span><span class="px-ex-chip-value">{ value }</span><b>×</b></a>
 	}
 }
 
 func exploreHeartbeatTrigger(loading bool) string { if loading { return "load, every 5s" }; return "every 5s" }
+func exploreHeartbeatStatus(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "loading" }; if data.Status == "" { return "live" }; return data.Status }
+func exploreHeartbeatDotClass(data vmv2.ExploreHeaderData, loading bool) string { status := exploreHeartbeatStatus(data, loading); if status == "live" { return "is-live" }; if status == "partial" { return "is-partial" }; if status == "demo" { return "is-demo" }; if status == "loading" { return "is-pending" }; return "is-unavailable" }
 func exploreHeartbeatLedger(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "syncing" }; return data.LedgerNumber }
 func exploreHeartbeatAge(data vmv2.ExploreHeaderData, loading bool) string { if loading { return "latest ledger" }; return data.AgeLabel }
 func exploreEventLabel(count string) string { count = strings.TrimSpace(count); if count == "" { return "event" }; if count == "1" { return "1 event" }; return count + " events" }
-func hasExploreFilters(f vmv2.ExploreFilters) bool { return strings.TrimSpace(f.Topic) != "" || strings.TrimSpace(f.Fn) != "" || strings.TrimSpace(f.Asset) != "" || strings.TrimSpace(f.Status) != "" || strings.TrimSpace(f.Q) != "" || (f.Scope != "" && f.Scope != "all") || (f.Time != "" && f.Time != "1h") }
-func shouldShowExploreChip(key string, value string) bool { value = strings.TrimSpace(value); if value == "" { return false }; return !(key == "scope" && value == "all") && !(key == "time" && value == "1h") }
-func exploreRemoveFilterHref(key string, f vmv2.ExploreFilters) string { v := url.Values{}; if f.Scope != "" && f.Scope != "all" && key != "scope" { v.Set("scope", f.Scope) }; if f.Topic != "" && key != "topic" { v.Set("topic", f.Topic) }; if f.Fn != "" && key != "fn" { v.Set("fn", f.Fn) }; if f.Asset != "" && key != "asset" { v.Set("asset", f.Asset) }; if f.Time != "" && f.Time != "1h" && key != "time" { v.Set("time", f.Time) }; if f.Status != "" && key != "status" { v.Set("status", f.Status) }; if f.Q != "" && key != "q" { v.Set("q", f.Q) }; if v.Encode() == "" { return "/v2/explore" }; return "/v2/explore?" + v.Encode() }
+func hasExploreFilters(f vmv2.ExploreFilters) bool { return strings.TrimSpace(f.Topic) != "" || strings.TrimSpace(f.Fn) != "" || strings.TrimSpace(f.Asset) != "" || strings.TrimSpace(f.Actor) != "" || strings.TrimSpace(f.Status) != "" || strings.TrimSpace(f.StartLedger) != "" || strings.TrimSpace(f.EndLedger) != "" || strings.TrimSpace(f.Q) != "" || f.Scope == "classic" || (f.Time != "" && f.Time != "1h") }
+func shouldShowExploreChip(key string, value string) bool { value = strings.TrimSpace(value); if value == "" { return false }; return !(key == "time" && value == "1h") }
+func exploreRemoveFilterHref(key string, f vmv2.ExploreFilters) string { v := url.Values{}; if f.Scope == "classic" { v.Set("scope", f.Scope) }; if f.Topic != "" && key != "topic" { v.Set("topic", f.Topic) }; if f.Fn != "" && key != "fn" { v.Set("fn", f.Fn) }; if f.Asset != "" && key != "asset" { v.Set("asset", f.Asset) }; if f.Actor != "" && key != "actor" { v.Set("actor", f.Actor) }; if f.Time != "" && f.Time != "1h" && key != "time" { v.Set("time", f.Time) }; if f.Status != "" && key != "status" { v.Set("status", f.Status) }; if f.StartLedger != "" && key != "start_ledger" { v.Set("start_ledger", f.StartLedger) }; if f.EndLedger != "" && key != "end_ledger" { v.Set("end_ledger", f.EndLedger) }; if f.Q != "" && key != "q" { v.Set("q", f.Q) }; if v.Encode() == "" { return "/v2/explore" }; return "/v2/explore?" + v.Encode() }
+func exploreWarningText(warnings []string, fallback string) string { for _, warning := range warnings { if strings.TrimSpace(warning) != "" { return warning } }; return fallback }
+func exploreSourceLabel(state string) string { if state == "partial" { return "Live gateway, partial" }; if state == "empty" { return "Live gateway, no matches" }; return "Live gateway" }
 func exploreLabel(v string, fallback string) string { if strings.TrimSpace(v) != "" { return v }; return fallback }
 func exploreShort(v string) string { v = strings.TrimSpace(v); if len(v) <= 12 { return exploreLabel(v, "unknown") }; return v[:6] + "…" + v[len(v)-4:] }
 func exploreTopicClass(v string) string { switch strings.ToLower(v) { case "swap": return "swap"; case "transfer": return "transfer"; case "mint", "burn", "approve": return "token"; default: return "call" } }

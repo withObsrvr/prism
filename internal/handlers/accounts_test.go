@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	prismsearch "github.com/withObsrvr/prism/internal/search"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
@@ -231,11 +232,11 @@ func TestBuildSmartAccountDataUsesRulesWithoutSlowEnrichment(t *testing.T) {
 	}
 }
 
-func TestDirectSuggestionLabelNamesSmartAccount(t *testing.T) {
+func TestSearchOpenLabelNamesSmartAccount(t *testing.T) {
 	const contractID = "CCQBQIAG2E2L5NOIML2SGAJYMXPID3MAQNII5USMENID3SDJ4ATOU2HG"
-	got := directSuggestionLabel(contractID, "/v2/account/"+contractID+"/smart")
-	if !strings.HasPrefix(got, "Smart Account ") {
-		t.Fatalf("directSuggestionLabel = %q, want Smart Account label", got)
+	got := searchOpenLabel(prismsearch.Classification{Type: prismsearch.ClassContract, Value: contractID}, "/v2/account/"+contractID+"/smart")
+	if got != "Open smart account" {
+		t.Fatalf("searchOpenLabel = %q, want smart account action", got)
 	}
 }
 

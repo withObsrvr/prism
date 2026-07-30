@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,119 @@ func TestTxReceiptFromDecodedOmitsUnknownSemanticSequenceAndMaxFee(t *testing.T)
 	}
 	if tx.MaxFee != nil {
 		t.Fatalf("MaxFee = %v, want nil when decoded transaction does not include it", *tx.MaxFee)
+	}
+}
+
+func TestTransactionOperationStatusUsesExecutionAndApplicationEvidence(t *testing.T) {
+	outcome := &gateway.TransactionOutcome{Operations: []gateway.TransactionOutcomeOperation{
+		{OperationIndex: 0, ExecutionOutcome: "succeeded", AppliedToLedger: false},
+		{OperationIndex: 1, ExecutionOutcome: "failed", AppliedToLedger: false},
+		{OperationIndex: 2, ExecutionOutcome: "not_executed", AppliedToLedger: false},
+		{OperationIndex: 3, ExecutionOutcome: "succeeded", AppliedToLedger: true},
+	}}
+	tests := []struct {
+		position int
+		want     string
+	}{
+		{0, "Executed, not applied"},
+		{1, "Failed"},
+		{2, "Not executed"},
+		{3, "Success"},
+		{4, "Unknown"},
+	}
+	for _, test := range tests {
+		if got := transactionOperationStatus(outcome, test.position, false); got != test.want {
+			t.Errorf("position %d = %q, want %q", test.position, got, test.want)
+		}
+	}
+	if got := transactionOperationStatus(nil, 0, true); got != "Success" {
+		t.Errorf("successful receipt fallback = %q, want Success", got)
+	}
+	if got := transactionOperationStatus(nil, 0, false); got != "Unknown" {
+		t.Errorf("failed receipt fallback = %q, want Unknown", got)
+	}
+}
+
+func TestBuildTxReceiptDataLetsE1AOwnOutcomeAndOperationStates(t *testing.T) {
+	hash := strings.Repeat("a", 64)
+	var receiptCalls, outcomeCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/lake/v1/testnet/api/v1/silver/tx/" + hash + "/receipt":
+			receiptCalls++
+			_, _ = io.WriteString(w, `{
+				"tx_hash":"`+hash+`",
+				"ledger_sequence":123,
+				"created_at":"2026-07-28T12:00:00Z",
+				"source_account":"GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+				"successful":true,
+				"operation_count":3,
+				"tx_type":"multi_op",
+				"full":{
+					"tx_hash":"`+hash+`",
+					"created_at":"2026-07-28T12:00:00Z",
+					"successful":true,
+					"source_account":"GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+					"ledger_sequence":123,
+					"fee":300,
+					"operations":[
+						{"index":0,"type_name":"manage_data","source_account":"GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"},
+						{"index":1,"type_name":"payment","source_account":"GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"},
+						{"index":2,"type_name":"payment","source_account":"GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"}
+					]
+				}
+			}`)
+		case "/lake/v1/testnet/api/v1/silver/tx/" + hash + "/failure-evidence":
+			outcomeCalls++
+			_, _ = io.WriteString(w, `{
+				"evidence_version":"transaction_outcome_v1",
+				"status":"ready",
+				"network":"testnet",
+				"transaction_hash":"`+hash+`",
+				"ledger_sequence":123,
+				"outcome":"failed",
+				"applied_to_ledger":false,
+				"transaction_result":{"normalized_code":"transaction_failed","raw_code":"TransactionResultCodeTxFailed","source":"transaction_result_xdr"},
+				"failure":{"status":"ready","phase":"operation_execution","scope":"operation","normalized_code":"payment_underfunded","raw_code":"PaymentResultCodePaymentUnderfunded","source":"operation_result_xdr","operation_index":1,"operation_type":"PAYMENT","transaction_raw_code":"TransactionResultCodeTxFailed"},
+				"operations":[
+					{"operation_index":0,"operation_type":"MANAGE_DATA","execution_outcome":"succeeded","applied_to_ledger":false},
+					{"operation_index":1,"operation_type":"PAYMENT","execution_outcome":"failed","applied_to_ledger":false},
+					{"operation_index":2,"operation_type":"PAYMENT","execution_outcome":"not_executed","applied_to_ledger":false}
+				],
+				"components":{},
+				"locators":[],
+				"provenance":{"transaction_source_ledger":123,"complete_through_ledger":123,"sources":["transaction_result_xdr"],"resolved_at":"2026-07-28T12:00:01Z"}
+			}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	gw := gateway.New(gateway.Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer gw.Stop()
+	h := &Handlers{Gateway: gw, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	req := httptest.NewRequest(http.MethodGet, "/v2/tx/"+hash+"?network=testnet", nil)
+	data, err := h.buildTxReceiptData(req, "testnet", hash, gateway.ShortHash(hash))
+	if err != nil {
+		t.Fatalf("buildTxReceiptData: %v", err)
+	}
+	if receiptCalls != 1 || outcomeCalls != 1 {
+		t.Fatalf("calls receipt=%d outcome=%d, want one each", receiptCalls, outcomeCalls)
+	}
+	if data.Status != "failed" || data.OutcomeEvidence == nil {
+		t.Fatalf("E1A did not own the enclosing outcome: status=%q outcome=%v", data.Status, data.OutcomeEvidence)
+	}
+	wantStatuses := []string{"Executed, not applied", "Failed", "Not executed"}
+	if len(data.Operations) != len(wantStatuses) {
+		t.Fatalf("operations=%d, want %d", len(data.Operations), len(wantStatuses))
+	}
+	for i, want := range wantStatuses {
+		if got := data.Operations[i].Status; got != want {
+			t.Errorf("operation %d status=%q, want %q", i, got, want)
+		}
 	}
 }
 

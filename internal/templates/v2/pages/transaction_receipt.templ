@@ -22,7 +22,9 @@ templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 		</main><aside class="px-tx-side">
 			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
 			@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
-			<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) }>View contract <span class="mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</span> →</a></div>
+			if txHasContractEvidence(data) {
+				<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL(txContractHref(data)) }>View contract <span class="mono">{ txContractLabel(data) }</span> →</a></div>
+			}
 			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
 		</aside></div></div>
 	}
@@ -113,7 +115,9 @@ templ TxReceiptSidebarFragment(data legacy.TxReceiptData) {
 	<aside class="px-tx-side">
 		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
 		@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
-		<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL("/contracts/" + data.ContractAddrFull) }>View contract <span class="mono">{ firstNonEmpty(data.ContractAddr, data.ContractAddrFull) }</span> →</a></div>
+		if txHasContractEvidence(data) {
+			<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL(txContractHref(data)) }>View contract <span class="mono">{ txContractLabel(data) }</span> →</a></div>
+		}
 		<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
 	</aside>
 }
@@ -158,6 +162,15 @@ templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 			if hero.Kind == txv2.TxHeroOperations {
 				@txQuickItem("Operations", fmt.Sprintf("%d", hero.Operations.Count), true)
 				@txQuickItem("Classification", "Classic multi-op", false)
+			} else if hero.Kind == txv2.TxHeroFailure {
+				if txContractHref(data) != "" {
+					@txQuickLinkItem("Contract", firstNonEmpty(hero.Failure.Contract, txContractLabel(data)), txContractHref(data), true)
+				} else if hero.Failure.Contract != "" {
+					@txQuickItem("Contract", hero.Failure.Contract, true)
+				}
+				if hero.Failure.OperationNumber > 0 {
+					@txQuickItem("Failed at", fmt.Sprintf("Operation #%d", hero.Failure.OperationNumber), true)
+				}
 			} else {
 				if txContractHref(data) != "" {
 					@txQuickLinkItem("Contract", txContractLabel(data), txContractHref(data), true)
@@ -228,14 +241,58 @@ templ txLifecycleHero(hero txv2.TxHeroModel) {
 }
 
 templ txFailureHero(hero txv2.TxHeroModel) {
-	<section class="px-tx-section px-hero-card px-hero-fail"><div class="px-tx-section-head"><h2>Why it failed</h2><span class="px-tx-section-sub">Where execution stopped, and what the error was</span></div>
-		<div class="px-hero-fail-banner"><span class="glyph">×</span><div><b>Execution reverted</b><div class="mono muted">{ hero.Failure.ErrorCode }</div><p>@templ.Raw(hero.Failure.SummaryHTML)</p></div></div>
-		<div class="px-hero-stack">
-			for _, frame := range hero.Failure.Frames {
-				<div class={ "px-hero-frame", templ.KV("failed", frame.Failed) }><b>{ frame.Name }</b><span class="mono muted">{ frame.Detail }</span><em>{ frame.Status }</em></div>
+	<section class="px-tx-section px-hero-card px-hero-fail"><div class="px-tx-section-head"><h2>What Prism knows</h2><span class="px-tx-section-sub">{ txFailureCauseSubtitle(hero.Failure.CauseSpecificity, hero.Failure.EvidenceStatus) }</span></div>
+		<div class="px-hero-fail-banner"><span class="glyph" aria-hidden="true">×</span><div class="px-hero-fail-copy"><b>{ hero.Failure.ReasonLabel }</b><div class="px-hero-fail-meta"><span class={ "px-hero-evidence-state", "is-" + hero.Failure.CauseSpecificity }>{ txFailureCauseLabel(hero.Failure.CauseSpecificity) }</span></div>
+			if hero.Failure.Impact != "" {
+				<p>{ hero.Failure.Impact }</p>
 			}
-		</div>
-		@txHeroFoot(hero.Meta)
+		</div></div>
+		if len(hero.Failure.Caveats) > 0 {
+			<div class="px-hero-caveats"><b>Evidence limitations</b>
+				<ul>
+					for _, caveat := range hero.Failure.Caveats {
+						<li>{ caveat }</li>
+					}
+				</ul>
+			</div>
+		}
+		if len(hero.Failure.Frames) > 0 {
+			<div class="px-hero-stack">
+				for _, frame := range hero.Failure.Frames {
+					<div class={ "px-hero-frame", templ.KV("failed", frame.Failed) }><b>{ frame.Name }</b><span class="mono muted">{ frame.Detail }</span><em>{ frame.Status }</em></div>
+				}
+			</div>
+		}
+		if hero.Failure.Actor != "" || hero.Failure.Contract != "" || hero.Failure.Function != "" || len(hero.Failure.Arguments) > 0 {
+			<details class="px-hero-disclosure"><summary>Invocation details</summary><div class="px-hero-detail-grid">
+				if hero.Failure.Actor != "" {
+					<div><span>Source</span><b class="mono">{ hero.Failure.Actor }</b></div>
+				}
+				if hero.Failure.Contract != "" {
+					<div><span>Contract</span><b class="mono">{ hero.Failure.Contract }</b></div>
+				}
+				if hero.Failure.Function != "" {
+					<div><span>Function</span><b class="mono">{ hero.Failure.Function }()</b></div>
+				}
+				if len(hero.Failure.Arguments) > 0 {
+					<div class="wide"><span>Arguments</span><div class="px-hero-detail-args">
+						for _, argument := range hero.Failure.Arguments {
+							<code>{ argument }</code>
+						}
+					</div></div>
+				}
+			</div></details>
+		}
+		<details class="px-hero-disclosure"><summary>Technical details</summary><div class="px-hero-detail-grid">
+			<div><span>Protocol code</span><code>{ hero.Failure.ErrorCode }</code></div>
+			<div><span>Outcome evidence</span><b>{ humanEvidenceStatus(hero.Failure.EvidenceStatus) }</b></div>
+			if hero.Failure.PhaseLabel != "" {
+				<div><span>Failure phase</span><b>{ hero.Failure.PhaseLabel }</b></div>
+			}
+			if hero.Failure.DiagnosticStatus != "" {
+				<div><span>Diagnostic evidence</span><b>{ humanEvidenceStatus(hero.Failure.DiagnosticStatus) }</b></div>
+			}
+		</div></details>
 	</section>
 }
 
@@ -287,7 +344,7 @@ templ txOperations(data legacy.TxReceiptData) {
 							<p>{ op.Contract }</p>
 						}
 					</div>
-					<span class="px-tx-op-status ok">{ firstNonEmpty(op.Status, "success") }</span>
+					<span class={ "px-tx-op-status", txOperationStatusClass(op.Status) }>{ firstNonEmpty(op.Status, "Unknown") }</span>
 				</div>
 				if op.SummaryHTML != "" || op.DetailHTML != "" {
 					<div class="px-tx-op-body">
@@ -352,6 +409,18 @@ templ txBalances(data legacy.TxReceiptData) {
 templ txRaw(data legacy.TxReceiptData) { <div class="px-tx-raw"><div class="px-tx-raw-tabs"><button class="active">Decoded</button><button>Base64</button><button>Soroban-RPC trace</button></div><pre class="px-tx-raw-pre">{ txRawText(data) }</pre></div> }
 
 func txStatusLabel(v string) string { if strings.EqualFold(v, "failed") { return "Failed" }; return "Successful" }
+func txOperationStatusClass(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "success": return "ok"
+	case "failed": return "failed"
+	case "executed, not applied": return "rolled-back"
+	case "not executed": return "not-executed"
+	default: return "unknown"
+	}
+}
+func txFailureCauseLabel(specificity string) string { switch strings.ToLower(strings.TrimSpace(specificity)) { case "exact": return "Cause identified"; case "category": return "General failure category"; default: return "Cause not identified" } }
+func txFailureCauseSubtitle(specificity string, status string) string { switch strings.ToLower(strings.TrimSpace(specificity)) { case "exact": return "Cause identified from transaction evidence"; case "category": return "Exact cause unavailable"; default: if strings.EqualFold(status, "unavailable") { return "Structured outcome evidence unavailable" }; return "Available evidence does not identify the cause" } }
+func humanEvidenceStatus(status string) string { switch strings.ToLower(strings.TrimSpace(status)) { case "ready": return "Ready"; case "partial": return "Partial"; case "stale": return "Delayed"; default: return "Unavailable" } }
 func txSubtype(data legacy.TxReceiptData) string { v := strings.TrimSpace(data.SemanticSubtype); if v == "" { v = data.SemanticTxType }; return strings.ReplaceAll(strings.ReplaceAll(v, "_", " · "), "dex", "DeFi") }
 func txHeadlineHTML(data legacy.TxReceiptData) string { if strings.TrimSpace(data.HeroTitle) != "" { return headlineFromTitle(data.HeroTitle) }; if data.SummaryHTML != "" { return data.SummaryHTML }; return `<span class="px-tx-actor">Transaction</span> <span class="px-tx-verb">` + data.ShortHash + `</span>` }
 func headlineFromTitle(s string) string { parts := strings.Split(s, " "); if len(parts) == 0 { return s }; out := `<span class="px-tx-actor">` + parts[0] + `</span>`; for _, p := range parts[1:] { cls := "px-tx-verb"; if strings.ContainsAny(p, "0123456789") || strings.EqualFold(p, "XLM") || strings.EqualFold(p, "USDC") { cls = "px-tx-amt" }; out += ` <span class="` + cls + `">` + p + `</span>` }; return out }
@@ -360,6 +429,7 @@ func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data
 func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
 func txSourceHref(data legacy.TxReceiptData) string { id := txSourceFull(data); if id == "" || id == "—" { return "" }; if strings.EqualFold(data.EffectiveActorType, "smart_wallet") || data.SmartWalletDetected && id == data.SmartWalletContract { return "/v2/account/" + id + "/smart" }; if strings.HasPrefix(id, "C") { return "/v2/contract/" + id }; return "/v2/account/" + id }
 func txContractHref(data legacy.TxReceiptData) string { id := firstNonEmpty(data.DownstreamContractAddr, data.ContractAddrFull); if id == "" || id == "—" { return "" }; return "/v2/contract/" + id }
+func txHasContractEvidence(data legacy.TxReceiptData) bool { return txContractHref(data) != "" }
 func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetected && data.SmartWalletContractShort != "" { return data.SmartWalletContractShort }; return firstNonEmpty(data.EffectiveActorShort, "Source") }
 func txContractLabel(data legacy.TxReceiptData) string { address := firstNonEmpty(data.DownstreamContractShort, firstNonEmpty(data.ContractAddr, data.ContractAddrFull)); name := strings.TrimSpace(data.ContractName); if address == "" { return firstNonEmpty(name, "Contract") }; if name == "" || strings.EqualFold(name, address) || strings.EqualFold(name, data.DownstreamContractAddr) || strings.EqualFold(name, data.ContractAddrFull) { return address }; return name + " " + address }
 func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }

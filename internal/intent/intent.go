@@ -3,7 +3,6 @@ package intent
 import (
 	"context"
 	"fmt"
-	"math"
 	"net/url"
 	"regexp"
 	"sort"
@@ -16,8 +15,12 @@ import (
 type ID string
 
 const (
-	ExpiringContracts ID = "expiring_contracts"
-	ProtocolBusy      ID = "protocol_busy"
+	ExpiringContracts  ID = "expiring_contracts"
+	ProtocolBusy       ID = "protocol_busy"
+	TransactionFailure ID = "transaction_failure"
+	ContractActivity   ID = "contract_activity"
+	AssetActivity      ID = "asset_activity"
+	RecentFailures     ID = "recent_failures"
 )
 
 type Match struct {
@@ -43,13 +46,14 @@ type Metric struct {
 }
 
 type Result struct {
-	Title      string
-	Answer     string
-	Confidence float64
-	Evidence   []EvidenceLink
-	Actions    []ActionLink
-	Metrics    []Metric
-	Warnings   []string
+	Title             string
+	Answer            string
+	Confidence        float64
+	EvidenceAvailable bool
+	Evidence          []EvidenceLink
+	Actions           []ActionLink
+	Metrics           []Metric
+	Warnings          []string
 }
 
 type Env struct {
@@ -101,6 +105,10 @@ func DefaultRegistry() *Registry {
 			{Key: "blend", Name: "Blend", Aliases: []string{"blend", "blend pool"}, ExploreQ: "Blend"},
 		},
 		Handlers: []Handler{
+			transactionFailureHandler{},
+			contractActivityHandler{},
+			assetActivityHandler{},
+			recentFailuresHandler{},
 			expiringContractsHandler{},
 			protocolBusyHandler{},
 		},
@@ -185,18 +193,14 @@ type expiringContractsHandler struct{}
 
 func (expiringContractsHandler) ID() ID { return ExpiringContracts }
 
-var expiringRE = regexp.MustCompile(`\b(contract|contracts|ttl|storage)\b.*\b(expir|archive|attention|runway|risk)|\b(expir|archive|attention|runway|risk)\b.*\b(contract|contracts|ttl|storage)\b`)
+var expiringRE = regexp.MustCompile(`\b(contract|contracts|ttl|storage)\b.*\b(expir|archiv|attention|runway|risk)|\b(expir|archiv|attention|runway|risk)\b.*\b(contract|contracts|ttl|storage)\b`)
 
 func (expiringContractsHandler) Match(input string, _ *Registry) (Match, bool) {
 	n := normalize(input)
 	if !expiringRE.MatchString(n) {
 		return Match{}, false
 	}
-	t := timeSlot(n)
-	if t == "" {
-		t = "7d"
-	}
-	return Match{ID: ExpiringContracts, Confidence: 0.88, Slots: map[string]string{"time": t}, Reason: "contract TTL/expiration wording"}, true
+	return Match{ID: ExpiringContracts, Confidence: 0.88, Slots: map[string]string{"requested_time": timeSlot(n), "window": "current_ttl_snapshot"}, Reason: "contract TTL/expiration wording"}, true
 }
 
 func (expiringContractsHandler) Execute(ctx context.Context, env Env, m Match) (Result, error) {
@@ -211,23 +215,34 @@ func (expiringContractsHandler) Execute(ctx context.Context, env Env, m Match) (
 	if err != nil {
 		return res, err
 	}
+	componentStatus := strings.ToLower(strings.TrimSpace(summary.Components.TTLAttention.Status))
+	if componentStatus == "unavailable" || componentStatus == "error" {
+		res.Answer = "The current contract TTL evidence is unavailable, so Prism cannot identify contracts with the least runway."
+		res.Warnings = append(res.Warnings, "The Gateway marked the TTL attention component unavailable.")
+		res.Actions = []ActionLink{{Label: "Explore contracts", Href: "/v2/explore?scope=soroban"}}
+		return res, nil
+	}
+	res.EvidenceAvailable = true
 	count := summary.Hero.TTL.ExpiringContractCount
 	if count == 0 {
 		count = int64(len(summary.ContractsNeedingAttention))
 	}
 	if count == 0 {
-		res.Answer = "I do not see contracts flagged as near TTL expiration in the current home summary."
+		res.Answer = "The current TTL attention snapshot does not flag any contracts as needing attention."
 	} else {
 		res.Metrics = append(res.Metrics, Metric{Label: "Contracts", Value: fmt.Sprintf("%d", count)})
-		res.Answer = fmt.Sprintf("%d contracts are flagged as near TTL expiration", count)
-		if m.Slots["time"] != "" {
-			res.Answer += " in the " + humanTime(m.Slots["time"])
-		}
+		res.Answer = fmt.Sprintf("The current TTL attention snapshot flags %d contracts as having limited runway", count)
 		if summary.Hero.TTL.WorstRemainingHours > 0 {
-			res.Answer += fmt.Sprintf(". The shortest runway is about %d hours", summary.Hero.TTL.WorstRemainingHours)
+			res.Answer += ". The shortest runway is about " + formatHours(summary.Hero.TTL.WorstRemainingHours)
 			res.Metrics = append(res.Metrics, Metric{Label: "Shortest runway", Value: fmt.Sprintf("%dh", summary.Hero.TTL.WorstRemainingHours)})
 		}
 		res.Answer += "."
+	}
+	if requested := m.Slots["requested_time"]; requested != "" {
+		res.Warnings = append(res.Warnings, "This answer uses the current TTL attention snapshot. It does not prove which contracts will archive within the requested calendar window.")
+	}
+	if componentStatus == "partial" || componentStatus == "stale" {
+		res.Warnings = append(res.Warnings, "The Gateway marked TTL attention evidence "+componentStatus+".")
 	}
 	for _, c := range summary.ContractsNeedingAttention {
 		label := strings.TrimSpace(c.ProtocolName + " " + c.ContractName)
@@ -285,33 +300,35 @@ func (protocolBusyHandler) Execute(ctx context.Context, env Env, m Match) (Resul
 		res.Warnings = []string{"Gateway client is not configured."}
 		return res, nil
 	}
-	contracts := p.Contracts[env.Network]
-	if len(contracts) == 0 {
-		// Fall back to home leaders if protocol names are available.
-		summary, err := env.Gateway.GetHomeSummary(ctx, env.Network)
-		if err != nil {
-			return res, err
-		}
+	// Prefer the explicitly windowed 24-hour leader evidence when available.
+	if summary, err := env.Gateway.GetHomeSummary(ctx, env.Network); err == nil && summary != nil {
 		for _, l := range summary.Leaders {
 			if strings.Contains(normalize(l.ProtocolName+" "+l.ContractName), normalize(p.Name)) || strings.Contains(normalize(l.ProtocolName), p.Key) {
 				band := busyBand(l.CallCount24h, reg.Thresholds)
 				res.Answer = fmt.Sprintf("%s looks %s: %d calls and %d unique callers in the last 24 hours.", p.Name, band, l.CallCount24h, l.UniqueCallers24h)
 				res.Metrics = []Metric{{Label: "Calls", Value: fmt.Sprintf("%d", l.CallCount24h)}, {Label: "Unique callers", Value: fmt.Sprintf("%d", l.UniqueCallers24h)}}
 				res.Evidence = []EvidenceLink{{Label: strings.TrimSpace(l.ProtocolName + " " + l.ContractName), Href: "/v2/contract/" + url.PathEscape(l.ContractID)}}
+				res.EvidenceAvailable = true
 				return res, nil
 			}
 		}
+	}
+
+	contracts := p.Contracts[env.Network]
+	if len(contracts) == 0 {
 		res.Answer = "I know " + p.Name + ", but I do not have registered contract IDs for " + env.Network + " yet, so I cannot compute a busy score."
 		res.Warnings = []string{"Add protocol contract IDs to the intent registry for this network."}
 		return res, nil
 	}
 	var totalCalls, uniqueCallers, recent7d int64
+	loadedContracts := 0
 	for _, id := range contracts {
 		analytics, err := env.Gateway.GetContractAnalytics(ctx, env.Network, id)
 		if err != nil {
 			res.Warnings = append(res.Warnings, "Could not load analytics for "+short(id)+": "+err.Error())
 			continue
 		}
+		loadedContracts++
 		totalCalls += analytics.Stats.TotalCallsAsCallee + analytics.Stats.TotalCallsAsCaller
 		uniqueCallers += analytics.Stats.UniqueCallers
 		for _, d := range analytics.DailyCalls7D {
@@ -319,17 +336,18 @@ func (protocolBusyHandler) Execute(ctx context.Context, env Env, m Match) (Resul
 		}
 		res.Evidence = append(res.Evidence, EvidenceLink{Label: p.Name + " contract " + short(id), Href: "/v2/contract/" + url.PathEscape(id)})
 	}
-	mixed := totalCalls
+	res.EvidenceAvailable = loadedContracts > 0
+	res.Answer = fmt.Sprintf("The available contract analytics report %d all-time observed calls for %s", totalCalls, p.Name)
+	res.Metrics = []Metric{{Label: "All-time calls", Value: fmt.Sprintf("%d", totalCalls)}, {Label: "Unique callers", Value: fmt.Sprintf("%d", uniqueCallers)}}
 	if recent7d > 0 {
-		mixed = int64(math.Round(float64(totalCalls)*0.4 + float64(recent7d)*0.6))
+		res.Answer += fmt.Sprintf(" and %d calls across the returned seven daily buckets", recent7d)
+		res.Metrics = append(res.Metrics, Metric{Label: "Seven daily buckets", Value: fmt.Sprintf("%d", recent7d)})
 	}
-	band := busyBand(mixed, reg.Thresholds)
-	res.Answer = fmt.Sprintf("%s looks %s. Mixed score: %d, based on %d total observed calls", p.Name, band, mixed, totalCalls)
-	res.Metrics = []Metric{{Label: "Calls", Value: fmt.Sprintf("%d", totalCalls)}, {Label: "Unique callers", Value: fmt.Sprintf("%d", uniqueCallers)}, {Label: "Activity score", Value: fmt.Sprintf("%d", mixed)}}
 	if uniqueCallers > 0 {
 		res.Answer += fmt.Sprintf(" and %d unique callers", uniqueCallers)
 	}
-	res.Answer += "."
+	res.Answer += ". Prism cannot assign the 24-hour busy band without 24-hour protocol evidence."
+	res.Warnings = append(res.Warnings, "The fallback analytics are not the requested 24-hour window.")
 	if len(res.Evidence) == 0 {
 		res.Answer = "I found registered contracts for " + p.Name + ", but could not load enough analytics to compute a busy score."
 	}
@@ -354,12 +372,19 @@ func humanTime(s string) string {
 	case "24h":
 		return "last 24 hours"
 	case "7d":
-		return "next week"
+		return "the last 7 days"
 	case "30d":
-		return "next month"
+		return "the last 30 days"
 	default:
 		return s
 	}
+}
+
+func formatHours(hours int64) string {
+	if hours == 1 {
+		return "1 hour"
+	}
+	return fmt.Sprintf("%d hours", hours)
 }
 
 func short(s string) string {

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/withObsrvr/prism/internal/intent"
+	prismsearch "github.com/withObsrvr/prism/internal/search"
 )
 
 func (h *Handlers) AskV2(w http.ResponseWriter, r *http.Request) {
@@ -16,25 +17,28 @@ func (h *Handlers) AskV2(w http.ResponseWriter, r *http.Request) {
 		hxOrRedirect(w, r, "/v2/home")
 		return
 	}
-	if redirect := h.detectSmartRedirect(r.Context(), networkFromRequest(r), q); redirect != "" {
-		hxOrRedirect(w, r, redirect)
+	resolution := h.resolveSearch(r.Context(), networkFromRequest(r), q)
+	if resolution.Kind != prismsearch.SearchAnswer {
+		hxOrRedirect(w, r, resolution.Destination)
 		return
 	}
 	reg := intent.DefaultRegistry()
 	match, ok := reg.Match(q)
 	if !ok || match.Confidence < 0.65 {
-		hxOrRedirect(w, r, "/v2/explore?q="+url.QueryEscape(q))
+		hxOrRedirect(w, r, "/v2/search/unsupported?q="+url.QueryEscape(q))
 		return
 	}
 	result, err := reg.Execute(r.Context(), intent.Env{Gateway: h.Gateway, Network: networkFromRequest(r)}, match)
 	if err != nil {
-		h.Logger.Warn("ask intent execution failed", "query", q, "intent", match.ID, "error", err)
-		result = intent.Result{
-			Title:      "I could not answer that yet",
-			Answer:     "The question matched a deterministic intent, but the required data was not available. Try exploring the raw activity instead.",
-			Confidence: match.Confidence,
-			Actions:    []intent.ActionLink{{Label: "Explore activity", Href: "/v2/explore?q=" + url.QueryEscape(q)}},
-			Warnings:   []string{err.Error()},
+		if h.Logger != nil {
+			h.Logger.Warn("ask intent execution failed", "query", q, "intent", match.ID, "error", err)
+		}
+		result.Title = "Evidence temporarily unavailable"
+		result.Answer = "The question matched a deterministic intent, but Prism could not load the evidence required to answer it. No conclusion was generated."
+		result.Confidence = match.Confidence
+		result.Warnings = append(result.Warnings, err.Error())
+		if len(result.Actions) == 0 {
+			result.Actions = askFallbackActions(match)
 		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -66,7 +70,7 @@ func renderAskTop(w http.ResponseWriter, network string, q string) {
 func renderAskBar(w http.ResponseWriter, q string) {
 	fmt.Fprint(w, `<section class="px-ask-bar"><div class="px-ask-bar-inner"><div class="px-ask-bar-eyebrow"><span class="dot"></span>Ask Prism · deterministic answers</div><form class="px-ask-input-row" action="/search/submit" method="get"><svg class="icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"/><path d="M12 12l4 4"/></svg><input id="askInput" name="q" value="`)
 	fmt.Fprint(w, html.EscapeString(q))
-	fmt.Fprint(w, `" autocomplete="off"/><button class="submit" type="submit">Ask <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 5.5h7M6 2l3.5 3.5L6 9"/></svg></button></form><div class="px-ask-examples"><span class="label">Try</span><a href="/v2/ask?q=Which%20contracts%20are%20expiring%20this%20week%3F">Which contracts are expiring this week?</a><a href="/v2/ask?q=Is%20Soroswap%20busy%3F">Is Soroswap busy?</a><a href="/v2/explore?fn=transfer&status=failed&topic=transfer">Are there failed transfers in the last hour?</a></div></div></section>`)
+	fmt.Fprint(w, `" autocomplete="off"/><button class="submit" type="submit">Ask <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 5.5h7M6 2l3.5 3.5L6 9"/></svg></button></form><div class="px-ask-examples"><span class="label">Try</span><a href="/v2/ask?q=Which%20contracts%20have%20the%20least%20TTL%20runway%3F">Which contracts have the least TTL runway?</a><a href="/v2/ask?q=Is%20Soroswap%20busy%3F">Is Soroswap busy?</a><a href="/v2/ask?q=Are%20any%20recent%20transactions%20failing%3F">Are any recent transactions failing?</a></div></div></section>`)
 }
 
 func renderAskInterpret(w http.ResponseWriter, q string, m intent.Match) {
@@ -83,18 +87,30 @@ func renderAskInterpret(w http.ResponseWriter, q string, m intent.Match) {
 
 func renderAskAnswer(w http.ResponseWriter, m intent.Match, res intent.Result) {
 	confidence := firstConfidence(res, m)
-	fmt.Fprintf(w, `<section class="px-ask-answer %s"><div class="px-ask-answer-inner"><div class="px-ask-answer-eyebrow">Answer</div><h1 class="px-ask-answer-h1">%s</h1>`, html.EscapeString(answerTone(m, res)), askHeadlineHTML(res.Answer, m))
+	eyebrow := "Answer"
+	if !res.EvidenceAvailable {
+		eyebrow = "Evidence unavailable"
+	}
+	fmt.Fprintf(w, `<section class="px-ask-answer %s"><div class="px-ask-answer-inner"><div class="px-ask-answer-eyebrow">%s</div><h1 class="px-ask-answer-h1">%s</h1>`, html.EscapeString(answerTone(m, res)), html.EscapeString(eyebrow), askHeadlineHTML(res.Answer, m))
 	fmt.Fprintf(w, `<p class="px-ask-answer-sub">%s</p>`, askSubHTML(res, m))
 	fmt.Fprint(w, `<div class="px-ask-reason-eyebrow">Reason</div><div class="px-ask-reason-grid">`)
 	metrics := res.Metrics
+	metricSource := "gateway evidence"
+	if !res.EvidenceAvailable {
+		metricSource = "resolution metadata"
+	}
 	if len(metrics) == 0 {
-		metrics = []intent.Metric{{Label: "Evidence links", Value: fmt.Sprintf("%d", len(res.Evidence))}, {Label: "Confidence", Value: fmt.Sprintf("%.0f%%", confidence*100)}, {Label: "Intent", Value: string(m.ID)}}
+		evidenceState := "Available"
+		if !res.EvidenceAvailable {
+			evidenceState = "Unavailable"
+		}
+		metrics = []intent.Metric{{Label: "Evidence state", Value: evidenceState}, {Label: "Routing confidence", Value: fmt.Sprintf("%.0f%%", confidence*100)}, {Label: "Intent", Value: string(m.ID)}}
 	}
 	for _, metric := range metrics {
-		fmt.Fprintf(w, `<div class="px-ask-reason"><span class="k">%s</span><span class="v tnum">%s</span><span class="compare">gateway-backed deterministic input</span></div>`, html.EscapeString(metric.Label), html.EscapeString(metric.Value))
+		fmt.Fprintf(w, `<div class="px-ask-reason"><span class="k">%s</span><span class="v tnum">%s</span><span class="compare">%s</span></div>`, html.EscapeString(metric.Label), html.EscapeString(metric.Value), html.EscapeString(metricSource))
 	}
 	fmt.Fprint(w, `</div>`)
-	fmt.Fprintf(w, `<div class="px-ask-threshold">Prism's rule: <b>%s</b>. Rule matched by <span class="mono">%s</span>. This answer was computed without an LLM.</div>`, html.EscapeString(ruleText(m)), html.EscapeString(firstNonEmptyAsk(m.Reason, string(m.ID))))
+	fmt.Fprintf(w, `<div class="px-ask-threshold">Prism's rule: <b>%s</b>. Route matched by <span class="mono">%s</span>. This route was selected without an LLM.</div>`, html.EscapeString(ruleText(m)), html.EscapeString(firstNonEmptyAsk(m.Reason, string(m.ID))))
 	if len(res.Evidence) > 0 {
 		fmt.Fprint(w, `<div class="px-ask-reason-eyebrow">Evidence</div><div class="px-ask-evidence-grid">`)
 		for _, e := range res.Evidence {
@@ -102,7 +118,11 @@ func renderAskAnswer(w http.ResponseWriter, m intent.Match, res intent.Result) {
 		}
 		fmt.Fprint(w, `</div>`)
 	}
-	fmt.Fprintf(w, `<div class="px-ask-foot"><div class="px-ask-confidence"><span class="k">Confidence</span><div class="meter"><span style="width: %.0f%%"></span></div><span class="val">%.0f%%</span></div><div class="px-ask-rule"><b>Deterministic rule</b> · <code>%s</code> · gateway source <code>obsrvr-gateway</code> · no LLM</div></div>`, confidence*100, confidence*100, html.EscapeString(string(m.ID)))
+	evidenceStatus := "gateway evidence available"
+	if !res.EvidenceAvailable {
+		evidenceStatus = "gateway evidence unavailable"
+	}
+	fmt.Fprintf(w, `<div class="px-ask-foot"><div class="px-ask-confidence"><span class="k">Routing confidence</span><div class="meter"><span style="width: %.0f%%"></span></div><span class="val">%.0f%%</span></div><div class="px-ask-rule"><b>Deterministic route</b> · <code>%s</code> · %s · no LLM</div></div>`, confidence*100, confidence*100, html.EscapeString(string(m.ID)), html.EscapeString(evidenceStatus))
 	fmt.Fprint(w, `</div></section>`)
 }
 
@@ -118,9 +138,13 @@ func renderAskNext(w http.ResponseWriter, res intent.Result) {
 }
 
 func renderAskSide(w http.ResponseWriter, m intent.Match, res intent.Result) {
-	fmt.Fprint(w, `<aside class="px-ask-side"><div class="px-ask-side-card"><h4>Supported questions</h4><ul class="px-ask-supported"><li>Is &lt;protocol&gt; busy?</li><li>Which contracts are expiring this week?</li><li>Are there failed transfers in the last hour?</li><li>Show USDC swaps today</li></ul><div class="px-ask-side-foot">Ask doesn't run an LLM. Every supported question maps to a deterministic intent handler.</div></div><div class="px-ask-side-card"><h4>This answer</h4>`)
+	fmt.Fprint(w, `<aside class="px-ask-side"><div class="px-ask-side-card"><h4>Supported questions</h4><ul class="px-ask-supported"><li>Is &lt;protocol&gt; busy?</li><li>Which contracts have the least TTL runway?</li><li>How active is XLM today?</li><li>Are any recent transactions failing?</li></ul><div class="px-ask-side-foot">Ask doesn't run an LLM. Every supported question maps to a deterministic intent handler.</div></div><div class="px-ask-side-card"><h4>This answer</h4>`)
 	fmt.Fprintf(w, `<div class="px-ask-side-mini"><span class="k">Intent</span><span class="v">%s</span></div>`, html.EscapeString(string(m.ID)))
-	fmt.Fprint(w, `<div class="px-ask-side-mini"><span class="k">Source</span><span class="v">gateway</span></div><div class="px-ask-side-mini"><span class="k">LLM</span><span class="v">none</span></div>`)
+	sourceState := "gateway available"
+	if !res.EvidenceAvailable {
+		sourceState = "gateway unavailable"
+	}
+	fmt.Fprintf(w, `<div class="px-ask-side-mini"><span class="k">Source</span><span class="v">%s</span></div><div class="px-ask-side-mini"><span class="k">LLM</span><span class="v">none</span></div>`, html.EscapeString(sourceState))
 	fmt.Fprintf(w, `<div class="px-ask-side-mini"><span class="k">Evidence</span><span class="v">%d links</span></div>`, len(res.Evidence))
 	fmt.Fprint(w, `</div></aside>`)
 }
@@ -138,7 +162,25 @@ func askIntentChips(m intent.Match) []askChip {
 	if t := m.Slots["time"]; t != "" {
 		out = append(out, askChip{label: "window · " + t, muted: true})
 	}
+	if t := m.Slots["requested_time"]; t != "" {
+		out = append(out, askChip{label: "requested · " + t, muted: true})
+	}
+	if window := m.Slots["window"]; window != "" {
+		out = append(out, askChip{label: "evidence · " + window, muted: true})
+	}
+	for _, key := range []string{"asset", "contract_id", "tx_hash"} {
+		if value := m.Slots[key]; value != "" {
+			out = append(out, askChip{label: key + " · " + compactAskSlot(value), muted: key != "asset"})
+		}
+	}
 	return out
+}
+
+func compactAskSlot(value string) string {
+	if len(value) <= 18 {
+		return value
+	}
+	return value[:9] + "…" + value[len(value)-6:]
 }
 
 func chipClass(muted bool) string {
@@ -166,24 +208,71 @@ func intentTitle(m intent.Match) string {
 		return "Protocol activity check"
 	case intent.ExpiringContracts:
 		return "Contract TTL risk check"
+	case intent.TransactionFailure:
+		return "Transaction failure evidence"
+	case intent.ContractActivity:
+		return "Contract activity check"
+	case intent.AssetActivity:
+		return "Asset activity check"
+	case intent.RecentFailures:
+		return "Recent failure check"
 	default:
 		return "Question intent"
 	}
 }
 func answerTone(m intent.Match, res intent.Result) string {
-	if strings.Contains(strings.ToLower(res.Answer), "busy") || m.ID == intent.ExpiringContracts {
+	if !res.EvidenceAvailable {
+		return ""
+	}
+	if strings.Contains(strings.ToLower(res.Answer), "busy") || m.ID == intent.ExpiringContracts || m.ID == intent.TransactionFailure || m.ID == intent.RecentFailures {
 		return "warn"
 	}
 	return ""
 }
 func ruleText(m intent.Match) string {
 	if m.ID == intent.ProtocolBusy {
-		return "protocol activity is busy when its computed activity score exceeds the configured threshold"
+		return "protocol activity is busy when its last-24-hour call count exceeds the configured threshold"
 	}
 	if m.ID == intent.ExpiringContracts {
 		return "contracts are included when gateway TTL data flags them as needing attention"
 	}
+	if m.ID == intent.TransactionFailure {
+		return "a transaction hash and failure wording must resolve to structured transaction outcome evidence or disclose a receipt-only fallback"
+	}
+	if m.ID == intent.ContractActivity {
+		return "a contract identifier and activity wording must resolve to contract analytics"
+	}
+	if m.ID == intent.AssetActivity {
+		return "a known asset and activity question must resolve to its 24-hour asset record"
+	}
+	if m.ID == intent.RecentFailures {
+		return "recent failures are counted only inside the returned decoded-transaction collection"
+	}
 	return "the query must match a registered deterministic intent"
+}
+
+func askFallbackActions(m intent.Match) []intent.ActionLink {
+	switch m.ID {
+	case intent.TransactionFailure:
+		if hash := m.Slots["tx_hash"]; hash != "" {
+			return []intent.ActionLink{{Label: "Open transaction", Href: "/v2/tx/" + url.PathEscape(hash)}}
+		}
+	case intent.ContractActivity:
+		if contractID := m.Slots["contract_id"]; contractID != "" {
+			return []intent.ActionLink{{Label: "Open contract", Href: "/v2/contract/" + url.PathEscape(contractID)}}
+		}
+	case intent.AssetActivity:
+		if asset := m.Slots["asset"]; asset != "" {
+			return []intent.ActionLink{{Label: "Open asset", Href: "/v2/assets/" + url.PathEscape(asset)}}
+		}
+	case intent.RecentFailures:
+		return []intent.ActionLink{{Label: "Explore failed activity", Href: "/v2/explore?status=failed"}}
+	case intent.ExpiringContracts:
+		return []intent.ActionLink{{Label: "Explore contracts", Href: "/v2/explore?scope=soroban"}}
+	case intent.ProtocolBusy:
+		return []intent.ActionLink{{Label: "Explore recent contract activity", Href: "/v2/explore?scope=soroban"}}
+	}
+	return nil
 }
 func evidenceKind(href string) string {
 	if strings.Contains(href, "contract") {
@@ -191,6 +280,12 @@ func evidenceKind(href string) string {
 	}
 	if strings.Contains(href, "ledger") {
 		return "ledger"
+	}
+	if strings.Contains(href, "/tx/") {
+		return "transaction"
+	}
+	if strings.Contains(href, "asset") {
+		return "asset"
 	}
 	return "explore"
 }
@@ -200,6 +295,12 @@ func evidenceInitial(href string) string {
 	}
 	if strings.Contains(href, "ledger") {
 		return "L"
+	}
+	if strings.Contains(href, "/tx/") {
+		return "T"
+	}
+	if strings.Contains(href, "asset") {
+		return "A"
 	}
 	return "E"
 }
@@ -221,11 +322,11 @@ func askHeadlineHTML(answer string, m intent.Match) string {
 }
 
 func askSubHTML(res intent.Result, m intent.Match) string {
-	if len(res.Metrics) > 0 {
-		return `The reason grid below shows the deterministic inputs Prism used. The evidence chips link to raw gateway-backed data.`
-	}
 	if len(res.Warnings) > 0 {
 		return html.EscapeString(strings.Join(res.Warnings, " "))
+	}
+	if len(res.Metrics) > 0 {
+		return `The reason grid below shows the deterministic inputs Prism used. The evidence chips link to raw gateway-backed data.`
 	}
 	return `This answer is templated from a registered intent and linked evidence. It is not generated by a language model.`
 }

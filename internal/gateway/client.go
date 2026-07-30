@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -22,6 +24,8 @@ const (
 	TTLLedgerFeedFailure  = 30 * time.Second
 	TTLTxReceiptFailure   = 2 * time.Minute
 	TTLAccountFailure     = 15 * time.Second
+	TTLSearchReady        = 30 * time.Second
+	TTLSearchImprovable   = 5 * time.Second
 	TTLImmutable          = 24 * time.Hour
 	TTLAccount            = 30 * time.Second
 	TTLContracts          = 2 * time.Minute
@@ -690,6 +694,58 @@ func (c *Client) GetTransactionReceipt(ctx context.Context, network string, hash
 	return &result, nil
 }
 
+// GetTransactionOutcome returns the frozen transaction_outcome_v1 packet. A
+// ready packet with only complete optional components is immutable for Prism's
+// purposes. Partial packets use a short cache because diagnostics, receipt, or
+// call-graph projections may catch up after the transaction result is known.
+type txOutcomeNegativeEntry struct{ err error }
+
+func (c *Client) GetTransactionOutcome(ctx context.Context, network string, hash string) (*TransactionOutcome, error) {
+	cacheKey := network + ":tx_outcome:" + hash
+	if v, ok := c.cache.Get(cacheKey); ok {
+		if neg, isNeg := v.(*txOutcomeNegativeEntry); isNeg {
+			return nil, neg.err
+		}
+		return v.(*TransactionOutcome), nil
+	}
+
+	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/tx/"+hash+"/failure-evidence"))
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == http.StatusNotFound {
+			c.cache.Set(cacheKey, &txOutcomeNegativeEntry{err: err}, TTLTxReceiptFailure)
+		}
+		return nil, err
+	}
+
+	var result TransactionOutcome
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("gateway: parsing transaction outcome: %w", err)
+	}
+	if result.EvidenceVersion != "transaction_outcome_v1" {
+		return nil, fmt.Errorf("gateway: unsupported transaction outcome evidence version %q", result.EvidenceVersion)
+	}
+
+	ttl := TTLImmutable
+	if transactionOutcomeMayImprove(result) {
+		ttl = TTLContracts
+	}
+	c.cache.Set(cacheKey, &result, ttl)
+	return &result, nil
+}
+
+func transactionOutcomeMayImprove(outcome TransactionOutcome) bool {
+	if outcome.Status != "ready" {
+		return true
+	}
+	for _, component := range outcome.Components {
+		switch component.Status {
+		case "partial", "stale", "unavailable":
+			return true
+		}
+	}
+	return false
+}
+
 // GetTransactionFull returns the full decoded transaction with operations, events, and call graph.
 func (c *Client) GetTransactionFull(ctx context.Context, network string, hash string) (*TxFull, error) {
 	cacheKey := network + ":tx_full:" + hash
@@ -1301,19 +1357,63 @@ func (c *Client) GetTransfersFiltered(ctx context.Context, network string, filte
 	return resp.Transfers, nil
 }
 
-// Search performs a unified search across accounts, contracts, transactions, ledgers, and assets.
+// Search performs a bounded unified search using the default API limit.
 func (c *Client) Search(ctx context.Context, network string, query string) (*SearchResults, error) {
+	return c.SearchEntities(ctx, network, query, SearchOptions{})
+}
+
+// SearchOptions controls the bounded entity search request. The Query API
+// validates the public maximum and supported entity kinds.
+type SearchOptions struct {
+	Limit int
+	Types []string
+}
+
+// SearchEntities returns the frozen entity_search_v1 evidence packet. Typed
+// unavailable packets are returned as data so consumers can distinguish an
+// index outage from an authoritative empty result.
+func (c *Client) SearchEntities(ctx context.Context, network string, query string, options SearchOptions) (*SearchResults, error) {
 	params := url.Values{"q": {query}}
+	if options.Limit > 0 {
+		params.Set("limit", fmt.Sprintf("%d", options.Limit))
+	}
+	for _, entityType := range options.Types {
+		if entityType = strings.TrimSpace(entityType); entityType != "" {
+			params.Add("type", entityType)
+		}
+	}
+	cacheKey := fmt.Sprintf("%s:entity_search:%s", network, params.Encode())
+	if value, ok := c.cache.Get(cacheKey); ok {
+		return value.(*SearchResults), nil
+	}
+
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/silver/search")+"?"+params.Encode())
 	if err != nil {
-		return nil, err
+		apiErr, ok := err.(*APIError)
+		if !ok || apiErr.StatusCode != http.StatusServiceUnavailable {
+			return nil, err
+		}
+		body = []byte(apiErr.Message)
 	}
 
 	var result SearchResults
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("gateway: parsing search: %w", err)
+		return nil, fmt.Errorf("gateway: parsing entity search: %w", err)
+	}
+	if result.EvidenceVersion != "entity_search_v1" {
+		return nil, fmt.Errorf("gateway: unsupported entity search evidence version %q", result.EvidenceVersion)
+	}
+	switch result.Status {
+	case "ready", "partial", "unavailable":
+	default:
+		return nil, fmt.Errorf("gateway: unsupported entity search status %q", result.Status)
 	}
 
+	ttl := TTLSearchReady
+	if result.Status != "ready" {
+		ttl = TTLSearchImprovable
+	}
+	c.cache.Set(cacheKey, &result, ttl)
 	return &result, nil
 }
 
@@ -1889,8 +1989,8 @@ func (c *Client) GetTransactionEffects(ctx context.Context, network string, hash
 // GetExplorerEvents returns enriched explorer events with classification and pagination.
 func (c *Client) GetExplorerEvents(ctx context.Context, network string, p ExplorerEventsParams) (*ExplorerEventsResponse, error) {
 	params := url.Values{}
-	if p.Type != "" {
-		params.Set("type", p.Type)
+	if len(p.Types) > 0 {
+		params.Set("type", strings.Join(p.Types, ","))
 	}
 	if p.Tab != "" {
 		params.Set("tab", p.Tab)
@@ -1913,6 +2013,24 @@ func (c *Client) GetExplorerEvents(ctx context.Context, network string, p Explor
 	if p.EndLedger > 0 {
 		params.Set("end_ledger", fmt.Sprintf("%d", p.EndLedger))
 	}
+	if !p.StartTime.IsZero() {
+		params.Set("start_time", p.StartTime.UTC().Format(time.RFC3339))
+	}
+	if !p.EndTime.IsZero() {
+		params.Set("end_time", p.EndTime.UTC().Format(time.RFC3339))
+	}
+	if p.Successful != nil {
+		params.Set("successful", strconv.FormatBool(*p.Successful))
+	}
+	if p.Function != "" {
+		params.Set("function", p.Function)
+	}
+	if p.Asset != "" {
+		params.Set("asset", p.Asset)
+	}
+	if p.Actor != "" {
+		params.Set("actor", p.Actor)
+	}
 	if p.Limit > 0 {
 		params.Set("limit", fmt.Sprintf("%d", p.Limit))
 	}
@@ -1930,14 +2048,30 @@ func (c *Client) GetExplorerEvents(ctx context.Context, network string, p Explor
 
 	body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/explorer/events")+"?"+params.Encode())
 	if err != nil {
-		return nil, err
+		apiErr, ok := err.(*APIError)
+		if !ok || apiErr.StatusCode != http.StatusServiceUnavailable {
+			return nil, err
+		}
+		body = []byte(apiErr.Message)
 	}
 
 	var result ExplorerEventsResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("gateway: parsing explorer events: %w", err)
 	}
+	if result.EvidenceVersion != "explorer_events_v1" {
+		return nil, fmt.Errorf("gateway: unsupported explorer events evidence version %q", result.EvidenceVersion)
+	}
+	switch result.Status {
+	case "ready", "empty", "partial", "unavailable":
+	default:
+		return nil, fmt.Errorf("gateway: unsupported explorer events status %q", result.Status)
+	}
 
-	c.cache.Set(cacheKey, &result, TTLRecentList)
+	ttl := TTLRecentList
+	if result.Status == "partial" || result.Status == "unavailable" {
+		ttl = TTLSearchImprovable
+	}
+	c.cache.Set(cacheKey, &result, ttl)
 	return &result, nil
 }

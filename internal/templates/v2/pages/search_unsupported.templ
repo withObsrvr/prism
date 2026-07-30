@@ -1,0 +1,39 @@
+package pagesv2
+
+import (
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
+)
+
+templ SearchUnsupported(data vmv2.SearchUnsupportedData) {
+	@layoutsv2.Base("Search needs a supported route: Prism") {
+		@componentsv2.MainHeader("", data.Header.Network) {}
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Home", Href: "/v2/home"}, {Label: "Search"}})
+		<main class="ph-search-unsupported" id="main-content">
+			<section class="ph-search-unsupported-intro" aria-labelledby="ph-search-unsupported-title">
+				<span class="ph-home-kicker">Search resolution</span>
+				<h1 id="ph-search-unsupported-title">Prism does not have a safe answer for that yet.</h1>
+				<blockquote>{ data.Query }</blockquote>
+				<p>{ data.Interpretation }</p>
+				<div class="ph-search-resolution-rule"><span>Resolution rule</span><code>{ data.RuleID }</code></div>
+			</section>
+			<section class="ph-search-supported" aria-labelledby="ph-search-supported-title">
+				<div class="ph-search-supported-copy">
+					<span class="ph-home-kicker">Supported routes</span>
+					<h2 id="ph-search-supported-title">Try a query Prism can prove.</h2>
+					<p>Prism opens exact identifiers, explores structured recent activity, and answers registered deterministic questions. Unsupported prose is never presented as a semantic answer.</p>
+				</div>
+				<div class="ph-search-supported-list">
+					for _, example := range data.Examples {
+						<a href={ templ.SafeURL(example.Href) }><span>{ example.Label }</span><strong>Try query</strong></a>
+					}
+				</div>
+			</section>
+			<form class="ph-search-retry" action="/search/submit" method="GET">
+				<label for="ph-search-retry-input">Search again</label>
+				<div><input id="ph-search-retry-input" type="search" name="q" value={ data.Query } autocomplete="off"/><button type="submit">Resolve search</button></div>
+			</form>
+		</main>
+	}
+}

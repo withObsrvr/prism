@@ -10,6 +10,7 @@ func TestClassify(t *testing.T) {
 		{"tx hash", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ClassTxHash},
 		{"account", "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ClassAccount},
 		{"contract", "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ClassContract},
+		{"classic asset", "USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ClassAsset},
 		{"ledger", "12345", ClassLedger},
 		{"federation", "alice*example.com", ClassFederation},
 		{"unknown", "USDC swaps", ClassUnknown},
@@ -21,6 +22,17 @@ func TestClassify(t *testing.T) {
 				t.Fatalf("Classify(%q)=%s want %s", tt.in, got.Type, tt.typ)
 			}
 		})
+	}
+}
+
+func TestExtractIdentifierPrefersClassicAssetOverEmbeddedIssuer(t *testing.T) {
+	asset := "USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	got := ExtractIdentifier("open asset " + asset)
+	if got.Type != ClassAsset || got.Value != asset {
+		t.Fatalf("ExtractIdentifier = %+v, want classic asset", got)
+	}
+	if got.URL() != "/v2/assets/USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" {
+		t.Fatalf("asset URL = %q", got.URL())
 	}
 }
 

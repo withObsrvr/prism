@@ -7,6 +7,8 @@ type ExploreData struct {
 	Summary      ExploreSummary
 	Presets      []ExplorePreset
 	Rows         []ExploreRow
+	State        string
+	Warnings     []string
 	SourceLive   bool
 	ErrorMessage string
 	HasMore      bool
@@ -14,22 +16,27 @@ type ExploreData struct {
 	NextHref     string
 	LiveHref     string
 	Loading      bool
+	DemoData     bool
 }
 
 type ExploreHeaderData struct {
 	Network      string
 	LedgerNumber string
 	AgeLabel     string
+	Status       string
 }
 
 type ExploreFilters struct {
-	Scope  string
-	Topic  string
-	Fn     string
-	Asset  string
-	Time   string
-	Status string
-	Q      string
+	Scope       string
+	Topic       string
+	Fn          string
+	Asset       string
+	Actor       string
+	Time        string
+	Status      string
+	StartLedger string
+	EndLedger   string
+	Q           string
 }
 
 type ExploreSummary struct {
@@ -39,6 +46,7 @@ type ExploreSummary struct {
 	LedgerRange   string
 	EventsPerSec  string
 	EvidenceLabel string
+	CountCapped   bool
 }
 
 type ExplorePreset struct {
