@@ -518,6 +518,7 @@ type Operation struct {
 
 type OperationsResponse struct {
 	Count      int         `json:"count"`
+	HasMore    bool        `json:"has_more"`
 	Operations []Operation `json:"operations"`
 }
 

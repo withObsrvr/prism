@@ -41,7 +41,7 @@ templ LedgerTxs(data pages.LedgerDetailData) {
 						<div class="flex flex-col">
 							<a href={ templ.SafeURL("/tx/" + tx.Hash) } class="font-mono text-xs text-text-primary hover:text-violet-600">{ tx.ShortHash }</a>
 							<div class="mt-0.5">
-								@components.TypeBadge(tx.OpType, tx.OpColor)
+								@components.TypeBadge(tx.OpType, ledgerTxBadgeColor(tx.Family))
 							</div>
 						</div>
 					</div>
@@ -160,4 +160,26 @@ templ LedgerSoroban(data pages.LedgerDetailData) {
 			</div>
 		</div>
 	</div>
+}
+
+// ledgerTxBadgeColor maps an operation family onto one of TypeBadge's colour
+// names. TypeBadge is shared with other pages, so the family vocabulary is
+// translated here rather than pushed into the component.
+func ledgerTxBadgeColor(family string) string {
+	switch family {
+	case "contract":
+		return "violet"
+	case "transfer":
+		return "blue"
+	case "market":
+		return "cyan"
+	case "controls":
+		return "amber"
+	case "agent":
+		return "red"
+	case "revoke":
+		return "red"
+	default:
+		return "gray"
+	}
 }

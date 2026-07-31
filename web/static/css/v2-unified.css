@@ -3733,6 +3733,29 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   --ph-amber: oklch(48.5% 0.09 78);
   --ph-green: oklch(47.2% 0.094 149);
   --ph-accent-ink: oklch(48% 0.155 42);
+  /* ---- Brand palette, sampled from the Prism social artwork ----------------
+     These are the literal marketing colours. They sit at L 62-74% as an equal
+     weight / different hue set, built for large display numerals on the dark
+     card. At small label sizes they carry white text at only 2.3-3.4:1, below
+     AA, so they are NOT used as primary segment colours — they appear as the
+     tier-2 shade, where the label is ink and they measure 5.0-7.6:1.
+     The brand's six colours are really five hues: gold (83) sits 4 degrees
+     from classic (87), differing in chroma and lightness rather than hue. */
+  --ph-brand-calls: #9b7bd8;   /* oklch(65.2% 0.138 298) */
+  --ph-brand-lzk: #3f8fbf;     /* oklch(62.1% 0.106 238) */
+  --ph-brand-swaps: #1fa098;   /* oklch(63.9% 0.105 188) */
+  --ph-brand-classic: #a89770; /* oklch(68.2% 0.057 87)  */
+  --ph-brand-gold: #d4a028;    /* oklch(73.6% 0.140 83)  */
+  --ph-brand-agents: #e27160;  /* oklch(67.7% 0.144 30)  */
+  --ph-brand-ink: #15151a;     /* dark card background   */
+
+  /* Revocation has no brand anchor — the brand supplies five hues and there are
+     six chromatic families. Crimson sits 28 degrees off agents and 0.09 darker,
+     which holds them apart (dE 0.123). */
+  --ph-crimson: oklch(38% 0.155 358);
+  /* Neutral. Dark and near-achromatic so it separates from the warm families
+     (nearest is controls at dE 0.097) and carries a white label at 4.8:1. */
+  --ph-other: oklch(54% 0.008 80);
   --ph-ink-hover: oklch(15.5% 0.014 67);
   --ph-on-ink: oklch(98.4% 0.006 78);
 
@@ -4288,10 +4311,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   gap: 6px;
   position: relative;
   cursor: default;
-  color: var(--ph-on-ink);
-  text-shadow: 0 1px 2px rgba(31,27,22,0.18);
   overflow: hidden;
   transition: filter 160ms;
+  /* Family classes below supply --seg; the fallback keeps an unrecognised
+     family from rendering as a transparent gap in the bar. The label colour
+     follows the background rather than being fixed, so the palette can hold
+     light families (coral) alongside dark ones. */
+  background: var(--seg, var(--ph-other));
+  color: var(--seg-text, var(--ph-on-ink));
+  text-shadow: var(--seg-shadow, 0 1px 2px rgba(31,27,22,0.18));
 }
 .px-lg-comp-seg:hover { filter: brightness(1.08); }
 .px-lg-comp-seg::after {
@@ -4316,17 +4344,51 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.s-swap { background: var(--ph-violet); }
-.s-transfer { background: var(--ph-teal); }
-.s-lending { background: var(--ph-amber); }
-.s-classic { background: #5C5C58; }
-.s-events { background: var(--ph-accent-ink); }
-.s-other { background: var(--ph-text-3); }
+/* Operation families: one hue per family, so a segment's colour is a property
+   of what the operation does rather than where it landed in the bar. Stellar
+   has 29 operation types and a categorical palette stops reading past ~7, so
+   types collapse into families instead of the palette growing. */
+/* Each family anchors on a brand hue. --seg is that hue darkened into the app's
+   working band so the white segment label clears AA; --seg-t2 is the literal
+   brand colour, which the tier-2 rule uses verbatim. Families with no brand
+   anchor omit --seg-t2 and fall back to the computed ramp. */
+.s-contract { --seg: oklch(44% 0.143 298); --seg-t2: var(--ph-brand-calls); }
+.s-transfer { --seg: oklch(40% 0.090 238); --seg-t2: var(--ph-brand-lzk); }
+.s-market { --seg: oklch(48% 0.085 188); --seg-t2: var(--ph-brand-swaps); }
+.s-controls { --seg: oklch(47% 0.075 87); --seg-t2: var(--ph-brand-classic); }
+.s-agent { --seg: oklch(47% 0.150 30); --seg-t2: var(--ph-brand-agents); }
+.s-revoke { --seg: var(--ph-crimson); }
+.s-other { --seg: var(--ph-other); }
+
+/* Second and third most common type within a family: same hue, raised lightness
+   and softened chroma.
+   The ramp must not mix toward another colour. color-mix(in oklch, ...) toward
+   the warm cream rotates hue along the shorter arc, which pushed transfer's
+   teal (218) to 155 — that is trust's green — and contract's violet to pink.
+   Relative colour syntax holds `h` fixed and moves only l and c, so a family
+   can never ramp into a neighbour's hue. Lightness is capped so pale tiers stay
+   distinguishable from the page background.
+   Guarded by @supports: without it, tiers keep the full family colour and the
+   white label, which is legible even though the ramp is lost. */
+@supports (background: oklch(from red l c h)) {
+  .px-lg-comp-seg.tier-2,
+  .px-lg-comp-seg.tier-3 { --seg-text: var(--ph-text); --seg-shadow: none; }
+  /* Tier 2 is the literal brand colour where the family has one, so the
+     marketing palette appears in-product one step into every family ramp. */
+  .px-lg-comp-seg.tier-2 { background: var(--seg-t2, oklch(from var(--seg) calc(min(0.78, l + 0.26)) calc(c * 0.72) h)); }
+  .px-lg-comp-seg.tier-3 { background: oklch(from var(--seg) calc(min(0.88, l + 0.42)) calc(c * 0.48) h); }
+  /* The base overlay darkens for white text; tiers carry ink text instead. */
+  .px-lg-comp-seg.tier-2::after,
+  .px-lg-comp-seg.tier-3::after {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ph-on-ink) 30%, transparent), rgba(31,27,22,0.05));
+  }
+}
 
 .px-lg-comp-legend {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px 24px;
+  margin-top: 14px;
 }
 .px-lg-leg {
   display: flex; align-items: center; gap: 8px;
@@ -4337,12 +4399,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   border-radius: 2px;
   flex-shrink: 0;
 }
-.px-lg-leg .dot.s-swap { background: var(--ph-violet); }
-.px-lg-leg .dot.s-transfer { background: var(--ph-teal); }
-.px-lg-leg .dot.s-lending { background: var(--ph-amber); }
-.px-lg-leg .dot.s-classic { background: #5C5C58; }
-.px-lg-leg .dot.s-events { background: var(--ph-accent-ink); }
-.px-lg-leg .dot.s-other { background: var(--ph-text-3); }
+.px-lg-leg .dot { background: var(--seg, var(--ph-other)); }
 .px-lg-leg .k { color: var(--ph-text-2); flex: 1; }
 .px-lg-leg .v { font-size: 12px; color: var(--ph-text); font-weight: 500; }
 
@@ -4532,8 +4589,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .px-lg-spot.events .px-lg-spot-ic { background: var(--ph-violet); }
 .px-lg-spot.state .px-lg-spot-ic { background: var(--ph-teal); }
 
-.px-lg-spot.agent { background: color-mix(in srgb, var(--ph-violet) 7%, var(--ph-surf)); border-color: color-mix(in srgb, var(--ph-violet) 24%, var(--ph-border)); }
-.px-lg-spot.agent .px-lg-spot-ic { background: var(--ph-violet); }
+/* Agent payments carry the brand coral. This card previously used violet, which
+   is the contract-call colour — agent activity is a classification layered over
+   contract calls, not the same thing, and the shared hue hid that. Coral is the
+   family colour reserved for agents; nothing else on the page uses it, because
+   x402 is not a Stellar operation type and so never reaches the op breakdown. */
+.px-lg-spot.agent { background: color-mix(in srgb, var(--ph-brand-agents) 9%, var(--ph-surf)); border-color: color-mix(in srgb, var(--ph-brand-agents) 34%, var(--ph-border)); }
+.px-lg-spot.agent .px-lg-spot-ic { background: oklch(47% 0.150 30); }
 .px-lg-spot.agent .px-lg-spot-head { justify-content: flex-start; }
 .px-lg-spot-x402 {
   margin-left: auto;
@@ -4541,8 +4603,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--ph-violet);
-  background: rgba(94, 79, 168, 0.12);
+  color: oklch(43% 0.150 30);
+  background: color-mix(in srgb, var(--ph-brand-agents) 18%, transparent);
   padding: 3px 7px;
   border-radius: 4px;
 }
