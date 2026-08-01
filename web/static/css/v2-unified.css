@@ -754,6 +754,127 @@ a { color: inherit; text-decoration: none; }
 .ph-insight-list {
   border-top: 1px solid var(--ph-border-strong);
 }
+.ph-home-insights.has-no-cards { padding-bottom: 21px; }
+.ph-insight-zero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 20px;
+  min-height: 58px;
+  padding: 11px 0 12px;
+  border-top: 1px solid var(--ph-border-strong);
+  border-bottom: 1px solid var(--ph-border);
+}
+.ph-insight-zero > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px 14px;
+  min-width: 0;
+}
+.ph-insight-zero strong {
+  color: var(--ph-text);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.ph-insight-zero span {
+  color: var(--ph-text-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ph-insight-zero-result {
+  color: var(--ph-green-ink, var(--ph-text-2)) !important;
+  font-family: var(--ph-ff-mono);
+  font-size: 10px !important;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ph-insight-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  margin: 0;
+  border-bottom: 1px solid var(--ph-border);
+}
+.ph-insight-check {
+  min-width: 0;
+  padding: 11px 14px 12px;
+  border-right: 1px solid var(--ph-border);
+}
+.ph-insight-check:first-child { padding-left: 0; }
+.ph-insight-check:last-child { border-right: 0; }
+.ph-insight-check dt {
+  margin: 0 0 4px;
+  color: var(--ph-text-3);
+  font-family: var(--ph-ff-mono);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.ph-insight-check dd {
+  margin: 0;
+  color: var(--ph-text);
+  font-family: var(--ph-ff-mono);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.ph-insight-check small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ph-text-3);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.ph-insight-check.is-partial dd,
+.ph-insight-check.is-unavailable dd { color: var(--ph-amber-ink, var(--ph-text-2)); }
+.ph-insight-checks.is-limited { background: color-mix(in oklch, var(--ph-amber) 4%, transparent); }
+.ph-insight-recent {
+  display: flex;
+  align-items: baseline;
+  gap: 8px 12px;
+  min-height: 35px;
+  padding: 8px 0 0;
+  color: var(--ph-text-3);
+  font-size: 10px;
+}
+.ph-insight-recent > span {
+  font-family: var(--ph-ff-mono);
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.ph-insight-recent a,
+.ph-insight-recent strong { color: var(--ph-text-2); font-size: 11px; font-weight: 600; }
+.ph-insight-recent a:hover { color: var(--ph-accent-ink); }
+.ph-insight-recent small { margin-left: auto; color: var(--ph-text-3); }
+.ph-insight-zero.is-delayed strong { white-space: normal; }
+.ph-insight-zero .ph-inline-retry {
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+.ph-insight-zero-detail {
+  width: fit-content;
+  max-width: 72ch;
+  margin-top: 6px;
+  color: var(--ph-text-3);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.ph-insight-zero-detail summary {
+  min-height: 24px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.ph-insight-zero-detail span { display: block; padding: 1px 0 1px 14px; }
+.ph-insight-zero-detail summary:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--ph-accent-ink) 22%, transparent);
+  outline-offset: 2px;
+}
 .ph-insight {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(330px, .65fr);
@@ -784,6 +905,7 @@ a { color: inherit; text-decoration: none; }
 .ph-signal-dot.is-critical { background: var(--ph-red); }
 .ph-signal-dot.is-signal { background: var(--ph-violet); }
 .ph-signal-dot.is-info { background: var(--ph-cyan); }
+.ph-signal-dot.is-positive { background: var(--ph-green); }
 .ph-insight h3,
 .ph-evidence-row h3,
 .ph-leader-row h3,
@@ -1308,6 +1430,16 @@ a { color: inherit; text-decoration: none; }
   .ph-inline-state { align-items: flex-start; flex-direction: column; gap: 4px; }
   .ph-home-deferred > .ph-inline-state,
   .ph-evidence-status-slot > .ph-inline-state { align-items: baseline; flex-direction: row; gap: 7px; }
+  .ph-insight-zero { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .ph-insight-zero > div { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .ph-insight-zero strong { white-space: normal; }
+  .ph-insight-zero-result { justify-self: start; }
+  .ph-insight-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-insight-check { padding-left: 0; border-right: 0; border-bottom: 1px solid var(--ph-border); }
+  .ph-insight-check:nth-last-child(-n+2) { border-bottom: 0; }
+  .ph-insight-recent { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .ph-insight-recent small { margin-left: 0; }
+  .ph-insight-zero .ph-inline-retry { justify-self: start; }
   .ph-insight { padding: 18px 0 20px; }
   .ph-evidence-subject { grid-template-columns: 1fr; gap: 4px; }
   .ph-ttl-columns { grid-template-columns: minmax(0, 1fr) minmax(132px, max-content); }
@@ -4889,7 +5021,30 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   align-items: baseline;
   text-wrap: pretty;
 }
-.px-tx-actor { color: var(--ph-text); font-weight: 600; }
+/* Headline typography carries exactly three roles, and each role gets exactly
+   one treatment.
+
+   Evidence is anything a reader might copy, compare, or verify: addresses,
+   contract ids, function names, amounts. It is mono, per the Mono Evidence
+   Rule, which previously stopped at the headline: a sentence could render the
+   sender in serif and the recipient in mono, so two identical Stellar addresses
+   in one line looked like different kinds of thing.
+
+   Prose is Prism's own connective language. Serif italic, de-emphasised, so the
+   eye skips to the evidence.
+
+   The chip (padding, radius, background) is reserved for asset-denominated
+   values, where it encodes asset identity via .xlm / .usdc. It used to be
+   applied to addresses too, adding size and padding changes that signalled
+   nothing. */
+.px-tx-actor,
+.px-tx-ev {
+  font-family: var(--ph-ff-mono);
+  font-size: 0.82em;
+  color: var(--ph-text);
+}
+.px-tx-actor { font-weight: 600; }
+.px-tx-ev { font-weight: 500; }
 .px-tx-verb { color: var(--ph-text-3); font-style: italic; }
 .px-tx-amt {
   font-family: var(--ph-ff-mono);
@@ -4897,6 +5052,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   padding: 2px 12px;
   border-radius: 8px;
   font-weight: 500;
+  background: var(--ph-cream);
 }
 .px-tx-amt.usdc { background: rgba(39, 117, 202, 0.10); color: #1E5BA8; }
 .px-tx-amt.xlm { background: var(--ph-cream); color: var(--ph-text); }

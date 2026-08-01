@@ -1775,6 +1775,9 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			Contract:     gateway.ShortAddress(op.ContractID),
 			ContractFull: op.ContractID,
 			Function:     op.FunctionName,
+			TypeName:     op.TypeName,
+			Amount:       operationAmountXLM(op),
+			Asset:        operationAssetCode(op),
 		})
 	}
 
@@ -1793,9 +1796,11 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		}
 
 		dataHTML := ""
+		var evtAmount, evtAsset string
 		if evt.Amount != "" {
 			assetLabel, decimals := resolveEventAsset(evt)
 			amount := gateway.FormatTokenAmount(evt.Amount, decimals)
+			evtAmount, evtAsset = amount, assetLabel
 			display := amount
 			if assetLabel != "" {
 				display = amount + " " + assetLabel
@@ -1815,6 +1820,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			Contract:     gateway.ShortAddress(evt.ContractID),
 			ContractFull: evt.ContractID,
 			DataHTML:     dataHTML,
+			From:         gateway.ShortAddress(evt.From),
+			FromFull:     evt.From,
+			To:           gateway.ShortAddress(evt.To),
+			ToFull:       evt.To,
+			Amount:       evtAmount,
+			Asset:        evtAsset,
 		})
 	}
 
@@ -2298,6 +2309,27 @@ func linkifyBlockchainRefs(text string) string {
 }
 
 // buildOperationSummary produces a human-readable HTML summary for a single operation.
+// operationAmountXLM returns the operation's value as a formatted decimal, or
+// empty when the operation moves none. Amounts arrive in stroops.
+func operationAmountXLM(op gateway.DecodedOperation) string {
+	if strings.TrimSpace(op.Amount) == "" {
+		return ""
+	}
+	return gateway.FormatStroopsToXLM(op.Amount)
+}
+
+// operationAssetCode names the asset an operation's amount is denominated in.
+// An empty code on a value-bearing classic operation means native XLM.
+func operationAssetCode(op gateway.DecodedOperation) string {
+	if strings.TrimSpace(op.Amount) == "" {
+		return ""
+	}
+	if code := strings.TrimSpace(op.AssetCode); code != "" {
+		return code
+	}
+	return "XLM"
+}
+
 func buildOperationSummary(op gateway.DecodedOperation) string {
 	source := accountLinkHTML(op.SourceAccount, gateway.ShortAddress(op.SourceAccount), "font-mono text-text-primary text-emerald-700 hover:text-emerald-800")
 

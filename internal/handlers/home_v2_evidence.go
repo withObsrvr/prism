@@ -15,7 +15,11 @@ import (
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
-const homeV2EvidenceTimeout = 2 * time.Second
+// The Query API fails closed at 2.5 seconds. Leave a small transport margin so
+// Prism does not abandon a response that the API can still return on time.
+const homeV2EvidenceTimeout = 3 * time.Second
+
+const homeLastGoodWarning = "Prism could not refresh this evidence, so the last available snapshot is shown."
 
 func (h *Handlers) HomeV2Insights(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
@@ -88,41 +92,128 @@ func buildHomeInsightsData(summary *gateway.HomeSummaryResponse, network, pollUR
 		return unavailableHomeInsights(network, pollURL, "The seven-day comparison is temporarily unavailable.")
 	}
 	warnings := componentWarnings(summary, "insights", summary.Components.Insights)
-	for _, item := range summary.Insights {
+	evaluationValid := false
+	acceptCurrentInsights := true
+	if summary.InsightEvaluation != nil {
+		if err := insight.ValidateEvaluation(summary.InsightEvaluation); err != nil {
+			warnings = append(warnings, "The detector evaluation packet failed Prism's evidence checks.")
+		} else {
+			evaluationValid = true
+			data.WindowLabel = insightWindowLabel(summary.InsightEvaluation.WindowStart, summary.InsightEvaluation.WindowEnd)
+			for _, check := range insight.EvaluationChecks(summary.InsightEvaluation) {
+				data.Checks = append(data.Checks, vmv2.HomeInsightCheck{Label: check.Label, Value: check.Value, Detail: check.Detail, State: check.State})
+			}
+			if err := insight.ValidateEvaluationInsights(summary.InsightEvaluation, summary.Insights, summary.Components.Insights.Status); err != nil {
+				warnings = append(warnings, "The detector evaluation and current insight rows do not reconcile.")
+				evaluationValid = false
+				acceptCurrentInsights = false
+				data.Checks = nil
+			}
+		}
+	}
+	if summary.InsightDelivery != nil {
+		if err := insight.ValidateInsightDelivery(summary.InsightDelivery, summary.InsightEvaluation); err != nil {
+			warnings = append(warnings, "The insight delivery state failed Prism's evidence checks.")
+			evaluationValid = false
+			data.Checks = nil
+		} else if summary.InsightDelivery.Mode == "last_good" {
+			warnings = append(warnings, "This is the most recent retained comparison, not the current completed hour.")
+		} else if summary.InsightDelivery.Mode == "unavailable" {
+			warnings = append(warnings, "The API did not provide a current or retained comparison.")
+		}
+	}
+	currentInsights := summary.Insights
+	if !acceptCurrentInsights {
+		currentInsights = nil
+	}
+	for _, item := range currentInsights {
 		interpreted, err := insight.Interpret(item)
 		if err != nil {
 			warnings = append(warnings, "One insight packet failed Prism's evidence checks and was not narrated.")
 			continue
 		}
-		data.Cards = append(data.Cards, homeInsightCard(interpreted))
+		card := homeInsightCard(interpreted)
+		if (item.EvidenceVersion == insight.EvidenceVersionV1 || item.EvidenceVersion == insight.EvidenceVersionV2) && gateway.ValidHomeInsightID(item.InsightID) && !strings.Contains(pollURL, "mock=true") {
+			card.DetailHref = "/v2/insight/" + url.PathEscape(item.InsightID) + "?network=" + url.QueryEscape(network)
+		}
+		data.Cards = append(data.Cards, card)
 		if len(data.Cards) == 3 {
+			break
+		}
+	}
+	if len(data.Cards) == 0 && summary.RecentInsights != nil {
+		for _, item := range *summary.RecentInsights {
+			interpreted, err := insight.Interpret(item)
+			if err != nil || interpreted.Generic || !gateway.ValidHomeInsightID(item.InsightID) {
+				continue
+			}
+			data.RecentLabel = interpreted.Title
+			data.RecentTimeLabel = formatHomeEvidenceTime(item.UpdatedAt)
+			if !strings.Contains(pollURL, "mock=true") {
+				data.RecentDetailHref = "/v2/insight/" + url.PathEscape(item.InsightID) + "?network=" + url.QueryEscape(network)
+			}
 			break
 		}
 	}
 	data.Status = homeComponentStatus(summary.Components.Insights, len(data.Cards), warnings,
 		"No significant changes in the last completed hour.",
 		"The seven-day comparison is temporarily unavailable.")
+	if evaluationValid && len(data.Cards) == 0 && strings.EqualFold(summary.Components.Insights.Status, "partial") {
+		data.Status.State = vmv2.HomeSectionPartial
+		data.Status.Message = "Some detector evidence is incomplete; available comparisons are shown without claiming a quiet hour."
+		data.Status.Retryable = true
+	}
+	data.Status = applyHomeSummaryDeliveryStatus(data.Status, summary, len(data.Cards))
+	if summary.InsightDelivery != nil {
+		switch summary.InsightDelivery.Mode {
+		case "last_good":
+			data.Status.State = vmv2.HomeSectionStale
+			data.Status.Retryable = true
+		case "unavailable":
+			if len(data.Cards) == 0 {
+				data.Status.State = vmv2.HomeSectionUnavailable
+				data.Status.Retryable = true
+				data.Checks = nil
+			}
+		}
+	}
+	if !evaluationValid && len(data.Cards) == 0 && summary.InsightEvaluation != nil {
+		data.Status.State = vmv2.HomeSectionUnavailable
+		data.Status.Retryable = true
+	}
 	return data
 }
 
 func homeInsightCard(value insight.Interpretation) vmv2.HomeInsightCard {
+	subjectLabel := value.Subject.Label
+	identityDetail := value.Subject.IdentityDetail
+	if value.Subject.ID != "" && homeDisplayIsIdentifier(subjectLabel, value.Subject.ID) {
+		subjectLabel = shortHomeID(value.Subject.ID)
+		identityDetail = ""
+	}
 	card := vmv2.HomeInsightCard{
 		Title:           value.Title,
-		Summary:         value.Summary,
 		Detail:          value.Detail,
 		Tone:            value.Severity,
 		State:           value.Status,
 		WindowLabel:     value.WindowLabel,
 		ComparisonLabel: value.ComparisonLabel,
-		SubjectLabel:    value.Subject.Label,
+		SubjectLabel:    subjectLabel,
 		SubjectID:       value.Subject.ID,
 		SubjectHref:     value.Subject.Href,
-		IdentityDetail:  value.Subject.IdentityDetail,
+		IdentityDetail:  identityDetail,
 		EvidenceCount:   gateway.FormatNumber(value.EvidenceCount),
 		Caveats:         append([]string(nil), value.Caveats...),
 		AsOfLedger:      gateway.FormatNumber(value.Provenance.CompleteThroughLedger),
 		UpdatedLabel:    formatHomeEvidenceTime(value.Provenance.UpdatedAt),
 		Generic:         value.Generic,
+	}
+	// Supported homepage cards already expose the observed value, baseline, and
+	// ratio as comparable facts. Repeating those numbers in a paragraph makes
+	// the scan path slower. Unknown versions retain their generic summary because
+	// Prism cannot safely substitute the supported interpretation layout.
+	if value.Generic {
+		card.Summary = value.Summary
 	}
 	if value.RuleID != "" {
 		card.RuleLabel = value.RuleID
@@ -169,7 +260,11 @@ func buildHomeTTLData(summary *gateway.HomeSummaryResponse, network, pollURL str
 		remaining, known := remainingLedgerEvidence(contract, summary)
 		runway := "Expiration unavailable"
 		remainingLabel := ""
-		if known {
+		if summary.Delivery.UsedLastGood {
+			// A retained packet can safely preserve the absolute live-until ledger,
+			// but its relative countdown may already be wrong.
+			runway = "Availability may have changed"
+		} else if known {
 			runway = gateway.FormatNumber(remaining) + " ledgers left"
 			if remaining == 1 {
 				runway = "1 ledger left"
@@ -183,7 +278,7 @@ func buildHomeTTLData(summary *gateway.HomeSummaryResponse, network, pollURL str
 			name = contractLabel
 		}
 		detailParts := make([]string, 0, 3)
-		if contract.RemainingHuman != "" {
+		if contract.RemainingHuman != "" && !summary.Delivery.UsedLastGood {
 			detailParts = append(detailParts, contract.RemainingHuman+" at the serving estimate")
 		}
 		if contract.ExpiringEntryCount > 0 || contract.TrackedEntryCount > 0 {
@@ -192,13 +287,17 @@ func buildHomeTTLData(summary *gateway.HomeSummaryResponse, network, pollURL str
 		if len(contract.DurabilityClasses) > 0 {
 			detailParts = append(detailParts, strings.Join(contract.DurabilityClasses, " and ")+" storage")
 		}
+		tone := homeTTLTone(contract, remaining, known)
+		if summary.Delivery.UsedLastGood {
+			tone = "neutral"
+		}
 		data.Cards = append(data.Cards, vmv2.HomeTTLCard{
 			Name:             name,
 			ContractID:       contract.ContractID,
 			ContractLabel:    contractLabel,
 			ShowContractID:   showContractID,
 			Href:             "/v2/contract/" + url.PathEscape(contract.ContractID),
-			Tone:             homeTTLTone(contract, remaining, known),
+			Tone:             tone,
 			RunwayLabel:      runway,
 			RemainingLedgers: remainingLabel,
 			LiveUntilLedger:  formatOptionalLedger(contract.NearestLiveUntilLedger),
@@ -211,6 +310,7 @@ func buildHomeTTLData(summary *gateway.HomeSummaryResponse, network, pollURL str
 	data.Status = homeComponentStatus(summary.Components.TTLAttention, len(data.Cards), componentWarnings(summary, "ttl_attention", summary.Components.TTLAttention),
 		"No contracts are inside the current archival-attention window.",
 		"Contract archival evidence is temporarily unavailable.")
+	data.Status = applyHomeSummaryDeliveryStatus(data.Status, summary, len(data.Cards))
 	return data
 }
 
@@ -256,6 +356,7 @@ func buildHomeLeadersData(summary *gateway.HomeSummaryResponse, network, pollURL
 	data.Status = homeComponentStatus(summary.Components.Leaders, len(data.Cards), componentWarnings(summary, "leaders", summary.Components.Leaders),
 		"No contract calls were found in the completed 24-hour ranking window.",
 		"Contract ranking evidence is temporarily unavailable.")
+	data.Status = applyHomeSummaryDeliveryStatus(data.Status, summary, len(data.Cards))
 	return data
 }
 
@@ -276,6 +377,7 @@ func buildHomeUtilizationData(summary *gateway.HomeSummaryResponse, network, pol
 	data.Status = homeComponentStatus(summary.Components.Utilization, len(data.Metrics), componentWarnings(summary, "utilization", summary.Components.Utilization),
 		"No utilization measurements were emitted for the current serving ledger.",
 		"Ledger utilization evidence is temporarily unavailable.")
+	data.Status = applyHomeSummaryDeliveryStatus(data.Status, summary, len(data.Metrics))
 	return data
 }
 
@@ -434,7 +536,28 @@ func componentWarnings(summary *gateway.HomeSummaryResponse, componentName strin
 			warnings = append(warnings, humanizeHomeWarning(detail.Code))
 		}
 	}
+	if summary.Delivery.UsedLastGood {
+		warnings = append(warnings, homeLastGoodWarning)
+	}
 	return warnings
+}
+
+func applyHomeSummaryDeliveryStatus(status vmv2.HomeSectionStatus, summary *gateway.HomeSummaryResponse, itemCount int) vmv2.HomeSectionStatus {
+	if summary == nil || !summary.Delivery.UsedLastGood {
+		return status
+	}
+	status.Retryable = true
+	if itemCount == 0 {
+		// An old empty result cannot establish that the section is still empty.
+		status.State = vmv2.HomeSectionUnavailable
+		status.Message = "Prism could not refresh this evidence. The last snapshot did not contain evidence that can be presented as current."
+		return status
+	}
+	if status.State == vmv2.HomeSectionReady || status.State == vmv2.HomeSectionPartial || status.State == vmv2.HomeSectionStale {
+		status.State = vmv2.HomeSectionStale
+		status.Message = "Showing the last available snapshot while Prism reconnects."
+	}
+	return status
 }
 
 func unavailableHomeInsights(network, pollURL, message string) vmv2.HomeInsightsData {

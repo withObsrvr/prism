@@ -42,8 +42,19 @@ func TestClassicMultiOperationHeroRendersForFullPageAndHTMX(t *testing.T) {
 			if strings.Contains(html, "Called contract") || strings.Contains(html, "What was called") {
 				t.Fatalf("classic transaction rendered contract-call copy: %s", html)
 			}
-			if name != "detail fragment" && !strings.Contains(html, "14 operations") {
-				t.Fatalf("render missing operation count: %s", html)
+			if name != "detail fragment" {
+				// The headline no longer restates the count; it leads with the
+				// actor and what they did. The count still has to reach the page,
+				// via the Operations chip.
+				if !strings.Contains(html, `<span class="k">Operations</span><span class="v mono">14</span>`) {
+					t.Fatalf("render missing operation count chip: %s", html)
+				}
+				if strings.Contains(html, "submitted 14 operations") {
+					t.Fatalf("headline still restates the operation count: %s", html)
+				}
+				if !strings.Contains(html, "GABC...WXYZ") {
+					t.Fatalf("headline lost the actor: %s", html)
+				}
 			}
 			if name == "detail fragment" {
 				if !strings.Contains(html, "Manage Buy Offer") || !strings.Contains(html, "Manage Sell Offer") {
@@ -175,12 +186,22 @@ func TestGenericCallHeroUsesLayeredCardStructure(t *testing.T) {
 	for _, want := range []string{
 		`px-hero-generic-head`,
 		`class="px-hero-summary-copy"`,
-		`class="px-tx-flow-foot"`,
 		"What was called",
-		"0.0007847 XLM",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("generic call hero missing %q: %s", want, html)
+		}
+	}
+
+	// The hero foot restated fee, ledger, and status that the headline strip and
+	// the reference sidebar already carried. It was removed rather than
+	// restyled: three of its four values had no other home on the page.
+	for _, gone := range []string{
+		`class="px-tx-flow-foot"`,
+		"0.0007847 XLM",
+	} {
+		if strings.Contains(html, gone) {
+			t.Errorf("generic call hero still renders removed hero foot content %q: %s", gone, html)
 		}
 	}
 }
@@ -269,7 +290,10 @@ func TestFailureHeroUsesAuthoritativeOutcomeEvidence(t *testing.T) {
 	}
 	html := out.String()
 	for _, want := range []string{
-		"swap() failed",
+		// The headline now leads with the actor and folds the outcome heading in
+		// as what they attempted, rather than a bare "swap() failed".
+		"could not complete",
+		"swap()",
 		"Contract stopped unexpectedly",
 		"invoke_host_function_trapped",
 		"General failure category",
@@ -291,8 +315,11 @@ func TestFailureHeroUsesAuthoritativeOutcomeEvidence(t *testing.T) {
 	if strings.Contains(strings.ToLower(html), "execution trapped") {
 		t.Errorf("failure hero exposed unexplained trapped jargon: %s", html)
 	}
-	if got := strings.Count(html, "swap() failed"); got != 1 {
+	if got := strings.Count(html, "could not complete"); got != 1 {
 		t.Errorf("failure heading rendered %d times, want once: %s", got, html)
+	}
+	if strings.Contains(html, "swap() failed") {
+		t.Errorf("failure hero kept the pre-actor heading phrasing: %s", html)
 	}
 	if got := strings.Count(html, ">Fee<"); got != 1 {
 		t.Errorf("fee rendered %d times in hero, want once: %s", got, html)
@@ -398,5 +425,69 @@ func classicMultiOperationReceiptFixture() legacy.TxReceiptData {
 		EventsCount:         "0",
 		FeePaidXLM:          "0.00014 XLM",
 		Operations:          operations,
+	}
+}
+
+// A classic transaction consumes no Soroban resources. The panel used to render
+// a column of em dashes, claiming a dimension that does not apply to it. The
+// handler writes "—" rather than "" for an absent resource, so the guard has to
+// treat the placeholder as absent.
+func TestSorobanResourcePanelHidesWhenThereAreNoResources(t *testing.T) {
+	tests := []struct {
+		name string
+		data legacy.TxReceiptData
+		want bool
+	}{
+		{
+			name: "classic transaction, handler placeholders",
+			data: legacy.TxReceiptData{SorobanCPU: "—", SorobanMem: "—", SorobanReads: "—", SorobanWrites: "—"},
+			want: false,
+		},
+		{
+			name: "empty strings",
+			data: legacy.TxReceiptData{},
+			want: false,
+		},
+		{
+			name: "zeroes are not resources",
+			data: legacy.TxReceiptData{SorobanCPU: "0", SorobanReads: "0"},
+			want: false,
+		},
+		{
+			name: "any real reading keeps the panel",
+			data: legacy.TxReceiptData{SorobanCPU: "24.2M insn", SorobanMem: "—", SorobanReads: "—", SorobanWrites: "—"},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := txHasSorobanResources(tt.data); got != tt.want {
+				t.Errorf("txHasSorobanResources() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// txFeeLabel already carries its unit. Appending one produced "0.0000300 XLM XLM".
+func TestFeeRendersWithASingleUnit(t *testing.T) {
+	data := legacy.TxReceiptData{
+		Hash: "abc", ShortHash: "abc", Ledger: "123", LedgerRaw: "123",
+		FeePaidXLM: "0.0000300 XLM", FeePaid: "300",
+	}
+	var out strings.Builder
+	if err := TxReceiptSidebarFragment(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render sidebar: %v", err)
+	}
+	html := out.String()
+	if strings.Contains(html, "XLM XLM") {
+		t.Errorf("fee rendered with a doubled unit: %s", html)
+	}
+	if !strings.Contains(html, "0.0000300 XLM") {
+		t.Errorf("sidebar missing the fee: %s", html)
+	}
+	// The same number in stroops was the second unit the page reconciled for
+	// nobody. It belongs only in the raw XDR envelope.
+	if strings.Contains(html, "300 stroops") {
+		t.Errorf("sidebar still shows the fee in a second unit: %s", html)
 	}
 }

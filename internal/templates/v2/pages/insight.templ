@@ -1,0 +1,176 @@
+package pagesv2
+
+import (
+	"fmt"
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
+	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
+	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
+)
+
+templ InsightDetail(data vmv2.InsightDetailData) {
+	@layoutsv2.Base(insightPageTitle(data)) {
+		@componentsv2.MainHeader("home", data.Network) {}
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: data.HomeHref}, {Label: "What changed", Href: data.HomeHref}, {Label: data.InsightLabel, Mono: true}})
+		<main class="pi-page" id="main-content">
+			if !data.Available() {
+				@insightError(data)
+			} else {
+				@insightHero(data)
+				<div class="pi-layout">
+					<div class="pi-main">
+						@insightRule(data)
+						@insightContributors(data)
+						@insightSamples(data)
+					</div>
+					@insightEvidenceRail(data)
+				</div>
+			}
+		</main>
+	}
+}
+
+templ insightHero(data vmv2.InsightDetailData) {
+	<header class={ "pi-hero", "is-" + data.Tone } aria-labelledby="pi-title">
+		<div class="pi-eyebrow"><span class={ "pi-signal", "is-" + data.Tone }></span><span>{ data.StatusLabel }</span><code>{ data.InsightLabel }</code></div>
+		<h1 id="pi-title">{ data.Title }</h1>
+		<p class="pi-summary">{ data.Summary }</p>
+		if data.Detail != "" {
+			<p class="pi-detail">{ data.Detail }</p>
+		}
+		if data.SubjectID != "" && data.SubjectID != data.Network {
+			<div class="pi-subject"><span>Subject</span>
+				if data.SubjectHref != "" {
+					<a href={ templ.SafeURL(data.SubjectHref) }>{ data.SubjectLabel }</a>
+				} else {
+					<strong>{ data.SubjectLabel }</strong>
+				}
+				if data.IdentityDetail != "" {
+					<small>{ data.IdentityDetail }</small>
+				}
+			</div>
+		}
+		if len(data.Metrics) > 0 {
+			<dl class="pi-metrics">
+				for _, metric := range data.Metrics {
+					<div><dt>{ metric.Label }</dt><dd>{ metric.Value }</dd></div>
+				}
+			</dl>
+		}
+	</header>
+}
+
+templ insightRule(data vmv2.InsightDetailData) {
+	<section class="pi-section pi-rule" aria-labelledby="pi-rule-title">
+		<div class="pi-section-heading"><div><span>Interpretation rule</span><h2 id="pi-rule-title">Why Prism flagged this</h2></div><code>{ data.RuleLabel }</code></div>
+		<div class="pi-rule-body">
+			<p>{ data.RuleSummary }</p>
+			<strong>{ data.MatchSummary }</strong>
+		</div>
+	</section>
+}
+
+templ insightContributors(data vmv2.InsightDetailData) {
+	<section class="pi-section" aria-labelledby="pi-contributors-title">
+		<div class="pi-section-heading"><div><span>Ranked evidence</span><h2 id="pi-contributors-title">What contributed</h2></div><small>{ insightContributorCount(data) }</small></div>
+		if len(data.Contributors) == 0 {
+			<div class="pi-empty"><strong>No ranked contributor evidence</strong><p>The aggregate change remains valid, but this packet does not attribute it to a bounded contributor distribution.</p></div>
+		} else {
+			<div class="pi-contributors" role="table" aria-label="Ranked insight contributors">
+				<div class="pi-contributor-head" role="row"><span>Rank</span><span>Contributor</span><span>Count</span><span>Share</span><span>Evidence range</span></div>
+				for _, value := range data.Contributors {
+					<div class="pi-contributor-row" role="row">
+						<span class="pi-rank" role="cell">{ value.Rank }</span>
+						<div class="pi-contributor-identity" role="cell"><small>{ value.Dimension }</small>
+							if value.Href != "" {
+								<a href={ templ.SafeURL(value.Href) }>{ value.Label }</a>
+							} else {
+								<strong>{ value.Label }</strong>
+							}
+							if value.ShowKey {
+								<code title={ value.Key }>{ value.Key }</code>
+							}
+						</div>
+						<span class="pi-count" role="cell">{ value.CountLabel }</span>
+						<strong class="pi-share" role="cell">{ value.ShareLabel }</strong>
+						<span class="pi-ledger-range" role="cell">{ value.LedgerLabel }</span>
+					</div>
+				}
+			</div>
+		}
+	</section>
+}
+
+templ insightSamples(data vmv2.InsightDetailData) {
+	<section class="pi-section" aria-labelledby="pi-samples-title">
+		<div class="pi-section-heading"><div><span>Representative pointers</span><h2 id="pi-samples-title">Transactions to inspect</h2></div><small>Samples do not prove aggregate completeness</small></div>
+		if len(data.Samples) == 0 {
+			<div class="pi-empty"><strong>No representative transactions</strong><p>The aggregate projection remains the source of truth. This packet did not include bounded transaction pointers.</p></div>
+		} else {
+			<div class="pi-samples">
+				for _, sample := range data.Samples {
+					<article class="pi-sample">
+						<span class="pi-rank">{ sample.Rank }</span>
+						<div class="pi-sample-main"><small>{ sample.KindLabel }</small><a class="pi-tx-link" href={ templ.SafeURL(sample.TxHref) } title={ sample.TxHash }>{ sample.TxLabel }</a>
+							if sample.Context != "" {
+								<span>{ sample.Context }</span>
+							}
+						</div>
+						<div class="pi-sample-evidence"><a href={ templ.SafeURL(sample.LedgerHref) }>Ledger { sample.LedgerLabel }</a>
+							if sample.ContractHref != "" {
+								<a href={ templ.SafeURL(sample.ContractHref) } title={ sample.ContractID }>{ sample.ContractLabel }</a>
+							}
+						</div>
+					</article>
+				}
+			</div>
+		}
+	</section>
+}
+
+templ insightEvidenceRail(data vmv2.InsightDetailData) {
+	<aside class="pi-rail" aria-label="Insight evidence">
+		<section><h2>Evidence window</h2><dl class="pi-kv"><div><dt>Measured hour</dt><dd>{ data.ObservedWindowLabel }</dd></div><div><dt>Baseline</dt><dd>{ data.BaselineWindowLabel }</dd></div><div><dt>Observed ledgers</dt><dd>{ data.ObservedLedgerRange }</dd></div><div><dt>Source ledger</dt><dd>{ data.SourceLedgerLabel }</dd></div></dl></section>
+		if len(data.Evidence) > 0 {
+			<section><h2>Inspect the aggregate</h2><div class="pi-links">
+				for _, link := range data.Evidence {
+					<a href={ templ.SafeURL(link.Href) }>{ link.Label } <span aria-hidden="true">→</span></a>
+				}
+			</div></section>
+		}
+		if len(data.Caveats) > 0 {
+			<section class="pi-caveats"><h2>Evidence limitations</h2><ul>
+				for _, caveat := range data.Caveats {
+					<li>{ caveat }</li>
+				}
+			</ul></section>
+		}
+		<section><h2>Provenance</h2><dl class="pi-kv"><div><dt>Complete through</dt><dd>Ledger { data.CompleteThroughLedger }</dd></div><div><dt>Updated</dt><dd>{ data.UpdatedLabel }</dd></div></dl>
+			if len(data.ProvenanceSources) > 0 {
+				<ul class="pi-sources">
+					for _, source := range data.ProvenanceSources {
+						<li><code>{ source }</code></li>
+					}
+				</ul>
+			}
+		</section>
+	</aside>
+}
+
+templ insightError(data vmv2.InsightDetailData) {
+	<section class="pi-error" aria-labelledby="pi-error-title"><span>Insight evidence</span><h1 id="pi-error-title">{ data.ErrorTitle }</h1><p>{ data.ErrorMessage }</p><div>
+		if data.RetryHref != "" {
+			<a class="pi-button" href={ templ.SafeURL(data.RetryHref) }>Try again</a>
+		}
+		<a class="pi-text-link" href={ templ.SafeURL(data.HomeHref) }>Return to What changed</a>
+	</div></section>
+}
+
+func insightPageTitle(data vmv2.InsightDetailData) string {
+	if data.ErrorTitle != "" { return data.ErrorTitle + ": Prism" }
+	return data.Title + ": Prism"
+}
+
+func insightContributorCount(data vmv2.InsightDetailData) string {
+	if len(data.Contributors) == 1 { return "1 ranked contributor" }
+	return fmt.Sprintf("%d ranked contributors", len(data.Contributors))
+}

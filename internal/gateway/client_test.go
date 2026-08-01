@@ -14,6 +14,70 @@ import (
 	"time"
 )
 
+func TestHomeSummaryUsesBoundedLastGoodSnapshotAfterRefreshFailure(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/lake/v1/mainnet/api/v1/home/summary" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		if calls.Add(1) == 1 {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"network":"mainnet","generated_at":"2026-07-31T12:00:00Z","components":{"leaders":{"status":"ready"}},"leaders":[{"contract_id":"CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"}]}`)
+			return
+		}
+		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	fresh, err := client.GetHomeSummary(context.Background(), "mainnet")
+	if err != nil {
+		t.Fatalf("initial GetHomeSummary error: %v", err)
+	}
+	if fresh.Delivery.UsedLastGood {
+		t.Fatal("fresh response was marked as a retained snapshot")
+	}
+
+	cacheKey := "mainnet:home_summary"
+	client.cache.Set(cacheKey, fresh, -time.Second)
+	retained, err := client.GetHomeSummary(context.Background(), "mainnet")
+	if err != nil {
+		t.Fatalf("fallback GetHomeSummary error: %v", err)
+	}
+	if !retained.Delivery.UsedLastGood || retained.GeneratedAt != fresh.GeneratedAt || len(retained.Leaders) != 1 {
+		t.Fatalf("retained response = %+v", retained)
+	}
+	if fresh.Delivery.UsedLastGood {
+		t.Fatal("fallback delivery state mutated the cached source packet")
+	}
+
+	// The negative cache should shield the upstream while the separately held
+	// last-good packet remains available.
+	again, err := client.GetHomeSummary(context.Background(), "mainnet")
+	if err != nil || !again.Delivery.UsedLastGood {
+		t.Fatalf("negative-cache fallback = %+v, %v", again, err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("upstream calls = %d, want 2", got)
+	}
+}
+
+func TestHomeSummaryRefreshFailureWithoutLastGoodReturnsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	client := New(Config{BaseURL: server.URL, APIKey: "test", Timeout: time.Second}, slog.New(slog.NewTextHandler(io.Discard, nil)), context.Background())
+	defer client.Stop()
+
+	if summary, err := client.GetHomeSummary(context.Background(), "mainnet"); err == nil || summary != nil {
+		t.Fatalf("GetHomeSummary = %+v, %v; want an error without retained evidence", summary, err)
+	}
+}
+
 func TestClientBalanceEndpoints(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -152,6 +152,11 @@ type TxOperation struct {
 	IsPrimary   bool
 	Status      string
 	SummaryHTML string
+	// Structured economics, carried alongside SummaryHTML so the hero can state
+	// what happened without parsing rendered markup.
+	TypeName string // raw protocol name, e.g. manage_buy_offer
+	Amount   string // formatted amount, empty when the operation moves no value
+	Asset    string // asset code for Amount, e.g. XLM
 	Contract     string
 	ContractFull string
 	Function     string
@@ -165,6 +170,14 @@ type TxEvent struct {
 	Contract     string
 	ContractFull string
 	DataHTML     string
+	// Structured participants and value, carried alongside DataHTML so the hero
+	// can name who actually moved value rather than who signed the envelope.
+	From     string
+	FromFull string
+	To       string
+	ToFull   string
+	Amount   string
+	Asset    string
 }
 
 type TxBalanceChange struct {

@@ -16,19 +16,20 @@ import (
 
 // Cache TTLs per data type.
 const (
-	TTLNetworkStats       = 10 * time.Second
-	TTLBronzeNetworkStats = 3 * time.Second // tracks ledger close (~5s, may decrease)
-	TTLRecentList         = 10 * time.Second
-	TTLHomeSummary        = 15 * time.Second
-	TTLHomeSummaryFailure = 10 * time.Second
-	TTLLedgerFeedFailure  = 30 * time.Second
-	TTLTxReceiptFailure   = 2 * time.Minute
-	TTLAccountFailure     = 15 * time.Second
-	TTLSearchReady        = 30 * time.Second
-	TTLSearchImprovable   = 5 * time.Second
-	TTLImmutable          = 24 * time.Hour
-	TTLAccount            = 30 * time.Second
-	TTLContracts          = 2 * time.Minute
+	TTLNetworkStats        = 10 * time.Second
+	TTLBronzeNetworkStats  = 3 * time.Second // tracks ledger close (~5s, may decrease)
+	TTLRecentList          = 10 * time.Second
+	TTLHomeSummary         = 15 * time.Second
+	TTLHomeSummaryFailure  = 10 * time.Second
+	TTLHomeSummaryLastGood = 2 * time.Minute
+	TTLLedgerFeedFailure   = 30 * time.Second
+	TTLTxReceiptFailure    = 2 * time.Minute
+	TTLAccountFailure      = 15 * time.Second
+	TTLSearchReady         = 30 * time.Second
+	TTLSearchImprovable    = 5 * time.Second
+	TTLImmutable           = 24 * time.Hour
+	TTLAccount             = 30 * time.Second
+	TTLContracts           = 2 * time.Minute
 )
 
 // Config holds gateway connection settings.
@@ -576,11 +577,34 @@ func ledgerSummaryFromFeedSummary(v LedgerFeedSummary) LedgerSummary {
 // slow gateway endpoint cannot stall every home-page/fragment request.
 type homeSummaryNegativeEntry struct{ err error }
 
+func homeSummaryLastGoodKey(cacheKey string) string {
+	return cacheKey + ":last_good"
+}
+
+func (c *Client) getLastGoodHomeSummary(cacheKey string) (*HomeSummaryResponse, bool) {
+	v, ok := c.cache.Get(homeSummaryLastGoodKey(cacheKey))
+	if !ok {
+		return nil, false
+	}
+	lastGood, ok := v.(*HomeSummaryResponse)
+	if !ok || lastGood == nil {
+		return nil, false
+	}
+	// Do not mark the cached packet itself. Its API evidence may be shared by
+	// several fragment requests, while delivery state is specific to this read.
+	result := *lastGood
+	result.Delivery.UsedLastGood = true
+	return &result, true
+}
+
 // GetHomeSummary returns the aggregated non-feed data used by /v2/home.
 func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSummaryResponse, error) {
 	cacheKey := fmt.Sprintf("%s:home_summary", network)
 	if v, ok := c.cache.Get(cacheKey); ok {
 		if neg, isNeg := v.(*homeSummaryNegativeEntry); isNeg {
+			if lastGood, available := c.getLastGoodHomeSummary(cacheKey); available {
+				return lastGood, nil
+			}
 			return nil, neg.err
 		}
 		return v.(*HomeSummaryResponse), nil
@@ -588,6 +612,9 @@ func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSumma
 	v, err, _ := c.inflight.DoContext(ctx, cacheKey, func() (any, error) {
 		if v, ok := c.cache.Get(cacheKey); ok {
 			if neg, isNeg := v.(*homeSummaryNegativeEntry); isNeg {
+				if lastGood, available := c.getLastGoodHomeSummary(cacheKey); available {
+					return lastGood, nil
+				}
 				return nil, neg.err
 			}
 			return v, nil
@@ -596,6 +623,9 @@ func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSumma
 		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, "/home/summary"))
 		if err != nil {
 			c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: err}, TTLHomeSummaryFailure)
+			if lastGood, available := c.getLastGoodHomeSummary(cacheKey); available {
+				return lastGood, nil
+			}
 			return nil, err
 		}
 
@@ -603,10 +633,14 @@ func (c *Client) GetHomeSummary(ctx context.Context, network string) (*HomeSumma
 		if err := json.Unmarshal(body, &resp); err != nil {
 			wrapped := fmt.Errorf("gateway: parsing home summary: %w", err)
 			c.cache.Set(cacheKey, &homeSummaryNegativeEntry{err: wrapped}, TTLHomeSummaryFailure)
+			if lastGood, available := c.getLastGoodHomeSummary(cacheKey); available {
+				return lastGood, nil
+			}
 			return nil, wrapped
 		}
 
 		c.cache.Set(cacheKey, &resp, TTLHomeSummary)
+		c.cache.Set(homeSummaryLastGoodKey(cacheKey), &resp, TTLHomeSummaryLastGood)
 		return &resp, nil
 	})
 	if err != nil {

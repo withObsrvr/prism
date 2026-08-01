@@ -22,11 +22,14 @@ func TestHomeEvidenceBuildersRenderOneCoherentSummary(t *testing.T) {
 	if insights.Status.State != vmv2.HomeSectionReady || len(insights.Cards) != 1 {
 		t.Fatalf("insights = %+v", insights)
 	}
-	if !strings.Contains(insights.Cards[0].Summary, "42 failures") || !strings.Contains(insights.Cards[0].Evidence[0].Href, "status=failed") {
+	if insights.Cards[0].Summary != "" || !strings.Contains(insights.Cards[0].Detail, "swap") || !strings.Contains(insights.Cards[0].Evidence[0].Href, "status=failed") {
 		t.Fatalf("insight evidence was not interpreted: %+v", insights.Cards[0])
 	}
 	if len(insights.Cards[0].Metrics) != 3 || insights.Cards[0].Metrics[0].Label != "Last hour" || insights.Cards[0].Metrics[1].Label != "Typical hour" || insights.Cards[0].Metrics[2].Label != "Change" {
 		t.Fatalf("insight facts were not distilled for the homepage: %+v", insights.Cards[0].Metrics)
+	}
+	if !strings.Contains(insights.Cards[0].DetailHref, "/v2/insight/hiev1_") || !strings.Contains(insights.Cards[0].DetailHref, "network=testnet") {
+		t.Fatalf("versioned insight did not expose its retained detail packet: %+v", insights.Cards[0])
 	}
 
 	ttl := buildHomeTTLData(summary, "testnet", "/v2/home/ttl?network=testnet")
@@ -48,6 +51,26 @@ func TestHomeEvidenceBuildersRenderOneCoherentSummary(t *testing.T) {
 	utilization := buildHomeUtilizationData(summary, "testnet", "/v2/home/utilization?network=testnet")
 	if utilization.Status.State != vmv2.HomeSectionReady || len(utilization.Metrics) != 3 || utilization.Metrics[0].Label != "Contract computation" || utilization.Metrics[1].Label != "Contract state access" || utilization.Metrics[0].PercentLabel != "64.0%" {
 		t.Fatalf("utilization = %+v", utilization)
+	}
+}
+
+func TestHomeInsightCardCompactsRawContractIdentity(t *testing.T) {
+	summary := mockHomeSummaryResponse("mainnet")
+	item := &summary.Insights[0]
+	item.Subject.Identity.DisplayName = item.Subject.ID
+	item.Subject.Identity.VerificationStatus = "inferred"
+	item.Subject.Identity.Source = "semantic_entities_contracts"
+
+	data := buildHomeInsightsData(summary, "mainnet", "/v2/home/insights?network=mainnet")
+	if len(data.Cards) != 1 {
+		t.Fatalf("cards = %+v", data.Cards)
+	}
+	card := data.Cards[0]
+	if card.SubjectLabel != "CAAAAAAA…AAD2KM" {
+		t.Fatalf("raw contract identity was not compacted: %+v", card)
+	}
+	if card.IdentityDetail != "" {
+		t.Fatalf("raw contract identity kept redundant provenance in the scan path: %+v", card)
 	}
 }
 
@@ -73,6 +96,81 @@ func TestHomeEvidenceDistinguishesEmptyPartialAndInvalidStates(t *testing.T) {
 	invalid := buildHomeLeadersData(summary, "testnet", "/v2/home/leaders?network=testnet")
 	if invalid.Status.State != vmv2.HomeSectionUnavailable || !strings.Contains(invalid.Status.Message, "unsupported component state") {
 		t.Fatalf("unknown state was accepted: %+v", invalid)
+	}
+}
+
+func TestHomeInsightsUsesEvaluationAndKeepsRecentSignalSubordinate(t *testing.T) {
+	summary := mockHomeSummaryResponse("testnet")
+	recent := append([]gateway.HomeSummaryInsight(nil), summary.Insights...)
+	summary.Insights = nil
+	summary.RecentInsights = &recent
+	summary.Components.Insights.Status = "empty"
+	summary.InsightEvaluation = quietHomeEvaluationFixture()
+	summary.InsightDelivery = &gateway.HomeInsightDelivery{Mode: "current", EvaluatedWindowEnd: summary.InsightEvaluation.WindowEnd, RetainedAt: "2026-07-31T22:00:19Z", MaxAgeSeconds: 21600, ProjectionLagSecond: 41}
+
+	data := buildHomeInsightsData(summary, "testnet", "/v2/home/insights?network=testnet")
+	if data.Status.State != vmv2.HomeSectionEmpty || len(data.Cards) != 0 || len(data.Checks) != 3 {
+		t.Fatalf("quiet evaluation = %+v", data)
+	}
+	if data.Checks[0].Label != "Contract failures" || data.Checks[0].Value != "0.50× typical" || data.WindowLabel == "" {
+		t.Fatalf("evaluation comparisons were not distilled: %+v", data)
+	}
+	if data.RecentLabel == "" || !strings.Contains(data.RecentDetailHref, recent[0].InsightID) {
+		t.Fatalf("recent insight was not retained as history: %+v", data)
+	}
+}
+
+func TestHomeInsightsRejectsContradictoryEvaluationDelivery(t *testing.T) {
+	summary := mockHomeSummaryResponse("testnet")
+	summary.Insights = nil
+	summary.Components.Insights.Status = "empty"
+	summary.InsightEvaluation = quietHomeEvaluationFixture()
+	summary.InsightDelivery = &gateway.HomeInsightDelivery{Mode: "current", EvaluatedWindowEnd: "2026-07-31T23:00:00Z", RetainedAt: "2026-07-31T22:00:19Z", MaxAgeSeconds: 21600}
+
+	data := buildHomeInsightsData(summary, "testnet", "/v2/home/insights?network=testnet")
+	if data.Status.State != vmv2.HomeSectionUnavailable || len(data.Checks) != 0 {
+		t.Fatalf("contradictory delivery was presented as a quiet hour: %+v", data)
+	}
+}
+
+func TestHomeEvidenceMarksRetainedSummaryAsDelayed(t *testing.T) {
+	summary := mockHomeSummaryResponse("mainnet")
+	summary.Delivery.UsedLastGood = true
+
+	insights := buildHomeInsightsData(summary, "mainnet", "/v2/home/insights?network=mainnet")
+	leaders := buildHomeLeadersData(summary, "mainnet", "/v2/home/leaders?network=mainnet")
+	utilization := buildHomeUtilizationData(summary, "mainnet", "/v2/home/utilization?network=mainnet")
+	for name, status := range map[string]vmv2.HomeSectionStatus{
+		"insights":    insights.Status,
+		"leaders":     leaders.Status,
+		"utilization": utilization.Status,
+	} {
+		if status.State != vmv2.HomeSectionStale || !status.Retryable || !containsString(status.Warnings, homeLastGoodWarning) {
+			t.Errorf("%s retained status = %+v", name, status)
+		}
+	}
+
+	ttl := buildHomeTTLData(summary, "mainnet", "/v2/home/ttl?network=mainnet")
+	if ttl.Status.State != vmv2.HomeSectionStale || len(ttl.Cards) == 0 {
+		t.Fatalf("retained TTL = %+v", ttl)
+	}
+	if ttl.Cards[0].RunwayLabel != "Availability may have changed" || ttl.Cards[0].RemainingLedgers != "" || ttl.Cards[0].LiveUntilLedger == "" || strings.Contains(ttl.Cards[0].Detail, "hours") {
+		t.Fatalf("retained TTL asserted a stale relative countdown: %+v", ttl.Cards[0])
+	}
+	if ttl.Cards[0].Tone != "neutral" {
+		t.Fatalf("retained TTL kept an urgency tone from a stale countdown: %+v", ttl.Cards[0])
+	}
+}
+
+func TestHomeEvidenceDoesNotPresentRetainedEmptyAsCurrent(t *testing.T) {
+	summary := mockHomeSummaryResponse("mainnet")
+	summary.Delivery.UsedLastGood = true
+	summary.Components.Insights.Status = "empty"
+	summary.Insights = nil
+
+	data := buildHomeInsightsData(summary, "mainnet", "/v2/home/insights?network=mainnet")
+	if data.Status.State != vmv2.HomeSectionUnavailable || !data.Status.Retryable || !containsString(data.Status.Warnings, homeLastGoodWarning) {
+		t.Fatalf("retained empty evidence = %+v", data)
 	}
 }
 
@@ -126,6 +224,18 @@ func TestHomeUtilizationMissingMetricDoesNotSuppressOtherEvidence(t *testing.T) 
 	if data.Status.State != vmv2.HomeSectionPartial || len(data.Metrics) != 2 {
 		t.Fatalf("available utilization metrics were suppressed: %+v", data)
 	}
+}
+
+func quietHomeEvaluationFixture() *gateway.HomeInsightEvaluationEnvelope {
+	number := func(value float64) *float64 { return &value }
+	ledger := func(value int64) *int64 { return &value }
+	first, last := int64(3903100), int64(3903157)
+	rules := []gateway.HomeInsightEvaluationRule{
+		{Type: "failure_spike", Family: "risk", Direction: "negative", RuleID: "contract_failure_spike", RuleVersion: "1", ComparisonMethod: "rolling_7d_median_prior_complete_hour", Status: "ready", EvaluationOutcome: "evaluated", Subject: &gateway.HomeSummaryInsightSubject{Kind: "contract", ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"}, EvaluatedSubjectCount: 3, ObservedValue: number(1), BaselineValue: number(2), Ratio: number(.5), MinimumObserved: number(3), MinimumRatio: number(3), RatioComparison: "at_least", ObservedFirstLedger: ledger(first), ObservedLastLedger: ledger(last), Caveats: []gateway.HomeInsightCaveat{}},
+		{Type: "contract_deployments_spike", Family: "activity", Direction: "neutral", RuleID: "network_contract_deployments_spike", RuleVersion: "1", ComparisonMethod: "rolling_7d_median_prior_complete_hour", Status: "ready", EvaluationOutcome: "evaluated", Subject: &gateway.HomeSummaryInsightSubject{Kind: "network", ID: "testnet"}, EvaluatedSubjectCount: 1, ObservedValue: number(1), BaselineValue: number(2), Ratio: number(.5), MinimumObserved: number(2), MinimumRatio: number(3), RatioComparison: "at_least", ObservedFirstLedger: ledger(first), ObservedLastLedger: ledger(last), Caveats: []gateway.HomeInsightCaveat{}},
+		{Type: "transaction_activity_spike", Family: "activity", Direction: "neutral", RuleID: "network_transaction_activity_spike", RuleVersion: "1", ComparisonMethod: "rolling_7d_median_prior_complete_hour", Status: "ready", EvaluationOutcome: "evaluated", Subject: &gateway.HomeSummaryInsightSubject{Kind: "network", ID: "testnet"}, EvaluatedSubjectCount: 1, ObservedValue: number(10), BaselineValue: number(20), Ratio: number(.5), MinimumRatio: number(2), RatioComparison: "at_least", ObservedFirstLedger: ledger(first), ObservedLastLedger: ledger(last), Caveats: []gateway.HomeInsightCaveat{}},
+	}
+	return &gateway.HomeInsightEvaluationEnvelope{EvidenceVersion: "home_insight_evaluation_v1", RegistryVersion: "home_insight_detector_registry_v1", Status: "ready", WindowStart: "2026-07-31T21:00:00Z", WindowEnd: "2026-07-31T22:00:00Z", ComparisonMethod: "rolling_7d_median_prior_complete_hour", CompleteThroughLedger: last, Rules: rules, Caveats: []gateway.HomeInsightCaveat{}, Provenance: gateway.HomeInsightEvidenceProvenance{Sources: []string{"serving.sv_home_insight_evaluations_current"}, CompleteThroughLedger: last, UpdatedAt: "2026-07-31T22:00:19Z"}}
 }
 
 func TestHomeEvidenceFragmentsShareCachedSummaryAndNeverFallBackToMock(t *testing.T) {

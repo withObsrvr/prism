@@ -15,20 +15,34 @@ import (
 	"github.com/withObsrvr/prism/internal/gateway"
 )
 
-const EvidenceVersionV1 = "home_insight_evidence_v1"
+const (
+	EvidenceVersionV1 = "home_insight_evidence_v1"
+	EvidenceVersionV2 = "home_insight_evidence_v2"
+)
 
 const comparisonMethodV1 = "rolling_7d_median_prior_complete_hour"
 
 var (
-	insightIDPattern = regexp.MustCompile(`^hiev1_[A-Za-z0-9_-]{43}$`)
+	insightIDPattern = regexp.MustCompile(`^hiev[12]_[A-Za-z0-9_-]{43}$`)
 	printer          = message.NewPrinter(language.English)
 )
 
 func Interpret(item gateway.HomeSummaryInsight) (Interpretation, error) {
-	if item.EvidenceVersion != EvidenceVersionV1 {
+	if item.EvidenceVersion != EvidenceVersionV1 && item.EvidenceVersion != EvidenceVersionV2 {
 		return genericInterpretation(item), nil
 	}
-	if err := validateCommon(item); err != nil {
+	if item.EvidenceVersion == EvidenceVersionV2 {
+		if _, supported := v2Rules[item.Type]; !supported {
+			return genericInterpretation(item), nil
+		}
+	}
+	var err error
+	if item.EvidenceVersion == EvidenceVersionV1 {
+		err = validateCommon(item)
+	} else {
+		err = validateV2(item)
+	}
+	if err != nil {
 		return Interpretation{}, err
 	}
 
@@ -40,6 +54,12 @@ func Interpret(item gateway.HomeSummaryInsight) (Interpretation, error) {
 		result = interpretDeployments(item)
 	case "transaction_activity_spike":
 		result = interpretActivity(item)
+	case "successful_activity_growth":
+		result = interpretGrowth(item)
+	case "failure_recovery":
+		result = interpretRecovery(item)
+	case "new_contract_adoption":
+		result = interpretAdoption(item)
 	default:
 		return genericInterpretation(item), nil
 	}
@@ -49,6 +69,9 @@ func Interpret(item gateway.HomeSummaryInsight) (Interpretation, error) {
 	result.Status = item.Status
 	result.WindowLabel = formatWindow(item.Observed.WindowStart, item.Observed.WindowEnd)
 	result.ComparisonLabel = "Prior seven-day hourly median"
+	if item.Definition.ComparisonMethod == comparisonMethodAdoption {
+		result.ComparisonLabel = "Since contract deployment"
+	}
 	result.Subject = subjectFor(item.Subject)
 	result.EvidenceCount = item.EvidenceCount
 	result.Metrics = commonMetrics(item)

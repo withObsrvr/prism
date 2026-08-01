@@ -139,7 +139,6 @@ func TestHomeInsightsRendersACompactEvidenceRow(t *testing.T) {
 		PollURL: "/v2/home/insights?network=testnet",
 		Cards: []vmv2.HomeInsightCard{{
 			Title:        "Contract deployments increased",
-			Summary:      "80 contracts were deployed in the last completed hour, 4 times the usual 20.",
 			Detail:       "The most active new contract received 14 calls after deployment.",
 			Tone:         "signal",
 			SubjectID:    "testnet",
@@ -149,8 +148,9 @@ func TestHomeInsightsRendersACompactEvidenceRow(t *testing.T) {
 				{Label: "Typical hour", Value: "20"},
 				{Label: "Change", Value: "4×"},
 			},
-			Evidence: []vmv2.HomeInsightEvidenceLink{{Label: "View deployment ledgers", Href: "/v2/explore?time=coverage"}},
-			Caveats:  []string{"The contributor list is bounded."},
+			DetailHref: "/v2/insight/hiev1_test?network=testnet",
+			Evidence:   []vmv2.HomeInsightEvidenceLink{{Label: "View deployment ledgers", Href: "/v2/explore?time=coverage"}},
+			Caveats:    []string{"The contributor list is bounded."},
 		}},
 	}
 
@@ -166,13 +166,16 @@ func TestHomeInsightsRendersACompactEvidenceRow(t *testing.T) {
 		"Last hour",
 		"Typical hour",
 		"Change",
-		"View deployment ledgers",
+		"Why Prism flagged this",
 		`class="ph-insight-coverage"`,
 		"Coverage note",
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("home insight missing %q", want)
 		}
+	}
+	if strings.Contains(output, "View deployment ledgers") {
+		t.Fatal("homepage repeated the raw evidence link when the insight explanation is available")
 	}
 	if strings.Contains(output, "Subject</span><strong>testnet") {
 		t.Fatal("network-wide insight rendered a redundant testnet subject")
@@ -185,5 +188,78 @@ func TestHomeInsightsRendersACompactEvidenceRow(t *testing.T) {
 	}
 	if !strings.Contains(html.String(), `class="ph-insight-list has-3"`) {
 		t.Fatal("three insights did not receive the wide-screen comparison layout")
+	}
+}
+
+func TestHomeInsightsMakesEmptyAndUnavailableComparisonsUsefulWithoutInventingChange(t *testing.T) {
+	tests := []struct {
+		name      string
+		status    vmv2.HomeSectionStatus
+		want      []string
+		forbidden []string
+	}{
+		{
+			name:   "authoritative empty",
+			status: vmv2.HomeSectionStatus{State: vmv2.HomeSectionEmpty, Message: "No significant changes in the last completed hour."},
+			want: []string{
+				"What changed",
+				"Last completed hour",
+				"No unusual changes crossed Prism’s thresholds",
+				"Contract failures, deployments, and transaction activity",
+			},
+			forbidden: []string{"Unavailable", "Retry"},
+		},
+		{
+			name:   "comparison unavailable",
+			status: vmv2.HomeSectionStatus{State: vmv2.HomeSectionUnavailable, Message: "The delayed component did not provide retained evidence.", Retryable: true},
+			want: []string{
+				"Hourly comparison",
+				"Current evidence continues below",
+				"Comparison delayed",
+				"Prism cannot compare the last completed hour right now.",
+				"Retry",
+			},
+			forbidden: []string{"What changed", "Compared with a typical hour"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			data := vmv2.HomeInsightsData{Status: test.status, Network: "testnet", PollURL: "/v2/home/insights?network=testnet"}
+			var html strings.Builder
+			if err := HomeInsights(data).Render(context.Background(), &html); err != nil {
+				t.Fatalf("render home insights: %v", err)
+			}
+			output := html.String()
+			for _, want := range test.want {
+				if !strings.Contains(output, want) {
+					t.Errorf("home insight state missing %q", want)
+				}
+			}
+			for _, forbidden := range test.forbidden {
+				if strings.Contains(output, forbidden) {
+					t.Errorf("home insight state contains %q", forbidden)
+				}
+			}
+		})
+	}
+}
+
+func TestHomeInsightsRendersQuietHourChecksAndRecentHistoryCompactly(t *testing.T) {
+	data := vmv2.HomeInsightsData{
+		Status: vmv2.HomeSectionStatus{State: vmv2.HomeSectionEmpty, Message: "No significant changes in the last completed hour."},
+		Network: "testnet", PollURL: "/v2/home/insights?network=testnet", WindowLabel: "Jul 31, 21:00 to 22:00 UTC",
+		Checks: []vmv2.HomeInsightCheck{{Label: "Contract failures", Value: "0.7× typical", Detail: "8 now, 11 typical", State: "ready"}, {Label: "Successful activity", Value: "1.1× typical", Detail: "6,400 now, 6,200 typical", State: "ready"}},
+		RecentLabel: "Contract deployments increased", RecentDetailHref: "/v2/insight/hiev1_example?network=testnet", RecentTimeLabel: "22:00 UTC",
+	}
+	var html strings.Builder
+	if err := HomeInsights(data).Render(context.Background(), &html); err != nil {
+		t.Fatalf("render home insights: %v", err)
+	}
+	output := html.String()
+	for _, want := range []string{"ph-insight-checks", "Contract failures", "0.7× typical", "8 now, 11 typical", "Last flagged", "Contract deployments increased"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("quiet-hour comparison missing %q", want)
+		}
 	}
 }

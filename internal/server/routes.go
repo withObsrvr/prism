@@ -33,6 +33,7 @@ func (app *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /v2/home/ttl", h.HomeV2TTL)
 	mux.HandleFunc("GET /v2/home/leaders", h.HomeV2Leaders)
 	mux.HandleFunc("GET /v2/home/utilization", h.HomeV2Utilization)
+	mux.HandleFunc("GET /v2/insight/{id}", h.InsightDetailV2)
 	mux.HandleFunc("GET /v2/home/ledger", h.HomeLedgerFirstV2)
 	mux.HandleFunc("GET /v2/explore", h.ExploreV2)
 	mux.HandleFunc("GET /v2/explore/header", h.ExploreV2Header)

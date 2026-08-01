@@ -105,6 +105,7 @@ type HomeInsightCard struct {
 	EvidenceCount   string
 	Metrics         []HomeInsightMetric
 	Evidence        []HomeInsightEvidenceLink
+	DetailHref      string
 	Caveats         []string
 	AsOfLedger      string
 	UpdatedLabel    string
@@ -112,12 +113,24 @@ type HomeInsightCard struct {
 	Generic         bool
 }
 
+type HomeInsightCheck struct {
+	Label  string
+	Value  string
+	Detail string
+	State  string
+}
+
 type HomeInsightsData struct {
-	Status   HomeSectionStatus
-	Network  string
-	PollURL  string
-	Cards    []HomeInsightCard
-	DemoData bool
+	Status           HomeSectionStatus
+	Network          string
+	PollURL          string
+	Cards            []HomeInsightCard
+	Checks           []HomeInsightCheck
+	WindowLabel      string
+	RecentLabel      string
+	RecentDetailHref string
+	RecentTimeLabel  string
+	DemoData         bool
 }
 
 type HomeTTLCard struct {

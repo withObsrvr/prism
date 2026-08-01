@@ -6,17 +6,19 @@ import (
 )
 
 templ HomeInsights(data vmv2.HomeInsightsData) {
-	<section class={ "ph-home-deferred", "is-" + string(data.Status.State) } id="changes" aria-labelledby="ph-home-changes-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 60s" hx-swap="outerHTML">
-		@homeEvidenceHeading("changes", "What changed", "Compared with a typical hour")
-		@homeEvidenceState(data.Status, data.PollURL, "changes", data.DemoData)
+	<section class={ "ph-home-deferred", "ph-home-insights", homeInsightsContentClass(data), "is-" + string(data.Status.State) } id="changes" aria-labelledby="ph-home-changes-title" aria-live="off" hx-get={ data.PollURL } hx-trigger="every 60s" hx-swap="outerHTML">
+		@homeEvidenceHeading("changes", homeInsightsTitle(data), homeInsightsScope(data))
 		if len(data.Cards) > 0 {
+			@homeEvidenceState(data.Status, data.PollURL, "changes", data.DemoData)
 			<div class={ "ph-insight-list", fmt.Sprintf("has-%d", len(data.Cards)) }>
 				for _, card := range data.Cards {
 					<article class={ "ph-insight", "is-" + card.Tone }>
 						<div class="ph-insight-main">
 							<div class="ph-insight-signal"><span class={ "ph-signal-dot", "is-" + card.Tone }></span><span>{ homeInsightToneLabel(card.Tone, card.Generic) }</span></div>
 							<h3>{ card.Title }</h3>
-							<p class="ph-insight-summary">{ card.Summary }</p>
+							if card.Summary != "" {
+								<p class="ph-insight-summary">{ card.Summary }</p>
+							}
 							if card.Detail != "" {
 								<p class="ph-insight-detail">{ card.Detail }</p>
 							}
@@ -39,8 +41,12 @@ templ HomeInsights(data vmv2.HomeInsightsData) {
 								</dl>
 							}
 							<div class="ph-insight-actions">
-								for _, link := range card.Evidence {
-									<a class="ph-evidence-link" href={ templ.SafeURL(link.Href) }>{ link.Label } <span aria-hidden="true">→</span></a>
+								if card.DetailHref != "" {
+									<a class="ph-evidence-link is-primary" href={ templ.SafeURL(card.DetailHref) }>Why Prism flagged this <span aria-hidden="true">→</span></a>
+								} else {
+									for _, link := range card.Evidence {
+										<a class="ph-evidence-link" href={ templ.SafeURL(link.Href) }>{ link.Label } <span aria-hidden="true">→</span></a>
+									}
 								}
 								if len(card.Caveats) > 0 {
 									<details class="ph-insight-coverage">
@@ -57,8 +63,101 @@ templ HomeInsights(data vmv2.HomeInsightsData) {
 					</article>
 				}
 			</div>
+		} else {
+			@homeInsightNoCards(data)
 		}
 	</section>
+}
+
+templ homeInsightNoCards(data vmv2.HomeInsightsData) {
+	if data.DemoData {
+		<div class="ph-inline-state is-demo"><strong>Demo</strong><span>Synthetic fixture, not network activity.</span></div>
+	}
+	if data.Status.State == vmv2.HomeSectionEmpty {
+		<div class="ph-insight-zero" role="status">
+			<div>
+				<strong>No unusual changes crossed Prism’s thresholds</strong>
+				if data.WindowLabel != "" {
+					<span>{ data.WindowLabel }</span>
+				} else {
+					<span>Contract failures, deployments, and transaction activity were evaluated for the last completed hour.</span>
+				}
+			</div>
+			<span class="ph-insight-zero-result">No threshold crossed</span>
+		</div>
+		if len(data.Checks) > 0 {
+			<dl class="ph-insight-checks" aria-label="Detector results for the last completed hour">
+				for _, check := range data.Checks {
+					<div class={ "ph-insight-check", "is-" + check.State }>
+						<dt>{ check.Label }</dt>
+						<dd>{ check.Value }</dd>
+						<small>{ check.Detail }</small>
+					</div>
+				}
+			</dl>
+		}
+		if data.RecentLabel != "" {
+			<div class="ph-insight-recent">
+				<span>Last flagged</span>
+				if data.RecentDetailHref != "" {
+					<a href={ templ.SafeURL(data.RecentDetailHref) }>{ data.RecentLabel }</a>
+				} else {
+					<strong>{ data.RecentLabel }</strong>
+				}
+				if data.RecentTimeLabel != "" {
+					<small>{ data.RecentTimeLabel }</small>
+				}
+			</div>
+		}
+	} else {
+		<div class="ph-insight-zero is-delayed" role="status">
+			<div>
+				<strong>Comparison delayed</strong>
+				<span>Prism cannot compare the last completed hour right now. Current ledger, contract, archival, and capacity evidence remains available below.</span>
+			</div>
+			if data.Status.Retryable {
+				<button class="ph-inline-retry" type="button" hx-get={ data.PollURL } hx-target="#changes" hx-swap="outerHTML">Retry</button>
+			}
+		</div>
+		if len(data.Checks) > 0 {
+			<dl class="ph-insight-checks is-limited" aria-label="Available detector results">
+				for _, check := range data.Checks {
+					<div class={ "ph-insight-check", "is-" + check.State }>
+						<dt>{ check.Label }</dt>
+						<dd>{ check.Value }</dd>
+						<small>{ check.Detail }</small>
+					</div>
+				}
+			</dl>
+		}
+		if len(data.Status.Warnings) > 0 || data.Status.Message != "" {
+			<details class="ph-insight-zero-detail">
+				<summary>Why the comparison is delayed</summary>
+				if data.Status.Message != "" {
+					<span>{ data.Status.Message }</span>
+				}
+				for _, warning := range data.Status.Warnings {
+					<span>{ warning }</span>
+				}
+			</details>
+		}
+	}
+}
+
+func homeInsightsContentClass(data vmv2.HomeInsightsData) string {
+	if len(data.Cards) > 0 { return "has-cards" }
+	return "has-no-cards"
+}
+
+func homeInsightsTitle(data vmv2.HomeInsightsData) string {
+	if len(data.Cards) == 0 && data.Status.State != vmv2.HomeSectionEmpty { return "Hourly comparison" }
+	return "What changed"
+}
+
+func homeInsightsScope(data vmv2.HomeInsightsData) string {
+	if len(data.Cards) > 0 { return "Compared with a typical hour" }
+	if data.Status.State == vmv2.HomeSectionEmpty { return "Last completed hour" }
+	return "Current evidence continues below"
 }
 
 templ HomeTTL(data vmv2.HomeTTLData) {
@@ -194,6 +293,7 @@ func homeInsightToneLabel(tone string, generic bool) string {
 	case "critical": return "Failure signal"
 	case "signal": return "Deployment signal"
 	case "info": return "Activity signal"
+	case "positive": return "Positive signal"
 	default: return "Measured evidence"
 	}
 }
