@@ -1,6 +1,7 @@
 package pagesv2
 
 import (
+	"strconv"
 	"fmt"
 	"html"
 	"strings"
@@ -66,12 +67,18 @@ templ txDetailTabs(data legacy.TxReceiptData) {
 			<button class="px-tx-tab active" type="button" role="tab" aria-selected="true" data-px-tx-tab="operations">Operations <span class="px-tx-tab-c">{ data.OpsCount }</span></button>
 			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="events">Events <span class="px-tx-tab-c">{ data.EventsCount }</span></button>
 			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="balances">Balance changes <span class="px-tx-tab-c">{ fmt.Sprintf("%d", len(data.BalanceChanges)) }</span></button>
+			if len(data.CallTree) > 0 {
+				<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="calltree">Call tree <span class="px-tx-tab-c">{ fmt.Sprintf("%d", len(data.CallTree)) }</span></button>
+			}
 			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="raw">Raw XDR</button>
 		</div>
 		<div class="px-tx-detail-body">
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="operations">@txOperations(data)</div>
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="events" hidden>@txEvents(data)</div>
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="balances" hidden>@txBalances(data)</div>
+			if len(data.CallTree) > 0 {
+				<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="calltree" hidden>@txCallTree(data)</div>
+			}
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="raw" hidden>@txRaw(data)</div>
 		</div>
 	</div></section>
@@ -480,3 +487,127 @@ func stripTxHTML(s string) string { out:=make([]rune,0,len(s)); in:=false; for _
 func avatarInitial(v string) string { v = strings.TrimSpace(v); if v == "" { return "•" }; return strings.ToUpper(string([]rune(v)[0])) }
 func invertSigned(v string) string { v = strings.TrimSpace(v); if strings.HasPrefix(v, "−") { return "+" + strings.TrimPrefix(v, "−") }; if strings.HasPrefix(v, "-") { return "+" + strings.TrimPrefix(v, "-") }; if strings.HasPrefix(v, "+") { return "−" + strings.TrimPrefix(v, "+") }; if v == "" { return "—" }; return v }
 func txRawText(data legacy.TxReceiptData) string { if data.EnvelopeXDR != "" { return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  source: " + firstNonEmpty(data.SourceAddrFull, data.SourceAddr) + "\n  fee: " + firstNonEmpty(data.FeePaid, "—") + " stroops\n  sequence: " + firstNonEmpty(data.SeqNumber, "—") + "\n  xdr: " + data.EnvelopeXDR + "\n}" }; return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  ledger: " + data.LedgerRaw + "\n  operations: " + data.OpsCount + "\n  events: " + data.EventsCount + "\n}" }
+
+// txCallTree renders the observed execution tree. Depth carries the nesting,
+// which is the one thing the flat Operations / Events / Balance-changes lists
+// cannot express, and which is where a recovered failure becomes visible.
+templ txCallTree(data legacy.TxReceiptData) {
+	<div class="px-tx-tree">
+		<div class="px-tx-tree-head">
+			<span class="px-tx-tree-sub">Observed execution, nested by call depth.</span>
+			<span class="px-tx-tree-tally">@templ.Raw(callTreeTally(data.CallTree))</span>
+		</div>
+		<ol class="px-tx-tree-list">
+			for _, node := range data.CallTree {
+				<li class={ "px-tx-tree-node", "d" + strconv.Itoa(callDepthClamped(node.Depth)), "s-" + callState(node) }>
+					<span class="px-tx-tree-rail" aria-hidden="true"></span>
+					<span class="px-tx-tree-mark" aria-hidden="true">{ callStateMark(node) }</span>
+					<span class="px-tx-tree-body">
+						if node.Depth == 0 {
+							<a class="px-tx-tree-actor mono" href={ templ.SafeURL(txEntityHref(node.FromFull)) }>{ node.From }</a>
+							<span class="px-tx-tree-verb">called</span>
+						}
+						<span class="px-tx-tree-fn mono">{ node.Function }()</span>
+						<span class="px-tx-tree-verb">on</span>
+						<a class="px-tx-tree-target mono" href={ templ.SafeURL(txEntityHref(node.ToFull)) }>{ node.To }</a>
+					</span>
+					<span class={ "px-tx-tree-state", callState(node) }>{ callStateLabel(node) }</span>
+				</li>
+			}
+		</ol>
+		if callTreeCaught(data.CallTree) > 0 {
+			<p class="px-tx-tree-note">
+				A reverted sub-call inside a successful transaction means the caller
+				caught the failure and carried on. Nothing that branch did was written
+				to the ledger.
+			</p>
+		}
+	</div>
+}
+
+// callState normalises the node state so an unrecognised value renders as a
+// plain call rather than as an unstyled element.
+func callState(n legacy.TxCallNode) string {
+	switch n.State {
+	case "caught", "reverted":
+		return n.State
+	}
+	return "ok"
+}
+
+// State is conveyed by mark and label as well as colour: the accessibility rule
+// is that state must survive without hue.
+func callStateMark(n legacy.TxCallNode) string {
+	switch callState(n) {
+	case "caught":
+		return "↩"
+	case "reverted":
+		return "✕"
+	}
+	return "✓"
+}
+
+func callStateLabel(n legacy.TxCallNode) string {
+	switch callState(n) {
+	case "caught":
+		return "reverted · caught by caller"
+	case "reverted":
+		return "reverted"
+	}
+	return "ok"
+}
+
+// Indentation is capped so a deeply nested tree cannot push the content off the
+// row; past the cap the rail alone carries the depth.
+func callDepthClamped(depth int) int {
+	if depth < 0 {
+		return 0
+	}
+	if depth > 5 {
+		return 5
+	}
+	return depth
+}
+
+func callTreeCaught(nodes []legacy.TxCallNode) int {
+	n := 0
+	for _, node := range nodes {
+		if callState(node) == "caught" {
+			n++
+		}
+	}
+	return n
+}
+
+func callTreeTally(nodes []legacy.TxCallNode) string {
+	caught, reverted := 0, 0
+	for _, node := range nodes {
+		switch callState(node) {
+		case "caught":
+			caught++
+		case "reverted":
+			reverted++
+		}
+	}
+	out := fmt.Sprintf("%d calls", len(nodes))
+	if caught > 0 {
+		out += fmt.Sprintf(` · <b class="caught">%d reverted, recovered</b>`, caught)
+	}
+	if reverted > 0 {
+		out += fmt.Sprintf(` · <b class="reverted">%d reverted</b>`, reverted)
+	}
+	return out
+}
+
+// txEntityHref routes a call-tree participant to its own page. Contracts and
+// accounts have different detail pages and are told apart by the strkey prefix.
+func txEntityHref(full string) string {
+	full = strings.TrimSpace(full)
+	if full == "" {
+		return ""
+	}
+	if strings.HasPrefix(full, "C") {
+		return "/v2/contract/" + full
+	}
+	return "/v2/account/" + full
+}

@@ -9363,3 +9363,101 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   .px-balance-skeleton-line.identity,
   .px-balance-skeleton-line.evidence { display: none; }
 }
+
+/* ===== TRANSACTION CALL TREE =====
+   The only view in the receipt that expresses nesting. Operations, events, and
+   balance changes are flat lists; the structure they cannot show is where a
+   recovered failure lives, so depth is the whole point of this component.
+
+   Three states, and each is carried by a mark and a label as well as colour,
+   because state must not depend on hue. `caught` is the one that matters: a
+   sub-call trapped and the caller continued, so the transaction still
+   succeeded. */
+.px-tx-tree { padding: 4px 2px 2px; }
+.px-tx-tree-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding-bottom: 12px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--ph-border);
+}
+.px-tx-tree-sub { font-size: 13px; color: var(--ph-text-2); }
+.px-tx-tree-tally { font-family: var(--ph-ff-mono); font-size: 12.5px; color: var(--ph-text-3); }
+.px-tx-tree-tally b { font-weight: 600; }
+.px-tx-tree-tally b.caught { color: var(--ph-amber); }
+.px-tx-tree-tally b.reverted { color: var(--ph-crimson); }
+
+.px-tx-tree-list { list-style: none; margin: 0; padding: 0; }
+.px-tx-tree-node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--ph-border-subtle, var(--ph-border));
+}
+.px-tx-tree-node:last-child { border-bottom: 0; }
+
+/* Depth is indentation plus a rail. The rail keeps the relationship legible
+   once the indent is capped at depth 5. */
+.px-tx-tree-node.d0 { padding-left: 4px; }
+.px-tx-tree-node.d1 { padding-left: 30px; }
+.px-tx-tree-node.d2 { padding-left: 56px; }
+.px-tx-tree-node.d3 { padding-left: 82px; }
+.px-tx-tree-node.d4 { padding-left: 108px; }
+.px-tx-tree-node.d5 { padding-left: 134px; }
+.px-tx-tree-rail {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  border-left: 1px solid var(--ph-border);
+}
+.px-tx-tree-node.d0 .px-tx-tree-rail { display: none; }
+.px-tx-tree-node.d1 .px-tx-tree-rail { left: 14px; }
+.px-tx-tree-node.d2 .px-tx-tree-rail { left: 40px; }
+.px-tx-tree-node.d3 .px-tx-tree-rail { left: 66px; }
+.px-tx-tree-node.d4 .px-tx-tree-rail { left: 92px; }
+.px-tx-tree-node.d5 .px-tx-tree-rail { left: 118px; }
+
+.px-tx-tree-mark {
+  font-family: var(--ph-ff-mono); font-size: 12px; line-height: 1.4;
+  color: var(--ph-text-3); text-align: center;
+}
+.px-tx-tree-node.s-caught .px-tx-tree-mark { color: var(--ph-amber); }
+.px-tx-tree-node.s-reverted .px-tx-tree-mark { color: var(--ph-crimson); }
+
+.px-tx-tree-body { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+/* Evidence is mono, Prism's own connectives are serif italic: the same split
+   the headline uses. */
+.px-tx-tree-actor, .px-tx-tree-fn, .px-tx-tree-target {
+  font-family: var(--ph-ff-mono); font-size: 13px; color: var(--ph-text);
+}
+.px-tx-tree-actor, .px-tx-tree-target { font-weight: 500; }
+.px-tx-tree-fn { font-weight: 600; }
+a.px-tx-tree-actor:hover, a.px-tx-tree-target:hover { color: var(--ph-accent-ink); text-decoration: underline; }
+.px-tx-tree-verb {
+  font-family: var(--ph-ff-serif); font-style: italic;
+  color: var(--ph-text-3); font-size: 14px; margin: 0 2px;
+}
+
+.px-tx-tree-state {
+  font-family: var(--ph-ff-mono); font-size: 11px;
+  color: var(--ph-text-3); white-space: nowrap;
+}
+.px-tx-tree-state.caught { color: var(--ph-amber); font-weight: 500; }
+.px-tx-tree-state.reverted { color: var(--ph-crimson); font-weight: 500; }
+
+/* A reverted branch did not change the ledger; it reads quieter than the calls
+   that did, without being hidden. */
+.px-tx-tree-node.s-caught .px-tx-tree-body,
+.px-tx-tree-node.s-reverted .px-tx-tree-body { opacity: 0.62; }
+
+.px-tx-tree-note {
+  margin: 14px 2px 2px;
+  font-size: 13px; line-height: 1.55; color: var(--ph-text-2);
+  max-width: 68ch;
+}
+
+@media (max-width: 640px) {
+  .px-tx-tree-node { grid-template-columns: 16px minmax(0, 1fr); }
+  .px-tx-tree-state { grid-column: 2; padding-top: 2px; }
+  .px-tx-tree-node.d3, .px-tx-tree-node.d4, .px-tx-tree-node.d5 { padding-left: 60px; }
+}

@@ -205,6 +205,19 @@ func mockTxReceiptData(hash, shortHash string) pages.TxReceiptData {
 		SorobanReads:      "4",
 		SorobanWrites:     "3",
 		SeqNumber:         "1042891748409",
+		// Shaped from mainnet transaction c2d9223c8495 (ledger ~63000030), a
+		// harvest() on CBGS…KKY3 that loops over positions. The third iteration
+		// trapped and the caller carried on, so the transaction succeeded with a
+		// reverted sub-call inside it. Six calls, five returns: the unreturned one
+		// is the branch that failed.
+		CallTree: []pages.TxCallNode{
+			{Depth: 0, From: "GAPP...NEDY", FromFull: "GAPPLCK4IUR2GQN7IVXAVXA5VAE3I7BYO3TS4UFSPQ66EKAJ4MUPNEDY", To: "CBGS...KKY3", ToFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", Function: "harvest", State: "ok"},
+			{Depth: 1, From: "CBGS...KKY3", FromFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", To: "CDL7...IGWA", ToFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", Function: "harvest", State: "ok"},
+			{Depth: 2, From: "CDL7...IGWA", FromFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", To: "CB23...OUOV", ToFull: "CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV", Function: "mint", State: "ok"},
+			{Depth: 1, From: "CBGS...KKY3", FromFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", To: "CDL7...IGWA", ToFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", Function: "harvest", State: "ok"},
+			{Depth: 2, From: "CDL7...IGWA", FromFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", To: "CB23...OUOV", ToFull: "CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV", Function: "mint", State: "ok"},
+			{Depth: 1, From: "CBGS...KKY3", FromFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", To: "CDL7...IGWA", ToFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", Function: "harvest", State: "caught"},
+		},
 		Operations: []pages.TxOperation{
 			{Index: "1", Type: "Invoke Contract", IsSoroban: true, Status: "Success", SummaryHTML: `<span class="font-medium text-gray-900">GABC...7X92</span> approved the <span class="font-medium text-gray-900">Soroswap Router</span> to spend up to <span class="font-semibold text-gray-900">5,000 XLM</span>`, Contract: "CCW6...7YMK", Function: "approve()"},
 			{Index: "2", Type: "Invoke Contract", IsSoroban: true, IsPrimary: true, Status: "Success", SummaryHTML: `<span class="font-medium text-gray-900">GABC...7X92</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485.00 USDC</span> at a rate of <span class="font-medium text-gray-900">0.097 USDC/XLM</span>`, Contract: "CAXY...Z10P", Function: "swap()"},

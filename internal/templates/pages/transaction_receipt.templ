@@ -76,6 +76,8 @@ type TxReceiptData struct {
 	SeqNumber     string
 	// Operations
 	Operations    []TxOperation
+	// CallTree is the observed execution tree, flattened with Depth.
+	CallTree      []TxCallNode
 	// Events
 	Events        []TxEvent
 	// Balance Changes
@@ -161,6 +163,25 @@ type TxOperation struct {
 	ContractFull string
 	Function     string
 	DetailHTML   string
+}
+
+// TxCallNode is one edge of the observed call tree, flattened. Depth carries
+// the nesting: the tree is reconstructed from the fn_call / fn_return stack in
+// the diagnostic events, so execution order plus depth is its natural shape.
+type TxCallNode struct {
+	Depth    int
+	From     string // caller: an account at depth 0, a contract below it
+	FromFull string
+	To       string
+	ToFull   string
+	Function string
+	// State is one of:
+	//   ok        executed and returned
+	//   caught    trapped, and the caller continued: the transaction still succeeded
+	//   reverted  trapped, and the transaction failed
+	// `caught` is the distinction that matters. A sub-call can fail inside a
+	// transaction that succeeds, and no other explorer shows this.
+	State string
 }
 
 type TxEvent struct {

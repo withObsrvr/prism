@@ -421,3 +421,46 @@ func TestTransferVerbDistinguishesMintAndBurn(t *testing.T) {
 		}
 	}
 }
+
+// A sub-call that reverted inside a transaction that succeeded is the most
+// notable thing about it, and no other surface on the receipt says so.
+func TestRecoveredSubCallsSurfaceInTheSubtitle(t *testing.T) {
+	tree := []legacy.TxCallNode{
+		{Depth: 0, From: "GAPP...NEDY", To: "CBGS...KKY3", Function: "harvest", State: "ok"},
+		{Depth: 1, From: "CBGS...KKY3", To: "CDL7...IGWA", Function: "harvest", State: "ok"},
+		{Depth: 2, From: "CDL7...IGWA", To: "CB23...OUOV", Function: "mint", State: "ok"},
+		{Depth: 1, From: "CBGS...KKY3", To: "CDL7...IGWA", Function: "harvest", State: "ok"},
+		{Depth: 2, From: "CDL7...IGWA", To: "CB23...OUOV", Function: "mint", State: "ok"},
+		{Depth: 1, From: "CBGS...KKY3", To: "CDL7...IGWA", Function: "harvest", State: "caught"},
+	}
+	hero := BuildTxHero(legacy.TxReceiptData{
+		Status: "success", IsSoroban: true, SourceAddr: "GAPP...NEDY",
+		ContractFn: "harvest()", ContractAddr: "CBGS...KKY3", CallTree: tree,
+	})
+	if hero.SubtitleHTML != "1 of 6 sub-calls reverted and was recovered." {
+		t.Errorf("subtitle = %q", hero.SubtitleHTML)
+	}
+	// The transaction succeeded; a caught sub-call must not change that.
+	if hero.Status != "Successful" {
+		t.Errorf("status = %q, want Successful", hero.Status)
+	}
+}
+
+func TestNoRecoveredNoteWhenEveryCallSucceeded(t *testing.T) {
+	f := factsFromReceipt(legacy.TxReceiptData{CallTree: []legacy.TxCallNode{
+		{State: "ok"}, {State: "ok"},
+	}})
+	if got := recoveredCallNote(f); got != "" {
+		t.Errorf("note = %q, want empty", got)
+	}
+}
+
+// Plural agreement: one reverted call reads differently from several.
+func TestRecoveredCallNotePluralises(t *testing.T) {
+	f := factsFromReceipt(legacy.TxReceiptData{CallTree: []legacy.TxCallNode{
+		{State: "caught"}, {State: "caught"}, {State: "ok"},
+	}})
+	if got := recoveredCallNote(f); got != "2 of 3 sub-calls reverted and were recovered." {
+		t.Errorf("note = %q", got)
+	}
+}

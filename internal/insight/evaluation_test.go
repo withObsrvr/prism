@@ -27,6 +27,23 @@ func TestEvaluationFailsClosedOnRegistryAndThresholdContradictions(t *testing.T)
 		"duplicate rule":          func(value *gateway.HomeInsightEvaluationEnvelope) { value.Rules[2] = value.Rules[1] },
 		"ratio mismatch":          func(value *gateway.HomeInsightEvaluationEnvelope) { ratio := 9.0; value.Rules[0].Ratio = &ratio },
 		"false crossing":          func(value *gateway.HomeInsightEvaluationEnvelope) { value.Rules[0].ThresholdCrossed = true },
+		"ready source problem": func(value *gateway.HomeInsightEvaluationEnvelope) {
+			value.Rules[0].EvaluationOutcome = "source_partial"
+		},
+		"partial evaluated without qualifying caveat": func(value *gateway.HomeInsightEvaluationEnvelope) {
+			caveat := gateway.HomeInsightCaveat{Code: "source_window_partial", Field: "evaluation", Retryable: true}
+			value.Status = "partial"
+			value.Caveats = []gateway.HomeInsightCaveat{caveat}
+			value.Rules[0].Status = "partial"
+			value.Rules[0].Caveats = []gateway.HomeInsightCaveat{caveat}
+		},
+		"unavailable evaluated result": func(value *gateway.HomeInsightEvaluationEnvelope) {
+			caveat := gateway.HomeInsightCaveat{Code: "evaluation_source_unavailable", Field: "evaluation", Retryable: true}
+			value.Status = "unavailable"
+			value.Caveats = []gateway.HomeInsightCaveat{caveat}
+			value.Rules[0].Status = "unavailable"
+			value.Rules[0].Caveats = []gateway.HomeInsightCaveat{caveat}
+		},
 	}
 	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -36,6 +53,31 @@ func TestEvaluationFailsClosedOnRegistryAndThresholdContradictions(t *testing.T)
 				t.Fatal("invalid evaluation was accepted")
 			}
 		})
+	}
+}
+
+// A detector can finish its numerical evaluation and still publish a partial
+// rule when only the optional qualifying-subject evidence is incomplete. This
+// is distinct from source_partial: the threshold result remains authoritative.
+func TestEvaluationAcceptsEvaluatedRuleWithPartialQualifyingEvidence(t *testing.T) {
+	value := evaluationFixture()
+	partialEvidence := gateway.HomeInsightCaveat{Code: "qualifying_evidence_partial", Field: "evaluation", Retryable: false}
+	value.Status = "partial"
+	value.Caveats = []gateway.HomeInsightCaveat{partialEvidence}
+
+	observed, baseline, ratio := 94.0, 15.0, 94.0/15.0
+	value.Rules[0].Status = "partial"
+	value.Rules[0].EvaluationOutcome = "evaluated"
+	value.Rules[0].EvaluatedSubjectCount = 11
+	value.Rules[0].QualifyingSubjectCount = 2
+	value.Rules[0].ObservedValue = &observed
+	value.Rules[0].BaselineValue = &baseline
+	value.Rules[0].Ratio = &ratio
+	value.Rules[0].ThresholdCrossed = true
+	value.Rules[0].Caveats = []gateway.HomeInsightCaveat{partialEvidence}
+
+	if err := ValidateEvaluation(value); err != nil {
+		t.Fatalf("evaluated rule with partial qualifying evidence was rejected: %v", err)
 	}
 }
 

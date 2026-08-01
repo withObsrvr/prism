@@ -97,7 +97,7 @@ func validateEvaluationRule(rule gateway.HomeInsightEvaluationRule, completeThro
 	if rule.ThresholdCrossed != (rule.QualifyingSubjectCount > 0) {
 		return errors.New("threshold result does not match the qualifying count")
 	}
-	if rule.Status == "partial" && rule.EvaluationOutcome != "source_partial" || rule.Status == "unavailable" && rule.EvaluationOutcome != "source_unavailable" {
+	if !evaluationRuleStateAgrees(rule) {
 		return errors.New("rule status and outcome disagree")
 	}
 	if rule.Status != "ready" && len(rule.Caveats) == 0 {
@@ -138,6 +138,35 @@ func validateEvaluationRule(rule gateway.HomeInsightEvaluationRule, completeThro
 		}
 	}
 	return nil
+}
+
+func evaluationRuleStateAgrees(rule gateway.HomeInsightEvaluationRule) bool {
+	switch rule.Status {
+	case "ready":
+		return rule.EvaluationOutcome != "source_partial" && rule.EvaluationOutcome != "source_unavailable"
+	case "partial":
+		if rule.EvaluationOutcome == "source_partial" {
+			return true
+		}
+		// A completed detector evaluation can be partial solely because the
+		// supporting list of qualifying subjects was truncated. Its measured
+		// result remains usable, but the named caveat must make that limitation
+		// explicit and a threshold must actually have crossed.
+		return rule.EvaluationOutcome == "evaluated" && rule.ThresholdCrossed && evaluationHasCaveat(rule.Caveats, "qualifying_evidence_partial")
+	case "unavailable":
+		return rule.EvaluationOutcome == "source_unavailable"
+	default:
+		return false
+	}
+}
+
+func evaluationHasCaveat(caveats []gateway.HomeInsightCaveat, code string) bool {
+	for _, caveat := range caveats {
+		if caveat.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func ValidateInsightDelivery(delivery *gateway.HomeInsightDelivery, evaluation *gateway.HomeInsightEvaluationEnvelope) error {

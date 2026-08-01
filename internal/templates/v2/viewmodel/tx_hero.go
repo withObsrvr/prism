@@ -870,6 +870,12 @@ func subtitleHTML(kind TxHeroKind, f txHeroFacts) string {
 		}
 		return esc(txoutcome.Interpret(nil).Summary)
 	}
+	// A sub-call that reverted inside a transaction that succeeded is the most
+	// notable thing about that transaction, and nothing else on the page says
+	// it. The failure hero keeps its own explanation, which is more specific.
+	if note := recoveredCallNote(f); note != "" {
+		return esc(note)
+	}
 	if kind == TxHeroValueFlow && f.Data.AISummaryHTML != "" {
 		return f.Data.AISummaryHTML
 	}
@@ -888,6 +894,32 @@ func subtitleHTML(kind TxHeroKind, f txHeroFacts) string {
 // headline already says. The generated narratives follow a fixed shape,
 // "<actor> submitted a <type> involving <op_names>", so they are recognised by
 // that shape rather than by comparing rendered strings.
+// recoveredCallNote reports sub-calls that trapped and were caught by their
+// caller. It says "of N" so the scale is clear: one reverted call out of six is
+// a different story from six out of six.
+func recoveredCallNote(f txHeroFacts) string {
+	caught := 0
+	for _, node := range f.Data.CallTree {
+		if node.State == "caught" {
+			caught++
+		}
+	}
+	if caught == 0 {
+		return ""
+	}
+	// In "N of M sub-calls" the noun agrees with the total and the verb with the
+	// count, so one reverted call out of six is "1 of 6 sub-calls ... was".
+	noun := "sub-calls"
+	if len(f.Data.CallTree) == 1 {
+		noun = "sub-call"
+	}
+	verb := "were"
+	if caught == 1 {
+		verb = "was"
+	}
+	return fmt.Sprintf("%d of %d %s reverted and %s recovered.", caught, len(f.Data.CallTree), noun, verb)
+}
+
 func restatesTitle(narrative string, f txHeroFacts) bool {
 	lower := strings.ToLower(narrative)
 	if strings.Contains(lower, " submitted a ") && strings.Contains(lower, " involving ") {
