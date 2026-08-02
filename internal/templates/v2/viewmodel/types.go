@@ -58,6 +58,19 @@ type HomeSpectrogramLegendItem struct {
 	Percentage string
 }
 
+// SpectrogramLedgerCount is how many ledgers the home spectrogram reads.
+//
+// One constant because four places need to agree: the gateway fetch, the mock
+// fixture, the loading skeleton, and the skeleton's CSS grid. They had drifted
+// to 60 / 60 / 32 / 32, so the skeleton drew 32 wide columns and the loaded
+// chart replaced them with 60 narrow ones, a visible reflow on every poll.
+//
+// The chart divides its width evenly (grid-template-columns: repeat(N, 1fr)),
+// so this is really a column-width choice: at 32 each column is wide enough to
+// show its composition rather than reading as a single hue. It is also a
+// multiple of 4, which homeSkeletonClass needs to cycle its heights evenly.
+const SpectrogramLedgerCount = 32
+
 type HomeTimelineData struct {
 	Status          HomeSectionStatus
 	Network         string

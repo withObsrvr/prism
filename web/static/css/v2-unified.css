@@ -507,7 +507,9 @@ a { color: inherit; text-decoration: none; }
 
 .ph-spectrum-skeleton {
   display: grid;
-  grid-template-columns: repeat(32, minmax(6px, 1fr));
+  /* Count comes from vmv2.SpectrogramLedgerCount, set inline, so the skeleton
+     and the loaded chart cannot disagree about how wide a column is. */
+  grid-template-columns: repeat(var(--ph-column-count, 32), minmax(6px, 1fr));
   align-items: end;
   height: 176px;
   gap: 4px;
@@ -3860,10 +3862,42 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   --ph-text-2: oklch(42% 0.022 67);
   --ph-text-3: oklch(50.2% 0.024 67);
 
-  --ph-violet: oklch(43.6% 0.143 294);
+  /* ---- Spectrum: one family, four categories at L 53-60% ------------------
+     Every one of these is declared here rather than left to fall through from
+     the first :root block. Previously only violet, teal, amber and green were
+     restated, so the spectrogram mixed one bright block-1 colour into a stack
+     of dark block-2 ones: payments rendered at L 65.7% against 43.7-48.6% for
+     everything beside it, a 22-point spread that read as a rendering fault
+     with no visible cause. Restating all six makes the cascade order
+     non-load-bearing.
+
+     The band is the design's: chroma normalised to 0.105 so no single segment
+     shouts, and lightness held inside 7 points across the four categories so
+     the bar reads as one measurement rather than a ranking. Violet and red run
+     hotter (0.145 / 0.165) because those hues need it to hold their identity
+     at the same perceived weight.
+
+     Hues are Prism's, not the design's, in one place: the design specifies
+     cyan at hue 215, which is outside sRGB at this chroma (it tops out at
+     0.102 even at L 58%, and the older value resolved to #00a2c0 with the red
+     channel clamped to zero). 238 is in gamut with headroom and is the blue
+     the ledger operation bar already uses for value movement, so payments and
+     transfers read as the same kind of thing across both charts.
+
+     Closest pair is payments/calls at dE 0.132, well clear of the 0.049 where
+     two segments stop being separable. */
+  --ph-cyan: oklch(58% 0.105 238);
+  --ph-green: oklch(53% 0.105 149);
+  --ph-violet: oklch(53% 0.145 294);
+  --ph-amber: oklch(60% 0.105 78);
+  --ph-red: oklch(55% 0.165 25);
   --ph-teal: oklch(36.8% 0.062 218);
-  --ph-amber: oklch(48.5% 0.09 78);
-  --ph-green: oklch(47.2% 0.094 149);
+  /* Darker variants for the two that appear as text rather than as fill.
+     Referenced with a --ph-text-2 fallback in the insight rows, so they were
+     silently unset before; at the lighter fill values above they have to be
+     real or that copy loses contrast. */
+  --ph-green-ink: oklch(45% 0.10 149);
+  --ph-amber-ink: oklch(48% 0.10 78);
   --ph-accent-ink: oklch(48% 0.155 42);
   /* ---- Brand palette, sampled from the Prism social artwork ----------------
      These are the literal marketing colours. They sit at L 62-74% as an equal
@@ -3885,9 +3919,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
      six chromatic families. Crimson sits 28 degrees off agents and 0.09 darker,
      which holds them apart (dE 0.123). */
   --ph-crimson: oklch(38% 0.155 358);
-  /* Neutral. Dark and near-achromatic so it separates from the warm families
-     (nearest is controls at dE 0.097) and carries a white label at 4.8:1. */
-  --ph-other: oklch(54% 0.008 80);
+  /* Neutral, and deliberately outside the 53-60% band. "Other" is a residual,
+     not a category, so it sits pale enough (L 74%) to recede behind the four
+     that carry meaning instead of competing with them. Near-achromatic keeps
+     it clear of the warm families. */
+  --ph-other: oklch(74% 0.010 80);
+  /* The operation bar's neutral, kept at the old darker value because unlike
+     --ph-other it sits under a white label (4.8:1). */
+  --ph-neutral-seg: oklch(54% 0.008 80);
   --ph-ink-hover: oklch(15.5% 0.014 67);
   --ph-on-ink: oklch(98.4% 0.006 78);
 
@@ -4449,7 +4488,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
      family from rendering as a transparent gap in the bar. The label colour
      follows the background rather than being fixed, so the palette can hold
      light families (coral) alongside dark ones. */
-  background: var(--seg, var(--ph-other));
+  background: var(--seg, var(--ph-neutral-seg));
   color: var(--seg-text, var(--ph-on-ink));
   text-shadow: var(--seg-shadow, 0 1px 2px rgba(31,27,22,0.18));
 }
@@ -4490,7 +4529,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .s-controls { --seg: oklch(47% 0.075 87); --seg-t2: var(--ph-brand-classic); }
 .s-agent { --seg: oklch(47% 0.150 30); --seg-t2: var(--ph-brand-agents); }
 .s-revoke { --seg: var(--ph-crimson); }
-.s-other { --seg: var(--ph-other); }
+/* Not --ph-other. The spectrogram's neutral is a pale residual meant to recede
+   behind the categories; this one is a labelled segment in the operation bar
+   and has to carry a white label at AA. Same role, opposite lightness. */
+.s-other { --seg: var(--ph-neutral-seg); }
 
 /* Second and third most common type within a family: same hue, raised lightness
    and softened chroma.
@@ -4531,7 +4573,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   border-radius: 2px;
   flex-shrink: 0;
 }
-.px-lg-leg .dot { background: var(--seg, var(--ph-other)); }
+.px-lg-leg .dot { background: var(--seg, var(--ph-neutral-seg)); }
 .px-lg-leg .k { color: var(--ph-text-2); flex: 1; }
 .px-lg-leg .v { font-size: 12px; color: var(--ph-text); font-weight: 500; }
 
@@ -9481,4 +9523,12 @@ a.px-tx-tree-actor:hover, a.px-tx-tree-target:hover { color: var(--ph-accent-ink
   font-size: 11px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ph-amber);
+}
+
+/* The emphasised share in the spectrogram headline is italic, and the italic
+   glyphs lean into the word space that follows: "45% of" read as "45%of" even
+   though the space is present and 4.5px wide. Optical correction only. */
+.ph-spectrum-head h2 em {
+  font-style: italic;
+  margin-right: 0.08em;
 }

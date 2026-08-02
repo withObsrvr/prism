@@ -22,7 +22,7 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 }
 
 func mockHomeV2TimelineData(network string, now time.Time) vmv2.HomeTimelineData {
-	const count = 60
+	const count = vmv2.SpectrogramLedgerCount
 	base := mockHomeLedgerBase(network)
 	ledgers := make([]gateway.RecentLedger, 0, count)
 	for offset := 0; offset < count; offset++ {

@@ -86,8 +86,8 @@ templ homeTimelineLoading(url string) {
 			<h2 id="ph-spectrum-title">Reading the latest ledgers</h2>
 			<span class="ph-spectrum-instruction">Classifying activity from one serving snapshot</span>
 		</div>
-		<div class="ph-spectrum-skeleton" aria-hidden="true">
-			for index := range 32 {
+		<div class="ph-spectrum-skeleton" style={ spectrumSkeletonGridStyle() } aria-hidden="true">
+			for index := range vmv2.SpectrogramLedgerCount {
 				<span class={ "ph-spectrum-skeleton-column", homeSkeletonClass(index) }></span>
 			}
 		</div>
@@ -181,6 +181,13 @@ templ homeEvidenceLoading(id string, title string, scope string, url string) {
 		<div class="ph-evidence-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
 		<span class="sr-only">Loading { title } evidence.</span>
 	</section>
+}
+
+// spectrumSkeletonGridStyle feeds the skeleton the same --ph-column-count the
+// loaded chart sets, so the placeholder columns land at the width the real ones
+// will occupy and the swap does not reflow.
+func spectrumSkeletonGridStyle() string {
+	return "--ph-column-count:" + strconv.Itoa(vmv2.SpectrogramLedgerCount)
 }
 
 func homeSkeletonClass(index int) string {

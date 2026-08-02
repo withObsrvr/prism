@@ -27,7 +27,7 @@ func (h *Handlers) HomeV2Timeline(w http.ResponseWriter, r *http.Request) {
 	} else {
 		ctx, cancel := context.WithTimeout(r.Context(), homeV2RecentLedgersTimeout)
 		defer cancel()
-		response, err := h.Gateway.GetSilverRecentLedgers(ctx, network, 60)
+		response, err := h.Gateway.GetSilverRecentLedgers(ctx, network, vmv2.SpectrogramLedgerCount)
 		if err != nil {
 			if h.Logger != nil {
 				h.Logger.Warn("home timeline unavailable", "network", network, "error", err)
