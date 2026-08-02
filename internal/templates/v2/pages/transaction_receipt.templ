@@ -21,7 +21,7 @@ templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 			@txHeroViz(txv2.BuildTxHero(data), data)
 			@txDetailTabs(data)
 		</main><aside class="px-tx-side">
-			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
+			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
 			if txHasSorobanResources(data) {
 				@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) }
 			}
@@ -122,7 +122,7 @@ templ txTabsScript() {
 
 templ TxReceiptSidebarFragment(data legacy.TxReceiptData) {
 	<aside class="px-tx-side">
-		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
+		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
 		if txHasSorobanResources(data) {
 				@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) }
 			}
@@ -429,13 +429,13 @@ func txSubtype(data legacy.TxReceiptData) string { v := strings.TrimSpace(data.S
 func txHeadlineHTML(data legacy.TxReceiptData) string { if strings.TrimSpace(data.HeroTitle) != "" { return headlineFromTitle(data.HeroTitle) }; if data.SummaryHTML != "" { return data.SummaryHTML }; return `<span class="px-tx-actor">Transaction</span> <span class="px-tx-verb">` + data.ShortHash + `</span>` }
 func headlineFromTitle(s string) string { parts := strings.Split(s, " "); if len(parts) == 0 { return s }; out := `<span class="px-tx-actor">` + parts[0] + `</span>`; for _, p := range parts[1:] { cls := "px-tx-verb"; if strings.ContainsAny(p, "0123456789") || strings.EqualFold(p, "XLM") || strings.EqualFold(p, "USDC") { cls = "px-tx-amt" }; out += ` <span class="` + cls + `">` + p + `</span>` }; return out }
 func txNarrativeHTML(data legacy.TxReceiptData) string { if data.AISummaryHTML != "" { return data.AISummaryHTML }; if data.HumanNarrative != "" { return data.HumanNarrative }; if data.SummaryHTML != "" { return data.SummaryHTML }; return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }
-func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
-func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
-func txSourceHref(data legacy.TxReceiptData) string { id := txSourceFull(data); if id == "" || id == "—" { return "" }; if strings.EqualFold(data.EffectiveActorType, "smart_wallet") || data.SmartWalletDetected && id == data.SmartWalletContract { return "/v2/account/" + id + "/smart" }; if strings.HasPrefix(id, "C") { return "/v2/contract/" + id }; return "/v2/account/" + id }
-func txContractHref(data legacy.TxReceiptData) string { id := firstNonEmpty(data.DownstreamContractAddr, data.ContractAddrFull); if id == "" || id == "—" { return "" }; return "/v2/contract/" + id }
+func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.SubmitterShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
+func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.SubmitterAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
+func txSourceHref(data legacy.TxReceiptData) string { id := txSourceFull(data); if id == "" || id == "—" { return "" }; if strings.HasPrefix(id, "C") { return "/v2/contract/" + id }; return "/v2/account/" + id }
+func txContractHref(data legacy.TxReceiptData) string { id := firstNonEmpty(data.ContractAddrFull, data.DownstreamContractAddr); if id == "" || id == "—" { return "" }; return "/v2/contract/" + id }
 func txHasContractEvidence(data legacy.TxReceiptData) bool { return txContractHref(data) != "" }
 func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetected && data.SmartWalletContractShort != "" { return data.SmartWalletContractShort }; return firstNonEmpty(data.EffectiveActorShort, "Source") }
-func txContractLabel(data legacy.TxReceiptData) string { address := firstNonEmpty(data.DownstreamContractShort, firstNonEmpty(data.ContractAddr, data.ContractAddrFull)); name := strings.TrimSpace(data.ContractName); if address == "" { return firstNonEmpty(name, "Contract") }; if name == "" || strings.EqualFold(name, address) || strings.EqualFold(name, data.DownstreamContractAddr) || strings.EqualFold(name, data.ContractAddrFull) { return address }; return name + " " + address }
+func txContractLabel(data legacy.TxReceiptData) string { address := firstNonEmpty(data.ContractAddr, firstNonEmpty(data.ContractAddrFull, data.DownstreamContractShort)); name := strings.TrimSpace(data.ContractName); if address == "" { return firstNonEmpty(name, "Contract") }; if name == "" || strings.EqualFold(name, address) || strings.EqualFold(name, data.DownstreamContractAddr) || strings.EqualFold(name, data.ContractAddrFull) { return address }; return name + " " + address }
 func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }
 // txHeroTitleLinked turns the hero's actor into a link to the account page.
 // The actor used to be a separate "From" chip whose only unique contribution

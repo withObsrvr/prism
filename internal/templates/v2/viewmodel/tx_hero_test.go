@@ -208,6 +208,33 @@ func TestEveryHeroVariantLeadsWithTheActor(t *testing.T) {
 	}
 }
 
+// A semantic effective actor describes execution context, not the account that
+// sourced the transaction envelope. When those roles differ, the generic call
+// headline must not silently replace the transaction source with a contract.
+func TestGenericCallHeroKeepsTransactionSourceDistinctFromEffectiveContract(t *testing.T) {
+	data := legacy.TxReceiptData{
+		Status:              "success",
+		IsSoroban:           true,
+		SourceAddr:          "GAJD...DJBE",
+		SourceAddrFull:      "GAJDZBVLYPJOJRUQI2UL2C2BB52CHMKK2TWXPIFWDB4WGDKWD4K4DJBE",
+		SubmitterShort:      "GAJD...DJBE",
+		SubmitterAddr:       "GAJDZBVLYPJOJRUQI2UL2C2BB52CHMKK2TWXPIFWDB4WGDKWD4K4DJBE",
+		EffectiveActorShort: "CCBD...54S3",
+		EffectiveActorAddr:  "CCBD4XHNU2W6FTBZMEQSYPYUTXZNKMYV2HFWGPIWLSEP7GT5HAEI54S3",
+		EffectiveActorType:  "contract",
+		ContractFn:          "create_and_try_fill_with_fee",
+		ContractAddr:        "CDFW...4364",
+	}
+
+	hero := BuildTxHero(data)
+	if !strings.Contains(hero.TitleHTML, "GAJD...DJBE") {
+		t.Fatalf("hero omitted the transaction source: %s", hero.TitleHTML)
+	}
+	if strings.Contains(hero.TitleHTML, "CCBD...54S3") {
+		t.Fatalf("hero mislabeled an execution actor as the transaction caller: %s", hero.TitleHTML)
+	}
+}
+
 // Setting an offer amount to zero is how Stellar cancels it. "offered to sell
 // 0 XLM" appeared on real mainnet receipts before this.
 func TestZeroAmountOfferReadsAsCancellation(t *testing.T) {

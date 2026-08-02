@@ -50,10 +50,11 @@ func (h *Handlers) buildNormalizedTxContext(ctx context.Context, network string,
 	}
 	if source != "" {
 		norm.Submitter = newNormalizedActor(source, "classic_account", "submitter")
-		norm.FeePayer = newNormalizedActor(source, "classic_account", "fee_payer")
+		// The receipt does not currently expose the outer fee source. Assuming
+		// the submitter paid would be false for fee-bump transactions, so leave
+		// this role unknown until the API supplies authoritative evidence.
 	}
 
-	var semanticEffective *gateway.SemanticActor
 	var semanticProtocol *gateway.SemanticActor
 	var semanticWallet *gateway.SemanticActor
 	if semanticTx != nil {
@@ -62,15 +63,15 @@ func (h *Handlers) buildNormalizedTxContext(ctx context.Context, network string,
 				copy := actor
 				semanticWallet = &copy
 			}
-			if semanticEffective == nil && hasRole(actor.Roles, "effective_actor") {
-				copy := actor
-				semanticEffective = &copy
-			}
 			if semanticProtocol == nil && (hasRole(actor.Roles, "protocol") || hasRole(actor.Roles, "callee")) {
 				copy := actor
 				semanticProtocol = &copy
 			}
 		}
+	}
+	var semanticEffective *gateway.SemanticActor
+	if semanticTx != nil {
+		semanticEffective = selectSemanticEffectiveActor(semanticTx.Actors)
 	}
 
 	wallet := &NormalizedSmartWalletContext{}
@@ -141,7 +142,24 @@ func (h *Handlers) buildNormalizedTxContext(ctx context.Context, network string,
 		norm.SourceOfTruth = "semantic"
 	}
 
-	if semanticProtocol != nil && semanticProtocol.ActorID != "" {
+	// An invoke-host-function operation names the contract that received the
+	// top-level call. That is stronger primary-target evidence than actor-array
+	// order: token and helper contracts touched during execution may all carry a
+	// generic "protocol" role. A smart-wallet execute() operation is the one
+	// exception; its observed wallet-to-protocol call-graph edge remains the
+	// useful downstream target.
+	for _, op := range txFull.Operations {
+		if op.ContractID == "" || (norm.Wallet != nil && op.ContractID == norm.Wallet.ContractID) {
+			continue
+		}
+		norm.DownstreamContract = newNormalizedActor(op.ContractID, "contract", "protocol")
+		if op.FunctionName != "" {
+			norm.DownstreamFunction = op.FunctionName
+		}
+		break
+	}
+
+	if norm.DownstreamContract == nil && semanticProtocol != nil && semanticProtocol.ActorID != "" {
 		norm.DownstreamContract = newNormalizedActor(semanticProtocol.ActorID, semanticProtocol.ActorType, "protocol")
 		norm.SourceOfTruth = mergeSourceOfTruth(norm.SourceOfTruth, "semantic")
 	}
@@ -193,6 +211,30 @@ func (h *Handlers) buildNormalizedTxContext(ctx context.Context, network string,
 	}
 
 	return norm, nil
+}
+
+// selectSemanticEffectiveActor returns an actor only when the semantic packet
+// identifies one unambiguous address for the role. Event-derived actor sets can
+// legitimately contain several senders, receivers, and authorized contracts;
+// choosing the first turns response ordering into a false identity claim.
+func selectSemanticEffectiveActor(actors []gateway.SemanticActor) *gateway.SemanticActor {
+	seen := make(map[string]struct{})
+	var selected *gateway.SemanticActor
+	for _, actor := range actors {
+		if actor.ActorID == "" || !hasRole(actor.Roles, "effective_actor") {
+			continue
+		}
+		if _, duplicate := seen[actor.ActorID]; duplicate {
+			continue
+		}
+		seen[actor.ActorID] = struct{}{}
+		if selected != nil {
+			return nil
+		}
+		copy := actor
+		selected = &copy
+	}
+	return selected
 }
 
 func candidateSmartWalletContracts(txFull *gateway.TxFull, semanticTx *gateway.SemanticTransactionResponse) []string {

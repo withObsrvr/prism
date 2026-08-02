@@ -203,9 +203,15 @@ func factsFromReceipt(data legacy.TxReceiptData) txHeroFacts {
 		f.HasOutcome = true
 		f.Successful = f.Outcome.Outcome == "succeeded"
 	}
-	f.Actor = firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SubmitterShort))
-	f.ActorFull = firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SubmitterAddr))
-	f.Contract = firstNonEmpty(data.DownstreamContractShort, firstNonEmpty(data.ContractAddr, data.ContractAddrFull))
+	// The headline says who submitted the operation. An effective actor is
+	// execution context and can be a contract authorized inside the call; it is
+	// not interchangeable with the transaction-envelope source.
+	f.Actor = firstNonEmpty(data.SubmitterShort, firstNonEmpty(data.SourceAddr, data.EffectiveActorShort))
+	f.ActorFull = firstNonEmpty(data.SubmitterAddr, firstNonEmpty(data.SourceAddrFull, data.EffectiveActorAddr))
+	// ContractAddr is the top-level operation target. DownstreamContract may be
+	// a supporting token/helper contract inferred from semantic actors, so only
+	// use it when the operation itself did not identify a target.
+	f.Contract = firstNonEmpty(data.ContractAddr, firstNonEmpty(data.ContractAddrFull, data.DownstreamContractShort))
 	f.Function = strings.TrimSuffix(firstNonEmpty(data.DownstreamFunctionName, data.ContractFn), "()")
 	if data.OutcomeEvidence != nil && data.OutcomeEvidence.PrimaryInvocation != nil {
 		invocation := data.OutcomeEvidence.PrimaryInvocation

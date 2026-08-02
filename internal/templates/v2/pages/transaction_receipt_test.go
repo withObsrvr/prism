@@ -112,17 +112,88 @@ func TestTransactionQuickFactsUseV2EntityLinksAndDedupeContractLabel(t *testing.
 	}
 }
 
-func TestTransactionQuickFactsRouteSmartWalletSourceToV2SmartPage(t *testing.T) {
-	const walletID = "CWALLETAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+func TestTransactionContractFactDoesNotMergePrimaryAndSupportingContracts(t *testing.T) {
+	const (
+		primaryID       = "CDFWQCDY34ODL4IHTGOV6XSBKS3CRSCUYOITRKU5M3GQZBPO5UDH4364"
+		primaryShort    = "CDFW...4364"
+		supportingID    = "CDA7SDCEQK2R6TTR655VNGEAONMNO3BSSRCFZDFNIJPADSMEKNEWRRBN"
+		supportingShort = "CDA7...RRBN"
+	)
 	data := legacy.TxReceiptData{
+		Hash:                    "fda7d1",
+		ShortHash:               "fda7d1...271c",
+		Status:                  "success",
+		IsSoroban:               true,
+		ContractName:            primaryShort,
+		ContractAddr:            primaryShort,
+		ContractAddrFull:        primaryID,
+		DownstreamContractShort: supportingShort,
+		DownstreamContractAddr:  supportingID,
+		DownstreamFunctionName:  "create_and_try_fill_with_fee",
+		FeePaidXLM:              "0.1605 XLM",
+	}
+
+	var out strings.Builder
+	if err := TxReceiptHeroFragment(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render hero fragment: %v", err)
+	}
+	html := out.String()
+	if !strings.Contains(html, `href="/v2/contract/`+primaryID+`"`) {
+		t.Fatalf("primary contract link missing: %s", html)
+	}
+	if strings.Contains(html, supportingID) || strings.Contains(html, primaryShort+" "+supportingShort) {
+		t.Fatalf("contract fact merged a supporting contract into the primary target: %s", html)
+	}
+}
+
+func TestTransactionSourceRouteDoesNotFollowSmartWalletActor(t *testing.T) {
+	const (
+		sourceID = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"
+		walletID = "CWALLETAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	)
+	data := legacy.TxReceiptData{
+		SubmitterAddr:       sourceID,
+		SourceAddrFull:      sourceID,
 		EffectiveActorAddr:  walletID,
 		EffectiveActorType:  "smart_wallet",
 		EffectiveActorHref:  "/account/" + walletID + "/smart",
 		SmartWalletDetected: true,
 		SmartWalletContract: walletID,
 	}
-	if got, want := txSourceHref(data), "/v2/account/"+walletID+"/smart"; got != want {
+	if got, want := txSourceHref(data), "/v2/account/"+sourceID; got != want {
 		t.Fatalf("txSourceHref = %q, want %q", got, want)
+	}
+}
+
+func TestTransactionSidebarKeepsSourceDistinctFromEffectiveContract(t *testing.T) {
+	const (
+		sourceID = "GAJDZBVLYPJOJRUQI2UL2C2BB52CHMKK2TWXPIFWDB4WGDKWD4K4DJBE"
+		actorID  = "CCBD4XHNU2W6FTBZMEQSYPYUTXZNKMYV2HFWGPIWLSEP7GT5HAEI54S3"
+	)
+	data := legacy.TxReceiptData{
+		Hash:                "fda7d1",
+		ShortHash:           "fda7d1...271c",
+		Ledger:              "3,932,422",
+		LedgerRaw:           "3932422",
+		SourceAddr:          "GAJD...DJBE",
+		SourceAddrFull:      sourceID,
+		SubmitterShort:      "GAJD...DJBE",
+		SubmitterAddr:       sourceID,
+		EffectiveActorShort: "CCBD...54S3",
+		EffectiveActorAddr:  actorID,
+		EffectiveActorType:  "contract",
+	}
+
+	var out strings.Builder
+	if err := TxReceiptSidebarFragment(data).Render(context.Background(), &out); err != nil {
+		t.Fatalf("render sidebar: %v", err)
+	}
+	html := out.String()
+	if !strings.Contains(html, "Transaction source") || !strings.Contains(html, "GAJD...DJBE") || !strings.Contains(html, `/v2/account/`+sourceID) {
+		t.Fatalf("sidebar omitted the transaction source: %s", html)
+	}
+	if strings.Contains(html, ">CCBD...54S3</a>") || strings.Contains(html, `/v2/contract/`+actorID) {
+		t.Fatalf("sidebar mislabeled the effective contract as the source: %s", html)
 	}
 }
 
