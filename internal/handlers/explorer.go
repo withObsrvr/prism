@@ -775,8 +775,13 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		}
 		l = ledgers[0]
 
-		txs, txErr = h.Gateway.GetTransactions(ctx, network, seq, seq, 50, "asc")
-		ops, opsErr = h.Gateway.GetOperations(ctx, network, seq, seq, 200)
+		// The transaction list is a display list — capping it hides rows, and the
+		// footer says how many of how many. The operation breakdown is an
+		// aggregate, so a cap there does not hide rows, it reports wrong
+		// proportions. Ask for exactly the number of operations this ledger says
+		// it has.
+		txs, txErr = h.Gateway.GetTransactions(ctx, network, seq, seq, ledgerTxDisplayLimit, "asc")
+		ops, opsErr = h.Gateway.GetOperations(ctx, network, seq, seq, ledgerOpsFetchLimit(l))
 		ledgerFees, _ = h.Gateway.GetLedgerFees(ctx, network, seq)
 		ledgerSoroban, _ = h.Gateway.GetLedgerSoroban(ctx, network, seq)
 	}
@@ -826,7 +831,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 		TxCount:         fmt.Sprintf("%d", l.TransactionCount),
 		TxSuccess:       fmt.Sprintf("%d", l.SuccessfulTxCount),
 		TxFailed:        fmt.Sprintf("%d", l.FailedTxCount),
-		OpCount:         fmt.Sprintf("%d", l.OperationCount),
+		OpCount:         fmt.Sprintf("%d", ledgerOperationTotal(l)),
 		OpsPerTx:        fmt.Sprintf("%.1f", opsPerTx),
 		TotalFees: func() string {
 			if l.TotalFeeCharged != nil {
@@ -923,24 +928,13 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 			data.SorobanPct = fmt.Sprintf("%d%%", sorobanCount*100/totalOps)
 		}
 
-		colors := []string{"bg-violet-500", "bg-cyan-500", "bg-emerald-500", "bg-amber-500", "bg-gray-400", "bg-gray-300"}
-		i := 0
-		for name, count := range typeCounts {
-			pct := count * 100 / totalOps
-			color := "bg-gray-300"
-			if i < len(colors) {
-				color = colors[i]
-			}
-			data.OpBreakdown = append(data.OpBreakdown, pages.OpBreakdownItem{
-				Name:  name,
-				Count: fmt.Sprintf("%d", count),
-				Pct:   fmt.Sprintf("%d%%", pct),
-				Width: fmt.Sprintf("%d%%", pct),
-				Color: color,
-			})
-			i++
-		}
+		// totalOps is len(ops), which GetOperations caps — so on a ledger with
+		// more operations than the cap this is a sample, and the percentages
+		// below are fractions of the sample rather than of the whole ledger.
+		data.OpsClassified = fmt.Sprintf("%d", totalOps)
+		data.OpBreakdown = buildOpBreakdown(typeCounts, totalOps)
 	} else {
+		data.OpsClassified = "0"
 		data.OpBreakdown = []pages.OpBreakdownItem{}
 	}
 
@@ -954,41 +948,35 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 				status = "failed"
 			}
 			opType := "tx"
-			opColor := "gray"
+			family := gateway.OpFamilyOther
+			// Kind is the sole classification signal: it decides the Soroban /
+			// Classic / Failed filter. Family only picks a colour. Deriving one
+			// from the other is what previously filed contract calls as classic.
 			kind := ledgerTxKind(tx, decodedMap[tx.TransactionHash], opsByTx[tx.TransactionHash])
 			summary := fmt.Sprintf(`<span class="font-medium text-gray-900">%s</span> · %d op(s)`,
 				html.EscapeString(gateway.ShortAddress(tx.SourceAccount)), tx.OperationCount)
 			if opMeta := opsByTx[tx.TransactionHash]; opMeta.Count > 0 {
-				opType, opColor = ledgerTxFallbackPresentation(tx, opMeta)
+				opType, family = ledgerTxFallbackPresentation(tx, opMeta)
 			}
 
 			// Enrich from decoded data if available.
 			if dt, ok := decodedMap[tx.TransactionHash]; ok {
 				if dt.Summary != nil {
 					summary = html.EscapeString(dt.Summary.Description)
+					family = ledgerTxSummaryFamily(dt.Summary.Type, kind)
 					switch dt.Summary.Type {
 					case "transfer":
 						opType = "transfer"
-						opColor = "cyan"
 					case "swap":
 						opType = "swap"
-						opColor = "emerald"
 					case "mint":
 						opType = "mint"
-						opColor = "emerald"
 					case "burn":
 						opType = "burn"
-						opColor = "red"
 					case "contract_call":
 						opType = "invoke"
-						opColor = "violet"
 					case "multi_op":
 						opType = "multi"
-						if kind == "soroban" {
-							opColor = "violet"
-						} else {
-							opColor = "gray"
-						}
 					default:
 						opType = dt.Summary.Type
 					}
@@ -997,15 +985,13 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 					label := walletTypeLabel(firstNonEmpty(walletInfo.WalletType, walletInfo.Implementation))
 					kind = "soroban"
 					opType = "wallet"
-					opColor = "violet"
+					family = gateway.OpFamilyContract
 					summary = html.EscapeString(fmt.Sprintf("%s wallet interaction from %s", label, gateway.ShortAddress(tx.SourceAccount)))
 				}
 			} else if tx.OperationCount > 1 {
 				opType = "multi"
 				if kind == "soroban" {
-					opColor = "violet"
-				} else {
-					opColor = "gray"
+					family = gateway.OpFamilyContract
 				}
 			}
 
@@ -1016,7 +1002,7 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 				ShortHash: gateway.ShortHash(tx.TransactionHash),
 				Kind:      kind,
 				OpType:    opType,
-				OpColor:   opColor,
+				Family:    family,
 				Summary:   summary,
 				Ops:       fmt.Sprintf("%d", tx.OperationCount),
 				Fee:       gateway.FormatNumber(tx.MaxFee),
@@ -1032,10 +1018,161 @@ func (h *Handlers) buildLedgerDetailData(r *http.Request, network, sequence stri
 	return data, nil
 }
 
+const (
+	// ledgerTxDisplayLimit bounds the rendered transaction list. This one is a
+	// display choice: the list footer reports "showing N of M".
+	ledgerTxDisplayLimit = 50
+
+	// ledgerOpsCeiling bounds the operations request so a bad count from the API
+	// cannot become an unbounded fetch. Stellar's per-ledger operation capacity
+	// is well under this.
+	ledgerOpsCeiling = 2000
+
+	// ledgerOpsFallback is used when a ledger reports no operation count at all,
+	// so the breakdown degrades to a sample rather than to nothing.
+	ledgerOpsFallback = 200
+)
+
+// ledgerOpsFetchLimit sizes the operations request to the ledger itself.
+//
+// The breakdown bar is an aggregate over every operation in the ledger, so a
+// fixed cap does not merely truncate it — it silently changes the proportions
+// between families and reports them as fact. The ledger record already carries
+// its own operation count, so ask for exactly that.
+//
+// Measured gateway behaviour as of 2026-07-30, mainnet ledger 63725037
+// (tx_set_operation_count 680):
+//
+//   - /silver/ledger/{seq}/full returns 200 operations and 50 transactions. It
+//     takes no limit parameter, and reports partial=null, warnings=null — the
+//     truncation is not flagged.
+//   - /silver/operations/enriched returns 100 operations regardless of limit
+//     (200/400/680/1000 all yielded 100). offset/page/after are accepted but
+//     ignored: every offset returns the identical page. cursor errors. The
+//     envelope reports has_more=false, which is untrue at 100 of 680.
+//
+// So this limit currently cannot be satisfied by either endpoint, and the
+// composite path (200) is the better sample of the two. It is kept because it
+// is the correct request to make and will start working if the cap is lifted.
+// Until then OpsClassified records what actually arrived and the section
+// subhead discloses the shortfall. The real fix is server-side: either paging
+// that works, or operation_type_counts in the composite response.
+func ledgerOpsFetchLimit(l gateway.Ledger) int {
+	total := ledgerOperationTotal(l)
+	if total <= 0 {
+		return ledgerOpsFallback
+	}
+	if total > ledgerOpsCeiling {
+		return ledgerOpsCeiling
+	}
+	return total
+}
+
+// ledgerOperationTotal returns the operations across the whole transaction set.
+//
+// The two counts on a ledger measure different populations: OperationCount is
+// Horizon's "operations in successful transactions", while TxSetOperationCount
+// covers everything in the transaction set, failed transactions included. The
+// operations endpoint returns the latter, so a ledger with any failure reports
+// more operations from /operations than OperationCount claims — which is how
+// the page came to render "first 15 of 11 operations".
+//
+// The page counts all 10 transactions and lists the failed one, so counting all
+// of their operations is the consistent choice; success is reported separately
+// in the caption.
+func ledgerOperationTotal(l gateway.Ledger) int {
+	if l.TxSetOperationCount > 0 {
+		return l.TxSetOperationCount
+	}
+	return l.OperationCount
+}
+
+// opFamilyTailwind keeps the legacy Color field meaningful for the v1 ledger
+// fragment, which still paints its bar with Tailwind utility classes. The v2
+// page ignores Color and styles from Family instead.
+var opFamilyTailwind = map[string]string{
+	gateway.OpFamilyContract: "bg-violet-500",
+	gateway.OpFamilyTransfer: "bg-sky-600",
+	gateway.OpFamilyMarket:   "bg-teal-600",
+	gateway.OpFamilyControls: "bg-amber-600",
+	gateway.OpFamilyAgent:    "bg-orange-400",
+	gateway.OpFamilyRevoke:   "bg-rose-700",
+	gateway.OpFamilyOther:    "bg-gray-400",
+}
+
+// buildOpBreakdown turns per-type operation counts into composition-bar
+// segments. Three things matter here:
+//
+// Ordering is fully determined. Go randomises map iteration order, so walking
+// typeCounts directly repainted the bar in a different order — and under the
+// old positional palette, a different colour — on every request.
+//
+// Segments are grouped into contiguous family blocks, families ordered by
+// their combined count. Sorting by raw count alone scattered a family's shades
+// across the bar, which hid the fact that they were related.
+//
+// Colour comes from the operation's semantic family, and Tier is the type's
+// rank within that family so the CSS can shade related types with one hue.
+// Ranks past the third share the third shade; the segment title disambiguates.
+func buildOpBreakdown(typeCounts map[string]int, totalOps int) []pages.OpBreakdownItem {
+	if totalOps <= 0 || len(typeCounts) == 0 {
+		return []pages.OpBreakdownItem{}
+	}
+
+	names := make([]string, 0, len(typeCounts))
+	familyTotals := make(map[string]int, len(typeCounts))
+	familyOf := make(map[string]string, len(typeCounts))
+	for name, count := range typeCounts {
+		names = append(names, name)
+		family := gateway.OperationFamily(name)
+		familyOf[name] = family
+		familyTotals[family] += count
+	}
+	sort.Slice(names, func(i, j int) bool {
+		a, b := names[i], names[j]
+		fa, fb := familyOf[a], familyOf[b]
+		if fa != fb {
+			if familyTotals[fa] != familyTotals[fb] {
+				return familyTotals[fa] > familyTotals[fb]
+			}
+			return fa < fb
+		}
+		if typeCounts[a] != typeCounts[b] {
+			return typeCounts[a] > typeCounts[b]
+		}
+		return a < b
+	})
+
+	seenInFamily := make(map[string]int, len(names))
+	items := make([]pages.OpBreakdownItem, 0, len(names))
+	for _, name := range names {
+		family := familyOf[name]
+		seenInFamily[family]++
+		tier := seenInFamily[family]
+		if tier > 3 {
+			tier = 3
+		}
+		count := typeCounts[name]
+		pct := count * 100 / totalOps
+		items = append(items, pages.OpBreakdownItem{
+			Name:   gateway.OperationDisplayName(name),
+			Count:  fmt.Sprintf("%d", count),
+			Pct:    fmt.Sprintf("%d%%", pct),
+			Width:  fmt.Sprintf("%d%%", pct),
+			Color:  opFamilyTailwind[family],
+			Family: family,
+			Tier:   tier,
+		})
+	}
+	return items
+}
+
 type ledgerTxOperationMeta struct {
-	Count     int
-	Soroban   int
-	FirstType string
+	Count         int
+	Soroban       int
+	FirstType     string
+	Family        string // family of FirstType; meaningful only when !MixedFamilies
+	MixedFamilies bool   // operations span more than one family
 }
 
 func ledgerOpsByTransaction(ops []gateway.Operation) map[string]ledgerTxOperationMeta {
@@ -1046,8 +1183,13 @@ func ledgerOpsByTransaction(ops []gateway.Operation) map[string]ledgerTxOperatio
 		}
 		meta := byTx[op.TransactionHash]
 		meta.Count++
+		family := gateway.OperationFamily(op.TypeName)
 		if meta.FirstType == "" {
 			meta.FirstType = op.TypeName
+			meta.Family = family
+		} else if meta.Family != family {
+			// Operations disagree, so no single family describes this tx.
+			meta.MixedFamilies = true
 		}
 		if op.IsSorobanOp {
 			meta.Soroban++
@@ -1077,6 +1219,9 @@ func ledgerTxKind(tx gateway.Transaction, decoded *gateway.DecodedTransaction, o
 	return "classic"
 }
 
+// ledgerTxFallbackPresentation derives a label and colour family from raw
+// operation metadata, for transactions with no decoded summary. It returns a
+// family rather than a colour so no caller can mistake it for a classification.
 func ledgerTxFallbackPresentation(tx gateway.Transaction, opMeta ledgerTxOperationMeta) (string, string) {
 	opType := ledgerTxPrettyOpType(opMeta.FirstType)
 	if tx.OperationCount > 1 || opMeta.Count > 1 {
@@ -1086,9 +1231,14 @@ func ledgerTxFallbackPresentation(tx gateway.Transaction, opMeta ledgerTxOperati
 		if opMeta.Count == 1 || tx.OperationCount == 1 {
 			opType = "invoke"
 		}
-		return opType, "violet"
+		return opType, gateway.OpFamilyContract
 	}
-	return opType, ledgerTxClassicColor(opType)
+	// A transaction spanning several families has no single colour that is
+	// true; neutral says "mixed" rather than naming whichever op came first.
+	if opMeta.MixedFamilies {
+		return opType, gateway.OpFamilyOther
+	}
+	return opType, opMeta.Family
 }
 
 func ledgerTxPrettyOpType(typeName string) string {
@@ -1120,14 +1270,29 @@ func ledgerTxPrettyOpType(typeName string) string {
 	}
 }
 
-func ledgerTxClassicColor(opType string) string {
-	switch opType {
-	case "payment", "transfer", "path pay":
-		return "cyan"
-	case "offer", "swap":
-		return "emerald"
+// ledgerTxSummaryFamily maps a decoded transaction's summary type to a colour
+// family. Summary types describe intent ("swap", "burn") rather than protocol
+// operations, so they are classified here rather than through
+// gateway.OperationFamily.
+func ledgerTxSummaryFamily(summaryType, kind string) string {
+	switch summaryType {
+	case "transfer", "mint":
+		return gateway.OpFamilyTransfer
+	case "swap":
+		return gateway.OpFamilyMarket
+	case "burn":
+		return gateway.OpFamilyRevoke
+	case "agent_payment", "x402":
+		return gateway.OpFamilyAgent
+	case "contract_call":
+		return gateway.OpFamilyContract
+	case "multi_op":
+		if kind == "soroban" {
+			return gateway.OpFamilyContract
+		}
+		return gateway.OpFamilyOther
 	default:
-		return "gray"
+		return gateway.OpFamilyOther
 	}
 }
 
@@ -1610,6 +1775,9 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			Contract:     gateway.ShortAddress(op.ContractID),
 			ContractFull: op.ContractID,
 			Function:     op.FunctionName,
+			TypeName:     op.TypeName,
+			Amount:       operationAmountXLM(op),
+			Asset:        operationAssetCode(op),
 		})
 	}
 
@@ -1628,9 +1796,11 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 		}
 
 		dataHTML := ""
+		var evtAmount, evtAsset string
 		if evt.Amount != "" {
 			assetLabel, decimals := resolveEventAsset(evt)
 			amount := gateway.FormatTokenAmount(evt.Amount, decimals)
+			evtAmount, evtAsset = amount, assetLabel
 			display := amount
 			if assetLabel != "" {
 				display = amount + " " + assetLabel
@@ -1650,6 +1820,12 @@ func (h *Handlers) buildTxReceiptData(r *http.Request, network, hash, shortHash 
 			Contract:     gateway.ShortAddress(evt.ContractID),
 			ContractFull: evt.ContractID,
 			DataHTML:     dataHTML,
+			From:         gateway.ShortAddress(evt.From),
+			FromFull:     evt.From,
+			To:           gateway.ShortAddress(evt.To),
+			ToFull:       evt.To,
+			Amount:       evtAmount,
+			Asset:        evtAsset,
 		})
 	}
 
@@ -2133,6 +2309,27 @@ func linkifyBlockchainRefs(text string) string {
 }
 
 // buildOperationSummary produces a human-readable HTML summary for a single operation.
+// operationAmountXLM returns the operation's value as a formatted decimal, or
+// empty when the operation moves none. Amounts arrive in stroops.
+func operationAmountXLM(op gateway.DecodedOperation) string {
+	if strings.TrimSpace(op.Amount) == "" {
+		return ""
+	}
+	return gateway.FormatStroopsToXLM(op.Amount)
+}
+
+// operationAssetCode names the asset an operation's amount is denominated in.
+// An empty code on a value-bearing classic operation means native XLM.
+func operationAssetCode(op gateway.DecodedOperation) string {
+	if strings.TrimSpace(op.Amount) == "" {
+		return ""
+	}
+	if code := strings.TrimSpace(op.AssetCode); code != "" {
+		return code
+	}
+	return "XLM"
+}
+
 func buildOperationSummary(op gateway.DecodedOperation) string {
 	source := accountLinkHTML(op.SourceAccount, gateway.ShortAddress(op.SourceAccount), "font-mono text-text-primary text-emerald-700 hover:text-emerald-800")
 

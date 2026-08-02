@@ -40,6 +40,7 @@ type semanticTxContext struct {
 	TxType             string
 	Subtype            string
 	Confidence         string
+	SourceAccount      string
 	OperationTypes     []string
 	WalletInvolved     bool
 	EffectiveActorType string
@@ -73,6 +74,9 @@ func BuildTxNarrative(resp *gateway.SemanticTransactionResponse) TxNarrative {
 		Actors:             resp.Actors,
 		Assets:             resp.Assets,
 		Operations:         resp.Operations,
+	}
+	if resp.Transaction.SourceAccount != nil {
+		ctx.SourceAccount = *resp.Transaction.SourceAccount
 	}
 	ctx.PrimaryFunction = primaryFunction(ctx)
 	ctx.PrimaryContractID = primaryContractID(ctx)
@@ -333,7 +337,7 @@ func (genericContractCallNarrator) Matches(ctx semanticTxContext) bool {
 }
 
 func (genericContractCallNarrator) Build(ctx semanticTxContext) TxNarrative {
-	actor := actorLabel(firstActorByRole(ctx.Actors, "effective_actor"))
+	actor := transactionSourceLabel(ctx)
 	protocol := actorLabel(firstActorByRole(ctx.Actors, "protocol"))
 	narrative := fmt.Sprintf("%s called a contract", actor)
 	if ctx.PrimaryFunction != "" {
@@ -368,7 +372,7 @@ type genericNarrator struct{}
 func (genericNarrator) Matches(ctx semanticTxContext) bool { return true }
 
 func (genericNarrator) Build(ctx semanticTxContext) TxNarrative {
-	actor := actorLabel(firstActorByRole(ctx.Actors, "effective_actor"))
+	actor := transactionSourceLabel(ctx)
 	title := titleish(strings.ReplaceAll(ctx.TxType, "_", " "))
 	if title == "" {
 		title = "Transaction activity"
@@ -387,6 +391,16 @@ func (genericNarrator) Build(ctx semanticTxContext) TxNarrative {
 		Evidence:        buildEvidence(ctx),
 		Signals:         buildSignals(ctx),
 	}
+}
+
+func transactionSourceLabel(ctx semanticTxContext) string {
+	if strings.TrimSpace(ctx.SourceAccount) != "" {
+		return gateway.ShortAddress(ctx.SourceAccount)
+	}
+	if submitter := firstActorByRole(ctx.Actors, "submitter"); submitter != nil {
+		return actorLabel(submitter)
+	}
+	return actorLabel(firstActorByRole(ctx.Actors, "effective_actor"))
 }
 
 func buildActors(actors []gateway.SemanticActor) []TxActor {
@@ -531,25 +545,25 @@ func primaryFunction(ctx semanticTxContext) string {
 }
 
 func primaryContractID(ctx semanticTxContext) string {
-	if actor := firstActorByRole(ctx.Actors, "protocol"); actor != nil && actor.ActorID != "" {
-		return actor.ActorID
-	}
 	for _, op := range ctx.Operations {
 		if op.ContractID != "" {
 			return op.ContractID
 		}
 	}
+	if actor := firstActorByRole(ctx.Actors, "protocol"); actor != nil && actor.ActorID != "" {
+		return actor.ActorID
+	}
 	return ""
 }
 
 func primaryContract(ctx semanticTxContext) string {
-	if actor := firstActorByRole(ctx.Actors, "protocol"); actor != nil {
-		return actorLabel(actor)
-	}
 	for _, op := range ctx.Operations {
 		if op.ContractID != "" {
 			return gateway.ShortAddress(op.ContractID)
 		}
+	}
+	if actor := firstActorByRole(ctx.Actors, "protocol"); actor != nil {
+		return actorLabel(actor)
 	}
 	return ""
 }

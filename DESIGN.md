@@ -27,38 +27,44 @@ colors:
   cyan-transfer: "#06B6D4"
 typography:
   display:
-    fontFamily: "Instrument Sans, SF Pro Display, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "2.25rem"
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: "-0.025em"
   headline:
-    fontFamily: "Instrument Sans, SF Pro Display, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "-0.025em"
   title:
-    fontFamily: "Instrument Sans, SF Pro Display, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 700
     lineHeight: 1.35
   body:
-    fontFamily: "Instrument Sans, SF Pro Display, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Instrument Sans, SF Pro Display, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "0.625rem"
     fontWeight: 600
     lineHeight: 1rem
     letterSpacing: "0.08em"
   mono:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
     fontSize: "0.75rem"
     fontWeight: 400
     lineHeight: 1.5
+  editorial:
+    fontFamily: "Source Serif 4, Source Serif Pro, Georgia, serif"
+    fontSize: "clamp(30px, 3.4vw, 44px)"
+    fontWeight: 500
+    lineHeight: 1.15
+    letterSpacing: "-0.02em"
 rounded:
   sm: "4px"
   md: "8px"
@@ -158,11 +164,15 @@ The palette is a restrained neutral system with emerald as the signature interac
 
 ## 3. Typography
 
-**Display Font:** Instrument Sans, with SF Pro Display and system-ui fallbacks  
-**Body Font:** Instrument Sans, with SF Pro Display and system-ui fallbacks  
-**Label/Mono Font:** JetBrains Mono, with ui-monospace fallback
+**Interface Font:** IBM Plex Sans, with system-ui and -apple-system fallbacks
 
-**Character:** Instrument Sans keeps the product human and direct. JetBrains Mono gives addresses, hashes, sequence numbers, fees, and amounts a technical rhythm that supports audit work.
+**Evidence Font:** IBM Plex Mono, with ui-monospace fallback
+
+**Editorial Font:** Source Serif 4, with Source Serif Pro and Georgia fallbacks
+
+**Character:** IBM Plex Sans keeps the product human and direct. IBM Plex Mono gives addresses, hashes, sequence numbers, fees, and amounts a technical rhythm that supports audit work. Source Serif 4 carries Prism's own voice in detail-page headlines: the connective language that turns evidence into a sentence.
+
+Three families is the ceiling, and the third earns its place only because it never competes with the other two. Serif appears in one context, the detail headline, and only on words Prism wrote itself.
 
 ### Hierarchy
 - **Display** (700, 36px, 1.1): Hero numbers and the most important page value. Use sparingly, one per page when the page has a single key metric.
@@ -171,9 +181,22 @@ The palette is a restrained neutral system with emerald as the signature interac
 - **Body** (400, 14px, 1.5): Descriptions, table body, explanations, and normal interface copy. Keep prose at 65 to 75ch when it becomes narrative.
 - **Label** (600, 10px, uppercase, 0.08em tracking): Category labels, table headers, badge labels, and compact metadata.
 - **Mono** (400 to 500, 10 to 14px, tabular): Addresses, hashes, ledger numbers, amounts, fees, sequences, public keys, and technical values.
+- **Editorial** (500, clamp 30 to 44px, 1.15, -0.02em): Detail-page headlines only. One per page. Mixes with mono by design, per the Headline Role Rule below.
 
 ### Named Rules
-**The Mono Evidence Rule.** All blockchain data uses JetBrains Mono and tabular numerals. If a user might copy, compare, or audit it, it is mono.
+**The Mono Evidence Rule.** All blockchain data uses IBM Plex Mono and tabular numerals. If a user might copy, compare, or audit it, it is mono. This holds inside headlines too: an address is mono at 44px exactly as it is at 12px.
+
+**The Headline Role Rule.** A detail headline carries exactly three roles, and each role gets exactly one treatment. Nothing else varies.
+
+| Role | What it is | Treatment |
+|---|---|---|
+| Evidence | Addresses, contract ids, function names | Mono. `.px-tx-actor` for the leading actor, `.px-tx-ev` elsewhere |
+| Prose | Verbs and connectives Prism wrote itself | Serif italic, muted. `.px-tx-verb` |
+| Value | Asset-denominated amounts | Mono plus the asset chip. `.px-tx-amt` |
+
+The failure this prevents: a headline once rendered the sender in serif and the recipient in mono, so two identical Stellar addresses in one sentence looked like different kinds of thing. If a fragment is evidence, it is mono wherever it sits in the line.
+
+The chip (padding, radius, background) belongs to values alone, where it encodes asset identity. It is not a general emphasis device; on an address it adds size and padding changes that signal nothing.
 
 **The One Hero Rule.** Most pages get one hero value or narrative summary. Do not create equal-weight metric grids that compete with the page's core answer.
 

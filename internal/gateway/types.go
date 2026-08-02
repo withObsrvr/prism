@@ -518,6 +518,7 @@ type Operation struct {
 
 type OperationsResponse struct {
 	Count      int         `json:"count"`
+	HasMore    bool        `json:"has_more"`
 	Operations []Operation `json:"operations"`
 }
 
@@ -1981,6 +1982,7 @@ type LedgerFeedSummaryProvenance struct {
 type HomeSummaryResponse struct {
 	Network                   string                         `json:"network"`
 	GeneratedAt               string                         `json:"generated_at,omitempty"`
+	Delivery                  HomeSummaryDelivery            `json:"-"`
 	Freshness                 HomeSummaryFreshness           `json:"freshness"`
 	Components                HomeSummaryComponents          `json:"components"`
 	Header                    HomeSummaryHeader              `json:"header"`
@@ -1989,9 +1991,19 @@ type HomeSummaryResponse struct {
 	ContractsNeedingAttention []HomeSummaryAttentionContract `json:"contracts_needing_attention,omitempty"`
 	Leaders                   []HomeSummaryLeader            `json:"leaders,omitempty"`
 	Insights                  []HomeSummaryInsight           `json:"insights,omitempty"`
+	InsightEvaluation         *HomeInsightEvaluationEnvelope `json:"insight_evaluation,omitempty"`
+	RecentInsights            *[]HomeSummaryInsight          `json:"recent_insights,omitempty"`
+	InsightDelivery           *HomeInsightDelivery           `json:"insight_delivery,omitempty"`
 	Utilization               HomeSummaryUtilization         `json:"utilization"`
 	Meta                      HomeSummaryMeta                `json:"meta"`
 	Provenance                HomeSummaryProvenance          `json:"provenance"`
+}
+
+// HomeSummaryDelivery describes how Prism obtained the packet. It is local
+// consumer state, not part of the Query API contract, so it must never be
+// serialized as upstream evidence.
+type HomeSummaryDelivery struct {
+	UsedLastGood bool
 }
 
 type HomeSummaryFreshness struct {
@@ -2138,6 +2150,9 @@ type HomeSummaryInsight struct {
 	InsightID          string                         `json:"insight_id,omitempty"`
 	Network            string                         `json:"network,omitempty"`
 	Type               string                         `json:"type"`
+	Family             string                         `json:"family,omitempty"`
+	Direction          string                         `json:"direction,omitempty"`
+	Severity           string                         `json:"severity,omitempty"`
 	EvidenceVersion    string                         `json:"evidence_version,omitempty"`
 	Definition         *HomeInsightDefinition         `json:"definition,omitempty"`
 	ObservedValue      float64                        `json:"observed_value"`
@@ -2172,6 +2187,7 @@ type HomeInsightDefinition struct {
 	ComparisonMethod string   `json:"comparison_method"`
 	MinimumObserved  *float64 `json:"minimum_observed,omitempty"`
 	MinimumRatio     float64  `json:"minimum_ratio"`
+	RatioComparison  string   `json:"ratio_comparison,omitempty"`
 }
 
 type HomeInsightIdentity struct {
@@ -2261,10 +2277,66 @@ type HomeInsightActivityFacts struct {
 	ClassicOnlyTransactionCount int64  `json:"classic_only_transaction_count"`
 }
 
+type HomeInsightGrowthFacts struct {
+	Kind                               string  `json:"kind"`
+	IncludedTransactionCount           int64   `json:"included_transaction_count"`
+	SuccessfulTransactionCount         int64   `json:"successful_transaction_count"`
+	FailedTransactionCount             int64   `json:"failed_transaction_count"`
+	IncludedOperationCount             int64   `json:"included_operation_count"`
+	SorobanTransactionCount            int64   `json:"soroban_transaction_count"`
+	ClassicOnlyTransactionCount        int64   `json:"classic_only_transaction_count"`
+	BaselineSuccessfulTransactionCount float64 `json:"baseline_successful_transaction_count"`
+	CurrentFailureRate                 float64 `json:"current_failure_rate"`
+	BaselineFailureRate                float64 `json:"baseline_failure_rate"`
+	MaximumFailureRate                 float64 `json:"maximum_failure_rate"`
+	FailureRateTolerance               float64 `json:"failure_rate_tolerance"`
+}
+
+type HomeInsightRecoveryFacts struct {
+	Kind                    string  `json:"kind"`
+	PriorInsightID          string  `json:"prior_insight_id"`
+	PriorWindowStart        string  `json:"prior_window_start"`
+	PriorWindowEnd          string  `json:"prior_window_end"`
+	PriorFailureCount       int64   `json:"prior_failure_count"`
+	CurrentFailureCount     int64   `json:"current_failure_count"`
+	CurrentAttemptCount     int64   `json:"current_attempt_count"`
+	CurrentSuccessCount     int64   `json:"current_success_count"`
+	BaselineFailureCount    float64 `json:"baseline_failure_count"`
+	BaselineAttemptCount    float64 `json:"baseline_attempt_count"`
+	NormalRangeFailureCount float64 `json:"normal_range_failure_count"`
+	MinimumAttemptCount     int64   `json:"minimum_attempt_count"`
+	ActivityFloorRatio      float64 `json:"activity_floor_ratio"`
+}
+
+type HomeInsightAdoptionFacts struct {
+	Kind                      string  `json:"kind"`
+	ContractID                string  `json:"contract_id"`
+	DeploymentLedger          int64   `json:"deployment_ledger"`
+	DeployedAt                string  `json:"deployed_at"`
+	DeploymentTransactionHash string  `json:"deployment_transaction_hash"`
+	DeploymentOperationIndex  int     `json:"deployment_operation_index"`
+	DeployerAccount           string  `json:"deployer_account,omitempty"`
+	CallsSinceDeployment      int64   `json:"calls_since_deployment"`
+	DistinctCallerCount       int64   `json:"distinct_caller_count"`
+	SuccessCount              int64   `json:"success_count"`
+	FailureCount              int64   `json:"failure_count"`
+	SuccessRate               float64 `json:"success_rate"`
+	TopFunction               string  `json:"top_function,omitempty"`
+	ObservationWindowEnd      string  `json:"observation_window_end"`
+	AdoptionAgeSeconds        int64   `json:"adoption_age_seconds"`
+	MinimumCalls              int64   `json:"minimum_calls"`
+	MinimumDistinctCallers    int64   `json:"minimum_distinct_callers"`
+	MinimumSuccessRate        float64 `json:"minimum_success_rate"`
+	MaximumAdoptionAgeSeconds int64   `json:"maximum_adoption_age_seconds"`
+}
+
 type HomeInsightFacts struct {
 	Failure    *HomeInsightFailureFacts
 	Deployment *HomeInsightDeploymentFacts
 	Activity   *HomeInsightActivityFacts
+	Growth     *HomeInsightGrowthFacts
+	Recovery   *HomeInsightRecoveryFacts
+	Adoption   *HomeInsightAdoptionFacts
 }
 
 func (facts HomeInsightFacts) MarshalJSON() ([]byte, error) {
@@ -2275,6 +2347,12 @@ func (facts HomeInsightFacts) MarshalJSON() ([]byte, error) {
 		return json.Marshal(facts.Deployment)
 	case facts.Activity != nil:
 		return json.Marshal(facts.Activity)
+	case facts.Growth != nil:
+		return json.Marshal(facts.Growth)
+	case facts.Recovery != nil:
+		return json.Marshal(facts.Recovery)
+	case facts.Adoption != nil:
+		return json.Marshal(facts.Adoption)
 	default:
 		return nil, fmt.Errorf("home insight facts discriminator is missing")
 	}
@@ -2306,10 +2384,76 @@ func (facts *HomeInsightFacts) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		facts.Activity = &value
+	case "successful_activity_growth":
+		var value HomeInsightGrowthFacts
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		facts.Growth = &value
+	case "failure_recovery":
+		var value HomeInsightRecoveryFacts
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		facts.Recovery = &value
+	case "new_contract_adoption":
+		var value HomeInsightAdoptionFacts
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		facts.Adoption = &value
 	default:
-		return nil
+		return fmt.Errorf("unsupported home insight facts kind %q", discriminator.Kind)
 	}
 	return nil
+}
+
+// HomeInsightEvaluationEnvelope explains the result of every enabled detector,
+// including hours in which no detector crossed its threshold.
+type HomeInsightEvaluationEnvelope struct {
+	EvidenceVersion       string                        `json:"evidence_version"`
+	RegistryVersion       string                        `json:"registry_version"`
+	Status                string                        `json:"status"`
+	WindowStart           string                        `json:"window_start"`
+	WindowEnd             string                        `json:"window_end"`
+	ComparisonMethod      string                        `json:"comparison_method"`
+	CompleteThroughLedger int64                         `json:"complete_through_ledger"`
+	Rules                 []HomeInsightEvaluationRule   `json:"rules"`
+	Caveats               []HomeInsightCaveat           `json:"caveats"`
+	Provenance            HomeInsightEvidenceProvenance `json:"provenance"`
+}
+
+type HomeInsightEvaluationRule struct {
+	Type                   string                     `json:"type"`
+	Family                 string                     `json:"family"`
+	Direction              string                     `json:"direction"`
+	RuleID                 string                     `json:"rule_id"`
+	RuleVersion            string                     `json:"rule_version"`
+	ComparisonMethod       string                     `json:"comparison_method"`
+	Status                 string                     `json:"status"`
+	EvaluationOutcome      string                     `json:"evaluation_outcome"`
+	Subject                *HomeSummaryInsightSubject `json:"subject,omitempty"`
+	EvaluatedSubjectCount  int64                      `json:"evaluated_subject_count"`
+	QualifyingSubjectCount int64                      `json:"qualifying_subject_count"`
+	ObservedValue          *float64                   `json:"observed_value"`
+	BaselineValue          *float64                   `json:"baseline_value"`
+	Ratio                  *float64                   `json:"ratio"`
+	MinimumObserved        *float64                   `json:"minimum_observed"`
+	MinimumRatio           *float64                   `json:"minimum_ratio"`
+	RatioComparison        string                     `json:"ratio_comparison"`
+	ThresholdCrossed       bool                       `json:"threshold_crossed"`
+	ObservedFirstLedger    *int64                     `json:"observed_first_ledger"`
+	ObservedLastLedger     *int64                     `json:"observed_last_ledger"`
+	Caveats                []HomeInsightCaveat        `json:"caveats"`
+}
+
+type HomeInsightDelivery struct {
+	Mode                string `json:"mode"`
+	EvaluatedWindowEnd  string `json:"evaluated_window_end,omitempty"`
+	RetainedAt          string `json:"retained_at,omitempty"`
+	MaxAgeSeconds       int64  `json:"max_age_seconds"`
+	ProjectionLagSecond int64  `json:"projection_lag_seconds"`
+	ProjectionLedgerLag int64  `json:"projection_ledger_lag"`
 }
 
 type HomeInsightEvidenceLocator struct {

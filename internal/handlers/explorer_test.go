@@ -217,10 +217,10 @@ func TestBuildLedgerDetailDataClassifiesTxsFromOperations(t *testing.T) {
 		t.Fatalf("transactions = %d, want 2", len(data.Transactions))
 	}
 
-	if got := data.Transactions[0]; got.Hash != sorobanHash || got.Kind != "soroban" || got.OpType != "invoke" || got.OpColor != "violet" {
+	if got := data.Transactions[0]; got.Hash != sorobanHash || got.Kind != "soroban" || got.OpType != "invoke" || got.Family != gateway.OpFamilyContract {
 		t.Fatalf("soroban tx mapped unexpectedly: %+v", got)
 	}
-	if got := data.Transactions[1]; got.Hash != classicHash || got.Kind != "classic" || got.OpType != "multi" || got.OpColor != "gray" {
+	if got := data.Transactions[1]; got.Hash != classicHash || got.Kind != "classic" || got.OpType != "multi" || got.Family != gateway.OpFamilyOther {
 		t.Fatalf("classic multi-op tx mapped unexpectedly: %+v", got)
 	}
 }

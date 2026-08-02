@@ -507,7 +507,9 @@ a { color: inherit; text-decoration: none; }
 
 .ph-spectrum-skeleton {
   display: grid;
-  grid-template-columns: repeat(32, minmax(6px, 1fr));
+  /* Count comes from vmv2.SpectrogramLedgerCount, set inline, so the skeleton
+     and the loaded chart cannot disagree about how wide a column is. */
+  grid-template-columns: repeat(var(--ph-column-count, 32), minmax(6px, 1fr));
   align-items: end;
   height: 176px;
   gap: 4px;
@@ -754,6 +756,127 @@ a { color: inherit; text-decoration: none; }
 .ph-insight-list {
   border-top: 1px solid var(--ph-border-strong);
 }
+.ph-home-insights.has-no-cards { padding-bottom: 21px; }
+.ph-insight-zero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 20px;
+  min-height: 58px;
+  padding: 11px 0 12px;
+  border-top: 1px solid var(--ph-border-strong);
+  border-bottom: 1px solid var(--ph-border);
+}
+.ph-insight-zero > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px 14px;
+  min-width: 0;
+}
+.ph-insight-zero strong {
+  color: var(--ph-text);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.ph-insight-zero span {
+  color: var(--ph-text-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ph-insight-zero-result {
+  color: var(--ph-green-ink, var(--ph-text-2)) !important;
+  font-family: var(--ph-ff-mono);
+  font-size: 10px !important;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ph-insight-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  margin: 0;
+  border-bottom: 1px solid var(--ph-border);
+}
+.ph-insight-check {
+  min-width: 0;
+  padding: 11px 14px 12px;
+  border-right: 1px solid var(--ph-border);
+}
+.ph-insight-check:first-child { padding-left: 0; }
+.ph-insight-check:last-child { border-right: 0; }
+.ph-insight-check dt {
+  margin: 0 0 4px;
+  color: var(--ph-text-3);
+  font-family: var(--ph-ff-mono);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.ph-insight-check dd {
+  margin: 0;
+  color: var(--ph-text);
+  font-family: var(--ph-ff-mono);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.ph-insight-check small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ph-text-3);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.ph-insight-check.is-partial dd,
+.ph-insight-check.is-unavailable dd { color: var(--ph-amber-ink, var(--ph-text-2)); }
+.ph-insight-checks.is-limited { background: color-mix(in oklch, var(--ph-amber) 4%, transparent); }
+.ph-insight-recent {
+  display: flex;
+  align-items: baseline;
+  gap: 8px 12px;
+  min-height: 35px;
+  padding: 8px 0 0;
+  color: var(--ph-text-3);
+  font-size: 10px;
+}
+.ph-insight-recent > span {
+  font-family: var(--ph-ff-mono);
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.ph-insight-recent a,
+.ph-insight-recent strong { color: var(--ph-text-2); font-size: 11px; font-weight: 600; }
+.ph-insight-recent a:hover { color: var(--ph-accent-ink); }
+.ph-insight-recent small { margin-left: auto; color: var(--ph-text-3); }
+.ph-insight-zero.is-delayed strong { white-space: normal; }
+.ph-insight-zero .ph-inline-retry {
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+.ph-insight-zero-detail {
+  width: fit-content;
+  max-width: 72ch;
+  margin-top: 6px;
+  color: var(--ph-text-3);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.ph-insight-zero-detail summary {
+  min-height: 24px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.ph-insight-zero-detail span { display: block; padding: 1px 0 1px 14px; }
+.ph-insight-zero-detail summary:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--ph-accent-ink) 22%, transparent);
+  outline-offset: 2px;
+}
 .ph-insight {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(330px, .65fr);
@@ -784,6 +907,7 @@ a { color: inherit; text-decoration: none; }
 .ph-signal-dot.is-critical { background: var(--ph-red); }
 .ph-signal-dot.is-signal { background: var(--ph-violet); }
 .ph-signal-dot.is-info { background: var(--ph-cyan); }
+.ph-signal-dot.is-positive { background: var(--ph-green); }
 .ph-insight h3,
 .ph-evidence-row h3,
 .ph-leader-row h3,
@@ -1308,6 +1432,16 @@ a { color: inherit; text-decoration: none; }
   .ph-inline-state { align-items: flex-start; flex-direction: column; gap: 4px; }
   .ph-home-deferred > .ph-inline-state,
   .ph-evidence-status-slot > .ph-inline-state { align-items: baseline; flex-direction: row; gap: 7px; }
+  .ph-insight-zero { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .ph-insight-zero > div { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .ph-insight-zero strong { white-space: normal; }
+  .ph-insight-zero-result { justify-self: start; }
+  .ph-insight-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-insight-check { padding-left: 0; border-right: 0; border-bottom: 1px solid var(--ph-border); }
+  .ph-insight-check:nth-last-child(-n+2) { border-bottom: 0; }
+  .ph-insight-recent { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .ph-insight-recent small { margin-left: 0; }
+  .ph-insight-zero .ph-inline-retry { justify-self: start; }
   .ph-insight { padding: 18px 0 20px; }
   .ph-evidence-subject { grid-template-columns: 1fr; gap: 4px; }
   .ph-ttl-columns { grid-template-columns: minmax(0, 1fr) minmax(132px, max-content); }
@@ -3728,11 +3862,71 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   --ph-text-2: oklch(42% 0.022 67);
   --ph-text-3: oklch(50.2% 0.024 67);
 
-  --ph-violet: oklch(43.6% 0.143 294);
+  /* ---- Spectrum: one family, four categories at L 53-60% ------------------
+     Every one of these is declared here rather than left to fall through from
+     the first :root block. Previously only violet, teal, amber and green were
+     restated, so the spectrogram mixed one bright block-1 colour into a stack
+     of dark block-2 ones: payments rendered at L 65.7% against 43.7-48.6% for
+     everything beside it, a 22-point spread that read as a rendering fault
+     with no visible cause. Restating all six makes the cascade order
+     non-load-bearing.
+
+     The band is the design's: chroma normalised to 0.105 so no single segment
+     shouts, and lightness held inside 7 points across the four categories so
+     the bar reads as one measurement rather than a ranking. Violet and red run
+     hotter (0.145 / 0.165) because those hues need it to hold their identity
+     at the same perceived weight.
+
+     Hues are Prism's, not the design's, in one place: the design specifies
+     cyan at hue 215, which is outside sRGB at this chroma (it tops out at
+     0.102 even at L 58%, and the older value resolved to #00a2c0 with the red
+     channel clamped to zero). 238 is in gamut with headroom and is the blue
+     the ledger operation bar already uses for value movement, so payments and
+     transfers read as the same kind of thing across both charts.
+
+     Closest pair is payments/calls at dE 0.132, well clear of the 0.049 where
+     two segments stop being separable. */
+  --ph-cyan: oklch(58% 0.105 238);
+  --ph-green: oklch(53% 0.105 149);
+  --ph-violet: oklch(53% 0.145 294);
+  --ph-amber: oklch(60% 0.105 78);
+  --ph-red: oklch(55% 0.165 25);
   --ph-teal: oklch(36.8% 0.062 218);
-  --ph-amber: oklch(48.5% 0.09 78);
-  --ph-green: oklch(47.2% 0.094 149);
+  /* Darker variants for the two that appear as text rather than as fill.
+     Referenced with a --ph-text-2 fallback in the insight rows, so they were
+     silently unset before; at the lighter fill values above they have to be
+     real or that copy loses contrast. */
+  --ph-green-ink: oklch(45% 0.10 149);
+  --ph-amber-ink: oklch(48% 0.10 78);
   --ph-accent-ink: oklch(48% 0.155 42);
+  /* ---- Brand palette, sampled from the Prism social artwork ----------------
+     These are the literal marketing colours. They sit at L 62-74% as an equal
+     weight / different hue set, built for large display numerals on the dark
+     card. At small label sizes they carry white text at only 2.3-3.4:1, below
+     AA, so they are NOT used as primary segment colours — they appear as the
+     tier-2 shade, where the label is ink and they measure 5.0-7.6:1.
+     The brand's six colours are really five hues: gold (83) sits 4 degrees
+     from classic (87), differing in chroma and lightness rather than hue. */
+  --ph-brand-calls: #9b7bd8;   /* oklch(65.2% 0.138 298) */
+  --ph-brand-lzk: #3f8fbf;     /* oklch(62.1% 0.106 238) */
+  --ph-brand-swaps: #1fa098;   /* oklch(63.9% 0.105 188) */
+  --ph-brand-classic: #a89770; /* oklch(68.2% 0.057 87)  */
+  --ph-brand-gold: #d4a028;    /* oklch(73.6% 0.140 83)  */
+  --ph-brand-agents: #e27160;  /* oklch(67.7% 0.144 30)  */
+  --ph-brand-ink: #15151a;     /* dark card background   */
+
+  /* Revocation has no brand anchor — the brand supplies five hues and there are
+     six chromatic families. Crimson sits 28 degrees off agents and 0.09 darker,
+     which holds them apart (dE 0.123). */
+  --ph-crimson: oklch(38% 0.155 358);
+  /* Neutral, and deliberately outside the 53-60% band. "Other" is a residual,
+     not a category, so it sits pale enough (L 74%) to recede behind the four
+     that carry meaning instead of competing with them. Near-achromatic keeps
+     it clear of the warm families. */
+  --ph-other: oklch(74% 0.010 80);
+  /* The operation bar's neutral, kept at the old darker value because unlike
+     --ph-other it sits under a white label (4.8:1). */
+  --ph-neutral-seg: oklch(54% 0.008 80);
   --ph-ink-hover: oklch(15.5% 0.014 67);
   --ph-on-ink: oklch(98.4% 0.006 78);
 
@@ -4288,10 +4482,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   gap: 6px;
   position: relative;
   cursor: default;
-  color: var(--ph-on-ink);
-  text-shadow: 0 1px 2px rgba(31,27,22,0.18);
   overflow: hidden;
   transition: filter 160ms;
+  /* Family classes below supply --seg; the fallback keeps an unrecognised
+     family from rendering as a transparent gap in the bar. The label colour
+     follows the background rather than being fixed, so the palette can hold
+     light families (coral) alongside dark ones. */
+  background: var(--seg, var(--ph-neutral-seg));
+  color: var(--seg-text, var(--ph-on-ink));
+  text-shadow: var(--seg-shadow, 0 1px 2px rgba(31,27,22,0.18));
 }
 .px-lg-comp-seg:hover { filter: brightness(1.08); }
 .px-lg-comp-seg::after {
@@ -4316,17 +4515,54 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.s-swap { background: var(--ph-violet); }
-.s-transfer { background: var(--ph-teal); }
-.s-lending { background: var(--ph-amber); }
-.s-classic { background: #5C5C58; }
-.s-events { background: var(--ph-accent-ink); }
-.s-other { background: var(--ph-text-3); }
+/* Operation families: one hue per family, so a segment's colour is a property
+   of what the operation does rather than where it landed in the bar. Stellar
+   has 29 operation types and a categorical palette stops reading past ~7, so
+   types collapse into families instead of the palette growing. */
+/* Each family anchors on a brand hue. --seg is that hue darkened into the app's
+   working band so the white segment label clears AA; --seg-t2 is the literal
+   brand colour, which the tier-2 rule uses verbatim. Families with no brand
+   anchor omit --seg-t2 and fall back to the computed ramp. */
+.s-contract { --seg: oklch(44% 0.143 298); --seg-t2: var(--ph-brand-calls); }
+.s-transfer { --seg: oklch(40% 0.090 238); --seg-t2: var(--ph-brand-lzk); }
+.s-market { --seg: oklch(48% 0.085 188); --seg-t2: var(--ph-brand-swaps); }
+.s-controls { --seg: oklch(47% 0.075 87); --seg-t2: var(--ph-brand-classic); }
+.s-agent { --seg: oklch(47% 0.150 30); --seg-t2: var(--ph-brand-agents); }
+.s-revoke { --seg: var(--ph-crimson); }
+/* Not --ph-other. The spectrogram's neutral is a pale residual meant to recede
+   behind the categories; this one is a labelled segment in the operation bar
+   and has to carry a white label at AA. Same role, opposite lightness. */
+.s-other { --seg: var(--ph-neutral-seg); }
+
+/* Second and third most common type within a family: same hue, raised lightness
+   and softened chroma.
+   The ramp must not mix toward another colour. color-mix(in oklch, ...) toward
+   the warm cream rotates hue along the shorter arc, which pushed transfer's
+   teal (218) to 155 — that is trust's green — and contract's violet to pink.
+   Relative colour syntax holds `h` fixed and moves only l and c, so a family
+   can never ramp into a neighbour's hue. Lightness is capped so pale tiers stay
+   distinguishable from the page background.
+   Guarded by @supports: without it, tiers keep the full family colour and the
+   white label, which is legible even though the ramp is lost. */
+@supports (background: oklch(from red l c h)) {
+  .px-lg-comp-seg.tier-2,
+  .px-lg-comp-seg.tier-3 { --seg-text: var(--ph-text); --seg-shadow: none; }
+  /* Tier 2 is the literal brand colour where the family has one, so the
+     marketing palette appears in-product one step into every family ramp. */
+  .px-lg-comp-seg.tier-2 { background: var(--seg-t2, oklch(from var(--seg) calc(min(0.78, l + 0.26)) calc(c * 0.72) h)); }
+  .px-lg-comp-seg.tier-3 { background: oklch(from var(--seg) calc(min(0.88, l + 0.42)) calc(c * 0.48) h); }
+  /* The base overlay darkens for white text; tiers carry ink text instead. */
+  .px-lg-comp-seg.tier-2::after,
+  .px-lg-comp-seg.tier-3::after {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ph-on-ink) 30%, transparent), rgba(31,27,22,0.05));
+  }
+}
 
 .px-lg-comp-legend {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px 24px;
+  margin-top: 14px;
 }
 .px-lg-leg {
   display: flex; align-items: center; gap: 8px;
@@ -4337,12 +4573,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   border-radius: 2px;
   flex-shrink: 0;
 }
-.px-lg-leg .dot.s-swap { background: var(--ph-violet); }
-.px-lg-leg .dot.s-transfer { background: var(--ph-teal); }
-.px-lg-leg .dot.s-lending { background: var(--ph-amber); }
-.px-lg-leg .dot.s-classic { background: #5C5C58; }
-.px-lg-leg .dot.s-events { background: var(--ph-accent-ink); }
-.px-lg-leg .dot.s-other { background: var(--ph-text-3); }
+.px-lg-leg .dot { background: var(--seg, var(--ph-neutral-seg)); }
 .px-lg-leg .k { color: var(--ph-text-2); flex: 1; }
 .px-lg-leg .v { font-size: 12px; color: var(--ph-text); font-weight: 500; }
 
@@ -4532,8 +4763,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .px-lg-spot.events .px-lg-spot-ic { background: var(--ph-violet); }
 .px-lg-spot.state .px-lg-spot-ic { background: var(--ph-teal); }
 
-.px-lg-spot.agent { background: color-mix(in srgb, var(--ph-violet) 7%, var(--ph-surf)); border-color: color-mix(in srgb, var(--ph-violet) 24%, var(--ph-border)); }
-.px-lg-spot.agent .px-lg-spot-ic { background: var(--ph-violet); }
+/* Agent payments carry the brand coral. This card previously used violet, which
+   is the contract-call colour — agent activity is a classification layered over
+   contract calls, not the same thing, and the shared hue hid that. Coral is the
+   family colour reserved for agents; nothing else on the page uses it, because
+   x402 is not a Stellar operation type and so never reaches the op breakdown. */
+.px-lg-spot.agent { background: color-mix(in srgb, var(--ph-brand-agents) 9%, var(--ph-surf)); border-color: color-mix(in srgb, var(--ph-brand-agents) 34%, var(--ph-border)); }
+.px-lg-spot.agent .px-lg-spot-ic { background: oklch(47% 0.150 30); }
 .px-lg-spot.agent .px-lg-spot-head { justify-content: flex-start; }
 .px-lg-spot-x402 {
   margin-left: auto;
@@ -4541,8 +4777,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--ph-violet);
-  background: rgba(94, 79, 168, 0.12);
+  color: oklch(43% 0.150 30);
+  background: color-mix(in srgb, var(--ph-brand-agents) 18%, transparent);
   padding: 3px 7px;
   border-radius: 4px;
 }
@@ -4827,7 +5063,32 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   align-items: baseline;
   text-wrap: pretty;
 }
-.px-tx-actor { color: var(--ph-text); font-weight: 600; }
+/* Headline typography carries exactly three roles, and each role gets exactly
+   one treatment.
+
+   Evidence is anything a reader might copy, compare, or verify: addresses,
+   contract ids, function names, amounts. It is mono, per the Mono Evidence
+   Rule, which previously stopped at the headline: a sentence could render the
+   sender in serif and the recipient in mono, so two identical Stellar addresses
+   in one line looked like different kinds of thing.
+
+   Prose is Prism's own connective language. Serif italic, de-emphasised, so the
+   eye skips to the evidence.
+
+   The chip (padding, radius, background) is reserved for asset-denominated
+   values, where it encodes asset identity via .xlm / .usdc. It used to be
+   applied to addresses too, adding size and padding changes that signalled
+   nothing. */
+.px-tx-actor,
+.px-tx-ev {
+  font-family: var(--ph-ff-mono);
+  font-size: 0.82em;
+  color: var(--ph-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.px-tx-actor { font-weight: 600; }
+.px-tx-ev { font-weight: 500; }
 .px-tx-verb { color: var(--ph-text-3); font-style: italic; }
 .px-tx-amt {
   font-family: var(--ph-ff-mono);
@@ -4835,6 +5096,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   padding: 2px 12px;
   border-radius: 8px;
   font-weight: 500;
+  background: var(--ph-cream);
 }
 .px-tx-amt.usdc { background: rgba(39, 117, 202, 0.10); color: #1E5BA8; }
 .px-tx-amt.xlm { background: var(--ph-cream); color: var(--ph-text); }
@@ -9144,4 +9406,131 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   .px-balance-skeleton-row { grid-template-columns: 1fr auto; gap: 14px; padding: 15px 16px; }
   .px-balance-skeleton-line.identity,
   .px-balance-skeleton-line.evidence { display: none; }
+}
+
+/* ===== TRANSACTION CALL TREE =====
+   The only view in the receipt that expresses nesting. Operations, events, and
+   balance changes are flat lists; the structure they cannot show is where a
+   recovered failure lives, so depth is the whole point of this component.
+
+   Three states, and each is carried by a mark and a label as well as colour,
+   because state must not depend on hue. `caught` is the one that matters: a
+   sub-call trapped and the caller continued, so the transaction still
+   succeeded. */
+.px-tx-tree { padding: 4px 2px 2px; }
+.px-tx-tree-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding-bottom: 12px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--ph-border);
+}
+.px-tx-tree-sub { font-size: 13px; color: var(--ph-text-2); }
+.px-tx-tree-tally { font-family: var(--ph-ff-mono); font-size: 12.5px; color: var(--ph-text-3); }
+.px-tx-tree-tally b { font-weight: 600; }
+.px-tx-tree-tally b.caught { color: var(--ph-amber); }
+.px-tx-tree-tally b.reverted { color: var(--ph-crimson); }
+
+.px-tx-tree-list { list-style: none; margin: 0; padding: 0; }
+.px-tx-tree-node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--ph-border-subtle, var(--ph-border));
+}
+.px-tx-tree-node:last-child { border-bottom: 0; }
+
+/* Depth is indentation plus a rail. The rail keeps the relationship legible
+   once the indent is capped at depth 5. */
+.px-tx-tree-node.d0 { padding-left: 4px; }
+.px-tx-tree-node.d1 { padding-left: 30px; }
+.px-tx-tree-node.d2 { padding-left: 56px; }
+.px-tx-tree-node.d3 { padding-left: 82px; }
+.px-tx-tree-node.d4 { padding-left: 108px; }
+.px-tx-tree-node.d5 { padding-left: 134px; }
+.px-tx-tree-rail {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  border-left: 1px solid var(--ph-border);
+}
+.px-tx-tree-node.d0 .px-tx-tree-rail { display: none; }
+.px-tx-tree-node.d1 .px-tx-tree-rail { left: 14px; }
+.px-tx-tree-node.d2 .px-tx-tree-rail { left: 40px; }
+.px-tx-tree-node.d3 .px-tx-tree-rail { left: 66px; }
+.px-tx-tree-node.d4 .px-tx-tree-rail { left: 92px; }
+.px-tx-tree-node.d5 .px-tx-tree-rail { left: 118px; }
+
+.px-tx-tree-mark {
+  font-family: var(--ph-ff-mono); font-size: 12px; line-height: 1.4;
+  color: var(--ph-text-3); text-align: center;
+}
+.px-tx-tree-node.s-caught .px-tx-tree-mark { color: var(--ph-amber); }
+.px-tx-tree-node.s-reverted .px-tx-tree-mark { color: var(--ph-crimson); }
+
+.px-tx-tree-body { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+/* Evidence is mono, Prism's own connectives are serif italic: the same split
+   the headline uses. */
+.px-tx-tree-actor, .px-tx-tree-fn, .px-tx-tree-target {
+  font-family: var(--ph-ff-mono); font-size: 13px; color: var(--ph-text);
+}
+.px-tx-tree-actor, .px-tx-tree-target { font-weight: 500; }
+.px-tx-tree-fn { font-weight: 600; }
+a.px-tx-tree-actor:hover, a.px-tx-tree-target:hover { color: var(--ph-accent-ink); text-decoration: underline; }
+.px-tx-tree-verb {
+  font-family: var(--ph-ff-serif); font-style: italic;
+  color: var(--ph-text-3); font-size: 14px; margin: 0 2px;
+}
+
+.px-tx-tree-state {
+  font-family: var(--ph-ff-mono); font-size: 11px;
+  color: var(--ph-text-3); white-space: nowrap;
+}
+.px-tx-tree-state.caught { color: var(--ph-amber); font-weight: 500; }
+.px-tx-tree-state.reverted { color: var(--ph-crimson); font-weight: 500; }
+
+/* A reverted branch did not change the ledger; it reads quieter than the calls
+   that did, without being hidden. */
+.px-tx-tree-node.s-caught .px-tx-tree-body,
+.px-tx-tree-node.s-reverted .px-tx-tree-body { opacity: 0.62; }
+
+.px-tx-tree-note {
+  margin: 14px 2px 2px;
+  font-size: 13px; line-height: 1.55; color: var(--ph-text-2);
+  max-width: 68ch;
+}
+
+@media (max-width: 640px) {
+  .px-tx-tree-node { grid-template-columns: 16px minmax(0, 1fr); }
+  .px-tx-tree-state { grid-column: 2; padding-top: 2px; }
+  .px-tx-tree-node.d3, .px-tx-tree-node.d4, .px-tx-tree-node.d5 { padding-left: 60px; }
+}
+
+/* ===== DEMO DATA NOTICE =====
+   Amber, matching the existing is-demo vocabulary used on the home evidence
+   panels. Deliberately full-width and above the content: a marker a reader can
+   miss is the same as no marker, which is the bug this fixes. */
+.px-demo-notice {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in oklch, var(--ph-amber) 38%, var(--ph-border));
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--ph-amber) 10%, var(--ph-surf));
+  font-size: 13px; line-height: 1.5;
+  color: var(--ph-text-2);
+}
+.px-demo-notice strong {
+  font-family: var(--ph-ff-mono);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ph-amber);
+}
+
+/* The emphasised share in the spectrogram headline is italic, and the italic
+   glyphs lean into the word space that follows: "45% of" read as "45%of" even
+   though the space is present and 4.5px wide. Optical correction only. */
+.ph-spectrum-head h2 em {
+  font-style: italic;
+  margin-right: 0.08em;
 }

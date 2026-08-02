@@ -1,6 +1,7 @@
 package pagesv2
 
 import (
+	"strconv"
 	"fmt"
 	"html"
 	"strings"
@@ -20,8 +21,10 @@ templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 			@txHeroViz(txv2.BuildTxHero(data), data)
 			@txDetailTabs(data)
 		</main><aside class="px-tx-side">
-			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
-			@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
+			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
+			if txHasSorobanResources(data) {
+				@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) }
+			}
 			if txHasContractEvidence(data) {
 				<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL(txContractHref(data)) }>View contract <span class="mono">{ txContractLabel(data) }</span> →</a></div>
 			}
@@ -64,12 +67,18 @@ templ txDetailTabs(data legacy.TxReceiptData) {
 			<button class="px-tx-tab active" type="button" role="tab" aria-selected="true" data-px-tx-tab="operations">Operations <span class="px-tx-tab-c">{ data.OpsCount }</span></button>
 			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="events">Events <span class="px-tx-tab-c">{ data.EventsCount }</span></button>
 			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="balances">Balance changes <span class="px-tx-tab-c">{ fmt.Sprintf("%d", len(data.BalanceChanges)) }</span></button>
+			if len(data.CallTree) > 0 {
+				<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="calltree">Call tree <span class="px-tx-tab-c">{ fmt.Sprintf("%d", len(data.CallTree)) }</span></button>
+			}
 			<button class="px-tx-tab" type="button" role="tab" aria-selected="false" data-px-tx-tab="raw">Raw XDR</button>
 		</div>
 		<div class="px-tx-detail-body">
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="operations">@txOperations(data)</div>
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="events" hidden>@txEvents(data)</div>
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="balances" hidden>@txBalances(data)</div>
+			if len(data.CallTree) > 0 {
+				<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="calltree" hidden>@txCallTree(data)</div>
+			}
 			<div class="px-tx-panel" role="tabpanel" data-px-tx-panel="raw" hidden>@txRaw(data)</div>
 		</div>
 	</div></section>
@@ -113,8 +122,10 @@ templ txTabsScript() {
 
 templ TxReceiptSidebarFragment(data legacy.TxReceiptData) {
 	<aside class="px-tx-side">
-		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideRow("Source seq", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Memo", "none") }
-		@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) @sideRow("Resource fee", firstNonEmpty(data.FeePaid, "—") + " stroops") }
+		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
+		if txHasSorobanResources(data) {
+				@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) }
+			}
 		if txHasContractEvidence(data) {
 			<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL(txContractHref(data)) }>View contract <span class="mono">{ txContractLabel(data) }</span> →</a></div>
 		}
@@ -148,6 +159,9 @@ templ sideLinkRow(k string, v string, href string) { <div class="px-tx-side-row"
 
 templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 	<section class={ "px-tx-headline", "px-tx-hero-" + string(hero.Kind) }><div class="px-tx-headline-inner">
+		if data.Demo {
+			@componentsv2.DemoNotice()
+		}
 		<div class="px-tx-headline-top">
 			<span class="px-tx-status"><span class={ "px-tx-status-dot", templ.KV("ok", data.Status == "success") }></span><span>{ hero.Status }</span></span>
 			for _, tag := range hero.Tags {
@@ -155,13 +169,13 @@ templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 			}
 			<span class="px-tx-meta">Closed in ledger <span class="mono">{ data.Ledger }</span> · { firstNonEmpty(data.TimestampRelative, data.Timestamp) }</span>
 		</div>
-		<h1 class="px-tx-h1">@templ.Raw(hero.TitleHTML)</h1>
-		<p class="px-tx-sub">@templ.Raw(hero.SubtitleHTML)</p>
+		<h1 class="px-tx-h1">@templ.Raw(txHeroTitleLinked(hero, data))</h1>
+		if hero.SubtitleHTML != "" {
+				<p class="px-tx-sub">@templ.Raw(hero.SubtitleHTML)</p>
+			}
 		<div class="px-tx-quick">
-			@txQuickLinkItem("From", txSourceLabel(data), txSourceHref(data), true)
 			if hero.Kind == txv2.TxHeroOperations {
 				@txQuickItem("Operations", fmt.Sprintf("%d", hero.Operations.Count), true)
-				@txQuickItem("Classification", "Classic multi-op", false)
 			} else if hero.Kind == txv2.TxHeroFailure {
 				if txContractHref(data) != "" {
 					@txQuickLinkItem("Contract", firstNonEmpty(hero.Failure.Contract, txContractLabel(data)), txContractHref(data), true)
@@ -198,36 +212,32 @@ templ txShareButton(data legacy.TxReceiptData) {
 	</button>
 }
 
+// Classic multi-op transactions get no hero section. The one it used to render
+// restated the headline in longer words, and the Operations tab already lists
+// every operation, so the slot had nothing left to contribute.
 templ txHeroViz(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
-	switch hero.Kind {
-		case txv2.TxHeroFailure:
-			@txFailureHero(hero)
-		case txv2.TxHeroLifecycle:
-			@txLifecycleHero(hero)
-		case txv2.TxHeroStateChange:
-			@txStateChangeHero(hero)
-		case txv2.TxHeroValueFlow:
-			@txFlow(data)
-		case txv2.TxHeroOperations:
-			@txOperationsHero(hero)
-		default:
-			@txGenericCallHero(hero)
+	if hero.Kind != txv2.TxHeroOperations {
+		switch hero.Kind {
+			case txv2.TxHeroFailure:
+				@txFailureHero(hero)
+			case txv2.TxHeroLifecycle:
+				@txLifecycleHero(hero)
+			case txv2.TxHeroStateChange:
+				@txStateChangeHero(hero)
+			case txv2.TxHeroValueFlow:
+				@txFlow(data)
+			default:
+				@txGenericCallHero(hero)
+		}
 	}
 }
 
-templ txOperationsHero(hero txv2.TxHeroModel) {
-	<section class="px-tx-section px-hero-card px-hero-generic"><div class="px-tx-section-head"><h2>What this transaction did</h2><span class="px-tx-section-sub">Classic Stellar operations grouped in one envelope</span></div>
-		<div class="px-hero-summary">@templ.Raw(hero.Operations.SummaryHTML)</div>
-		@txHeroFoot(hero.Meta)
-	</section>
-}
 
 templ txStateChangeHero(hero txv2.TxHeroModel) {
 	<section class="px-tx-section px-hero-card px-hero-state"><div class="px-tx-section-head"><h2>What changed</h2><span class="px-tx-section-sub">Contract storage written by this transaction</span></div>
 		<div class="px-hero-rel"><span class="px-tx-avatar">{ avatarInitial(hero.StateChange.Caller) }</span><div><b>{ hero.StateChange.Caller }</b><div class="muted mono">caller</div></div><span class="px-hero-arrow">→ wrote storage →</span><div><b>{ hero.StateChange.Contract }</b><div class="muted mono">{ hero.StateChange.Function }()</div></div></div>
 		<div class="px-hero-summary">@templ.Raw(hero.StateChange.SummaryHTML)</div>
 		@txStateEntries(hero.StateChange.Entries)
-		@txHeroFoot(hero.Meta)
 	</section>
 }
 
@@ -236,7 +246,6 @@ templ txLifecycleHero(hero txv2.TxHeroModel) {
 		<div class="px-hero-rel"><span class="px-tx-avatar">{ avatarInitial(hero.Lifecycle.Actor) }</span><div><b>{ hero.Lifecycle.Actor }</b><div class="muted mono">caller</div></div><span class="px-hero-arrow">→ { hero.Lifecycle.Verb } →</span><div><b>{ hero.Lifecycle.Entity }</b><div class="muted mono">entity</div></div></div>
 		<div class="px-hero-summary">@templ.Raw(hero.Lifecycle.SummaryHTML)</div>
 		@txStateEntries(hero.Lifecycle.Entries)
-		@txHeroFoot(hero.Meta)
 	</section>
 }
 
@@ -299,7 +308,6 @@ templ txFailureHero(hero txv2.TxHeroModel) {
 templ txGenericCallHero(hero txv2.TxHeroModel) {
 	<section class="px-tx-section px-hero-card px-hero-generic"><div class="px-tx-section-head px-hero-generic-head"><h2>What was called</h2><span class="px-tx-section-sub">Contract execution summary</span></div>
 		<div class="px-hero-summary"><div class="px-hero-summary-copy">@templ.Raw(hero.GenericCall.SummaryHTML)</div></div>
-		@txHeroFoot(hero.Meta)
 	</section>
 }
 
@@ -311,10 +319,6 @@ templ txStateEntries(entries []txv2.TxStateEntry) {
 			}
 		</div>
 	}
-}
-
-templ txHeroFoot(meta txv2.TxHeroMeta) {
-	<div class="px-tx-flow-foot"><div class="px-tx-flow-foot-item"><span class="k">Fee</span><span class="v mono">{ meta.Fee }</span></div><div class="px-tx-flow-foot-item"><span class="k">Resources</span><span class="v mono">{ meta.Resources }</span></div><div class="px-tx-flow-foot-item"><span class="k">Ledger</span><span class="v mono">{ meta.Ledger }</span></div><div class="px-tx-flow-foot-item"><span class="k">Status</span><span class="v">{ meta.Status }</span></div></div>
 }
 
 templ txFlow(data legacy.TxReceiptData) {
@@ -425,14 +429,55 @@ func txSubtype(data legacy.TxReceiptData) string { v := strings.TrimSpace(data.S
 func txHeadlineHTML(data legacy.TxReceiptData) string { if strings.TrimSpace(data.HeroTitle) != "" { return headlineFromTitle(data.HeroTitle) }; if data.SummaryHTML != "" { return data.SummaryHTML }; return `<span class="px-tx-actor">Transaction</span> <span class="px-tx-verb">` + data.ShortHash + `</span>` }
 func headlineFromTitle(s string) string { parts := strings.Split(s, " "); if len(parts) == 0 { return s }; out := `<span class="px-tx-actor">` + parts[0] + `</span>`; for _, p := range parts[1:] { cls := "px-tx-verb"; if strings.ContainsAny(p, "0123456789") || strings.EqualFold(p, "XLM") || strings.EqualFold(p, "USDC") { cls = "px-tx-amt" }; out += ` <span class="` + cls + `">` + p + `</span>` }; return out }
 func txNarrativeHTML(data legacy.TxReceiptData) string { if data.AISummaryHTML != "" { return data.AISummaryHTML }; if data.HumanNarrative != "" { return data.HumanNarrative }; if data.SummaryHTML != "" { return data.SummaryHTML }; return "Prism decoded this transaction from ledger context, operations, events, and balance changes." }
-func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
-func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.EffectiveActorAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
-func txSourceHref(data legacy.TxReceiptData) string { id := txSourceFull(data); if id == "" || id == "—" { return "" }; if strings.EqualFold(data.EffectiveActorType, "smart_wallet") || data.SmartWalletDetected && id == data.SmartWalletContract { return "/v2/account/" + id + "/smart" }; if strings.HasPrefix(id, "C") { return "/v2/contract/" + id }; return "/v2/account/" + id }
-func txContractHref(data legacy.TxReceiptData) string { id := firstNonEmpty(data.DownstreamContractAddr, data.ContractAddrFull); if id == "" || id == "—" { return "" }; return "/v2/contract/" + id }
+func txSourceLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.SubmitterShort, firstNonEmpty(data.SourceAddr, data.SourceAddrFull)) }
+func txSourceFull(data legacy.TxReceiptData) string { return firstNonEmpty(data.SubmitterAddr, firstNonEmpty(data.SourceAddrFull, data.SourceAddr)) }
+func txSourceHref(data legacy.TxReceiptData) string { id := txSourceFull(data); if id == "" || id == "—" { return "" }; if strings.HasPrefix(id, "C") { return "/v2/contract/" + id }; return "/v2/account/" + id }
+func txContractHref(data legacy.TxReceiptData) string { id := firstNonEmpty(data.ContractAddrFull, data.DownstreamContractAddr); if id == "" || id == "—" { return "" }; return "/v2/contract/" + id }
 func txHasContractEvidence(data legacy.TxReceiptData) bool { return txContractHref(data) != "" }
 func txSourceName(data legacy.TxReceiptData) string { if data.SmartWalletDetected && data.SmartWalletContractShort != "" { return data.SmartWalletContractShort }; return firstNonEmpty(data.EffectiveActorShort, "Source") }
-func txContractLabel(data legacy.TxReceiptData) string { address := firstNonEmpty(data.DownstreamContractShort, firstNonEmpty(data.ContractAddr, data.ContractAddrFull)); name := strings.TrimSpace(data.ContractName); if address == "" { return firstNonEmpty(name, "Contract") }; if name == "" || strings.EqualFold(name, address) || strings.EqualFold(name, data.DownstreamContractAddr) || strings.EqualFold(name, data.ContractAddrFull) { return address }; return name + " " + address }
+func txContractLabel(data legacy.TxReceiptData) string { address := firstNonEmpty(data.ContractAddr, firstNonEmpty(data.ContractAddrFull, data.DownstreamContractShort)); name := strings.TrimSpace(data.ContractName); if address == "" { return firstNonEmpty(name, "Contract") }; if name == "" || strings.EqualFold(name, address) || strings.EqualFold(name, data.DownstreamContractAddr) || strings.EqualFold(name, data.ContractAddrFull) { return address }; return name + " " + address }
 func txFunctionLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.DownstreamFunctionName, firstNonEmpty(data.ContractFn, "—")) }
+// txHeroTitleLinked turns the hero's actor into a link to the account page.
+// The actor used to be a separate "From" chip whose only unique contribution
+// was that link; folding it into the headline keeps the navigation while
+// dropping the restatement.
+func txHeroTitleLinked(hero txv2.TxHeroModel, data legacy.TxReceiptData) string {
+	title := hero.TitleHTML
+	href := txSourceHref(data)
+	if href == "" {
+		return title
+	}
+	actor := `<span class="px-tx-actor">`
+	idx := strings.Index(title, actor)
+	if idx < 0 {
+		return title
+	}
+	rest := title[idx+len(actor):]
+	end := strings.Index(rest, "</span>")
+	if end < 0 {
+		return title
+	}
+	label := rest[:end]
+	linked := `<a class="px-tx-actor px-tx-actor-link" href="` + href + `">` + label + `</a>`
+	return title[:idx] + linked + rest[end+len("</span>"):]
+}
+
+// txHasSorobanResources reports whether the transaction actually consumed
+// Soroban resources. A classic transaction has none, and the panel rendered a
+// column of em dashes claiming a dimension that does not apply to it.
+// The handler writes a literal em dash rather than an empty string when a
+// resource is absent, so emptiness alone is not the test.
+func txHasSorobanResources(data legacy.TxReceiptData) bool {
+	for _, v := range []string{data.SorobanCPU, data.SorobanMem, data.SorobanReads, data.SorobanWrites} {
+		switch strings.TrimSpace(v) {
+		case "", "—", "-", "0":
+		default:
+			return true
+		}
+	}
+	return false
+}
+
 func txFeeLabel(data legacy.TxReceiptData) string { return firstNonEmpty(data.FeePaidXLM, firstNonEmpty(data.FeePaid, "—")) }
 func txNetworkQuery(network string) string { if network == "" || network == "mainnet" { return "" }; return "?network=" + network }
 func txShareURL(data legacy.TxReceiptData, network string) string { return "https://prism.withobsrvr.com/v2/tx/" + data.Hash + txNetworkQuery(network) }
@@ -445,3 +490,127 @@ func stripTxHTML(s string) string { out:=make([]rune,0,len(s)); in:=false; for _
 func avatarInitial(v string) string { v = strings.TrimSpace(v); if v == "" { return "•" }; return strings.ToUpper(string([]rune(v)[0])) }
 func invertSigned(v string) string { v = strings.TrimSpace(v); if strings.HasPrefix(v, "−") { return "+" + strings.TrimPrefix(v, "−") }; if strings.HasPrefix(v, "-") { return "+" + strings.TrimPrefix(v, "-") }; if strings.HasPrefix(v, "+") { return "−" + strings.TrimPrefix(v, "+") }; if v == "" { return "—" }; return v }
 func txRawText(data legacy.TxReceiptData) string { if data.EnvelopeXDR != "" { return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  source: " + firstNonEmpty(data.SourceAddrFull, data.SourceAddr) + "\n  fee: " + firstNonEmpty(data.FeePaid, "—") + " stroops\n  sequence: " + firstNonEmpty(data.SeqNumber, "—") + "\n  xdr: " + data.EnvelopeXDR + "\n}" }; return "TransactionEnvelope {\n  hash: " + data.Hash + "\n  ledger: " + data.LedgerRaw + "\n  operations: " + data.OpsCount + "\n  events: " + data.EventsCount + "\n}" }
+
+// txCallTree renders the observed execution tree. Depth carries the nesting,
+// which is the one thing the flat Operations / Events / Balance-changes lists
+// cannot express, and which is where a recovered failure becomes visible.
+templ txCallTree(data legacy.TxReceiptData) {
+	<div class="px-tx-tree">
+		<div class="px-tx-tree-head">
+			<span class="px-tx-tree-sub">Observed execution, nested by call depth.</span>
+			<span class="px-tx-tree-tally">@templ.Raw(callTreeTally(data.CallTree))</span>
+		</div>
+		<ol class="px-tx-tree-list">
+			for _, node := range data.CallTree {
+				<li class={ "px-tx-tree-node", "d" + strconv.Itoa(callDepthClamped(node.Depth)), "s-" + callState(node) }>
+					<span class="px-tx-tree-rail" aria-hidden="true"></span>
+					<span class="px-tx-tree-mark" aria-hidden="true">{ callStateMark(node) }</span>
+					<span class="px-tx-tree-body">
+						if node.Depth == 0 {
+							<a class="px-tx-tree-actor mono" href={ templ.SafeURL(txEntityHref(node.FromFull)) }>{ node.From }</a>
+							<span class="px-tx-tree-verb">called</span>
+						}
+						<span class="px-tx-tree-fn mono">{ node.Function }()</span>
+						<span class="px-tx-tree-verb">on</span>
+						<a class="px-tx-tree-target mono" href={ templ.SafeURL(txEntityHref(node.ToFull)) }>{ node.To }</a>
+					</span>
+					<span class={ "px-tx-tree-state", callState(node) }>{ callStateLabel(node) }</span>
+				</li>
+			}
+		</ol>
+		if callTreeCaught(data.CallTree) > 0 {
+			<p class="px-tx-tree-note">
+				A reverted sub-call inside a successful transaction means the caller
+				caught the failure and carried on. Nothing that branch did was written
+				to the ledger.
+			</p>
+		}
+	</div>
+}
+
+// callState normalises the node state so an unrecognised value renders as a
+// plain call rather than as an unstyled element.
+func callState(n legacy.TxCallNode) string {
+	switch n.State {
+	case "caught", "reverted":
+		return n.State
+	}
+	return "ok"
+}
+
+// State is conveyed by mark and label as well as colour: the accessibility rule
+// is that state must survive without hue.
+func callStateMark(n legacy.TxCallNode) string {
+	switch callState(n) {
+	case "caught":
+		return "↩"
+	case "reverted":
+		return "✕"
+	}
+	return "✓"
+}
+
+func callStateLabel(n legacy.TxCallNode) string {
+	switch callState(n) {
+	case "caught":
+		return "reverted · caught by caller"
+	case "reverted":
+		return "reverted"
+	}
+	return "ok"
+}
+
+// Indentation is capped so a deeply nested tree cannot push the content off the
+// row; past the cap the rail alone carries the depth.
+func callDepthClamped(depth int) int {
+	if depth < 0 {
+		return 0
+	}
+	if depth > 5 {
+		return 5
+	}
+	return depth
+}
+
+func callTreeCaught(nodes []legacy.TxCallNode) int {
+	n := 0
+	for _, node := range nodes {
+		if callState(node) == "caught" {
+			n++
+		}
+	}
+	return n
+}
+
+func callTreeTally(nodes []legacy.TxCallNode) string {
+	caught, reverted := 0, 0
+	for _, node := range nodes {
+		switch callState(node) {
+		case "caught":
+			caught++
+		case "reverted":
+			reverted++
+		}
+	}
+	out := fmt.Sprintf("%d calls", len(nodes))
+	if caught > 0 {
+		out += fmt.Sprintf(` · <b class="caught">%d reverted, recovered</b>`, caught)
+	}
+	if reverted > 0 {
+		out += fmt.Sprintf(` · <b class="reverted">%d reverted</b>`, reverted)
+	}
+	return out
+}
+
+// txEntityHref routes a call-tree participant to its own page. Contracts and
+// accounts have different detail pages and are told apart by the strkey prefix.
+func txEntityHref(full string) string {
+	full = strings.TrimSpace(full)
+	if full == "" {
+		return ""
+	}
+	if strings.HasPrefix(full, "C") {
+		return "/v2/contract/" + full
+	}
+	return "/v2/account/" + full
+}

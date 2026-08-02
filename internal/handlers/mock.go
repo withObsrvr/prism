@@ -86,8 +86,8 @@ func mockLedgerDetailData(sequence string) pages.LedgerDetailData {
 		TxFailed:        "1",
 		OpCount:         "108",
 		OpsPerTx:        "2.3",
-		SorobanCalls:    "18",
-		SorobanPct:      "38%",
+		SorobanCalls:    "36",
+		SorobanPct:      "33%",
 		TotalFees:       "1,842",
 		FeesUSD:         "$0.18",
 		EventsEmitted:   "62",
@@ -97,23 +97,29 @@ func mockLedgerDetailData(sequence string) pages.LedgerDetailData {
 		StateWrites:     "36",
 		StateWriteKB:    "42 KB",
 		RentBurned:      "24.8",
-		OpBreakdown: []pages.OpBreakdownItem{
-			{Name: "Invoke Contract", Count: "37", Pct: "34%", Width: "34%", Color: "bg-violet-500"},
-			{Name: "Payment", Count: "30", Pct: "28%", Width: "28%", Color: "bg-cyan-500"},
-			{Name: "Path Payment", Count: "15", Pct: "14%", Width: "14%", Color: "bg-emerald-500"},
-			{Name: "Manage Offer", Count: "11", Pct: "10%", Width: "10%", Color: "bg-amber-500"},
-			{Name: "Create Account", Count: "9", Pct: "8%", Width: "8%", Color: "bg-gray-400"},
-			{Name: "Other", Count: "6", Pct: "6%", Width: "6%", Color: "bg-gray-300"},
-		},
+		// Built through the real helper so the mock cannot drift from the
+		// family/tier assignment the live path produces. The mix deliberately
+		// exercises every family, including three transfer types so the
+		// within-family shade ramp is visible.
+		OpBreakdown: buildOpBreakdown(map[string]int{
+			"Invoke Contract": 30,
+			"Payment":         24,
+			"Path Payment":    12,
+			"Manage Offer":    11,
+			"Create Account":  9,
+			"Clawback":        8,
+			"Manage Data":     8,
+			"Extend TTL":      6,
+		}, 108),
 		Transactions: []pages.LedgerTx{
-			{Index: "1", Status: "ok", Hash: "8f2a1b3c", ShortHash: "8f2a...1b3c", OpType: "swap", OpColor: "violet", Summary: `<span class="font-medium text-gray-900">GABC...7X</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485 USDC</span> via Soroswap`, Ops: "3", Fee: "10,200"},
-			{Index: "2", Status: "ok", Hash: "c4e93d0f", ShortHash: "c4e9...3d0f", OpType: "transfer", OpColor: "cyan", Summary: `<span class="font-medium text-gray-900">GDEF...2P</span> sent <span class="font-semibold text-gray-900">2,500 USDC</span> to <span class="font-medium text-gray-900">GKLM...1V</span>`, Ops: "1", Fee: "100"},
-			{Index: "3", Status: "ok", Hash: "a1b28e4f", ShortHash: "a1b2...8e4f", OpType: "swap", OpColor: "violet", Summary: `<span class="font-medium text-gray-900">GNOP...3W</span> swapped <span class="font-semibold text-red-600">12,400 XLM</span> for <span class="font-semibold text-emerald-600">1,202 USDC</span> via Soroswap`, Ops: "2", Fee: "8,400"},
-			{Index: "4", Status: "ok", Hash: "f7d24c1a", ShortHash: "f7d2...4c1a", OpType: "mint", OpColor: "emerald", Summary: `<span class="font-medium text-gray-900">Blend Protocol</span> minted <span class="font-semibold text-emerald-600">45,000 BLND</span> emission to <span class="font-medium text-gray-900">GDEF...9R</span>`, Ops: "1", Fee: "5,200"},
-			{Index: "5", Status: "ok", Hash: "9e8f2a5b", ShortHash: "9e8f...2a5b", OpType: "invoke", OpColor: "violet", Summary: `<span class="font-medium text-gray-900">GHIJ...2M</span> called <span class="font-mono text-violet-600">deposit()</span> on <span class="font-medium text-gray-900">Blend Pool</span> with <span class="font-semibold text-gray-900">10,000 USDC</span>`, Ops: "2", Fee: "12,800"},
-			{Index: "6", Status: "ok", Hash: "d4c37f8e", ShortHash: "d4c3...7f8e", OpType: "payment", OpColor: "cyan", Summary: `<span class="font-medium text-gray-900">GQRS...5X</span> sent <span class="font-semibold text-gray-900">8,400 EURC</span> to <span class="font-medium text-gray-900">GTUV...7Y</span>`, Ops: "1", Fee: "100"},
-			{Index: "7", Status: "ok", Hash: "b8a71d2c", ShortHash: "b8a7...1d2c", OpType: "path pay", OpColor: "emerald", Summary: `<span class="font-medium text-gray-900">GWXY...9Z</span> path payment: <span class="font-semibold text-red-600">1,000 XLM</span> to deliver <span class="font-semibold text-emerald-600">92.40 EURC</span>`, Ops: "1", Fee: "200"},
-			{Index: "8", Status: "failed", Hash: "e5d49g0h", ShortHash: "e5d4...9g0h", OpType: "invoke", OpColor: "violet", Summary: `<span class="font-medium text-gray-900">GFAIL...4K</span> called <span class="font-mono text-violet-600">swap()</span> on Soroswap — <span class="text-red-600 font-medium">tx_failed: insufficient balance</span>`, Ops: "1", Fee: "6,100", IsFailed: true},
+			{Index: "1", Status: "ok", Hash: "8f2a1b3c", ShortHash: "8f2a...1b3c", Kind: "soroban", OpType: "swap", Family: "market", Summary: `<span class="font-medium text-gray-900">GABC...7X</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485 USDC</span> via Soroswap`, Ops: "3", Fee: "10,200"},
+			{Index: "2", Status: "ok", Hash: "c4e93d0f", ShortHash: "c4e9...3d0f", Kind: "classic", OpType: "transfer", Family: "transfer", Summary: `<span class="font-medium text-gray-900">GDEF...2P</span> sent <span class="font-semibold text-gray-900">2,500 USDC</span> to <span class="font-medium text-gray-900">GKLM...1V</span>`, Ops: "1", Fee: "100"},
+			{Index: "3", Status: "ok", Hash: "a1b28e4f", ShortHash: "a1b2...8e4f", Kind: "soroban", OpType: "swap", Family: "market", Summary: `<span class="font-medium text-gray-900">GNOP...3W</span> swapped <span class="font-semibold text-red-600">12,400 XLM</span> for <span class="font-semibold text-emerald-600">1,202 USDC</span> via Soroswap`, Ops: "2", Fee: "8,400"},
+			{Index: "4", Status: "ok", Hash: "f7d24c1a", ShortHash: "f7d2...4c1a", Kind: "soroban", OpType: "mint", Family: "transfer", Summary: `<span class="font-medium text-gray-900">Blend Protocol</span> minted <span class="font-semibold text-emerald-600">45,000 BLND</span> emission to <span class="font-medium text-gray-900">GDEF...9R</span>`, Ops: "1", Fee: "5,200"},
+			{Index: "5", Status: "ok", Hash: "9e8f2a5b", ShortHash: "9e8f...2a5b", Kind: "soroban", OpType: "invoke", Family: "contract", Summary: `<span class="font-medium text-gray-900">GHIJ...2M</span> called <span class="font-mono text-violet-600">deposit()</span> on <span class="font-medium text-gray-900">Blend Pool</span> with <span class="font-semibold text-gray-900">10,000 USDC</span>`, Ops: "2", Fee: "12,800"},
+			{Index: "6", Status: "ok", Hash: "d4c37f8e", ShortHash: "d4c3...7f8e", Kind: "classic", OpType: "payment", Family: "transfer", Summary: `<span class="font-medium text-gray-900">GQRS...5X</span> sent <span class="font-semibold text-gray-900">8,400 EURC</span> to <span class="font-medium text-gray-900">GTUV...7Y</span>`, Ops: "1", Fee: "100"},
+			{Index: "7", Status: "ok", Hash: "b8a71d2c", ShortHash: "b8a7...1d2c", Kind: "classic", OpType: "path pay", Family: "transfer", Summary: `<span class="font-medium text-gray-900">GWXY...9Z</span> path payment: <span class="font-semibold text-red-600">1,000 XLM</span> to deliver <span class="font-semibold text-emerald-600">92.40 EURC</span>`, Ops: "1", Fee: "200"},
+			{Index: "8", Status: "failed", Hash: "e5d49g0h", ShortHash: "e5d4...9g0h", Kind: "failed", OpType: "invoke", Family: "contract", Summary: `<span class="font-medium text-gray-900">GFAIL...4K</span> called <span class="font-mono text-violet-600">swap()</span> on Soroswap — <span class="text-red-600 font-medium">tx_failed: insufficient balance</span>`, Ops: "1", Fee: "6,100", IsFailed: true},
 		},
 		Narrative:    "Busier than usual — Soroswap and Blend dominated this ledger, with 47 transactions producing 108 operations.",
 		SubNarrative: "Closed in 5.1 seconds. 18 Soroban calls emitted 62 events; one transaction failed and the rest settled cleanly.",
@@ -199,6 +205,19 @@ func mockTxReceiptData(hash, shortHash string) pages.TxReceiptData {
 		SorobanReads:      "4",
 		SorobanWrites:     "3",
 		SeqNumber:         "1042891748409",
+		// Shaped from mainnet transaction c2d9223c8495 (ledger ~63000030), a
+		// harvest() on CBGS…KKY3 that loops over positions. The third iteration
+		// trapped and the caller carried on, so the transaction succeeded with a
+		// reverted sub-call inside it. Six calls, five returns: the unreturned one
+		// is the branch that failed.
+		CallTree: []pages.TxCallNode{
+			{Depth: 0, From: "GAPP...NEDY", FromFull: "GAPPLCK4IUR2GQN7IVXAVXA5VAE3I7BYO3TS4UFSPQ66EKAJ4MUPNEDY", To: "CBGS...KKY3", ToFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", Function: "harvest", State: "ok"},
+			{Depth: 1, From: "CBGS...KKY3", FromFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", To: "CDL7...IGWA", ToFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", Function: "harvest", State: "ok"},
+			{Depth: 2, From: "CDL7...IGWA", FromFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", To: "CB23...OUOV", ToFull: "CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV", Function: "mint", State: "ok"},
+			{Depth: 1, From: "CBGS...KKY3", FromFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", To: "CDL7...IGWA", ToFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", Function: "harvest", State: "ok"},
+			{Depth: 2, From: "CDL7...IGWA", FromFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", To: "CB23...OUOV", ToFull: "CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV", Function: "mint", State: "ok"},
+			{Depth: 1, From: "CBGS...KKY3", FromFull: "CBGSBKYMYO6OMGHQXXNOBRGVUDFUDVC2XLC3SXON5R2SNXILR7XCKKY3", To: "CDL7...IGWA", ToFull: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA", Function: "harvest", State: "caught"},
+		},
 		Operations: []pages.TxOperation{
 			{Index: "1", Type: "Invoke Contract", IsSoroban: true, Status: "Success", SummaryHTML: `<span class="font-medium text-gray-900">GABC...7X92</span> approved the <span class="font-medium text-gray-900">Soroswap Router</span> to spend up to <span class="font-semibold text-gray-900">5,000 XLM</span>`, Contract: "CCW6...7YMK", Function: "approve()"},
 			{Index: "2", Type: "Invoke Contract", IsSoroban: true, IsPrimary: true, Status: "Success", SummaryHTML: `<span class="font-medium text-gray-900">GABC...7X92</span> swapped <span class="font-semibold text-red-600">5,000 XLM</span> for <span class="font-semibold text-emerald-600">485.00 USDC</span> at a rate of <span class="font-medium text-gray-900">0.097 USDC/XLM</span>`, Contract: "CAXY...Z10P", Function: "swap()"},

@@ -7,6 +7,8 @@ import (
 )
 
 type LedgerDetailData struct {
+	// Demo marks fixtures. See TxReceiptData.Demo.
+	Demo bool
 	Sequence        string
 	SequenceRaw     string // Unformatted sequence for URLs
 	PrevSequence    string
@@ -40,6 +42,10 @@ type LedgerDetailData struct {
 	RentBurned   string
 	// Op breakdown
 	OpBreakdown  []OpBreakdownItem
+	// OpsClassified is how many operations actually went into OpBreakdown. The
+	// operations fetch is capped, so on busy ledgers this is a sample of
+	// OpCount rather than all of it, and the bar must say so.
+	OpsClassified string
 	// Transactions
 	Transactions []LedgerTx
 	// Fee distribution
@@ -57,11 +63,13 @@ type LedgerDetailData struct {
 }
 
 type OpBreakdownItem struct {
-	Name    string
-	Count   string
-	Pct     string
-	Width   string
-	Color   string
+	Name   string
+	Count  string
+	Pct    string
+	Width  string
+	Color  string // Tailwind class, still used by the v1 ledger fragment
+	Family string // semantic family slug from gateway.OperationFamily
+	Tier   int    // 1-3: rank within the family by count, drives the shade ramp
 }
 
 type LedgerTx struct {
@@ -69,9 +77,9 @@ type LedgerTx struct {
 	Status    string // "ok" or "failed"
 	Hash      string
 	ShortHash string
-	Kind      string // "classic", "soroban", or "failed"
+	Kind      string // "classic", "soroban", or "failed" — the only classification source
 	OpType    string
-	OpColor   string // "violet", "cyan", "emerald", "gray"
+	Family    string // semantic family slug from gateway.OperationFamily; drives colour only
 	Summary   string
 	Ops       string
 	Fee       string

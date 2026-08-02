@@ -1,7 +1,7 @@
 # Prism Home Live Data and Insight Implementation Plan
 
 Date: 2026-07-25
-Updated: 2026-07-28
+Updated: 2026-07-31
 Status: Implementation in progress
 Project: Prism
 Route: `GET /v2/home`
@@ -498,7 +498,7 @@ This slice can begin immediately against frozen API fixtures.
 
 #### Slice 3A: E1A transaction-outcome consumption
 
-Status: Implemented and browser-accepted on testnet. The focused 2026-07-29 corpus passes 20/20; mainnet API rollout remains pending.
+Status: Implemented and browser-accepted on testnet and mainnet. The focused mainnet transaction fixture passed on 2026-07-31.
 
 This is the Prism consumer for API Emergency Slice E1A. It is additive to the remaining Slice 3 search families and does not depend on E1B.
 
@@ -514,15 +514,13 @@ This is the Prism consumer for API Emergency Slice E1A. It is additive to the re
 
 The 2026-07-28 human-readable failure refinement now distinguishes exact causes from broad protocol categories, propagates diagnostic component limitations defensively, condenses duplicate receipt facts, and keeps raw result codes behind technical disclosure. The API status/caveat correction and versioned diagnostic-evidence recommendation are specified in `PRISM_TRANSACTION_FAILURE_EXPLANATION_API_FOLLOWUP_2026-07-28.md`.
 
-Remaining before this sub-slice is deployable across both networks:
-
-- deploy and accept E1A on mainnet;
-- repeat browser acceptance against populated mainnet transactions;
-- confirm the Gateway base-path configuration exposes the endpoint in each environment.
+The mainnet pass confirmed the Gateway route, explicit failed state, non-green
+operation result, broad general-failure explanation, and visible incomplete-diagnostics
+caveat. Prism does not claim an exact contract cause for the accepted partial packet.
 
 #### Slice 3B: E1B entity-search consumption
 
-Status: Implemented and fully accepted on testnet. The repaired live SAC mappings and the full Prism browser corpus pass as of 2026-07-29; mainnet rollout remains pending.
+Status: Implemented and accepted on testnet and mainnet. The full testnet corpus and pinned bidirectional mainnet mapping pass.
 
 This is the Prism consumer for the frozen `entity_search_v1` contract from `GET /silver/search`. It replaces the previous compatibility-only `query/results` decoder and prevents local convenience shortcuts from overriding authoritative live identity evidence.
 
@@ -547,12 +545,11 @@ Current route limitation:
 Remaining acceptance work:
 
 - exercise typed partial and unavailable packets against a controlled live testnet state when the API owner can safely induce or replay them; fixture and handler regression coverage already passes;
-- deploy and accept E1B on mainnet, then repeat the live Prism corpus there;
 - add dedicated pool and protocol destinations when those Prism detail surfaces exist.
 
 #### Slice 3C: E1C exact Explorer filtering
 
-Status: Implemented and browser-accepted on testnet on 2026-07-29; mainnet pending.
+Status: Implemented and browser-accepted on testnet and mainnet. The mainnet pinned combined-filter query passed on 2026-07-31.
 
 1. Decode and validate the versioned `explorer_events_v1` packet, including status, coverage, provenance, applied-filter evidence, count caps, warnings, normalized function, asset, actors, sender, recipient, and stable cursor.
 2. Translate Prism filters into exact server-side `type`, function, asset, actor, outcome, time, ledger, contract, and transaction parameters.
@@ -569,7 +566,10 @@ Testnet acceptance covers the known two-event exact fixture, an exact failed tra
 
 ### Slice 4: What changed v1
 
-Status: Prism implementation and populated testnet browser acceptance completed on 2026-07-29; populated mainnet acceptance remains pending.
+Status: Prism implementation and populated testnet acceptance completed. Mainnet
+authoritative-empty behavior passed earlier on 2026-07-31, and a later live snapshot
+the same day supplied three valid failure-spike packets. Testnet currently reports a
+stale insight projection with no retained rows.
 
 1. Add typed Gateway insight and evidence models.
 2. Add the `internal/insight` rule registry.
@@ -582,7 +582,54 @@ Status: Prism implementation and populated testnet browser acceptance completed 
 
 Prism now validates `home_insight_evidence_v1` packets, applies deterministic rules for all three deployed insight types, generates evidence destinations from typed locators, and renders ready, partial, stale, authoritative-empty, unavailable, unknown-type, and unknown-version states without synthesizing facts. Testnet now supplies a live deployment insight, accepted as a compact horizontal evidence row. Prism renders zero to three truthful results: one result fills the available width; two or three use flat comparison columns above 1024 pixels; narrower layouts stack them. A labeled demo fixture continues to exercise the rich failure-insight path without acting as a live fallback.
 
+The first accepted 2026-07-31 mainnet snapshot was authoritatively empty. Prism rendered
+the empty state rather than turning missing insight rows into an outage or a synthetic
+claim. A later live snapshot rendered three validated failure-spike packets and exposed
+their retained detail routes.
+
+#### Slice 4A: Homepage insight availability and density refinement
+
+Status: Prism-side evaluation consumption is implemented and browser-checked against the
+live testnet v1 registry on 2026-07-31. The Query API evaluation, recent index, and
+delivery contracts are live on testnet. Its observation gate and staged v2 through v4
+registry rollout remain API-owned gates documented in
+`PRISM_HOME_INSIGHT_AVAILABILITY_API_FOLLOWUP_2026-07-31.md`.
+
+The populated homepage preview no longer repeats observed, baseline, and ratio values in
+both prose and the comparison strip. Supported packets now render one deterministic
+headline, one supplied contributor sentence, one three-value comparison strip, a compact
+subject identity, and one primary explanation link. The raw Explore destination remains
+available from the insight-detail page and remains the homepage fallback only for packets
+without a retained detail route.
+
+Zero-card behavior is now proportional to what Prism knows:
+
+- authoritative `empty` remains `What changed`, but presents a compact negative result:
+  no unusual change crossed Prism's rules in the last completed hour, and it names the
+  three evaluated detector families;
+- stale, partial, invalid, or unavailable evidence with no usable packet is titled
+  `Hourly comparison`, not `What changed`; it uses one compact delayed row, preserves a
+  retry control and on-demand diagnostic detail, and directs attention to the current
+  evidence sections below;
+- Prism does not derive a change claim from leaders, TTL, the spectrogram, or utilization.
+
+Prism now decodes and strictly validates `insight_evaluation`, `recent_insights`, and
+`insight_delivery`. A complete quiet hour shows the exact supplied detector comparisons
+under the negative result, and one recent detection remains subordinate as `Last flagged`
+with a retained detail link. `last_good` is labeled delayed, `unavailable` fails closed,
+and partial evaluations show only their usable checks without claiming a quiet hour.
+
+Live testnet browser acceptance passed at 1440 and 390 pixels with three registry-v1
+checks, one subordinate recent link, no horizontal overflow, and no browser errors.
+Acceptance evidence is recorded in
+`PRISM_HOME_INSIGHT_EVALUATION_CONSUMER_ACCEPTANCE_2026-07-31.md`.
+
 ### Slice 5: Evidence-rich interpretation
+
+Status: The retained insight detail route, deterministic evidence interpretation,
+and frozen-contract browser acceptance are complete as of 2026-07-31. Live populated
+testnet and mainnet acceptance remain data-dependent; testnet currently reports the
+insights projection as stale and therefore exposes no retained detail link.
 
 This slice begins after the API evidence phase is deployed.
 
@@ -593,9 +640,37 @@ This slice begins after the API evidence phase is deployed.
 5. Link representative transactions, contracts, and ledger ranges.
 6. Add contract tests ensuring Prism narration uses only supplied facts.
 
+Prism now consumes `GET /home/insights/{insight_id}` through a typed, bounded Gateway
+client and exposes `GET /v2/insight/{id}`. Before narration, it verifies the evidence
+version, recomputes the stable insight ID, reconciles common and type-specific facts,
+enforces contributor and sample caps, validates sample selection and ledger bounds,
+and rejects mismatched network or route identity. Valid pages lead with meaning and
+magnitude, explain the exact deterministic rule and threshold, rank supplied
+contributors, label representative transactions as non-complete pointers, preserve
+network context in every proof link, and keep caveats, windows, watermarks, and source
+tables in a subordinate evidence rail.
+
+The three deployed evidence-v1 insight types have deterministic detail coverage: failure
+concentration, deployment adoption, and transaction activity. Evidence-v2 consumer
+coverage is also complete for `successful_activity_growth`, `failure_recovery`, and
+`new_contract_adoption`. Those positive rules validate the API classification, thresholds,
+ratio direction, typed facts, quality guards, locator bounds, stable IDs, and provenance
+before Prism uses positive language. Frozen-fixture browser acceptance passed for all
+three types at 1440 and 390 pixels with no overflow or browser errors. Known protocol result
+codes lead with user-facing language such as `Contract stopped unexpectedly`; the raw
+code remains supporting evidence. Invalid IDs return `400`, missing retained packets
+return `404`, and unavailable or unverifiable evidence returns `503` without a fixture
+or reconstructed narrative. Browser acceptance against the API's frozen failure-spike
+fixture passed 12/12 at desktop and mobile, including no horizontal overflow. Full
+evidence is recorded in `PRISM_INSIGHT_DETAIL_BROWSER_ACCEPTANCE_2026-07-31.md`.
+
+Historical resource-threshold crossings remain outside the three frozen v1 insight
+types. Prism must not infer that history from current utilization; add that narrative
+only after the API publishes a versioned threshold-crossing evidence packet.
+
 ### Slice 6: Remaining sections and rollout
 
-Status: TTL, leaders, utilization, responsive behavior, explicit outcome labels, and reduced-motion foundations completed and browser-accepted on testnet on 2026-07-29; product evidence, rollout cleanup, and mainnet acceptance remain pending.
+Status: Current TTL, leaders, utilization, responsive behavior, explicit outcome labels, and reduced-motion foundations are browser-accepted on testnet and mainnet. Product evidence, archival TTL-P0, and rollout cleanup remain pending.
 
 The initial TTL table acceptance exposed a semantic gap: its relative countdown is
 snapshot-bound, its refresh cadence can trail the live ledger heartbeat, and the
@@ -614,6 +689,13 @@ portion of Slice 6 as production-ready or promoting it to mainnet.
 8. Remove `/v2/home/feed` and obsolete home-only rendering code after fragment acceptance.
 
 The completed fragments consume the same cached `/home/summary` snapshot. Partial and stale packets keep valid rows visible with scoped warnings; unavailable packets never become zero or empty states. Utilization metrics fail independently, so a missing transaction-size value does not suppress instructions or read/write bytes. Testnet acceptance is recorded in `PRISM_HOME_EVIDENCE_TESTNET_ACCEPTANCE_2026-07-29.md`.
+
+Mainnet acceptance and the consumer-resilience follow-up are recorded in
+`PRISM_MAINNET_EVIDENCE_BROWSER_ACCEPTANCE_2026-07-31.md`. Prism now keeps a
+successful summary packet for a bounded two-minute stale-if-error window. Retained
+facts are labeled delayed; retained empty results are not presented as current; and
+retained TTL rows preserve their absolute live-until ledger without continuing a
+snapshot-relative countdown.
 
 ## Expected file changes
 
@@ -634,13 +716,17 @@ Primary Prism files:
 - `internal/insight/types.go`
 - `internal/insight/registry.go`
 - `internal/insight/rules.go`
+- `internal/insight/detail.go`
 - `internal/gateway/types.go`
 - `internal/gateway/client.go`
+- `internal/gateway/home_insight.go`
+- `internal/handlers/insight_v2.go`
 - `internal/templates/v2/viewmodel/types.go`
 - `internal/templates/v2/pages/home.templ`
 - `internal/templates/v2/pages/insight.templ`
 - `internal/templates/v2/fragments/home_sections.templ`
 - `web/static/css/v2-unified.css`
+- `web/static/css/v2-insight.css`
 
 Tests:
 
@@ -690,7 +776,13 @@ Tests:
 - Partial and stale evidence preserves facts and adds caveats.
 - Identity inference is not labeled verified.
 - Rich claims remain suppressed when optional evidence is absent.
+- Quiet-hour claims require a complete, registry-valid evaluation and matching current delivery state.
+- Recent insights remain historical and never enter the current insight card list.
+- Positive activity growth must pass its failure-rate guard; recovery must prove continued activity; adoption must pass call, caller, success-rate, and age thresholds.
 - Evidence destinations preserve subject, ledger range, status, and activity filters.
+- Insight detail IDs are recomputed from immutable evidence identity before narration.
+- Contributor and sample bounds fail closed rather than producing partial invented copy.
+- Representative transactions are labeled as pointers, never aggregate proof.
 
 ### Utilization
 
@@ -728,4 +820,4 @@ The implementation is complete only when:
 
 1. Watchlist storage, identity, notification channels, and delivery semantics.
 2. Whether an evidence-constrained LLM renderer adds enough value after deterministic v1 ships.
-3. Whether the insight detail route belongs in the first homepage rollout or the evidence-rich follow-up.
+3. Resolved on 2026-07-31: the retained insight detail route ships as the evidence-rich follow-up, linked only from validated v1 homepage packets.

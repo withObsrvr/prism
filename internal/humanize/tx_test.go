@@ -163,6 +163,61 @@ func TestBuildTxNarrative_AdminFunctionNarration(t *testing.T) {
 	}
 }
 
+func TestBuildTxNarrative_GenericCallUsesTransactionSourceWhenEffectiveActorsAreAmbiguous(t *testing.T) {
+	source := "GAJDZBVLYPJOJRUQI2UL2C2BB52CHMKK2TWXPIFWDB4WGDKWD4K4DJBE"
+	resp := &gateway.SemanticTransactionResponse{
+		Transaction: gateway.SemanticTransactionInfo{SourceAccount: &source},
+		Classification: gateway.SemanticTransactionClassification{
+			TxType: "contract_call", Confidence: "high", OperationTypes: []string{"invoke_host_function"},
+		},
+		Actors: []gateway.SemanticActor{
+			{ActorID: "CCBD4XHNU2W6FTBZMEQSYPYUTXZNKMYV2HFWGPIWLSEP7GT5HAEI54S3", ActorType: "contract", Roles: []string{"effective_actor", "receiver"}},
+			{ActorID: "CCBDP6MHOAASY2SJW3U3ZXYPV7YBQOJ2XOFVJMD3W5CKK2IOZ4I7L443", ActorType: "contract", Roles: []string{"effective_actor", "sender"}},
+			{ActorID: source, ActorType: "classic_account", Roles: []string{"effective_actor", "submitter"}},
+		},
+		Operations: []gateway.DecodedOperation{{FunctionName: "create_and_try_fill_with_fee", TypeName: "invoke_host_function", ContractID: "CDFWQCDY34ODL4IHTGOV6XSBKS3CRSCUYOITRKU5M3GQZBPO5UDH4364"}},
+	}
+
+	narrative := BuildTxNarrative(resp).Narrative
+	if !strings.HasPrefix(narrative, "GAJD...DJBE called") {
+		t.Fatalf("narrative did not use transaction source: %q", narrative)
+	}
+	if strings.Contains(narrative, "CCBD...54S3") {
+		t.Fatalf("narrative promoted an ambiguous contract actor: %q", narrative)
+	}
+}
+
+func TestBuildTxNarrative_GenericCallUsesInvokedContractInsteadOfFirstProtocolActor(t *testing.T) {
+	const (
+		invokedContract = "CDFWQCDY34ODL4IHTGOV6XSBKS3CRSCUYOITRKU5M3GQZBPO5UDH4364"
+		tokenContract   = "CDA7SDCEQK2R6TTR655VNGEAONMNO3BSSRCFZDFNIJPADSMEKNEWRRBN"
+	)
+	source := "GAJDZBVLYPJOJRUQI2UL2C2BB52CHMKK2TWXPIFWDB4WGDKWD4K4DJBE"
+	resp := &gateway.SemanticTransactionResponse{
+		Transaction: gateway.SemanticTransactionInfo{SourceAccount: &source},
+		Classification: gateway.SemanticTransactionClassification{
+			TxType: "contract_call", Confidence: "high", OperationTypes: []string{"invoke_host_function"},
+		},
+		Actors: []gateway.SemanticActor{
+			{ActorID: tokenContract, ActorType: "contract", Roles: []string{"protocol"}},
+			{ActorID: invokedContract, ActorType: "contract", Roles: []string{"protocol"}},
+		},
+		Operations: []gateway.DecodedOperation{{
+			FunctionName: "create_and_try_fill_with_fee",
+			TypeName:     "invoke_host_function",
+			ContractID:   invokedContract,
+		}},
+	}
+
+	narrative := BuildTxNarrative(resp).Narrative
+	if !strings.Contains(narrative, "CDFW...4364") {
+		t.Fatalf("narrative omitted invoked contract: %q", narrative)
+	}
+	if strings.Contains(narrative, "CDA7...RRBN") {
+		t.Fatalf("narrative promoted supporting token contract: %q", narrative)
+	}
+}
+
 func TestBuildTxNarrative_GenericFallback(t *testing.T) {
 	resp := &gateway.SemanticTransactionResponse{
 		Classification: gateway.SemanticTransactionClassification{

@@ -14,19 +14,42 @@ import (
 
 // buildTxFragmentData fetches transaction detail data for fragment rendering.
 // Returns nil if live data is unavailable or not requested.
-func (h *Handlers) buildTxFragmentData(r *http.Request, network, hash, shortHash string) *pages.TxReceiptData {
-	if !h.useLiveData(r) {
-		return nil
+// txFragmentResult separates the two reasons a page might not have live data.
+// Collapsing them into a nil pointer is what made a failed gateway render as a
+// confident, fabricated receipt: the caller could not tell "we are deliberately
+// showing fixtures" from "we tried to load this transaction and could not".
+type txFragmentResult struct {
+	Data *pages.TxReceiptData
+	// Demo means fixtures were asked for, by data_source=mock or ?mock=true.
+	// Legitimate, but it must be visible on the page.
+	Demo bool
+	// Err means live data was wanted and could not be loaded. Never render
+	// fixtures for this: say the load failed.
+	Err error
+}
+
+func (h *Handlers) buildTxFragmentData(r *http.Request, network, hash, shortHash string) txFragmentResult {
+	if h.useExplicitMockData(r) {
+		mock := mockTxReceiptData(hash, shortHash)
+		mock.Demo = true
+		return txFragmentResult{Data: &mock, Demo: true}
+	}
+	if h.Gateway == nil {
+		// No gateway configured at all. Fixtures are the only thing available,
+		// and the page has to say so rather than imply this is the network.
+		mock := mockTxReceiptData(hash, shortHash)
+		mock.Demo = true
+		return txFragmentResult{Data: &mock, Demo: true}
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), txPageGatewayTimeout)
 	defer cancel()
 	started := time.Now()
 	data, err := h.buildTxReceiptData(r.Clone(ctx), network, hash, shortHash)
 	if err != nil {
-		h.Logger.Warn("live tx data failed, falling back to mock", "error", err, "hash", shortHash, "duration", time.Since(started))
-		return nil
+		h.Logger.Warn("live tx data failed", "error", err, "hash", shortHash, "duration", time.Since(started))
+		return txFragmentResult{Err: err}
 	}
-	return &data
+	return txFragmentResult{Data: &data}
 }
 
 func txShortHash(hash string) string {
@@ -42,13 +65,13 @@ func (h *Handlers) TxV2HeroFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load transaction hero", res.Err)
+		return
 	}
 
-	if err := pagesv2.TxReceiptHeroFragment(*data).Render(r.Context(), w); err != nil {
+	if err := pagesv2.TxReceiptHeroFragment(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load transaction hero", err)
 	}
 }
@@ -59,13 +82,13 @@ func (h *Handlers) TxV2DetailFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load transaction details", res.Err)
+		return
 	}
 
-	if err := pagesv2.TxReceiptDetailFragment(*data).Render(r.Context(), w); err != nil {
+	if err := pagesv2.TxReceiptDetailFragment(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load transaction details", err)
 	}
 }
@@ -76,13 +99,13 @@ func (h *Handlers) TxV2SidebarFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load transaction sidebar", res.Err)
+		return
 	}
 
-	if err := pagesv2.TxReceiptSidebarFragment(*data).Render(r.Context(), w); err != nil {
+	if err := pagesv2.TxReceiptSidebarFragment(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load transaction sidebar", err)
 	}
 }
@@ -93,13 +116,13 @@ func (h *Handlers) TxOverviewFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load overview", res.Err)
+		return
 	}
 
-	if err := fragments.TxOverview(*data).Render(r.Context(), w); err != nil {
+	if err := fragments.TxOverview(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load overview", err)
 	}
 }
@@ -110,13 +133,13 @@ func (h *Handlers) TxOperationsFragment(w http.ResponseWriter, r *http.Request) 
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load operations", res.Err)
+		return
 	}
 
-	if err := fragments.TxOperations(data.Operations).Render(r.Context(), w); err != nil {
+	if err := fragments.TxOperations(res.Data.Operations).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load operations", err)
 	}
 }
@@ -127,13 +150,13 @@ func (h *Handlers) TxEventsFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load events", res.Err)
+		return
 	}
 
-	if err := fragments.TxEvents(data.Events).Render(r.Context(), w); err != nil {
+	if err := fragments.TxEvents(res.Data.Events).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load events", err)
 	}
 }
@@ -144,13 +167,13 @@ func (h *Handlers) TxBalanceChangesFragment(w http.ResponseWriter, r *http.Reque
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load balance changes", res.Err)
+		return
 	}
 
-	if err := fragments.TxBalanceChanges(data.BalanceChanges).Render(r.Context(), w); err != nil {
+	if err := fragments.TxBalanceChanges(res.Data.BalanceChanges).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load balance changes", err)
 	}
 }
@@ -161,13 +184,13 @@ func (h *Handlers) TxEffectsFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load effects", res.Err)
+		return
 	}
 
-	if err := fragments.TxEffects(data.Effects).Render(r.Context(), w); err != nil {
+	if err := fragments.TxEffects(res.Data.Effects).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load effects", err)
 	}
 }
@@ -178,13 +201,13 @@ func (h *Handlers) TxTimelineFragment(w http.ResponseWriter, r *http.Request) {
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load timeline", res.Err)
+		return
 	}
 
-	if err := fragments.TxTimeline(data.Timeline).Render(r.Context(), w); err != nil {
+	if err := fragments.TxTimeline(res.Data.Timeline).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load timeline", err)
 	}
 }
@@ -195,13 +218,13 @@ func (h *Handlers) TxStateChangesFragment(w http.ResponseWriter, r *http.Request
 	network := networkFromRequest(r)
 	shortHash := txShortHash(hash)
 
-	data := h.buildTxFragmentData(r, network, hash, shortHash)
-	if data == nil {
-		mock := mockTxReceiptData(hash, shortHash)
-		data = &mock
+	res := h.buildTxFragmentData(r, network, hash, shortHash)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load state changes", res.Err)
+		return
 	}
 
-	if err := fragments.TxStateChanges(data.StateChanges).Render(r.Context(), w); err != nil {
+	if err := fragments.TxStateChanges(res.Data.StateChanges).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load state changes", err)
 	}
 }
@@ -210,16 +233,26 @@ func (h *Handlers) TxStateChangesFragment(w http.ResponseWriter, r *http.Request
 
 // buildLedgerFragmentData fetches ledger detail data for fragment rendering.
 // Returns nil if live data is unavailable or not requested.
-func (h *Handlers) buildLedgerFragmentData(r *http.Request, network, sequence string) *pages.LedgerDetailData {
-	if !h.useLiveData(r) {
-		return nil
+// ledgerFragmentResult mirrors txFragmentResult: deliberate fixtures and a
+// failed load are different outcomes and must not share a representation.
+type ledgerFragmentResult struct {
+	Data *pages.LedgerDetailData
+	Demo bool
+	Err  error
+}
+
+func (h *Handlers) buildLedgerFragmentData(r *http.Request, network, sequence string) ledgerFragmentResult {
+	if h.useExplicitMockData(r) || h.Gateway == nil {
+		mock := mockLedgerDetailData(sequence)
+		mock.Demo = true
+		return ledgerFragmentResult{Data: &mock, Demo: true}
 	}
 	data, err := h.buildLedgerDetailData(r, network, sequence)
 	if err != nil {
-		h.Logger.Warn("live ledger data failed, falling back to mock", "error", err, "sequence", sequence)
-		return nil
+		h.Logger.Warn("live ledger data failed", "error", err, "sequence", sequence)
+		return ledgerFragmentResult{Err: err}
 	}
-	return &data
+	return ledgerFragmentResult{Data: &data}
 }
 
 // LedgerTxsFragment returns the ledger transactions table.
@@ -227,13 +260,13 @@ func (h *Handlers) LedgerTxsFragment(w http.ResponseWriter, r *http.Request) {
 	sequence := r.PathValue("sequence")
 	network := networkFromRequest(r)
 
-	data := h.buildLedgerFragmentData(r, network, sequence)
-	if data == nil {
-		mock := mockLedgerDetailData(sequence)
-		data = &mock
+	res := h.buildLedgerFragmentData(r, network, sequence)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load transactions", res.Err)
+		return
 	}
 
-	if err := fragments.LedgerTxs(*data).Render(r.Context(), w); err != nil {
+	if err := fragments.LedgerTxs(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load transactions", err)
 	}
 }
@@ -243,13 +276,13 @@ func (h *Handlers) LedgerOpsAndFeesFragment(w http.ResponseWriter, r *http.Reque
 	sequence := r.PathValue("sequence")
 	network := networkFromRequest(r)
 
-	data := h.buildLedgerFragmentData(r, network, sequence)
-	if data == nil {
-		mock := mockLedgerDetailData(sequence)
-		data = &mock
+	res := h.buildLedgerFragmentData(r, network, sequence)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load operation breakdown", res.Err)
+		return
 	}
 
-	if err := fragments.LedgerOpsAndFees(*data).Render(r.Context(), w); err != nil {
+	if err := fragments.LedgerOpsAndFees(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load operation breakdown", err)
 	}
 }
@@ -259,13 +292,13 @@ func (h *Handlers) LedgerSorobanFragment(w http.ResponseWriter, r *http.Request)
 	sequence := r.PathValue("sequence")
 	network := networkFromRequest(r)
 
-	data := h.buildLedgerFragmentData(r, network, sequence)
-	if data == nil {
-		mock := mockLedgerDetailData(sequence)
-		data = &mock
+	res := h.buildLedgerFragmentData(r, network, sequence)
+	if res.Err != nil {
+		h.renderFragmentError(w, r, "Could not load Soroban runtime", res.Err)
+		return
 	}
 
-	if err := fragments.LedgerSoroban(*data).Render(r.Context(), w); err != nil {
+	if err := fragments.LedgerSoroban(*res.Data).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load Soroban runtime", err)
 	}
 }

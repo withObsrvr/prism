@@ -22,7 +22,7 @@ func mockHomeV2Data(network string) vmv2.HomeData {
 }
 
 func mockHomeV2TimelineData(network string, now time.Time) vmv2.HomeTimelineData {
-	const count = 60
+	const count = vmv2.SpectrogramLedgerCount
 	base := mockHomeLedgerBase(network)
 	ledgers := make([]gateway.RecentLedger, 0, count)
 	for offset := 0; offset < count; offset++ {
@@ -176,6 +176,33 @@ func mockHomeSummaryResponse(network string) *gateway.HomeSummaryResponse {
 			PrimaryContributor: &gateway.HomeInsightContribution{Dimension: "function", Kind: "function", Key: "swap", Count: 38, DenominatorName: "subject_failure_count", DenominatorValue: 42, Share: 38.0 / 42.0, FirstLedger: asOf - 720, LastLedger: asOf - 14},
 			EvidenceLocator:    &gateway.HomeInsightEvidenceLocator{Kind: "contract_invocations", ContractID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM", LedgerStart: asOf - 720, LedgerEnd: asOf, Status: "failed"},
 			EvidenceCount:      42,
+			Status:             "ready",
+			Caveats:            &caveats,
+			EvidenceProvenance: &gateway.HomeInsightEvidenceProvenance{Sources: []string{"demo_fixture"}, CompleteThroughLedger: asOf, UpdatedAt: now.Add(5 * time.Second).Format(time.RFC3339)},
+		}, {
+			// A second insight so the fixture exercises the multi-card layout.
+			// .ph-insight-list gets a has-N class from the card count, and the
+			// horizontal grid only engages at has-2 or has-3; with a single
+			// fixture card the section always rendered as one stacked column,
+			// which read as the row treatment having been lost.
+			InsightID:       "hiev1_Xq4mB2pTn7RkLs0WvYcHdGj9FaZ1eNuI3oQrSt5UvWx",
+			Network:         network,
+			Type:            "transaction_activity_spike",
+			EvidenceVersion: "home_insight_evidence_v1",
+			Definition: &gateway.HomeInsightDefinition{
+				RuleID: "network_transaction_activity_spike", RuleVersion: "1", ComparisonMethod: "rolling_7d_median_prior_complete_hour", MinimumRatio: 2,
+			},
+			Subject:  gateway.HomeSummaryInsightSubject{Kind: "network", ID: network},
+			Observed: &gateway.HomeInsightObserved{Value: 5347, WindowStart: now.Add(-time.Hour).Format(time.RFC3339), WindowEnd: now.Format(time.RFC3339), FirstLedger: asOf - 720, LastLedger: asOf, SourceLedger: asOf},
+			Baseline: &gateway.HomeInsightBaseline{Value: 2410, WindowStart: now.Add(-169 * time.Hour).Format(time.RFC3339), WindowEnd: now.Add(-time.Hour).Format(time.RFC3339), CompleteHourCount: 168, ZeroBaselinePolicy: "omit_ratio_insight"},
+			Ratio:    5347.0 / 2410.0,
+			Facts: &gateway.HomeInsightFacts{Activity: &gateway.HomeInsightActivityFacts{
+				Kind: "transaction_activity_spike", IncludedTransactionCount: 5347,
+				SuccessfulTransactionCount: 5306, FailedTransactionCount: 41,
+				IncludedOperationCount: 11208, SorobanTransactionCount: 2353, ClassicOnlyTransactionCount: 2994,
+			}},
+			EvidenceLocator:    &gateway.HomeInsightEvidenceLocator{Kind: "ledger_activity", LedgerStart: asOf - 720, LedgerEnd: asOf},
+			EvidenceCount:      5347,
 			Status:             "ready",
 			Caveats:            &caveats,
 			EvidenceProvenance: &gateway.HomeInsightEvidenceProvenance{Sources: []string{"demo_fixture"}, CompleteThroughLedger: asOf, UpdatedAt: now.Add(5 * time.Second).Format(time.RFC3339)},
