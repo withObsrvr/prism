@@ -7,6 +7,9 @@ import (
 )
 
 type TxReceiptData struct {
+	// Demo marks fixtures. It is set wherever synthetic data is produced, so a
+	// reader is never left guessing whether a page describes the network.
+	Demo          bool
 	Hash          string
 	ShortHash     string
 	Status        string // "success" or "failed"

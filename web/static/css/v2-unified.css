@@ -9461,3 +9461,24 @@ a.px-tx-tree-actor:hover, a.px-tx-tree-target:hover { color: var(--ph-accent-ink
   .px-tx-tree-state { grid-column: 2; padding-top: 2px; }
   .px-tx-tree-node.d3, .px-tx-tree-node.d4, .px-tx-tree-node.d5 { padding-left: 60px; }
 }
+
+/* ===== DEMO DATA NOTICE =====
+   Amber, matching the existing is-demo vocabulary used on the home evidence
+   panels. Deliberately full-width and above the content: a marker a reader can
+   miss is the same as no marker, which is the bug this fixes. */
+.px-demo-notice {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in oklch, var(--ph-amber) 38%, var(--ph-border));
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--ph-amber) 10%, var(--ph-surf));
+  font-size: 13px; line-height: 1.5;
+  color: var(--ph-text-2);
+}
+.px-demo-notice strong {
+  font-family: var(--ph-ff-mono);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ph-amber);
+}

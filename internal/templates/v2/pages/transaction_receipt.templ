@@ -159,6 +159,9 @@ templ sideLinkRow(k string, v string, href string) { <div class="px-tx-side-row"
 
 templ txHeroHeader(hero txv2.TxHeroModel, data legacy.TxReceiptData) {
 	<section class={ "px-tx-headline", "px-tx-hero-" + string(hero.Kind) }><div class="px-tx-headline-inner">
+		if data.Demo {
+			@componentsv2.DemoNotice()
+		}
 		<div class="px-tx-headline-top">
 			<span class="px-tx-status"><span class={ "px-tx-status-dot", templ.KV("ok", data.Status == "success") }></span><span>{ hero.Status }</span></span>
 			for _, tag := range hero.Tags {

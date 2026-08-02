@@ -94,3 +94,17 @@ func navActive(active string, key string) string {
 	}
 	return ""
 }
+
+// DemoNotice marks a page as showing fixtures rather than network data.
+//
+// It exists because the fallback used to be silent: when the gateway failed,
+// the receipt rendered a fabricated transaction with no indication, so a reader
+// got a confident-looking answer about a transaction that had not been loaded.
+// Failures now render an error instead, and this marks the cases where showing
+// fixtures is deliberate.
+templ DemoNotice() {
+	<div class="px-demo-notice" role="status">
+		<strong>Demo data</strong>
+		<span>Synthetic fixture, not network activity. Nothing on this page describes a real transaction.</span>
+	</div>
+}
