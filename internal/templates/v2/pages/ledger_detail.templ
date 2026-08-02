@@ -152,10 +152,10 @@ templ stoodOut(data legacy.LedgerDetailData) {
 }
 
 templ txCard(tx legacy.LedgerTx) {
-	<a class={ "px-lg-txc", templ.KV("fail", tx.IsFailed) } href={ templ.SafeURL("/v2/tx/" + tx.Hash) } data-px-ledger-tx-card data-px-ledger-tx-kind={ ledgerTxFilterKind(tx) }>
+	<a class={ "px-lg-txc", templ.KV("fail", txIsFailed(tx)) } href={ templ.SafeURL("/v2/tx/" + tx.Hash) } data-px-ledger-tx-card data-px-ledger-tx-kind={ ledgerTxFilterKind(tx) }>
 		<span class="px-lg-txc-num mono">{ pad2(tx.Index) }</span>
 		<div class="px-lg-txc-body"><div class="px-lg-txc-tags"><span class={ "tag", txCardTagClass(tx) }>{ txCardTag(tx) }</span><span class="tag-proto mono">{ txCardProto(tx) }</span></div><div class="px-lg-txc-head">@templ.Raw(tx.Summary)</div><div class="px-lg-txc-meta"><span class="actor"><b>{ txCardActor(tx) }</b></span><span class="sep">·</span><span class="mono"><span class="muted">tx</span> { tx.ShortHash }</span><span class="sep">·</span><span class="mono">{ tx.Ops } ops</span></div></div>
-		<div class="px-lg-txc-trail"><span class={ "px-lg-txc-status", templ.KV("fail", tx.IsFailed), templ.KV("ok", !tx.IsFailed) }>{ txStatus(tx.IsFailed) }</span><span class="px-lg-txc-fee mono">{ tx.Fee } <span class="muted">stroops</span></span><span class="px-lg-txc-arrow">→</span></div>
+		<div class="px-lg-txc-trail"><span class={ "px-lg-txc-status", templ.KV("fail", txIsFailed(tx)), templ.KV("ok", !txIsFailed(tx)) }>{ txStatus(txIsFailed(tx)) }</span><span class="px-lg-txc-fee mono">{ tx.Fee } <span class="muted">stroops</span></span><span class="px-lg-txc-arrow">→</span></div>
 	</a>
 }
 
@@ -191,7 +191,7 @@ templ spotCard(card legacy.LedgerSpotlightCard) {
 		<div class="px-lg-spot-items"><div class="px-lg-spot-item"><span class="name">Live classification</span><span class="meta">Prism signal</span></div></div>
 	</article>
 }
-templ txRow(tx legacy.LedgerTx) { <a class={ "px-lg-tx", templ.KV("failed", tx.IsFailed) } href={ templ.SafeURL("/v2/tx/" + tx.Hash) }><span class="px-lg-tx-num">{ pad2(tx.Index) }</span><span class="px-lg-tx-hash mono">{ tx.ShortHash }</span><span class="px-lg-tx-kind"><span class={ "px-lg-kind-pill", txKindClass(tx) }>{ tx.OpType }</span></span><span class="px-lg-tx-summary">@templ.Raw(tx.Summary)</span><span class="px-lg-tx-actor"><span class="muted">unknown</span><br/><span class="mono muted">{ tx.ShortHash }</span></span><span class="px-lg-tx-events r mono">n/a</span><span class="px-lg-tx-fee r mono">{ tx.Fee }</span><span class={ "px-lg-tx-status", templ.KV("fail", tx.IsFailed), templ.KV("ok", !tx.IsFailed) }>{ txStatus(tx.IsFailed) }</span></a> }
+templ txRow(tx legacy.LedgerTx) { <a class={ "px-lg-tx", templ.KV("failed", txIsFailed(tx)) } href={ templ.SafeURL("/v2/tx/" + tx.Hash) }><span class="px-lg-tx-num">{ pad2(tx.Index) }</span><span class="px-lg-tx-hash mono">{ tx.ShortHash }</span><span class="px-lg-tx-kind"><span class={ "px-lg-kind-pill", txKindClass(tx) }>{ tx.OpType }</span></span><span class="px-lg-tx-summary">@templ.Raw(tx.Summary)</span><span class="px-lg-tx-actor"><span class="muted">unknown</span><br/><span class="mono muted">{ tx.ShortHash }</span></span><span class="px-lg-tx-events r mono">n/a</span><span class="px-lg-tx-fee r mono">{ tx.Fee }</span><span class={ "px-lg-tx-status", templ.KV("fail", txIsFailed(tx)), templ.KV("ok", !txIsFailed(tx)) }>{ txStatus(txIsFailed(tx)) }</span></a> }
 templ acctCard(acct legacy.LedgerChangedAccount) {
 	<article class="px-lg-acct">
 		<div class="px-lg-acct-head"><div class="px-lg-acct-meta"><h3>{ acct.Name }</h3><span class="mono">{ acct.Address }</span></div><div class="px-lg-acct-touched"><span class="n">{ touchedNum(acct.Touched) }</span><span class="l">{ touchedLabel(acct.Touched) }</span></div></div>
@@ -271,19 +271,34 @@ func familyLabel(f string) string { switch f { case "contract": return "contract
 func shortOpName(v string) string { v=strings.TrimPrefix(v,"Invoke "); if len(v)>11 { return v[:11] }; return v }
 func spotTone(v string) string { if v=="failed" { return "fail" }; return v }
 func spotIcon(v string) string { switch v { case "deploy": return "+"; case "ttl": return "⟳"; case "failed": return "×"; case "events": return "ε"; case "state": return "Δ"; case "agent": return "α"; default: return "•" } }
-func spotlightCards(data legacy.LedgerDetailData) []legacy.LedgerSpotlightCard { if len(data.SpotlightCards)>0 { return data.SpotlightCards }; return []legacy.LedgerSpotlightCard{{"New deployments","0","Fresh contract deployments appear here when available.","deploy"},{"TTL extensions","0","Persistent-storage renewals and restores appear here.","ttl"},{"Failed invocations",data.TxFailed,"Application-level Soroban reverts and classic failures.","failed"},{"Events emitted",data.EventsEmitted,"Dominant contract event topics emitted by this ledger.","events"},{"State changes",data.StateWrites,"Ledger-entry writes across contract execution.","state"},{"Agent payments","0","x402 machine-to-machine payments appear here when classified.","agent"}} }
+func spotlightCards(data legacy.LedgerDetailData) []legacy.LedgerSpotlightCard {
+	if len(data.SpotlightCards) > 0 {
+		return data.SpotlightCards
+	}
+	return []legacy.LedgerSpotlightCard{
+		{Kicker: "New deployments", Value: "0", Body: "Fresh contract deployments appear here when available.", Tone: "deploy"},
+		{Kicker: "TTL extensions", Value: "0", Body: "Persistent-storage renewals and restores appear here.", Tone: "ttl"},
+		{Kicker: "Failed invocations", Value: data.TxFailed, Body: "Application-level Soroban reverts and classic failures.", Tone: "failed"},
+		{Kicker: "Events emitted", Value: data.EventsEmitted, Body: "Dominant contract event topics emitted by this ledger.", Tone: "events"},
+		{Kicker: "State changes", Value: data.StateWrites, Body: "Ledger-entry writes across contract execution.", Tone: "state"},
+		{Kicker: "Agent payments", Value: "0", Body: "x402 machine-to-machine payments appear here when classified.", Tone: "agent"},
+	}
+}
 func firstTxSummary(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { return stripHTMLLocal(data.Transactions[0].Summary) }; return "No transactions loaded" }
 func firstTxHash(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { return data.Transactions[0].ShortHash }; return "No tx" }
-// txKindClass drives the Soroban/Classic/Failed filter and its counts, so it
-// reads Kind and nothing else. It previously fell back to the OpColor string,
-// which filed any tx coloured emerald — including contract calls tagged "mint"
-// — under Classic.
-func txKindClass(tx legacy.LedgerTx) string { if tx.IsFailed || tx.Kind=="failed" { return "k-fail" }; if strings.EqualFold(strings.TrimSpace(tx.Kind), "soroban") { return "k-soroban" }; return "k-classic" }
+// txIsFailed is the one failure predicate for filtering, counts, styling, and
+// status. Live handlers populate both fields consistently, while accepting
+// either here keeps older fixtures and alternate callers from producing a card
+// that filters as failed but looks successful.
+func txIsFailed(tx legacy.LedgerTx) bool { return tx.IsFailed || strings.EqualFold(strings.TrimSpace(tx.Kind), "failed") }
+// txKindClass drives the Soroban/Classic/Failed filter and its counts. It never
+// falls back to colour, which previously filed emerald Soroban calls as Classic.
+func txKindClass(tx legacy.LedgerTx) string { if txIsFailed(tx) { return "k-fail" }; if strings.EqualFold(strings.TrimSpace(tx.Kind), "soroban") { return "k-soroban" }; return "k-classic" }
 // The filter tabs act on the rendered cards, so their counts must describe
 // those cards. They previously showed ledger-level totals, which made All
 // disagree with Soroban + Classic + Failed whenever the tx fetch was capped.
 func shownTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { return fmt.Sprintf("%d", len(data.Transactions)) }; return data.TxCount }
-func failedTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if tx.IsFailed { n++ } }; return fmt.Sprintf("%d", n) }; return data.TxFailed }
+func failedTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if txIsFailed(tx) { n++ } }; return fmt.Sprintf("%d", n) }; return data.TxFailed }
 func txStatus(failed bool) string { if failed { return "✗" }; return "✓" }
 func pad2(v string) string { if len(v)==1 { return "0"+v }; return v }
 func changedAccounts(data legacy.LedgerDetailData) []legacy.LedgerChangedAccount { if len(data.ChangedAccounts)>0 { return data.ChangedAccounts }; return []legacy.LedgerChangedAccount{{Name:"Ledger participants",Address:"transaction set",Touched:data.TxCount+" txs",Deltas:[]string{"fees paid","balances and sequence numbers updated","contract state touched"}}} }
@@ -302,8 +317,8 @@ func shareText(data legacy.LedgerDetailData) string { return shareTitle(data) }
 func relativeClosedAt(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.CloseTime)!="" { return data.CloseTime + " close" }; return "closed" }
 func ledgerNarrativeHTML(data legacy.LedgerDetailData) string { if strings.TrimSpace(data.SubNarrative)!="" { return strings.ReplaceAll(data.SubNarrative, "—", ":") }; return fmt.Sprintf("%s: <b>%s of %s operations</b> were Soroban calls. Closed in <b>%s</b>, paying a combined <span class=\"mono\">%s stroops</span> in fees. %s transactions succeeded and %s failed.", firstNonEmpty(data.ActivityTag,"Soroban-aware"), data.SorobanCalls, data.OpCount, data.CloseTime, data.TotalFees, data.TxSuccess, data.TxFailed) }
 func touchedAddressCount(data legacy.LedgerDetailData) string { if len(data.ChangedAccounts)>0 { return fmt.Sprintf("%d", len(data.ChangedAccounts)) }; return "0" }
-func classicTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if !tx.IsFailed && txKindClass(tx)=="k-classic" { n++ } }; return fmt.Sprintf("%d", n) }; total, _ := strconv.Atoi(strings.ReplaceAll(data.TxCount, ",", "")); failed, _ := strconv.Atoi(strings.ReplaceAll(data.TxFailed, ",", "")); classic := total - failed; if classic < 0 { classic = 0 }; return fmt.Sprintf("%d", classic) }
-func sorobanTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if !tx.IsFailed && txKindClass(tx)=="k-soroban" { n++ } }; return fmt.Sprintf("%d", n) }; return data.SorobanCalls }
+func classicTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if !txIsFailed(tx) && txKindClass(tx)=="k-classic" { n++ } }; return fmt.Sprintf("%d", n) }; total, _ := strconv.Atoi(strings.ReplaceAll(data.TxCount, ",", "")); failed, _ := strconv.Atoi(strings.ReplaceAll(data.TxFailed, ",", "")); classic := total - failed; if classic < 0 { classic = 0 }; return fmt.Sprintf("%d", classic) }
+func sorobanTxCount(data legacy.LedgerDetailData) string { if len(data.Transactions)>0 { n:=0; for _,tx:=range data.Transactions { if !txIsFailed(tx) && txKindClass(tx)=="k-soroban" { n++ } }; return fmt.Sprintf("%d", n) }; return data.SorobanCalls }
 func txCardTag(tx legacy.LedgerTx) string { k:=txKindClass(tx); if k=="k-fail" { return "failed" }; if k=="k-classic" { return "classic" }; return "soroban" }
 func ledgerTxFilterKind(tx legacy.LedgerTx) string { k:=txKindClass(tx); if k=="k-fail" { return "failed" }; if k=="k-classic" { return "classic" }; return "soroban" }
 func txCardTagClass(tx legacy.LedgerTx) string { k:=txKindClass(tx); if k=="k-fail" { return "fail" }; if k=="k-classic" { return "classic" }; return "soroban" }

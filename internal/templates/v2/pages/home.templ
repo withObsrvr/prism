@@ -236,6 +236,12 @@ type spectrumLeadParts struct {
 // Share is empty when no class is dominant enough to be worth asserting, and the
 // caller falls back to the window label. A near-even split is not a finding.
 func spectrumLead(data vmv2.HomeTimelineData) spectrumLeadParts {
+	// A legend without columns is not a window of evidence. This can occur in
+	// partial or malformed view models and must fall back to WindowLabel rather
+	// than claiming activity across "the last 0 ledgers".
+	if len(data.Columns) == 0 {
+		return spectrumLeadParts{}
+	}
 	total := 0
 	best := vmv2.HomeSpectrogramLegendItem{}
 	for _, item := range data.Legend {
@@ -244,7 +250,8 @@ func spectrumLead(data vmv2.HomeTimelineData) spectrumLeadParts {
 			best = item
 		}
 	}
-	if total == 0 || best.Count == 0 || best.Percentage == "" {
+	label := strings.TrimSpace(best.Label)
+	if total == 0 || best.Count == 0 || best.Percentage == "" || label == "" {
 		return spectrumLeadParts{}
 	}
 	// Below a plurality there is no single class to name.
@@ -256,7 +263,9 @@ func spectrumLead(data vmv2.HomeTimelineData) spectrumLeadParts {
 		window = "the latest ledger"
 	}
 	return spectrumLeadParts{
-		Prefix: strings.ToUpper(best.Label[:1]) + best.Label[1:] + " are",
+		// Legend labels are already display-cased. Using the whole label avoids
+		// byte-slicing an empty or non-ASCII string.
+		Prefix: label + " are",
 		Share:  best.Percentage,
 		// Prism classifies operations, not transactions; the legend's own
 		// screen-reader text counts operations, so the denominator is named as

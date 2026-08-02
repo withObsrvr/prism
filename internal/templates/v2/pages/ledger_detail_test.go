@@ -1,11 +1,51 @@
 package pagesv2
 
 import (
+	"context"
 	"strconv"
+	"strings"
 	"testing"
 
 	legacy "github.com/withObsrvr/prism/internal/templates/pages"
 )
+
+func TestLedgerFailedCardCountAndPresentationUseSameClassification(t *testing.T) {
+	tx := legacy.LedgerTx{
+		Hash:      "failed-hash",
+		ShortHash: "fail...hash",
+		Kind:      "failed",
+		OpType:    "invoke",
+	}
+	data := legacy.LedgerDetailData{Transactions: []legacy.LedgerTx{tx}}
+
+	if got, want := failedTxCount(data), "1"; got != want {
+		t.Fatalf("failedTxCount() = %q, want %q", got, want)
+	}
+	if got := classicTxCount(data); got != "0" {
+		t.Fatalf("classicTxCount() = %q, want 0", got)
+	}
+	if got := sorobanTxCount(data); got != "0" {
+		t.Fatalf("sorobanTxCount() = %q, want 0", got)
+	}
+
+	var html strings.Builder
+	if err := txCard(tx).Render(context.Background(), &html); err != nil {
+		t.Fatalf("render failed transaction card: %v", err)
+	}
+	output := html.String()
+	for _, want := range []string{
+		`class="px-lg-txc fail"`,
+		`data-px-ledger-tx-kind="failed"`,
+		`class="px-lg-txc-status fail"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("failed transaction card missing %q: %s", want, output)
+		}
+	}
+	if strings.Contains(output, `class="px-lg-txc-status ok"`) {
+		t.Errorf("failed transaction card rendered a success status: %s", output)
+	}
+}
 
 // The operations fetch is capped, so a busy ledger classifies only a sample.
 // The subhead has to say which, or it claims the ledger's full operation count

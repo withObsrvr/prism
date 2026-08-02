@@ -132,6 +132,27 @@ func TestHomeTimelineRendersAccessibleEvidenceAndPolling(t *testing.T) {
 	}
 }
 
+func TestSpectrumLeadRejectsEmptyLegendLabel(t *testing.T) {
+	data := vmv2.HomeTimelineData{
+		Columns: []vmv2.HomeSpectrogramColumn{{Sequence: 101}},
+		Legend:  []vmv2.HomeSpectrogramLegendItem{{Count: 8, Percentage: "100%"}},
+	}
+
+	if got := spectrumLead(data); got.Share != "" {
+		t.Fatalf("spectrumLead() = %+v, want no asserted headline", got)
+	}
+}
+
+func TestSpectrumLeadRejectsEmptyLedgerWindow(t *testing.T) {
+	data := vmv2.HomeTimelineData{
+		Legend: []vmv2.HomeSpectrogramLegendItem{{Label: "Contract calls", Count: 8, Percentage: "100%"}},
+	}
+
+	if got := spectrumLead(data); got.Share != "" {
+		t.Fatalf("spectrumLead() = %+v, want no asserted headline", got)
+	}
+}
+
 func TestHomeInsightsRendersACompactEvidenceRow(t *testing.T) {
 	data := vmv2.HomeInsightsData{
 		Status:  vmv2.HomeSectionStatus{State: vmv2.HomeSectionPartial, Warnings: []string{"Insight evidence is incomplete."}},
@@ -247,9 +268,9 @@ func TestHomeInsightsMakesEmptyAndUnavailableComparisonsUsefulWithoutInventingCh
 
 func TestHomeInsightsRendersQuietHourChecksAndRecentHistoryCompactly(t *testing.T) {
 	data := vmv2.HomeInsightsData{
-		Status: vmv2.HomeSectionStatus{State: vmv2.HomeSectionEmpty, Message: "No significant changes in the last completed hour."},
+		Status:  vmv2.HomeSectionStatus{State: vmv2.HomeSectionEmpty, Message: "No significant changes in the last completed hour."},
 		Network: "testnet", PollURL: "/v2/home/insights?network=testnet", WindowLabel: "Jul 31, 21:00 to 22:00 UTC",
-		Checks: []vmv2.HomeInsightCheck{{Label: "Contract failures", Value: "0.7× typical", Detail: "8 now, 11 typical", State: "ready"}, {Label: "Successful activity", Value: "1.1× typical", Detail: "6,400 now, 6,200 typical", State: "ready"}},
+		Checks:      []vmv2.HomeInsightCheck{{Label: "Contract failures", Value: "0.7× typical", Detail: "8 now, 11 typical", State: "ready"}, {Label: "Successful activity", Value: "1.1× typical", Detail: "6,400 now, 6,200 typical", State: "ready"}},
 		RecentLabel: "Contract deployments increased", RecentDetailHref: "/v2/insight/hiev1_example?network=testnet", RecentTimeLabel: "22:00 UTC",
 	}
 	var html strings.Builder
