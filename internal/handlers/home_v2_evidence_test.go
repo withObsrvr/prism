@@ -17,6 +17,9 @@ import (
 
 func TestHomeEvidenceBuildersRenderOneCoherentSummary(t *testing.T) {
 	summary := mockHomeSummaryResponse("testnet")
+	// Scoped to one insight; this asserts how a packet is distilled, not how
+	// many the fixture carries.
+	summary.Insights = summary.Insights[:1]
 
 	insights := buildHomeInsightsData(summary, "testnet", "/v2/home/insights?network=testnet")
 	if insights.Status.State != vmv2.HomeSectionReady || len(insights.Cards) != 1 {
@@ -56,6 +59,8 @@ func TestHomeEvidenceBuildersRenderOneCoherentSummary(t *testing.T) {
 
 func TestHomeInsightCardCompactsRawContractIdentity(t *testing.T) {
 	summary := mockHomeSummaryResponse("mainnet")
+	// Scoped to one insight; the assertion is about identity compaction.
+	summary.Insights = summary.Insights[:1]
 	item := &summary.Insights[0]
 	item.Subject.Identity.DisplayName = item.Subject.ID
 	item.Subject.Identity.VerificationStatus = "inferred"
@@ -85,6 +90,9 @@ func TestHomeEvidenceDistinguishesEmptyPartialAndInvalidStates(t *testing.T) {
 
 	summary = mockHomeSummaryResponse("testnet")
 	summary.Components.Insights.Status = "partial"
+	// One insight, deliberately corrupted: the property under test is that an
+	// invalid packet is not narrated, which a second valid card would mask.
+	summary.Insights = summary.Insights[:1]
 	summary.Insights[0].Facts.Failure.SuccessCount--
 	partialWithoutFacts := buildHomeInsightsData(summary, "testnet", "/v2/home/insights?network=testnet")
 	if partialWithoutFacts.Status.State != vmv2.HomeSectionUnavailable || len(partialWithoutFacts.Cards) != 0 {
@@ -178,6 +186,9 @@ func TestHomeInsightsPreservesPartialAndStaleEvidence(t *testing.T) {
 	for _, state := range []string{"partial", "stale"} {
 		t.Run(state, func(t *testing.T) {
 			summary := mockHomeSummaryResponse("testnet")
+			// Scoped to one insight: this test is about how a single packet is
+			// interpreted, not about the fixture size.
+			summary.Insights = summary.Insights[:1]
 			summary.Components.Insights.Status = state
 			summary.Insights[0].Status = state
 			code := "function_distribution_unavailable"
@@ -204,6 +215,8 @@ func TestHomeInsightsPreservesPartialAndStaleEvidence(t *testing.T) {
 
 func TestHomeInsightsUnknownVersionRendersGenericFacts(t *testing.T) {
 	summary := mockHomeSummaryResponse("testnet")
+	// Scoped to one insight; the assertion is about narration, not count.
+	summary.Insights = summary.Insights[:1]
 	item := &summary.Insights[0]
 	item.EvidenceVersion = "home_insight_evidence_v2"
 	item.ObservedValue = 42

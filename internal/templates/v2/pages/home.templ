@@ -1,6 +1,10 @@
 package pagesv2
 
 import (
+	"strconv"
+	"strings"
+
+	"github.com/withObsrvr/prism/internal/gateway"
 	layoutsv2 "github.com/withObsrvr/prism/internal/templates/v2/layouts"
 	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
@@ -101,7 +105,9 @@ templ HomeTimeline(data vmv2.HomeTimelineData) {
 		<div class="ph-spectrum-head">
 			<div>
 				<h2 id="ph-spectrum-title">
-					if data.WindowLabel != "" {
+					if lead := spectrumLead(data); lead.Share != "" {
+						{ lead.Prefix } <em>{ lead.Share }</em>{ " " + lead.Suffix }
+					} else if data.WindowLabel != "" {
 						{ data.WindowLabel }
 					} else {
 						Recent ledger activity
@@ -143,15 +149,17 @@ templ HomeTimeline(data vmv2.HomeTimelineData) {
 							</a>
 						}
 					</div>
-					<div class="ph-spectrum-axis" aria-hidden="true"><span>{ data.StartSequence }</span><span>Failed operations</span><span>{ data.EndSequence }</span></div>
+					<div class="ph-spectrum-axis" aria-hidden="true"><span>{ spectrumOldestAge(data) }</span><span>red = failures</span><span>latest</span></div>
 				</div>
 				<div class="ph-spectrum-legend" aria-label="Activity legend">
-					<span class="ph-spectrum-legend-title">Classified as</span>
+					<span class="ph-spectrum-legend-title">{ spectrumLegendTitle(data) }</span>
 					for _, item := range data.Legend {
 						<div class="ph-spectrum-legend-row"><span class={ "ph-spectrum-swatch", "is-" + item.Kind }></span><span>{ item.Label }</span><b>{ item.Percentage }</b><span class="sr-only">{ item.Count } operations</span></div>
 					}
 					<div class="ph-spectrum-legend-row is-failure"><span class="ph-spectrum-swatch is-failure"></span><span>Failed</span><b>{ data.FailurePercent }</b><span class="sr-only">{ data.FailureCount } failed operations</span></div>
-					if data.Status.AsOfLedger > 0 {
+					if data.StartSequence != "" && data.EndSequence != "" {
+						<div class="ph-spectrum-provenance"><span>Read from ledgers</span><b>{ data.StartSequence } – { data.EndSequence }</b></div>
+					} else if data.Status.AsOfLedger > 0 {
 						<div class="ph-spectrum-provenance"><span>As of ledger</span><b>{ data.AsOfLedgerLabel }</b></div>
 					}
 				</div>
@@ -201,4 +209,76 @@ func homeHeartbeatDotClass(data vmv2.HomeTimelineData) string {
 	case vmv2.HomeSectionPartial, vmv2.HomeSectionStale: return "is-delayed"
 	default: return "is-unavailable"
 	}
+}
+
+// spectrumLeadParts is the headline split into the pieces the emphasis needs.
+type spectrumLeadParts struct {
+	Prefix string
+	Share  string
+	Suffix string
+}
+
+// spectrumLead turns the spectrogram headline from a description of the axis
+// into a statement about the data.
+//
+// It read "Last 60 ledgers · 5 minutes", which names the window and says nothing
+// about what is in it. The dominant class and its share are already computed for
+// the legend, so the headline can lead with the finding and let the window
+// follow, per the one-hero rule.
+//
+// Share is empty when no class is dominant enough to be worth asserting, and the
+// caller falls back to the window label. A near-even split is not a finding.
+func spectrumLead(data vmv2.HomeTimelineData) spectrumLeadParts {
+	total := 0
+	best := vmv2.HomeSpectrogramLegendItem{}
+	for _, item := range data.Legend {
+		total += item.Count
+		if item.Count > best.Count {
+			best = item
+		}
+	}
+	if total == 0 || best.Count == 0 || best.Percentage == "" {
+		return spectrumLeadParts{}
+	}
+	// Below a plurality there is no single class to name.
+	if best.Count*100/total < 25 {
+		return spectrumLeadParts{}
+	}
+	window := "the last " + strconv.Itoa(len(data.Columns)) + " ledgers"
+	if len(data.Columns) == 1 {
+		window = "the latest ledger"
+	}
+	return spectrumLeadParts{
+		Prefix: strings.ToUpper(best.Label[:1]) + best.Label[1:] + " are",
+		Share:  best.Percentage,
+		// Prism classifies operations, not transactions; the legend's own
+		// screen-reader text counts operations, so the denominator is named as
+		// operations rather than borrowing the mock's "transactions".
+		Suffix: "of classified operations across " + window,
+	}
+}
+
+// spectrumOldestAge labels the left end of the axis in elapsed time. The axis
+// used to print raw ledger sequences at both ends, which are hard to read at a
+// glance and repeat the provenance row underneath.
+func spectrumOldestAge(data vmv2.HomeTimelineData) string {
+	for _, column := range data.Columns {
+		if strings.TrimSpace(column.AgeLabel) != "" {
+			return column.AgeLabel
+		}
+	}
+	return "oldest"
+}
+
+// spectrumLegendTitle names the denominator the percentages are shares of.
+// "Classified as" left the reader to guess.
+func spectrumLegendTitle(data vmv2.HomeTimelineData) string {
+	total := 0
+	for _, item := range data.Legend {
+		total += item.Count
+	}
+	if total == 0 {
+		return "Classified as"
+	}
+	return "Share of " + gateway.FormatNumber(int64(total)) + " operations"
 }
