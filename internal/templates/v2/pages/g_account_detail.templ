@@ -32,30 +32,63 @@ templ GAccountDetail(data legacy.AccountData, network string) {
 					@gaRailLoadingShell(data)
 				</aside>
 			} else {
-				@GAccountDetailMain(data)
-				@GAccountDetailRail(data)
+				@GAccountDetailMain(data, network)
+				@GAccountDetailRail(data, network)
 			}
 		</div></div>
 		@gaTabsScript()
 	}
 }
 
-templ GAccountDetailMain(data legacy.AccountData) {
+// GAccountDetailMain keeps gaIdentity and gaAccountEducation outside the
+// Unavailable branch. Identity is derived from the address itself and education
+// is true of every G-account, so both survive a failed load. Everything between
+// them is a claim about THIS account and must not render without evidence.
+templ GAccountDetailMain(data legacy.AccountData, network string) {
 	<main class="px-tx-main">
 		@gaIdentity(data)
-		@gaHumanBrief(data)
-		@gaGlance(data)
-		@gaPortfolio(data)
-		@gaSignerControls(data)
-		@gaControlledSmartAccounts(data)
-		@gaRecentActivity(data)
-		@gaAdvancedEntries(data)
+		if data.Unavailable {
+			@gaEvidenceUnavailable(gaMainFragmentHref(data.Address, network), "closest .px-tx-main")
+		} else {
+			@gaHumanBrief(data)
+			@gaGlance(data)
+			@gaPortfolio(data)
+			@gaSignerControls(data)
+			@gaControlledSmartAccounts(data)
+			@gaRecentActivity(data)
+			@gaAdvancedEntries(data)
+		}
 		@gaAccountEducation()
 	</main>
 }
 
-templ GAccountDetailRail(data legacy.AccountData) {
-	@gaRightRail(data)
+templ GAccountDetailRail(data legacy.AccountData, network string) {
+	if data.Unavailable {
+		<aside class="px-tx-side">
+			<div class="px-tx-side-card px-ga-unavail-card">
+				<h4>Account facts</h4>
+				<p>Not loaded. Prism did not get a response from the account service, so these fields are unknown rather than empty.</p>
+				<button type="button" class="px-ga-retry" hx-get={ gaRailFragmentHref(data.Address, network) } hx-target="closest .px-tx-side" hx-swap="outerHTML">Retry</button>
+			</div>
+		</aside>
+	} else {
+		@gaRightRail(data)
+	}
+}
+
+// gaEvidenceUnavailable is what a failed load looks like. It states the gap
+// rather than filling it: the previous behaviour rendered zeros and a green
+// "Balances are inspectable" check, which made an unreachable gateway
+// indistinguishable from an empty account.
+templ gaEvidenceUnavailable(retryHref templ.SafeURL, target string) {
+	<section class="px-tx-section px-ga-unavail" role="status" aria-live="polite">
+		<div class="px-ga-unavail-body">
+			<h2>Account evidence unavailable</h2>
+			<p>Prism asked the account service for this address and did not get an answer in time. Balances, trustlines, signers, and history are <b>unknown</b>, not zero.</p>
+			<p class="px-ga-unavail-sub">The address is valid and may well be funded. Prism cannot confirm either way right now.</p>
+			<button type="button" class="px-ga-retry" hx-get={ retryHref } hx-target={ target } hx-swap="outerHTML">Try again</button>
+		</div>
+	</section>
 }
 
 templ gaTab(id string, label string, count string, active bool) {
@@ -73,13 +106,25 @@ templ gaIdentity(data legacy.AccountData) {
 			</div>
 			<div class="px-cn-id-meta px-ga-dossier-body">
 				<div class="px-cn-id-row1">
-					<span class="px-cn-tag wasm">{ data.SignerCount } signers</span>
-					<span class="px-cn-tag wasm px-ga-tag-thresh">Thresholds { gaThresholdSummary(data) }</span>
-					<span class="px-cn-tag live"><span class="px-cn-pulse"></span>Active · last op { gaLastOp(data) }</span>
+					if data.Unavailable {
+						<span class="px-cn-tag px-ga-tag-unknown">Evidence unavailable</span>
+					} else {
+						<span class="px-cn-tag wasm">{ data.SignerCount } signers</span>
+						<span class="px-cn-tag wasm px-ga-tag-thresh">Thresholds { gaThresholdSummary(data) }</span>
+						if gaUnknown(data) {
+							<span class="px-cn-tag px-ga-tag-unknown">Status not loaded</span>
+						} else {
+							<span class="px-cn-tag live"><span class="px-cn-pulse"></span>Active · last op { gaLastOp(data) }</span>
+						}
+					}
 				</div>
 				<h1 class="px-cn-h1 px-ga-dossier-title"><span class="px-cn-h1-name">{ gaAccountName(data) }</span><span class="px-cn-h1-version">{ gaAccountSubtitle(data) }</span></h1>
 				<p class="px-cn-id-blurb px-ga-dossier-blurb">
-					A classic Stellar account that holds <b>{ gaXLMAmount(data) } XLM</b> and <b>{ gaTrustlineCount(data) } trustlines</b>. It is controlled by <b>{ data.SignerCount } signers</b> using weighted thresholds, with sequence <span class="mono">{ gaSequence(data) }</span>. { gaReserveSentence(data) }
+					if data.Unavailable {
+						The address is well-formed, but Prism could not reach the account service, so nothing on this page has been measured. An empty account and an unreachable service look identical, so no figures are shown.
+					} else {
+						A classic Stellar account that holds <b>{ gaXLMAmount(data) } XLM</b> and <b>{ gaTrustlineCount(data) } trustlines</b>. It is controlled by <b>{ data.SignerCount } signers</b> using weighted thresholds, with sequence <span class="mono">{ gaSequence(data) }</span>. { gaReserveSentence(data) }
+					}
 				</p>
 				<div class="px-cn-addr px-ga-dossier-address"><span class="k">Address</span><code>{ gaChunk(data.Address) }</code><button class="px-cn-copy" title="Copy" data-copy={ data.Address } onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.copy)">Copy</button></div>
 			</div>
@@ -93,7 +138,11 @@ templ gaHumanBrief(data legacy.AccountData) {
 		<div class="px-ga-brief-grid">
 			<div class="px-ga-brief-item"><span class="px-ga-brief-mark ok">✓</span><div><b>Account type is known</b><span>This is a G-address, the classic Stellar account model backed by ed25519 signatures.</span></div></div>
 			<div class="px-ga-brief-item"><span class="px-ga-brief-mark ok">✓</span><div><b>Balances are inspectable</b><span>{ gaTrustlineCount(data) } trustlines and the native XLM balance are loaded below as evidence.</span></div></div>
-			<div class="px-ga-brief-item"><span class="px-ga-brief-mark info">i</span><div><b>Authorization depends on thresholds</b><span>{ data.SignerCount } signers can combine weights to authorize payments, trustline changes, and account settings.</span></div></div>
+			if gaControlsUnknown(data) {
+					<div class="px-ga-brief-item"><span class="px-ga-brief-mark info">i</span><div><b>Authorization is not loaded</b><span>Signers and thresholds were not returned, so who can move this account is unknown. This is a gap in the response, not an account without signers.</span></div></div>
+				} else {
+					<div class="px-ga-brief-item"><span class="px-ga-brief-mark info">i</span><div><b>Authorization depends on thresholds</b><span>{ data.SignerCount } signers can combine weights to authorize payments, trustline changes, and account settings.</span></div></div>
+				}
 			<div class="px-ga-brief-item"><span class="px-ga-brief-mark info">i</span><div><b>Reserve state needs context</b><span>{ gaReserveSentence(data) }</span></div></div>
 		</div>
 	</section>
@@ -317,19 +366,31 @@ func gaUSDNumber(v string) float64 { cleaned:=strings.NewReplacer("$","",",","",
 func gaXLMAmount(data legacy.AccountData) string { v:=strings.TrimSpace(strings.TrimSuffix(data.XLMBalance," XLM")); if v=="" { return "—" }; return v }
 func gaXLMSub(data legacy.AccountData) string { if strings.TrimSpace(data.TotalValue)!="" && data.TotalValue!="—" { return "part of " + data.TotalValue + " total" }; return "native balance from account entry" }
 func gaTrustlineCount(data legacy.AccountData) string { if data.Trustlines!="" { return data.Trustlines }; n:=0; for _,b:=range data.Balances { if !strings.EqualFold(b.Code,"XLM") { n++ } }; return fmt.Sprintf("%d", n) }
-func gaActivityCount(data legacy.AccountData) string { if len(data.Activities)>0 { return fmt.Sprintf("%d", len(data.Activities)) }; if gaIsMock(data) { return "10" }; return "0" }
+func gaActivityCount(data legacy.AccountData) string { if len(data.Activities)>0 { return fmt.Sprintf("%d", len(data.Activities)) }; if gaIsMock(data) { return "10" }; if gaUnknown(data) { return "—" }; return "0" }
 func gaCreatedAge(data legacy.AccountData) string { if strings.TrimSpace(data.CreatedAt)!="" { return data.CreatedAt }; return "age unknown" }
 func gaLastOp(data legacy.AccountData) string { if len(data.Activities)>0 { return data.Activities[0].Time }; if gaIsMock(data) { return "4s ago" }; return "unknown" }
 func gaSequence(data legacy.AccountData) string { if strings.TrimSpace(data.SequenceNumber)!="" { return data.SequenceNumber }; return "unknown" }
 func gaReserveSentence(data legacy.AccountData) string { if data.Subentries!="" { return "Base reserve and subentry reserves are visible, so the XLM lock can be audited." }; return "Reserve details are estimated until the account subentries load." }
-func gaThresholdSummary(data legacy.AccountData) string { if len(data.Thresholds)>=3 { return data.Thresholds[0].Value + "/" + data.Thresholds[1].Value + "/" + data.Thresholds[2].Value }; return "1/2/3" }
+// gaUnknown reports whether the account aggregate never arrived. When it is
+// true, a zero or a protocol default is not a measurement of this account, so
+// the helpers below return an em dash instead. When it is false, a zero means
+// the gateway answered and the answer was none.
+func gaUnknown(data legacy.AccountData) bool { return data.Partial || data.Unavailable }
+
+// gaControlsUnknown is gaUnknown plus the case where only the signers call
+// failed. Thresholds and signer counts key off this; counts of offers and
+// operations key off gaUnknown, because those come from different calls and
+// one failing says nothing about the other.
+func gaControlsUnknown(data legacy.AccountData) bool { return gaUnknown(data) || data.SignersUnknown }
+
+func gaThresholdSummary(data legacy.AccountData) string { if len(data.Thresholds)>=3 { return data.Thresholds[0].Value + "/" + data.Thresholds[1].Value + "/" + data.Thresholds[2].Value }; if gaControlsUnknown(data) { return "unknown" }; return "1/2/3" }
 func gaReservedXLM(data legacy.AccountData) string { return "0.00" }
 func gaSponsorName(data legacy.AccountData) string { if gaIsMock(data) { return "none detected" }; return "not returned" }
 func gaReserveTrustlines(data legacy.AccountData) string { return fmt.Sprintf("%.1f", float64(len(gaTrustlinesData(data))-1)*0.5) }
 func gaAuthFlagCount() string { return "0" }
 func gaIsMock(data legacy.AccountData) bool { return data.Address == "GABC7DEF8GHI9JKL0MNO1PQR2STU3VWX4YZ567890ABCDEFGHIJKLMNOP" }
 func gaMockOnlyCount(data legacy.AccountData, v string) string { if gaIsMock(data) { return v }; return "0" }
-func gaOffersCount(data legacy.AccountData) string { if len(data.Offers)>0 { return fmt.Sprintf("%d", len(data.Offers)) }; if gaIsMock(data) { return firstNonEmpty(data.ActiveOffers, "0") }; return "0" }
+func gaOffersCount(data legacy.AccountData) string { if len(data.Offers)>0 { return fmt.Sprintf("%d", len(data.Offers)) }; if gaIsMock(data) { return firstNonEmpty(data.ActiveOffers, "0") }; if gaUnknown(data) { return "—" }; return "0" }
 func gaChunk(v string) string { v=strings.TrimSpace(v); if len(v)<=12 { return v }; parts:=[]string{}; for len(v)>8 { parts=append(parts, v[:8]); v=v[8:] }; if v!="" { parts=append(parts,v) }; return strings.Join(parts,"·") }
 func gaTrustChips(data legacy.AccountData) []string { out:=[]string{"X"}; for _,b:=range data.Balances { if strings.EqualFold(b.Code,"XLM") { continue }; if len(out)>=5 { break }; if b.Code!="" { out=append(out, strings.ToUpper(string([]rune(b.Code)[0]))) } }; if len(out)==1 && gaIsMock(data) { out=[]string{"X","U","E","y","A"} }; extra:="+0"; if data.Trustlines!="" { extra="+"+data.Trustlines }; out=append(out,extra); return out }
 func gaWeightPct(w string) string { n,_:=strconv.Atoi(w); if n<=0 { n=1 }; if n>3 { n=3 }; return fmt.Sprintf("%d%%", n*33) }
@@ -342,7 +403,7 @@ func gaTxHref(hash string) string { if strings.TrimSpace(hash)=="" { return "#" 
 
 func gaTrustlinesData(data legacy.AccountData) []gaTrustline { out:=[]gaTrustline{{Code:"XLM",Name:"Stellar Lumens",Issuer:"Native",Balance:gaXLMAmount(data),Limit:"—",Liabilities:"—",USD:"—",Status:"Native",Native:true}}; for _,b:=range data.Balances { if strings.EqualFold(b.Code,"XLM") { continue }; out=append(out, gaTrustline{Code:firstNonEmpty(b.Code,"ASSET"),Name:firstNonEmpty(b.Name,b.Code),Issuer:firstNonEmpty(b.Issuer,"unknown issuer"),Balance:firstNonEmpty(b.Balance,"0"),Limit:"Unlimited",Liabilities:"—",USD:firstNonEmpty(b.ValueUSD,"—"),Status:"Authorized"}) }; return out }
 func gaSignerRows(data legacy.AccountData) []gaSigner { out:=[]gaSigner{}; for i,s:=range data.Signers { name:="Signer"; tone:="add"; primary:=s.IsSelf; if primary||i==0 { name="Master key"; tone="master" }; out=append(out, gaSigner{Name:name,Detail:firstNonEmpty(s.Type,"ed25519 signer"),Key:s.Address,Type:firstNonEmpty(s.Type,"ed25519"),Weight:firstNonEmpty(s.Weight,"1"),LastUsed:"recent",Tone:tone,Primary:primary}) }; if len(out)>0 || !gaIsMock(data) { return out }; return []gaSigner{{"Master key","The keypair the account was created with",data.ShortAddress,"ed25519 master","1","4s ago","master",true},{"Operations key","Added signer", "GBHSM7K…42QP", "ed25519 added", "2", "11m ago", "add", false},{"Treasury key","Cold storage signer", "GACOLD2…X09M", "ed25519 added", "2", "2 days ago", "add", false}} }
-func gaThresholdCells(data legacy.AccountData) []legacy.AccountThreshold { if len(data.Thresholds)>=3 { return data.Thresholds }; return []legacy.AccountThreshold{{Label:"Low",Value:"1"},{Label:"Medium",Value:"2"},{Label:"High",Value:"3"}} }
+func gaThresholdCells(data legacy.AccountData) []legacy.AccountThreshold { if len(data.Thresholds)>=3 { return data.Thresholds }; if gaControlsUnknown(data) { return []legacy.AccountThreshold{{Label:"Low",Value:"—"},{Label:"Medium",Value:"—"},{Label:"High",Value:"—"}} }; return []legacy.AccountThreshold{{Label:"Low",Value:"1"},{Label:"Medium",Value:"2"},{Label:"High",Value:"3"}} }
 func gaActivityRows(data legacy.AccountData) []gaActivityRow { out:=[]gaActivityRow{}; for _,a:=range data.Activities { kind:=strings.ToLower(a.Badge); if kind=="contract" { kind="soroban" }; out=append(out, gaActivityRow{Ago:firstNonEmpty(a.Time,"recent"),Kind:kind,Summary:a.Summary,To:"—",Amount:a.Badge,Tone:kind,Hash:a.TxHash}) }; if len(out)>0 || !gaIsMock(data) { return out }; return []gaActivityRow{{"4s","payment","Sent 2,000 USDC","GFND…22XQ","−2,000.00 USDC","",""},{"47s","path_payment","Path payment USDC → EURC","GVEN…0884","−500 USDC → +458 EURC","",""},{"2m","manage_offer","Updated DEX offer","—","Sell 10K AQUA @ 0.0014 USDC","",""},{"23m","soroban","Authorized Blend.deposit","CBLD…99PP","via require_auth","soroban",""}} }
 func gaOfferRows(data legacy.AccountData) []gaOffer { out:=[]gaOffer{}; for _,o:=range data.Offers { out=append(out, gaOffer{ID:o.OfferID, Side:strings.ToLower(o.Side), Give:o.Pair, Get:o.PriceUnit, Amount:o.Amount, Price:o.Price, Filled:"—"}) }; if len(out)>0 || !gaIsMock(data) { return out }; return []gaOffer{{"208,441","sell","AQUA","USDC","100,000","0.00068","41%"},{"208,440","sell","AQUA","XLM","200,000","0.0028","18%"},{"208,438","buy","USDC","XLM","10,000","0.244","92%"}} }
 func gaClaimableRows(data legacy.AccountData) []gaClaimable { if !gaIsMock(data) { return nil }; return []gaClaimable{{"5,000 yXLM","Pending claim","GREC…3320","Anytime","1h 12m ago","00000000ed4f…b321","pending"},{"12,500 USDC","Timelocked","GVEN…0884","Not before May 1, 2026","2 days ago","00000000ec22…fa11","timelock"},{"2,400 USDC","Expired · reclaimable","GREF…81FA","Before Apr 22","14 days ago","00000000ea12…0098","expired"}} }

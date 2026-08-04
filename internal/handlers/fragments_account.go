@@ -3,13 +3,15 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/withObsrvr/prism/internal/templates/fragments"
 	"github.com/withObsrvr/prism/internal/templates/pages"
 )
 
-const accountFragmentGatewayTimeout = 3500 * time.Millisecond
+// Matches the v2 path's ceiling. These fragments call the same buildAccountData
+// and so hit the same per-dependency bounds; holding them to 3.5s here meant the
+// v1 page failed on accounts the v2 page could load.
+const accountFragmentGatewayTimeout = accountFragmentBudget
 
 // buildAccountFragmentData fetches account detail data for fragment rendering.
 // Returns nil if live data is unavailable or not requested.

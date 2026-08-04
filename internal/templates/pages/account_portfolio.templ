@@ -21,6 +21,24 @@ type AccountData struct {
 	IsFunded     bool
 	IsSmartWallet bool
 	Loading      bool
+	// Unavailable means the gateway did not answer, so every evidence field
+	// below is empty for want of an answer rather than because the account is
+	// empty. Renderers must branch on this before showing any count, status or
+	// confidence mark: a funded account and an unreachable gateway otherwise
+	// produce the identical page.
+	Unavailable  bool
+	// UnavailableReason is operator-facing detail, not a user-facing string.
+	UnavailableReason string
+	// Partial means balances loaded but the account aggregate did not, so
+	// holdings are real while signers, thresholds, sequence, offers and history
+	// are unknown. Distinct from Unavailable: some of this page is evidence and
+	// some of it is absence, and they must not be styled alike.
+	Partial      bool
+	// SignersUnknown means the signers call specifically failed, whether or not
+	// the rest of the page loaded. Separate from Partial because a fully
+	// successful overview can still leave control unknown, and "0 signers" is
+	// a claim no account can truthfully make.
+	SignersUnknown bool
 	SignerCount  string
 	Balances     []AccountBalance
 	Activities   []AccountActivity
