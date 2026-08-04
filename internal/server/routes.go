@@ -48,6 +48,8 @@ func (app *Application) Routes() http.Handler {
 	// Ledgers
 	mux.HandleFunc("GET /ledger/{sequence}", h.LedgerDetail)
 	mux.HandleFunc("GET /v2/ledger/{sequence}", h.LedgerDetailV2)
+	// Prototype: ledger detail v3 design, mock data only. See internal/handlers/ledger_v3.go.
+	mux.HandleFunc("GET /v2/ledger/{sequence}/v3", h.LedgerDetailV3)
 	mux.HandleFunc("GET /v2/ledger/{sequence}/card.png", h.LedgerCardV2)
 	mux.HandleFunc("GET /v2/ledger/{sequence}/card.svg", h.LedgerCardSVGV2)
 

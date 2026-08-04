@@ -1,0 +1,757 @@
+package pagesv2
+
+import (
+	"fmt"
+	"strconv"
+
+	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
+)
+
+// LedgerDetailV3 is a prototype surface. It renders the "Prism Ledger Detail
+// v3" design at full fidelity from mock data, and flags every value that no
+// obsrvr-lake projection can serve today.
+//
+// It deliberately does not use layoutsv2 — it ships the design's own three
+// stylesheets so the port can be judged against the original without
+// v2-unified.css interfering.
+templ LedgerDetailV3(data vmv2.LedgerDetailV3Data) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ fmt.Sprintf("Ledger %s · write capacity 97%% — Prism", data.Header.Sequence) }</title>
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+			<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet"/>
+			<link rel="stylesheet" href="/static/css/proto/prism-contract.css"/>
+			<link rel="stylesheet" href="/static/css/proto/prism-explorers.css"/>
+			<link rel="stylesheet" href="/static/css/proto/prism-ledger.css"/>
+		</head>
+		<body>
+			@ledgerV3Chrome(data)
+			@ledgerV3Masthead(data)
+			@ledgerV3Subnav(data)
+			<div class="lg-pane active" id="lg-overview">
+				<div class="pc-wrap">
+					<main class="pc-main">
+						@ledgerV3GapBanner(data)
+						@ledgerV3Lede(data)
+						@ledgerV3Standing(data)
+						@ledgerV3StripSection(data)
+						@ledgerV3CapacitySection(data)
+						@ledgerV3FeeSection(data)
+						@ledgerV3FailureSection(data)
+						@ledgerV3ChangesSection(data)
+						@ledgerV3ChainSection(data)
+						@ledgerV3Provenance(data)
+						@ledgerV3GapSummary(data)
+					</main>
+					@ledgerV3Rail(data)
+				</div>
+			</div>
+			@ledgerV3TxPane(data.TxPane)
+			@ledgerV3StatePane(data.StatePane)
+			<footer class="pc-foot">
+				<div class="pc-foot-inner">
+					<span>Prism · Stellar, interpreted</span>
+					<span>{ fmt.Sprintf("Prototype · mock data · %s", data.Network) }</span>
+				</div>
+			</footer>
+			@ledgerV3Script()
+		</body>
+	</html>
+}
+
+templ ledgerV3Chrome(data vmv2.LedgerDetailV3Data) {
+	<header class="ph-top">
+		<div class="ph-top-inner">
+			<a class="ph-brand" href="/v2/home">
+				<span class="ph-mark">
+					<svg width="22" height="22" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#15151A"></rect><g transform="translate(10 5)"><rect width="12" height="5.69" fill="#1FA098"></rect><rect y="5.69" width="12" height="7.20" fill="#9B7BD8"></rect><rect y="12.89" width="12" height="3.27" fill="#E27160"></rect><rect y="16.16" width="12" height="3.93" fill="#A89770"></rect><rect y="20.09" width="12" height="1.91" fill="#3F8FBF"></rect></g></svg>
+				</span>
+				<span class="ph-name">Prism</span>
+			</a>
+			<nav class="ph-nav">
+				<a class="active" href="/v2/home">Ledgers</a>
+				<a href="/v2/explore">Transactions</a>
+				<a href="/v2/contracts">Contracts</a>
+				<a href="/v2/accounts">Accounts</a>
+				<a href="/v2/ask">Ask</a>
+			</nav>
+			<div class="px-search">
+				<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"></circle><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+				<input value={ data.Header.SequenceRaw } aria-label="Search"/>
+				<span class="px-kbd">⌘K</span>
+			</div>
+			<span class="ph-net"><i class="dot"></i>{ ledgerV3NetworkLabel(data.Network) }</span>
+		</div>
+	</header>
+	<div class="px-crumbs">
+		<div class="px-crumbs-inner">
+			<a href="/v2/home">Prism</a><span>/</span><span>Ledgers</span><span>/</span><span>{ data.Header.Sequence }</span>
+		</div>
+	</div>
+}
+
+templ ledgerV3Masthead(data vmv2.LedgerDetailV3Data) {
+	<section class="pc-mast">
+		<div class="pc-mast-inner">
+			<div class="pc-kicker">
+				<span class="k-type">Ledger</span><span>·</span><span>{ data.Header.Kicker }</span><span>·</span><span>{ data.Header.ClosedRelative }</span>
+			</div>
+			<div class="pc-title-row">
+				<h1 class="pc-title">
+					{ data.Header.HeadlineLead }
+					<span class="pc-of">{ data.Header.HeadlineEmphasis }</span>
+					{ data.Header.HeadlineTrail }
+				</h1>
+				<div class="pc-badges">
+					for _, badge := range data.Header.Badges {
+						<span class={ "pc-badge", badge.Tone }>{ badge.Label }</span>
+					}
+				</div>
+				<div class="pc-mast-acts">
+					<button class="pc-btn">Share</button>
+					<button class="pc-btn">Raw XDR</button>
+				</div>
+			</div>
+			<div class="pc-addr-row">
+				<span class="pc-addr mono">{ data.Header.Hash }</span>
+				<button class="pc-copy">
+					<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"></rect><path d="M8.5 1.5h-7v7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path></svg>
+					Copy
+				</button>
+			</div>
+		</div>
+	</section>
+}
+
+templ ledgerV3Subnav(data vmv2.LedgerDetailV3Data) {
+	<nav class="pc-subnav">
+		<div class="pc-subnav-inner">
+			<button class="pc-tab active" data-pane="lg-overview">Overview</button>
+			<button class="pc-tab" data-pane="lg-txs">Transactions <b>{ data.Header.TxTabCount }</b></button>
+			<button class="pc-tab" data-pane="lg-state">State changes <b>{ data.Header.StateTabCount }</b></button>
+			<span class="pc-tab-note">Overview interprets · the other two let you dig</span>
+		</div>
+	</nav>
+}
+
+templ ledgerV3GapBanner(data vmv2.LedgerDetailV3Data) {
+	if len(data.Gaps) > 0 {
+		<div class="lg-gapbar">
+			<div>
+				<b>Prototype with mock data.</b>
+				{ fmt.Sprintf(" %d of this page's sections cannot be served by any obsrvr-lake projection today.", len(data.Gaps)) }
+				Values shown are illustrative; anything marked <code>needs projection</code> has no source at bronze, silver, or serving.
+				A full accounting sits at the <a href="#gaps">foot of the page</a>.
+			</div>
+		</div>
+	}
+}
+
+templ ledgerV3Lede(data vmv2.LedgerDetailV3Data) {
+	<div class="pc-lede">
+		<div class="pc-lede-label">What happened in these five seconds</div>
+		for _, para := range data.Lede {
+			<p>@templ.Raw(para)</p>
+		}
+	</div>
+}
+
+templ ledgerV3Standing(data vmv2.LedgerDetailV3Data) {
+	<div class="pc-standing">
+		for _, stand := range data.Standing {
+			<div class="pc-stand">
+				<div class="pc-stand-k">{ stand.Key }</div>
+				<div class="pc-stand-v"><i class={ "pc-dot", stand.Dot }></i>{ stand.Value }</div>
+				<div class="pc-stand-b">
+					{ stand.Detail }
+					<span
+						class={ "pc-conf", templ.KV("gap", stand.Source.IsGap()) }
+						title={ ledgerV3SourceTitle(stand.Source) }
+					>{ stand.Source.Label() }</span>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ ledgerV3StripSection(data vmv2.LedgerDetailV3Data) {
+	<section class="pc-sec" id="s1">
+		<div class="pc-sec-head">
+			<h2>The 118 transactions, in the order they applied</h2>
+			<span class="pc-sec-aside">bar height = operation count</span>
+		</div>
+		<p class="pc-sec-intro">
+			One bar per transaction, left to right in apply order.
+			<b>That order is randomised by the protocol, not sorted by fee</b>
+			— paying more buys inclusion in the ledger, never a better position inside it.
+			Position is therefore not a signal, which is worth knowing before anyone reads meaning into being early.<a class="pc-cite" href="#n5">5</a>
+		</p>
+		<div class="lg-strip">
+			<div class="lg-strip-top">
+				<span>Apply order</span>
+				<span class="r mono">hover any bar · red = failed</span>
+			</div>
+			<div class="lg-ticks">
+				for _, tick := range data.Strip.Ticks {
+					<a
+						class={ "lg-tick", ledgerV3TickClass(tick) }
+						style={ ledgerV3Height(tick.HeightPct) }
+						href={ templ.SafeURL(tick.Href) }
+						aria-label={ tick.AriaLabel }
+					>
+						<span class="lg-tip">
+							<b>{ tick.TipTitle }</b>
+							<span>{ tick.TipDetail }</span>
+							<span>{ tick.TipStatus }</span>
+						</span>
+					</a>
+				}
+			</div>
+			<div class="lg-axis"><span>position 1</span><span>{ fmt.Sprintf("position %d", len(data.Strip.Ticks)) }</span></div>
+			<div class="lg-strip-foot">
+				for _, stat := range data.Strip.Foot {
+					<span>{ stat.Label } <b>{ stat.Value }</b></span>
+				}
+			</div>
+		</div>
+		<div class="lg-key">
+			for _, entry := range data.Strip.Legend {
+				<span><i style={ ledgerV3Background(entry.Color) }></i>{ entry.Label } <b>{ entry.Count }</b></span>
+			}
+		</div>
+		<p class="pc-note">@templ.Raw(data.Strip.Note)</p>
+	</section>
+}
+
+templ ledgerV3CapacitySection(data vmv2.LedgerDetailV3Data) {
+	<section class={ "pc-sec", templ.KV("gap", ledgerV3AnyMeterGap(data.Capacity.Meters)) } id="s2">
+		<div class="pc-sec-head">
+			<h2>What actually filled up</h2>
+			<span class="pc-sec-aside">4 independent limits</span>
+		</div>
+		<p class="pc-sec-intro">
+			Every ledger caps CPU, reads, writes, and total size separately, and a ledger is full when <b>any one</b> of them is exhausted.
+			Reading a single utilisation number hides which resource is scarce — and therefore what the fee is actually pricing.
+		</p>
+		<div class="lg-meters">
+			for _, meter := range data.Capacity.Meters {
+				<div class={ "lg-meter", templ.KV("bind", meter.Binding), templ.KV("gap", meter.Source.IsGap()) }>
+					<div class="lg-meter-h">
+						<h4>{ meter.Name }</h4>
+						<strong>{ strconv.Itoa(meter.Pct) }%</strong>
+					</div>
+					<div class="lg-meter-bar"><i style={ ledgerV3Width(meter.Pct) }></i></div>
+					<div class="lg-meter-v"><span>{ meter.Used }</span><span>{ meter.Cap }</span></div>
+					<p class="lg-meter-n">{ meter.Note }</p>
+					if meter.Source.IsGap() {
+						<p class="lg-meter-n"><b>No source.</b> { meter.Source.Note }</p>
+					}
+				</div>
+			}
+		</div>
+		<p class="pc-note">@templ.Raw(data.Capacity.Note)</p>
+	</section>
+}
+
+templ ledgerV3FeeSection(data vmv2.LedgerDetailV3Data) {
+	<section class="pc-sec" id="s3">
+		<div class="pc-sec-head">
+			<h2>Why everything cost 42× the base fee</h2>
+			<span class="pc-sec-aside">surge pricing active</span>
+		</div>
+		<p class="pc-sec-intro">
+			When demand exceeds a ledger's capacity, Stellar charges every included transaction the same clearing price rather than each one's own bid.
+			The clearing price is therefore a direct readout of how contested the ledger was.
+		</p>
+		<div class="lg-fee">
+			<div class="lg-fee-side">
+				<div class="lg-fee-k">{ data.Fees.ClearingLabel }</div>
+				<div class="lg-fee-v">{ data.Fees.ClearingValue }<small>{ data.Fees.ClearingUnit }</small></div>
+				<p class="lg-fee-s">@templ.Raw(data.Fees.HighestBidNote)</p>
+				<div class="lg-hist">
+					for _, bar := range data.Fees.History {
+						<i
+							class={ templ.KV("on", bar.Active) }
+							style={ ledgerV3Height(bar.HeightPct) }
+							title={ bar.Title }
+						></i>
+					}
+				</div>
+				<div class="lg-hist-ax"><span>{ data.Fees.HistoryFromNote }</span><span>{ data.Fees.HistoryToNote }</span></div>
+			</div>
+			<div class="lg-fee-side">
+				<div class="lg-fee-k">{ data.Fees.CannotTitle }</div>
+				<p class="lg-fee-s" style="margin-top:11px">
+					A higher bid improves your chance of being <b>included</b> in a contested ledger.
+					It does not buy earlier placement, faster execution, or priority over another transaction inside the ledger.
+				</p>
+				<div class="lg-cant">
+					<i>?</i>
+					<p>@templ.Raw(data.Fees.CannotBody)</p>
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ ledgerV3FailureSection(data vmv2.LedgerDetailV3Data) {
+	<section class={ "pc-sec", templ.KV("gap", data.Failures.Source.IsGap()) } id="s4">
+		<div class="pc-sec-head">
+			<h2>What did not work</h2>
+			<span class="pc-sec-aside">7 failures · 3 causes</span>
+		</div>
+		<p class="pc-sec-intro">
+			Grouped by error code rather than listed.
+			Seven separate failures reading as one list looks like network trouble; the same seven grouped show two protocols and one stale sequence number.
+		</p>
+		if data.Failures.Source.IsGap() {
+			<div class="lg-gapbar"><div><b>No source for the grouping key.</b> { data.Failures.Source.Note }</div></div>
+		}
+		<div class="lg-fails">
+			for _, group := range data.Failures.Groups {
+				<div class="lg-fg">
+					<span class="lg-fg-n">{ strconv.Itoa(group.Count) }</span>
+					<span>
+						<span class="lg-fg-t">@templ.Raw(group.Title)</span>
+						<span class="lg-fg-s">{ group.Detail }</span>
+					</span>
+					<span class="lg-fg-c">{ group.Code }<small>{ group.FeeNote }</small></span>
+				</div>
+			}
+		</div>
+		<p class="pc-note">@templ.Raw(data.Failures.Note)</p>
+	</section>
+}
+
+templ ledgerV3ChangesSection(data vmv2.LedgerDetailV3Data) {
+	<section class={ "pc-sec", templ.KV("gap", data.Changes.Source.IsGap()) } id="s5">
+		<div class="pc-sec-head">
+			<h2>What it changed</h2>
+			<span class="pc-sec-aside">{ data.Changes.Total } entry changes</span>
+		</div>
+		<p class="pc-sec-intro">
+			The ledger's real output is state.
+			Two of these have no equivalent in classic Stellar. <b>Archived</b> entries were evicted to the hot archive and can be bought back;
+			<b>deleted</b> ones — which is where expiring temporary storage lands — are simply gone.
+			Only the archived kind can be <b>restored</b>.
+		</p>
+		if data.Changes.Source.IsGap() {
+			<div class="lg-gapbar"><div><b>Partly unservable.</b> { data.Changes.Source.Note }</div></div>
+		}
+		@ledgerV3ChangeCells(data.Changes.Cells)
+		<p class="pc-note">@templ.Raw(data.Changes.Note)</p>
+	</section>
+}
+
+templ ledgerV3ChangeCells(cells []vmv2.LedgerV3ChangeCell) {
+	<div class="lg-changes">
+		for _, cell := range cells {
+			<div class={ "lg-ch", cell.Tone }>
+				<dt>{ cell.Label }</dt>
+				<dd>{ cell.Count }</dd>
+				<small>
+					{ cell.Note }
+					<span
+						class={ "pc-conf", templ.KV("gap", cell.Source.IsGap()) }
+						title={ ledgerV3SourceTitle(cell.Source) }
+					>{ cell.Source.Label() }</span>
+				</small>
+			</div>
+		}
+	</div>
+}
+
+templ ledgerV3ChainSection(data vmv2.LedgerDetailV3Data) {
+	<section class="pc-sec" id="s6">
+		<div class="pc-sec-head">
+			<h2>Where it sits</h2>
+			<span class="pc-sec-aside">6 ledgers · 30 seconds</span>
+		</div>
+		<p class="pc-sec-intro">
+			Congestion is an episode, not a state.
+			This one lasted three ledgers — roughly fifteen seconds — and the bar shows write utilisation, the limit that was actually binding.
+		</p>
+		<div class="lg-chain">
+			for _, neighbor := range data.Chain.Neighbors {
+				<a class={ "lg-c", templ.KV("self", neighbor.Self) } href={ templ.SafeURL(neighbor.Href) }>
+					<span class="lg-c-n">{ neighbor.Sequence }</span>
+					<span class="lg-c-t">@templ.Raw(neighbor.Note)</span>
+					<span class="lg-c-x">{ neighbor.TxCount }</span>
+					<span class={ "lg-c-bar", templ.KV("hot", neighbor.WritePct >= 90) }>
+						<span><i style={ ledgerV3Width(neighbor.WritePct) }></i></span>
+						<b>{ strconv.Itoa(neighbor.WritePct) }%</b>
+					</span>
+				</a>
+			}
+		</div>
+		<p class="pc-note">@templ.Raw(data.Chain.Note)</p>
+	</section>
+}
+
+templ ledgerV3Provenance(data vmv2.LedgerDetailV3Data) {
+	<section class="pc-notes" id="notes">
+		<h3>Provenance</h3>
+		<p class="pc-notes-sub">
+			Every figure above comes from this ledger's header, its transaction set, or its result metadata.
+			Where Prism cannot see something, it says so instead of estimating.
+		</p>
+		for _, note := range data.Notes {
+			<div class={ "pc-note-row", templ.KV("gap", note.IsGap) } id={ note.ID }>
+				<span class="pc-note-i">{ strconv.Itoa(note.Index) }</span>
+				<span class="pc-note-t">@templ.Raw(note.Text)</span>
+				<span class="pc-note-src mono">{ note.Source }</span>
+			</div>
+		}
+	</section>
+}
+
+templ ledgerV3GapSummary(data vmv2.LedgerDetailV3Data) {
+	if len(data.Gaps) > 0 {
+		<section class="pc-notes" id="gaps">
+			<h3>What this page cannot be served today</h3>
+			<p class="pc-notes-sub">
+				Each entry is a requirement of the design with no backing source in obsrvr-lake at bronze, silver, or serving.
+				Everything not listed here maps to an existing projection or is derivable from one.
+			</p>
+			for i, gap := range data.Gaps {
+				<div class="pc-note-row gap">
+					<span class="pc-note-i">{ strconv.Itoa(i + 1) }</span>
+					<span class="pc-note-t">
+						<b>{ gap.Field }</b>
+						<br/>
+						{ gap.Missing }
+						<br/>
+						<em>Proposal:</em>
+						{ gap.Proposal }
+					</span>
+					<span class="pc-note-src mono">{ gap.Section }</span>
+				</div>
+			}
+		</section>
+	}
+}
+
+templ ledgerV3Rail(data vmv2.LedgerDetailV3Data) {
+	<aside class="pc-rail">
+		<div class="pc-box">
+			<div class="pc-box-top">
+				<h4>{ data.Rail.Title }</h4>
+				<p>{ data.Rail.Subtitle }</p>
+			</div>
+			<dl style="margin:0">
+				for _, group := range data.Rail.Groups {
+					<div class="pc-box-h">{ group.Heading }</div>
+					for _, row := range group.Rows {
+						<div class="pc-row">
+							<dt>{ row.Label }</dt>
+							<dd class={ templ.KV("mono", row.Mono) }>
+								if row.Href != "" {
+									<a href={ templ.SafeURL(row.Href) }>{ row.Value }</a>
+								} else {
+									{ row.Value }
+								}
+								if row.IsGap {
+									<span class="pc-conf gap" title="No obsrvr-lake source serves this value today.">No source</span>
+								}
+							</dd>
+						</div>
+					}
+				}
+			</dl>
+		</div>
+		<nav class="pc-toc">
+			<div class="pc-toc-h">On this page</div>
+			for _, entry := range data.Rail.TOC {
+				<a href={ templ.SafeURL(entry.Href) }>{ entry.Label }</a>
+			}
+			if len(data.Gaps) > 0 {
+				<a href="#gaps">What cannot be served</a>
+			}
+		</nav>
+		<p class="pc-rail-note">@templ.Raw(data.Rail.Footnote)</p>
+	</aside>
+}
+
+templ ledgerV3Facets(facets []vmv2.LedgerV3Facet, filterset string, noun string, placeholder string) {
+	<div class="pe-facets" data-filterset={ filterset } data-noun={ noun }>
+		<div class="pe-q">
+			<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"></circle><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+			<input placeholder={ placeholder } aria-label="Search"/>
+		</div>
+		for _, facet := range facets {
+			<details class={ "pe-facet", templ.KV("gap", facet.Source.IsGap()) } data-facet={ facet.Key }>
+				<summary>
+					{ facet.Label }
+					if facet.Source.IsGap() {
+						<span class="pc-conf gap" title={ ledgerV3SourceTitle(facet.Source) }>No source</span>
+					}
+					<svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5l3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</summary>
+				<div class="pe-pop">
+					<div class="pe-pop-h">{ facet.PopHead }</div>
+					for _, opt := range facet.Options {
+						<button class="pe-opt" data-fk={ facet.Key } data-fv={ opt.Value }>
+							<i></i>{ opt.Label }<span class="n">{ opt.Count }</span>
+						</button>
+					}
+				</div>
+			</details>
+		}
+	</div>
+}
+
+templ ledgerV3Rows(rows []vmv2.LedgerV3Row, attr string) {
+	for _, row := range rows {
+		<div class="pe-row" data-kind={ row.Kind } data-ct={ row.Kind } data-res={ row.Result }>
+			<button class="pe-r">
+				<span class="pe-t">{ row.Stamp }</span>
+				<span>
+					<span class="pe-say">@templ.Raw(row.Say)</span>
+					<span class="pe-meta">
+						@templ.Raw(row.Meta)
+						if row.IsGap {
+							<span class="pc-conf gap" title={ row.GapNote }>No source</span>
+						}
+					</span>
+				</span>
+				<span class="pe-who">{ row.Who }</span>
+				<span class={ "pe-st", templ.KV("fail", row.Failed) }><i></i>{ row.Status }</span>
+				<span class="pe-lg"><a href={ templ.SafeURL(row.Href) }>open →</a></span>
+			</button>
+		</div>
+	}
+}
+
+templ ledgerV3TxPane(pane vmv2.LedgerV3TxPane) {
+	<div class="lg-pane" id="lg-txs">
+		<div class="pe-wrap">
+			<div class="pe-head">
+				<div>
+					<h2>{ pane.Title }</h2>
+					<p>{ pane.Intro }</p>
+				</div>
+				<div class="pe-head-acts">
+					<button class="pc-btn">Save view</button>
+					<button class="pc-btn">Export CSV</button>
+				</div>
+			</div>
+			@ledgerV3Facets(pane.Facets, "tx", "transactions", "Match a hash, an account, an amount, or an error code…")
+			<div class="pe-said">
+				<span class="lead" data-said="tx">@templ.Raw(pane.SaidLead)</span>
+				<a class="pe-clear" data-clear="tx" style="display:none">Clear filters</a>
+			</div>
+			<div class="pe-dist">
+				<div class="pe-dist-h">
+					<span>{ pane.Distribution.Heading }</span>
+					<span class="r mono">{ pane.Distribution.Aside }</span>
+				</div>
+				<div class="pe-bars">
+					for _, bar := range pane.Distribution.Bars {
+						<div class="pe-bar" style={ ledgerV3Height(bar.HeightPct) } title={ bar.Title }></div>
+					}
+				</div>
+				<div class="pe-axis">
+					<span>{ pane.Distribution.AxisMin }</span><span>{ pane.Distribution.AxisMid }</span><span>{ pane.Distribution.AxisMax }</span>
+				</div>
+				<div class="pe-legend"><span>{ pane.Distribution.Legend }</span></div>
+			</div>
+			<div class="pe-res" data-rows="tx">
+				<div class="pe-res-top">
+					<span>{ pane.TotalLabel }</span>
+					<div class="pe-seg">
+						for i, opt := range pane.SortOptions {
+							<button class={ templ.KV("on", i == 0) }>{ opt }</button>
+						}
+					</div>
+				</div>
+				@ledgerV3Rows(pane.Rows, "tx")
+				<div class="pe-foot">
+					<span data-count="tx">{ pane.ShownLabel }</span>
+					<span class="sp"></span>
+					<button class="pc-btn">Load 50 more</button>
+					<button class="pc-btn">Export CSV</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ ledgerV3StatePane(pane vmv2.LedgerV3StatePane) {
+	<div class="lg-pane" id="lg-state">
+		<div class="pe-wrap">
+			<div class="pe-head">
+				<div>
+					<h2>{ pane.Title }</h2>
+					<p>{ pane.Intro }</p>
+				</div>
+				<div class="pe-head-acts"><button class="pc-btn">Export CSV</button></div>
+			</div>
+			@ledgerV3Facets(pane.Facets, "st", "changes", "Match a contract, an account, or a storage key…")
+			<div class="pe-said">
+				<span class="lead" data-said="st">@templ.Raw(pane.SaidLead)</span>
+				<a class="pe-clear" data-clear="st" style="display:none">Clear filters</a>
+			</div>
+			<div style="margin-top:16px">
+				@ledgerV3ChangeCells(pane.Cells)
+			</div>
+			<div class="pe-res" data-rows="st" style="margin-top:16px">
+				<div class="pe-res-top">
+					<span>{ pane.TotalLabel }</span>
+					<div class="pe-seg">
+						for i, opt := range pane.SortOption {
+							<button class={ templ.KV("on", i == 0) }>{ opt }</button>
+						}
+					</div>
+				</div>
+				@ledgerV3Rows(pane.Rows, "st")
+				<div class="pe-foot">
+					<span data-count="st">{ pane.ShownLabel }</span>
+					<span class="sp"></span>
+					<button class="pc-btn">Load 50 more</button>
+					<button class="pc-btn">Export CSV</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ ledgerV3Script() {
+	<script>
+		function showPane(id){
+		  document.querySelectorAll('.lg-pane').forEach(function(p){ p.classList.toggle('active',p.id===id); });
+		  document.querySelectorAll('.pc-tab[data-pane]').forEach(function(t){ t.classList.toggle('active',t.dataset.pane===id); });
+		  window.scrollTo(0,0);
+		}
+		document.querySelectorAll('.pc-tab[data-pane]').forEach(function(t){ t.addEventListener('click',function(){ showPane(t.dataset.pane); }); });
+		document.querySelectorAll('.pe-r').forEach(function(b){ b.addEventListener('click',function(){ b.closest('.pe-row').classList.toggle('is-open'); }); });
+		document.querySelectorAll('.pc-cite').forEach(function(a){
+		  var id=a.getAttribute('href');
+		  a.addEventListener('click',function(e){
+		    var t=document.querySelector(id);
+		    if(!t) return;
+		    e.preventDefault();
+		    var y=t.getBoundingClientRect().top+window.scrollY-110;
+		    window.scrollTo({top:y,behavior:'smooth'});
+		    t.classList.add('is-lit');
+		    setTimeout(function(){ t.classList.remove('is-lit'); },1600);
+		  });
+		  a.addEventListener('mouseenter',function(){ var t=document.querySelector(id); if(t) t.classList.add('is-lit'); });
+		  a.addEventListener('mouseleave',function(){ var t=document.querySelector(id); if(t) t.classList.remove('is-lit'); });
+		});
+		document.querySelectorAll('[data-filterset]').forEach(function(box){
+		  var scope=box.getAttribute('data-filterset');
+		  var noun=box.getAttribute('data-noun')||'results';
+		  var wrap=document.querySelector('[data-rows="'+scope+'"]');
+		  var said=document.querySelector('[data-said="'+scope+'"]');
+		  var count=document.querySelector('[data-count="'+scope+'"]');
+		  var clear=document.querySelector('[data-clear="'+scope+'"]');
+		  if(!wrap) return;
+		  var rows=[].slice.call(wrap.querySelectorAll('.pe-row'));
+		  var base=said?said.innerHTML:'';
+		  var total=count?count.textContent.split('of ')[1]:'';
+		  var state={};
+		  var WORDS={kind:{calls:'it is a contract call',payments:'it is a payment',markets:'it is a market order',deployments:'it is a deployment',other:'it is another operation'},res:{ok:'it applied',fail:'it failed'},ct:{new:'the entry was created',mod:'the entry was modified',arc:'the entry archived',res:'the entry was restored'}};
+		  function apply(){
+		    var keys=Object.keys(state).filter(function(k){ return state[k].length; });
+		    var shown=0;
+		    rows.forEach(function(r){
+		      var pass=keys.every(function(k){ return state[k].indexOf(r.getAttribute('data-'+k))>-1; });
+		      r.classList.toggle('hide',!pass);
+		      if(pass) shown++;
+		    });
+		    if(said){
+		      if(!keys.length) said.innerHTML=base;
+		      else said.innerHTML='Showing '+noun+' where '+keys.map(function(k){
+		        return state[k].map(function(v){ return '<mark>'+((WORDS[k]&&WORDS[k][v])||v)+'</mark>'; }).join(' or ');
+		      }).join(', and ')+'.';
+		    }
+		    if(count) count.textContent=shown+' shown of '+total;
+		    if(clear) clear.style.display=keys.length?'':'none';
+		  }
+		  box.querySelectorAll('[data-fk]').forEach(function(b){
+		    b.addEventListener('click',function(){
+		      var k=b.getAttribute('data-fk'),v=b.getAttribute('data-fv');
+		      state[k]=state[k]||[];
+		      var i=state[k].indexOf(v);
+		      if(i>-1){ state[k].splice(i,1); b.classList.remove('on'); } else { state[k].push(v); b.classList.add('on'); }
+		      var f=b.closest('.pe-facet');
+		      if(f) f.classList.toggle('has',state[k].length>0);
+		      apply();
+		    });
+		  });
+		  if(clear) clear.addEventListener('click',function(){
+		    state={};
+		    box.querySelectorAll('[data-fk]').forEach(function(b){ b.classList.remove('on'); });
+		    box.querySelectorAll('.pe-facet').forEach(function(f){ f.classList.remove('has'); });
+		    apply();
+		  });
+		});
+		document.addEventListener('click',function(e){
+		  document.querySelectorAll('.pe-facet[open]').forEach(function(d){ if(!d.contains(e.target)) d.removeAttribute('open'); });
+		});
+		var links=[].slice.call(document.querySelectorAll('.pc-toc a'));
+		var secs=links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+		var io=new IntersectionObserver(function(entries){
+		  entries.forEach(function(e){
+		    if(!e.isIntersecting) return;
+		    var i=secs.indexOf(e.target);
+		    if(i<0) return;
+		    links.forEach(function(a,j){ a.classList.toggle('active',i===j); });
+		  });
+		},{rootMargin:'-88px 0px -70% 0px'});
+		secs.forEach(function(s){ if(s) io.observe(s); });
+	</script>
+}
+
+// ---- helpers ----
+
+// ledgerV3TickClass returns the strip colour class. A failed transaction keeps
+// its semantic Kind for facet counts but renders red.
+func ledgerV3TickClass(tick vmv2.LedgerV3Tick) string {
+	if tick.Failed {
+		return "fail"
+	}
+	return tick.Kind
+}
+
+func ledgerV3Height(pct int) string {
+	return "height:" + strconv.Itoa(pct) + "%"
+}
+
+func ledgerV3Width(pct int) string {
+	return "width:" + strconv.Itoa(pct) + "%"
+}
+
+func ledgerV3Background(cssVar string) string {
+	return "background:var(" + cssVar + ")"
+}
+
+func ledgerV3SourceTitle(p vmv2.Provenance) string {
+	if p.Note == "" {
+		return p.Origin
+	}
+	return p.Origin + " — " + p.Note
+}
+
+func ledgerV3AnyMeterGap(meters []vmv2.LedgerV3Meter) bool {
+	for _, meter := range meters {
+		if meter.Source.IsGap() {
+			return true
+		}
+	}
+	return false
+}
+
+func ledgerV3NetworkLabel(network string) string {
+	if network == "mainnet" {
+		return "Mainnet"
+	}
+	if network == "" {
+		return "Testnet"
+	}
+	return network[:1] + network[1:]
+}
