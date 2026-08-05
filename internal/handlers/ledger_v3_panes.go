@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -40,12 +41,13 @@ var provNoSemanticReading = vmv2.Provenance{
 // keeping the mock's illustrative rows, which describe a different ledger.
 func (h *Handlers) overlayLedgerV3Panes(
 	data *vmv2.LedgerDetailV3Data,
+	network string,
 	txs []gateway.Transaction,
 	ops []gateway.Operation,
 	changes *gateway.LedgerChanges,
 ) {
 	if len(txs) > 0 {
-		applyLedgerV3TxPane(data, txs, ops)
+		applyLedgerV3TxPane(data, network, txs, ops)
 		applyLedgerV3Failures(data, txs, ops)
 	}
 	if changes != nil && changes.Available {
@@ -55,7 +57,7 @@ func (h *Handlers) overlayLedgerV3Panes(
 
 // applyLedgerV3TxPane rebuilds the transactions tab from the ledger's own
 // transactions and operations.
-func applyLedgerV3TxPane(data *vmv2.LedgerDetailV3Data, txs []gateway.Transaction, ops []gateway.Operation) {
+func applyLedgerV3TxPane(data *vmv2.LedgerDetailV3Data, network string, txs []gateway.Transaction, ops []gateway.Operation) {
 	opsByTx := make(map[string][]gateway.Operation, len(txs))
 	for _, op := range ops {
 		opsByTx[op.TransactionHash] = append(opsByTx[op.TransactionHash], op)
@@ -86,9 +88,10 @@ func applyLedgerV3TxPane(data *vmv2.LedgerDetailV3Data, txs []gateway.Transactio
 			Who:    shortAccount(tx.SourceAccount),
 			Status: status,
 			Failed: !tx.Successful,
-			Href:   "/tx/" + tx.TransactionHash,
+			Href:   ledgerV3TxHref(tx.TransactionHash, network),
 			Say:    ledgerV3TxSay(txOps, tx.OperationCount),
 			Meta:   ledgerV3TxMeta(tx),
+			Search: ledgerV3TxSearchTerms(tx, txOps, kind),
 		})
 	}
 
@@ -318,6 +321,94 @@ func pluralIt(n int) string {
 	return "them"
 }
 
+// ledgerV3TxSearchTerms collects what a reader might type that the row's
+// rendered text does not already contain: the full hash and account rather
+// than their abbreviations, every operation type rather than the first three,
+// and the kind label shown in the facet beside the search box.
+func ledgerV3TxSearchTerms(tx gateway.Transaction, ops []gateway.Operation, kind string) string {
+	terms := []string{
+		tx.TransactionHash,
+		tx.SourceAccount,
+		kind,
+		ledgerV3KindLabel(kind),
+		tx.ResultCode,
+		tx.ContractErrorType,
+	}
+	if tx.Successful {
+		terms = append(terms, "applied", "success")
+	} else {
+		terms = append(terms, "failed", "failure")
+	}
+
+	seen := map[string]bool{}
+	for _, op := range ops {
+		name := humanOperationName(op.TypeName)
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		terms = append(terms, name, op.TypeName)
+		if op.Destination != "" {
+			terms = append(terms, op.Destination)
+		}
+		if op.SorobanContract != "" {
+			terms = append(terms, op.SorobanContract)
+		}
+		if op.SorobanFunction != "" {
+			terms = append(terms, op.SorobanFunction)
+		}
+	}
+
+	out := terms[:0]
+	for _, t := range terms {
+		if t != "" {
+			out = append(out, t)
+		}
+	}
+	return strings.Join(out, " ")
+}
+
+// ledgerV3TxHref links a row to the v2 transaction page, carrying the network.
+//
+// v2 is the current surface; /tx/{hash} is the legacy one, and sending readers
+// there from a v3 page moves them backwards a generation. The network has to
+// travel with the link because the transaction page loads its contents through
+// fragment requests that inherit nothing from the page — without it they
+// resolve to the default network, find nothing, and leave the page on its
+// loading skeleton.
+func ledgerV3TxHref(hash, network string) string {
+	href := "/v2/tx/" + url.PathEscape(hash)
+	if network == "" {
+		return href
+	}
+	return href + "?network=" + url.QueryEscape(network)
+}
+
+// ledgerV3KindLabel names a kind in the singular, for search terms and prose.
+func ledgerV3KindLabel(kind string) string {
+	switch kind {
+	case "calls":
+		return "contract call"
+	case "payments":
+		return "payment"
+	case "markets":
+		return "market order"
+	case "deployments":
+		return "deployment"
+	default:
+		return "other"
+	}
+}
+
+// ledgerV3KindLabelPlural names a kind for the facet list. "Other" has no
+// plural that reads well, so it is left alone rather than forced into one.
+func ledgerV3KindLabelPlural(kind string) string {
+	if kind == "other" {
+		return "Other"
+	}
+	return capitalise(ledgerV3KindLabel(kind)) + "s"
+}
+
 // ledgerV3TxKind classifies a transaction by the operations it carried.
 // Soroban wins over the classic families because a contract call is the more
 // specific fact about a transaction that contains one.
@@ -411,14 +502,6 @@ func ledgerV3TxMeta(tx gateway.Transaction) string {
 }
 
 func ledgerV3KindOptions(counts map[string]int, total int) []vmv2.LedgerV3FacetOption {
-	labels := map[string]string{
-		"calls":       "Contract calls",
-		"payments":    "Payments",
-		"markets":     "Market orders",
-		"deployments": "Deployments",
-		"other":       "Other",
-	}
-
 	opts := []vmv2.LedgerV3FacetOption{{Value: "", Label: "Any", Count: fmt.Sprintf("%d", total)}}
 	keys := make([]string, 0, len(counts))
 	for k := range counts {
@@ -432,7 +515,7 @@ func ledgerV3KindOptions(counts map[string]int, total int) []vmv2.LedgerV3FacetO
 	})
 	for _, k := range keys {
 		opts = append(opts, vmv2.LedgerV3FacetOption{
-			Value: k, Label: labels[k], Count: fmt.Sprintf("%d", counts[k]),
+			Value: k, Label: ledgerV3KindLabelPlural(k), Count: fmt.Sprintf("%d", counts[k]),
 		})
 	}
 	return opts
@@ -527,7 +610,6 @@ func applyLedgerV3StatePane(data *vmv2.LedgerDetailV3Data, changes *gateway.Ledg
 			Stamp:  formatThousands(t.counts.Total),
 			Who:    entryTypeLabel(t.name),
 			Status: "Changed",
-			Href:   "#",
 			Say: fmt.Sprintf(`<em>%s entries changed</em> <span class="amt">%s</span>`,
 				entryTypeLabel(t.name), formatThousands(t.counts.Total)),
 			Meta: changeBreakdown(t.counts),

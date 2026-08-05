@@ -30,7 +30,7 @@ func (h *Handlers) LedgerDetailV3(w http.ResponseWriter, r *http.Request) {
 		// overlay has just built, and the transactions pane reuses the same
 		// cached ledger response the header read.
 		if full, err := h.Gateway.GetSilverLedgerFull(ctx, network, seq); err == nil && full != nil {
-			h.overlayLedgerV3Panes(&data, full.Transactions, full.Operations, changes)
+			h.overlayLedgerV3Panes(&data, network, full.Transactions, full.Operations, changes)
 		}
 	}
 

@@ -32,7 +32,7 @@ templ LedgerDetailV3(data vmv2.LedgerDetailV3Data) {
 			@ledgerV3Chrome(data)
 			@ledgerV3Masthead(data)
 			@ledgerV3Subnav(data)
-			<div class="lg-pane active" id="lg-overview">
+			<div class="lg-pane" id="lg-overview">
 				<div class="pc-wrap">
 					<main class="pc-main">
 						@ledgerV3GapBanner(data)
@@ -130,10 +130,10 @@ templ ledgerV3Masthead(data vmv2.LedgerDetailV3Data) {
 templ ledgerV3Subnav(data vmv2.LedgerDetailV3Data) {
 	<nav class="pc-subnav">
 		<div class="pc-subnav-inner">
-			<button class="pc-tab active" data-pane="lg-overview">Overview</button>
-			<button class="pc-tab" data-pane="lg-txs">Transactions <b>{ data.Header.TxTabCount }</b></button>
+			<button class="pc-tab" data-pane="lg-overview">Overview</button>
+			<button class="pc-tab active" data-pane="lg-txs">Transactions <b>{ data.Header.TxTabCount }</b></button>
 			<button class="pc-tab" data-pane="lg-state">State changes <b>{ data.Header.StateTabCount }</b></button>
-			<span class="pc-tab-note">Overview interprets · the other two let you dig</span>
+			<span class="pc-tab-note">Transactions first · Overview interprets what they add up to</span>
 		</div>
 	</nav>
 }
@@ -479,7 +479,7 @@ templ ledgerV3Facets(facets []vmv2.LedgerV3Facet, filterset string, noun string,
 	<div class="pe-facets" data-filterset={ filterset } data-noun={ noun }>
 		<div class="pe-q">
 			<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"></circle><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
-			<input placeholder={ placeholder } aria-label="Search"/>
+			<input placeholder={ placeholder } aria-label="Search" data-q={ filterset }/>
 		</div>
 		for _, facet := range facets {
 			<details class={ "pe-facet", templ.KV("gap", facet.Source.IsGap()) } data-facet={ facet.Key }>
@@ -505,7 +505,13 @@ templ ledgerV3Facets(facets []vmv2.LedgerV3Facet, filterset string, noun string,
 
 templ ledgerV3Rows(rows []vmv2.LedgerV3Row, attr string) {
 	for _, row := range rows {
-		<div class="pe-row" data-kind={ row.Kind } data-ct={ row.Kind } data-res={ row.Result }>
+		<div
+			class={ "pe-row", templ.KV("is-gap", row.IsGap) }
+			data-kind={ row.Kind }
+			data-ct={ row.Kind }
+			data-res={ row.Result }
+			data-search={ row.Search }
+		>
 			<button class="pe-r">
 				<span class="pe-t">{ row.Stamp }</span>
 				<span>
@@ -519,14 +525,18 @@ templ ledgerV3Rows(rows []vmv2.LedgerV3Row, attr string) {
 				</span>
 				<span class="pe-who">{ row.Who }</span>
 				<span class={ "pe-st", templ.KV("fail", row.Failed) }><i></i>{ row.Status }</span>
-				<span class="pe-lg"><a href={ templ.SafeURL(row.Href) }>open →</a></span>
+				<span class="pe-lg">
+					if row.Href != "" {
+						<a href={ templ.SafeURL(row.Href) }>open →</a>
+					}
+				</span>
 			</button>
 		</div>
 	}
 }
 
 templ ledgerV3TxPane(pane vmv2.LedgerV3TxPane) {
-	<div class="lg-pane" id="lg-txs">
+	<div class="lg-pane active" id="lg-txs">
 		<div class="pe-wrap">
 			<div class="pe-head">
 				<div>
@@ -571,7 +581,7 @@ templ ledgerV3TxPane(pane vmv2.LedgerV3TxPane) {
 				<div class="pe-foot">
 					<span data-count="tx">{ pane.ShownLabel }</span>
 					<span class="sp"></span>
-					<button class="pc-btn">Load 50 more</button>
+					<button class="pc-btn" data-more="tx">Load more</button>
 					<button class="pc-btn">Export CSV</button>
 				</div>
 			</div>
@@ -610,7 +620,7 @@ templ ledgerV3StatePane(pane vmv2.LedgerV3StatePane) {
 				<div class="pe-foot">
 					<span data-count="st">{ pane.ShownLabel }</span>
 					<span class="sp"></span>
-					<button class="pc-btn">Load 50 more</button>
+					<button class="pc-btn" data-more="st">Load more</button>
 					<button class="pc-btn">Export CSV</button>
 				</div>
 			</div>
@@ -651,26 +661,75 @@ templ ledgerV3Script() {
 		  if(!wrap) return;
 		  var rows=[].slice.call(wrap.querySelectorAll('.pe-row'));
 		  var base=said?said.innerHTML:'';
-		  var total=count?count.textContent.split('of ')[1]:'';
+		  var total=rows.length;
 		  var state={};
-		  var WORDS={kind:{calls:'it is a contract call',payments:'it is a payment',markets:'it is a market order',deployments:'it is a deployment',other:'it is another operation'},res:{ok:'it applied',fail:'it failed'},ct:{new:'the entry was created',mod:'the entry was modified',arc:'the entry archived',res:'the entry was restored'}};
+		  var q='';
+		  var input=document.querySelector('[data-q="'+scope+'"]');
+		  var more=document.querySelector('[data-more="'+scope+'"]');
+		  // Rows arrive whole and are revealed a page at a time. Paging the
+		  // filter rather than the fetch keeps a search over the full set:
+		  // searching only what has been revealed would miss matches further
+		  // down and quietly report the wrong count.
+		  var PAGE=25;
+		  var limit=PAGE;
+		  var WORDS={kind:{calls:'it is a contract call',payments:'it is a payment',markets:'it is a market order',deployments:'it is a deployment',other:'it is another operation'},res:{ok:'it applied',fail:'it failed'}};
+
+		  // Search text is taken from the row's rendered content, so a hash, an
+		  // account, an amount, an operation name and an error code are all
+		  // matchable without deciding in advance which of them someone means.
+		  rows.forEach(function(r){
+		    var link=r.querySelector('.pe-lg a');
+		    r._q=((r.textContent||'')
+		      +' '+(link?link.getAttribute('href'):'')
+		      +' '+(r.getAttribute('data-search')||'')).toLowerCase();
+		  });
+
 		  function apply(){
 		    var keys=Object.keys(state).filter(function(k){ return state[k].length; });
-		    var shown=0;
+		    var matched=0, shown=0;
 		    rows.forEach(function(r){
-		      var pass=keys.every(function(k){ return state[k].indexOf(r.getAttribute('data-'+k))>-1; });
-		      r.classList.toggle('hide',!pass);
-		      if(pass) shown++;
+		      var pass=keys.every(function(k){ return state[k].indexOf(r.getAttribute('data-'+k))>-1; })
+		        && (!q || r._q.indexOf(q)>-1);
+		      if(!pass){ r.classList.add('hide'); return; }
+		      matched++;
+		      // A gap row is an explanation, not a result: it stays with the
+		      // rows it describes rather than being paged away or counted.
+		      if(matched<=limit || r.classList.contains('is-gap')){ r.classList.remove('hide'); shown++; }
+		      else r.classList.add('hide');
 		    });
 		    if(said){
-		      if(!keys.length) said.innerHTML=base;
-		      else said.innerHTML='Showing '+noun+' where '+keys.map(function(k){
+		      var parts=keys.map(function(k){
 		        return state[k].map(function(v){ return '<mark>'+((WORDS[k]&&WORDS[k][v])||v)+'</mark>'; }).join(' or ');
-		      }).join(', and ')+'.';
+		      });
+		      if(q) parts.push('it matches <mark>'+q.replace(/[&<>]/g,'')+'</mark>');
+		      if(!parts.length) said.innerHTML=base;
+		      else said.innerHTML='Showing '+noun+' where '+parts.join(', and ')+'.';
 		    }
-		    if(count) count.textContent=shown+' shown of '+total;
-		    if(clear) clear.style.display=keys.length?'':'none';
+		    if(count){
+		      // Say "all N" rather than "N of N": a count that repeats itself
+		      // reads as a coincidence rather than as the whole set.
+		      if(matched===total && limit>=matched) count.textContent='all '+total+' shown';
+		      else if(limit>=matched) count.textContent=matched+' of '+total+' shown';
+		      else count.textContent=Math.min(limit,matched)+' of '+matched+' matching, '+total+' in this ledger';
+		    }
+		    if(clear) clear.style.display=(keys.length||q)?'':'none';
+		    if(more){
+		      var remaining=matched-limit;
+		      more.style.display=remaining>0?'':'none';
+		      more.textContent='Load '+Math.min(PAGE,remaining)+' more';
+		    }
 		  }
+
+		  if(input){
+		    input.addEventListener('input',function(){
+		      q=input.value.trim().toLowerCase();
+		      // A new search starts from the top: carrying the previous page
+		      // depth forward hides matches the search was meant to surface.
+		      limit=PAGE;
+		      apply();
+		    });
+		  }
+		  if(more) more.addEventListener('click',function(){ limit+=PAGE; apply(); });
 		  box.querySelectorAll('[data-fk]').forEach(function(b){
 		    b.addEventListener('click',function(){
 		      var k=b.getAttribute('data-fk'),v=b.getAttribute('data-fv');
@@ -679,15 +738,23 @@ templ ledgerV3Script() {
 		      if(i>-1){ state[k].splice(i,1); b.classList.remove('on'); } else { state[k].push(v); b.classList.add('on'); }
 		      var f=b.closest('.pe-facet');
 		      if(f) f.classList.toggle('has',state[k].length>0);
+		      limit=PAGE;
 		      apply();
 		    });
 		  });
 		  if(clear) clear.addEventListener('click',function(){
 		    state={};
+		    q='';
+		    limit=PAGE;
+		    if(input) input.value='';
 		    box.querySelectorAll('[data-fk]').forEach(function(b){ b.classList.remove('on'); });
 		    box.querySelectorAll('.pe-facet').forEach(function(f){ f.classList.remove('has'); });
 		    apply();
 		  });
+
+		  // Establish the first page rather than leaving every row visible
+		  // until something is clicked.
+		  apply();
 		});
 		document.addEventListener('click',function(e){
 		  document.querySelectorAll('.pe-facet[open]').forEach(function(d){ if(!d.contains(e.target)) d.removeAttribute('open'); });

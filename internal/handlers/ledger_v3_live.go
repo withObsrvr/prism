@@ -103,7 +103,7 @@ func (h *Handlers) overlayLedgerV3Header(ctx context.Context, network string, se
 
 	applyLedgerV3RailContents(data, l, txCount, full.Soroban)
 	applyLedgerV3LedeContents(data, l, txCount, full.Soroban)
-	applyLedgerV3Ticks(data, full.Transactions)
+	applyLedgerV3Ticks(data, network, full.Transactions)
 }
 
 // applyLedgerV3Ticks rebuilds the apply-order strip from the ledger's own
@@ -115,7 +115,7 @@ func (h *Handlers) overlayLedgerV3Header(ctx context.Context, network string, se
 //
 // The strip is left as it was when the response carried no transactions,
 // because an empty strip and an unfetched one look identical.
-func applyLedgerV3Ticks(data *vmv2.LedgerDetailV3Data, txs []gateway.Transaction) {
+func applyLedgerV3Ticks(data *vmv2.LedgerDetailV3Data, network string, txs []gateway.Transaction) {
 	if len(txs) == 0 {
 		return
 	}
@@ -152,7 +152,7 @@ func applyLedgerV3Ticks(data *vmv2.LedgerDetailV3Data, txs []gateway.Transaction
 			TipTitle:  fmt.Sprintf("Position %d of %d", i+1, len(txs)),
 			TipDetail: fmt.Sprintf("%d %s · %s", tx.OperationCount, opLabel, shortHash(tx.TransactionHash)),
 			TipStatus: status,
-			Href:      "/tx/" + tx.TransactionHash,
+			Href:      ledgerV3TxHref(tx.TransactionHash, network),
 			AriaLabel: fmt.Sprintf("Transaction at position %d, %d %s, %s",
 				i+1, tx.OperationCount, opLabel, strings.ToLower(status)),
 		})

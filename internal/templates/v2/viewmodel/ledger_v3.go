@@ -351,6 +351,12 @@ type LedgerV3Row struct {
 	Href    string
 	IsGap   bool
 	GapNote string
+	// Search carries terms a reader would plausibly type that the rendered
+	// text does not contain. A payment row reads "Sent 20 XLM to GA7F…", so
+	// searching "payment" would miss it even though a Payments facet exists
+	// alongside. Rows are searchable by what they are, not only by how they
+	// happen to be phrased.
+	Search string
 }
 
 // ---- state changes pane ----

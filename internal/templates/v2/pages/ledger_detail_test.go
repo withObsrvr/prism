@@ -29,7 +29,7 @@ func TestLedgerFailedCardCountAndPresentationUseSameClassification(t *testing.T)
 	}
 
 	var html strings.Builder
-	if err := txCard(tx).Render(context.Background(), &html); err != nil {
+	if err := txCard(tx, "testnet").Render(context.Background(), &html); err != nil {
 		t.Fatalf("render failed transaction card: %v", err)
 	}
 	output := html.String()
@@ -37,6 +37,11 @@ func TestLedgerFailedCardCountAndPresentationUseSameClassification(t *testing.T)
 		`class="px-lg-txc fail"`,
 		`data-px-ledger-tx-kind="failed"`,
 		`class="px-lg-txc-status fail"`,
+		// The network has to travel with the link: the transaction page loads
+		// its contents through fragment requests that inherit nothing from the
+		// page, so without it they query the default network and the page sits
+		// on its loading skeleton.
+		`?network=testnet`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("failed transaction card missing %q: %s", want, output)
