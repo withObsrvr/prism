@@ -442,9 +442,9 @@ func ledgerV3TxKind(ops []gateway.Operation) string {
 func ledgerV3TxSay(ops []gateway.Operation, declaredOps int) string {
 	if len(ops) == 0 {
 		if declaredOps > 0 {
-			return fmt.Sprintf("<em>Carried %d operation%s</em>", declaredOps, plural(declaredOps))
+			return fmt.Sprintf("Carried %d operation%s", declaredOps, plural(declaredOps))
 		}
-		return "<em>No operations recorded</em>"
+		return "No operations recorded"
 	}
 
 	// Name the distinct operation types in the order they appear, so a
@@ -479,7 +479,12 @@ func ledgerV3TxSay(ops []gateway.Operation, declaredOps int) string {
 			formatStroopAmount(first.Amount), shortAccount(first.Destination))
 	}
 
-	return fmt.Sprintf("<em>%s</em>", desc)
+	// Not wrapped in <em>. In this row, em marks the connective words around a
+	// value — the "Sent" and "to" in "Sent 500 XLM to GBEF…" — and is styled
+	// back accordingly. The operation list is the row's actual content, so
+	// emphasising all of it renders the primary line as though it were
+	// subordinate to something, which is how it came to look washed out.
+	return desc
 }
 
 // ledgerV3TxMeta labels the fee as a bid, because that is what the ledger
