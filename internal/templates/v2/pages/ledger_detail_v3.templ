@@ -142,9 +142,9 @@ templ ledgerV3GapBanner(data vmv2.LedgerDetailV3Data) {
 	if len(data.Gaps) > 0 {
 		<div class="lg-gapbar">
 			<div>
-				<b>Prototype with mock data.</b>
-				{ fmt.Sprintf(" %d of this page's sections cannot be served by any obsrvr-lake projection today.", len(data.Gaps)) }
-				Values shown are illustrative; anything marked <code>needs projection</code> has no source at bronze, silver, or serving.
+				<b>Served from obsrvr-lake.</b>
+				{ fmt.Sprintf(" Every figure on this page is read from the lake except %d, which no projection can supply today.", len(data.Gaps)) }
+				Anything marked <code>needs projection</code> has no source at bronze, silver, or serving and is not filled in with an estimate.
 				A full accounting sits at the <a href="#gaps">foot of the page</a>.
 			</div>
 		</div>
@@ -181,7 +181,7 @@ templ ledgerV3Standing(data vmv2.LedgerDetailV3Data) {
 templ ledgerV3StripSection(data vmv2.LedgerDetailV3Data) {
 	<section class="pc-sec" id="s1">
 		<div class="pc-sec-head">
-			<h2>The 118 transactions, in the order they applied</h2>
+			<h2>The { data.Header.TxTabCount } transactions, in the order they applied</h2>
 			<span class="pc-sec-aside">bar height = operation count</span>
 		</div>
 		<p class="pc-sec-intro">
@@ -302,11 +302,10 @@ templ ledgerV3FailureSection(data vmv2.LedgerDetailV3Data) {
 	<section class={ "pc-sec", templ.KV("gap", data.Failures.Source.IsGap()) } id="s4">
 		<div class="pc-sec-head">
 			<h2>What did not work</h2>
-			<span class="pc-sec-aside">7 failures · 3 causes</span>
+			<span class="pc-sec-aside">{ data.Failures.Aside }</span>
 		</div>
 		<p class="pc-sec-intro">
-			Grouped by error code rather than listed.
-			Seven separate failures reading as one list looks like network trouble; the same seven grouped show two protocols and one stale sequence number.
+			@templ.Raw(data.Failures.Intro)
 		</p>
 		if data.Failures.Source.IsGap() {
 			<div class="lg-gapbar"><div><b>No source for the grouping key.</b> { data.Failures.Source.Note }</div></div>

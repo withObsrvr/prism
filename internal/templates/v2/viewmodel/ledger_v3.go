@@ -209,6 +209,8 @@ type LedgerV3FeeBar struct {
 
 type LedgerV3Failures struct {
 	Groups []LedgerV3FailGroup
+	Aside  string
+	Intro  string
 	Note   string
 	Source Provenance
 }

@@ -340,7 +340,11 @@ func (c *Client) GetSilverLedgerFull(ctx context.Context, network string, sequen
 			return v, nil
 		}
 
-		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledger/%d/full", sequence)))
+		// Plural path, matching /silver/ledgers/{seq}/soroban, /fees and
+		// /changes. The singular alias serves the same handler but is a
+		// separate cache key upstream, and it was still returning the
+		// pre-result_code shape long after the API had been updated.
+		body, err := c.doRequest(ctx, http.MethodGet, c.buildURL(network, fmt.Sprintf("/silver/ledgers/%d/full", sequence)))
 		if err != nil {
 			return nil, err
 		}

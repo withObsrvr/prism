@@ -641,6 +641,27 @@ func ledgerV3Gaps() []vmv2.LedgerV3Gap {
 			Missing:  provTxSizeBytes.Note,
 			Proposal: "Scope the meter to Soroban transactions so the cap applies, or show the byte total with no cap. This is a design decision, not missing data.",
 		},
+		// Found while wiring the page to live data. Recorded here rather than
+		// left as a silent omission, because each is a real thing the design
+		// asked for that the lake cannot yet answer.
+		{
+			Section:  "State changes · rows",
+			Field:    "Which individual entries changed",
+			Missing:  "Counts per entry type are served. The entries behind them are recorded per transaction, with no ledger-scoped equivalent, so listing them here would mean a request per transaction.",
+			Proposal: "Project each changed entry against its ledger, keyed by entry type and contract. The change stream already yields them during aggregation; only the counts survive.",
+		},
+		{
+			Section:  "Transactions · row descriptions",
+			Field:    "What a transaction meant, not just which operations it carried",
+			Missing:  "Rows describe operations. Reading a swap as an amount in and an amount out needs the semantic interpretation, which exists per transaction and has no ledger-wide form.",
+			Proposal: "Extend the ledger response with the semantic summary already computed for the transaction page, or accept operation-level descriptions at ledger scope.",
+		},
+		{
+			Section:  "What actually filled up · historical ledgers",
+			Field:    "Declared footprint entries before bronze hot's retention window",
+			Missing:  "Bronze cold's parquet schema predates the footprint columns, so writes and reads report as not recorded for any ledger answered from cold. The instruction counts survive because that column is older.",
+			Proposal: "Emit the footprint columns from the cold writer and backfill the existing parquet, or project the per-ledger totals into serving where they outlive bronze retention.",
+		},
 	}
 }
 

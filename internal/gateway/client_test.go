@@ -304,7 +304,7 @@ func TestClientAccountOverviewInflightWaitHonorsCallerContext(t *testing.T) {
 func TestClientDoesNotCachePartialLedgerFullResponse(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/ledger/123/full" {
+		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/ledgers/123/full" {
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
