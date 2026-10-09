@@ -7,9 +7,8 @@ import (
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
-// LedgerDetailV3 is a prototype surface. It renders the "Prism Ledger Detail
-// v3" design at full fidelity from mock data, and flags every value that no
-// obsrvr-lake projection can serve today.
+// LedgerDetailV3 renders the canonical ledger detail surface. Unavailable
+// evidence is presented explicitly and is never replaced with fixture values.
 //
 // It deliberately does not use layoutsv2 — it ships the design's own three
 // stylesheets so the port can be judged against the original without
@@ -20,7 +19,10 @@ templ LedgerDetailV3(data vmv2.LedgerDetailV3Data) {
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ fmt.Sprintf("Ledger %s · write capacity 97%% — Prism", data.Header.Sequence) }</title>
+			<title>{ fmt.Sprintf("Ledger %s — Prism", data.Header.Sequence) }</title>
+			<link rel="canonical" href={ templ.SafeURL(data.CanonicalPath) }/>
+			<meta property="og:title" content={ fmt.Sprintf("Ledger %s — Prism", data.Header.Sequence) }/>
+			<meta property="og:url" content={ data.CanonicalPath }/>
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
 			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 			<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet"/>
@@ -55,7 +57,7 @@ templ LedgerDetailV3(data vmv2.LedgerDetailV3Data) {
 			<footer class="pc-foot">
 				<div class="pc-foot-inner">
 					<span>Prism · Stellar, interpreted</span>
-					<span>{ fmt.Sprintf("Prototype · mock data · %s", data.Network) }</span>
+					<span>{ fmt.Sprintf("Evidence-backed · %s", data.Network) }</span>
 				</div>
 			</footer>
 			@ledgerV3Script()
@@ -112,15 +114,15 @@ templ ledgerV3Masthead(data vmv2.LedgerDetailV3Data) {
 					}
 				</div>
 				<div class="pc-mast-acts">
-					<button class="pc-btn">Share</button>
-					<button class="pc-btn">Raw XDR</button>
+					<button class="pc-btn" type="button" data-share data-share-url={ data.CanonicalPath }><span data-action-label>Share</span></button>
+					<button class="pc-btn" type="button" disabled title="Raw ledger XDR is not available from current Gateway evidence">Raw XDR</button>
 				</div>
 			</div>
 			<div class="pc-addr-row">
 				<span class="pc-addr mono">{ data.Header.Hash }</span>
-				<button class="pc-copy">
+				<button class="pc-copy" type="button" data-copy={ data.Header.Hash } disabled?={ data.Header.Hash == "—" }>
 					<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"></rect><path d="M8.5 1.5h-7v7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path></svg>
-					Copy
+					<span data-action-label>Copy</span>
 				</button>
 			</div>
 		</div>
@@ -142,8 +144,8 @@ templ ledgerV3GapBanner(data vmv2.LedgerDetailV3Data) {
 	if len(data.Gaps) > 0 {
 		<div class="lg-gapbar">
 			<div>
-				<b>Served from obsrvr-lake.</b>
-				{ fmt.Sprintf(" Every figure on this page is read from the lake except %d, which no projection can supply today.", len(data.Gaps)) }
+				<b>Evidence status.</b>
+				{ fmt.Sprintf(" Unavailable values are marked explicitly; %d design requirements still need a projection.", len(data.Gaps)) }
 				Anything marked <code>needs projection</code> has no source at bronze, silver, or serving and is not filled in with an estimate.
 				A full accounting sits at the <a href="#gaps">foot of the page</a>.
 			</div>
@@ -260,8 +262,8 @@ templ ledgerV3CapacitySection(data vmv2.LedgerDetailV3Data) {
 templ ledgerV3FeeSection(data vmv2.LedgerDetailV3Data) {
 	<section class="pc-sec" id="s3">
 		<div class="pc-sec-head">
-			<h2>Why everything cost 42× the base fee</h2>
-			<span class="pc-sec-aside">surge pricing active</span>
+			<h2>{ data.Fees.Heading }</h2>
+			<span class="pc-sec-aside">{ data.Fees.Aside }</span>
 		</div>
 		<p class="pc-sec-intro">
 			When demand exceeds a ledger's capacity, Stellar charges every included transaction the same clearing price rather than each one's own bid.
@@ -367,12 +369,11 @@ templ ledgerV3ChangeCells(cells []vmv2.LedgerV3ChangeCell) {
 templ ledgerV3ChainSection(data vmv2.LedgerDetailV3Data) {
 	<section class="pc-sec" id="s6">
 		<div class="pc-sec-head">
-			<h2>Where it sits</h2>
-			<span class="pc-sec-aside">6 ledgers · 30 seconds</span>
+			<h2>{ data.Chain.Heading }</h2>
+			<span class="pc-sec-aside">{ data.Chain.Aside }</span>
 		</div>
 		<p class="pc-sec-intro">
-			Congestion is an episode, not a state.
-			This one lasted three ledgers — roughly fifteen seconds — and the bar shows write utilisation, the limit that was actually binding.
+			{ data.Chain.Intro }
 		</p>
 		<div class="lg-chain">
 			for _, neighbor := range data.Chain.Neighbors {
@@ -544,8 +545,8 @@ templ ledgerV3TxPane(pane vmv2.LedgerV3TxPane) {
 					<p>{ pane.Intro }</p>
 				</div>
 				<div class="pe-head-acts">
-					<button class="pc-btn">Save view</button>
-					<button class="pc-btn">Export CSV</button>
+					<button class="pc-btn" type="button" disabled title="Saved views are not available yet">Save view</button>
+					<button class="pc-btn" type="button" disabled title="CSV export is not available yet">Export CSV</button>
 				</div>
 			</div>
 			@ledgerV3Facets(pane.Facets, "tx", "transactions", "Match a hash, an account, an amount, or an error code…")
@@ -582,7 +583,7 @@ templ ledgerV3TxPane(pane vmv2.LedgerV3TxPane) {
 					<span data-count="tx">{ pane.ShownLabel }</span>
 					<span class="sp"></span>
 					<button class="pc-btn" data-more="tx">Load more</button>
-					<button class="pc-btn">Export CSV</button>
+					<button class="pc-btn" type="button" disabled title="CSV export is not available yet">Export CSV</button>
 				</div>
 			</div>
 		</div>
@@ -597,7 +598,7 @@ templ ledgerV3StatePane(pane vmv2.LedgerV3StatePane) {
 					<h2>{ pane.Title }</h2>
 					<p>{ pane.Intro }</p>
 				</div>
-				<div class="pe-head-acts"><button class="pc-btn">Export CSV</button></div>
+				<div class="pe-head-acts"><button class="pc-btn" type="button" disabled title="CSV export is not available yet">Export CSV</button></div>
 			</div>
 			@ledgerV3Facets(pane.Facets, "st", "changes", "Match a contract, an account, or a storage key…")
 			<div class="pe-said">
@@ -621,7 +622,7 @@ templ ledgerV3StatePane(pane vmv2.LedgerV3StatePane) {
 					<span data-count="st">{ pane.ShownLabel }</span>
 					<span class="sp"></span>
 					<button class="pc-btn" data-more="st">Load more</button>
-					<button class="pc-btn">Export CSV</button>
+					<button class="pc-btn" type="button" disabled title="CSV export is not available yet">Export CSV</button>
 				</div>
 			</div>
 		</div>
@@ -630,6 +631,37 @@ templ ledgerV3StatePane(pane vmv2.LedgerV3StatePane) {
 
 templ ledgerV3Script() {
 	<script>
+		function flashAction(button,text){
+		  var label=button.querySelector('[data-action-label]');
+		  if(!label) return;
+		  var original=label.textContent;
+		  label.textContent=text;
+		  setTimeout(function(){ label.textContent=original; },1600);
+		}
+		async function copyText(value){
+		  if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(value); return; }
+		  var area=document.createElement('textarea');
+		  area.value=value; area.setAttribute('readonly',''); area.style.position='fixed'; area.style.left='-9999px';
+		  document.body.appendChild(area); area.select();
+		  try { if(!document.execCommand('copy')) throw new Error('copy failed'); }
+		  finally { document.body.removeChild(area); }
+		}
+		document.querySelectorAll('[data-copy]').forEach(function(button){
+		  button.addEventListener('click',async function(){
+		    try { await copyText(button.dataset.copy); flashAction(button,'Copied'); }
+		    catch(_) { flashAction(button,'Copy failed'); }
+		  });
+		});
+		document.querySelectorAll('[data-share]').forEach(function(button){
+		  button.addEventListener('click',async function(){
+		    var url=new URL(button.dataset.shareUrl,window.location.origin);
+		    var network=new URL(window.location.href).searchParams.get('network');
+		    if(network && network!=='mainnet') url.searchParams.set('network',network);
+		    var payload={title:document.title,text:'Ledger '+document.querySelector('.px-crumbs span:last-child').textContent+' on Prism',url:url.toString()};
+		    try { if(navigator.share){ await navigator.share(payload); return; } await copyText(payload.url); flashAction(button,'Copied link'); }
+		    catch(error){ if(error && error.name==='AbortError') return; try { await copyText(payload.url); flashAction(button,'Copied link'); } catch(_) { flashAction(button,'Copy failed'); } }
+		  });
+		});
 		function showPane(id){
 		  document.querySelectorAll('.lg-pane').forEach(function(p){ p.classList.toggle('active',p.id===id); });
 		  document.querySelectorAll('.pc-tab[data-pane]').forEach(function(t){ t.classList.toggle('active',t.dataset.pane===id); });

@@ -46,10 +46,8 @@ func (h *Handlers) overlayLedgerV3Panes(
 	ops []gateway.Operation,
 	changes *gateway.LedgerChanges,
 ) {
-	if len(txs) > 0 {
-		applyLedgerV3TxPane(data, network, txs, ops)
-		applyLedgerV3Failures(data, txs, ops)
-	}
+	applyLedgerV3TxPane(data, network, txs, ops)
+	applyLedgerV3Failures(data, txs, ops)
 	if changes != nil && changes.Available {
 		applyLedgerV3StatePane(data, changes)
 	}
@@ -210,10 +208,10 @@ func applyLedgerV3Failures(data *vmv2.LedgerDetailV3Data, txs []gateway.Transact
 		}
 
 		groups = append(groups, vmv2.LedgerV3FailGroup{
-			Count:  g.count,
-			Title:  ledgerV3FailTitle(g.count, g.ops),
-			Detail: ledgerV3FailDetail(g.count, g.charged, g.contract),
-			Code:   g.code,
+			Count:   g.count,
+			Title:   ledgerV3FailTitle(g.count, g.ops),
+			Detail:  ledgerV3FailDetail(g.count, g.charged, g.contract),
+			Code:    g.code,
 			FeeNote: feeNote,
 		})
 	}
@@ -632,9 +630,9 @@ func applyLedgerV3StatePane(data *vmv2.LedgerDetailV3Data, changes *gateway.Ledg
 		Title: "What this ledger changed",
 		Intro: fmt.Sprintf("%s entr%s changed across %d type%s. Eviction is listed apart from the total, because a sweep is the protocol's doing rather than a transaction's.",
 			formatThousands(changes.Total), pluralY(changes.Total), len(ordered), plural(len(ordered))),
-		SaidLead: fmt.Sprintf("Showing <b>%d entry type%s</b> by volume.", len(ordered), plural(len(ordered))),
-		Cells:    data.Changes.Cells,
-		Rows:     rows,
+		SaidLead:   fmt.Sprintf("Showing <b>%d entry type%s</b> by volume.", len(ordered), plural(len(ordered))),
+		Cells:      data.Changes.Cells,
+		Rows:       rows,
 		ShownLabel: fmt.Sprintf("%d type%s shown", len(ordered), plural(len(ordered))),
 		TotalLabel: fmt.Sprintf("%s change%s total", formatThousands(changes.Total), plural(int(changes.Total))),
 		SortOption: []string{"Volume"},

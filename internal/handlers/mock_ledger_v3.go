@@ -213,7 +213,7 @@ func mockLedgerDetailV3Data(sequence, network string) vmv2.LedgerDetailV3Data {
 		seq = "55812406"
 	}
 
-	data := vmv2.LedgerDetailV3Data{Network: network}
+	data := vmv2.LedgerDetailV3Data{Network: network, CanonicalPath: ledgerV3Href(seqNum)}
 
 	data.Header = vmv2.LedgerV3Header{
 		Sequence:         formatThousands(seqNum),
@@ -303,6 +303,8 @@ func mockLedgerDetailV3Data(sequence, network string) vmv2.LedgerDetailV3Data {
 	}
 
 	data.Fees = vmv2.LedgerV3Fees{
+		Heading:         "Why everything cost 42× the base fee",
+		Aside:           "surge pricing active",
 		ClearingLabel:   "Clearing fee, charged to all",
 		ClearingValue:   "0.00042",
 		ClearingUnit:    "XLM",
@@ -389,8 +391,11 @@ func mockLedgerDetailV3Data(sequence, network string) vmv2.LedgerDetailV3Data {
 	}
 
 	data.Chain = vmv2.LedgerV3Chain{
-		Source: provLedgerStats,
-		Note:   `Fees rose one ledger <b>before</b> this one and fell one ledger after. Anyone who submitted during the episode paid the premium; anyone who waited twenty seconds did not.`,
+		Heading: "Where it sits",
+		Aside:   "6 ledgers · 30 seconds",
+		Intro:   "Congestion is an episode, not a state. This one lasted three ledgers — roughly fifteen seconds — and the bar shows write utilisation, the limit that was actually binding.",
+		Source:  provLedgerStats,
+		Note:    `Fees rose one ledger <b>before</b> this one and fell one ledger after. Anyone who submitted during the episode paid the premium; anyone who waited twenty seconds did not.`,
 		Neighbors: []vmv2.LedgerV3Neighbor{
 			{Sequence: formatThousands(seqNum - 3), Note: `<b>Ordinary</b>. Fees at base, nothing contested.`, TxCount: "86 tx", WritePct: 52, Href: ledgerV3Href(seqNum - 3)},
 			{Sequence: formatThousands(seqNum - 2), Note: `Volume rising. Fees still at base.`, TxCount: "98 tx", WritePct: 61, Href: ledgerV3Href(seqNum - 2)},
@@ -465,7 +470,7 @@ func mockLedgerDetailV3Data(sequence, network string) vmv2.LedgerDetailV3Data {
 }
 
 func ledgerV3Href(seq int64) string {
-	return "/v2/ledger/" + strconv.FormatInt(seq, 10) + "/v3"
+	return "/v2/ledger/" + strconv.FormatInt(seq, 10)
 }
 
 func buildLedgerV3FeeHistory() []vmv2.LedgerV3FeeBar {

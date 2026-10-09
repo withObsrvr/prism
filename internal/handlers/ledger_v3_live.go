@@ -223,18 +223,26 @@ func applyLedgerV3RailContents(data *vmv2.LedgerDetailV3Data, l gateway.Ledger, 
 	for i, group := range data.Rail.Groups {
 		for j, row := range group.Rows {
 			switch {
+			case group.Heading == "Header" && row.Label == "Closed" && data.Header.ClosedAt != "—":
+				data.Rail.Groups[i].Rows[j].Value = data.Header.ClosedAt
+				data.Rail.Groups[i].Rows[j].IsGap = false
 			case group.Heading == "Header" && row.Label == "Protocol" && l.ProtocolVersion > 0:
 				data.Rail.Groups[i].Rows[j].Value = strconv.Itoa(l.ProtocolVersion)
+				data.Rail.Groups[i].Rows[j].IsGap = false
 			case group.Heading == "Contents" && row.Label == "Transactions":
 				data.Rail.Groups[i].Rows[j].Value = formatThousands(int64(txCount))
+				data.Rail.Groups[i].Rows[j].IsGap = false
 			case group.Heading == "Contents" && row.Label == "Operations":
 				data.Rail.Groups[i].Rows[j].Value = formatThousands(int64(l.OperationCount))
+				data.Rail.Groups[i].Rows[j].IsGap = false
 			case group.Heading == "Contents" && row.Label == "Failed":
 				data.Rail.Groups[i].Rows[j].Value = formatThousands(int64(l.FailedTxCount))
+				data.Rail.Groups[i].Rows[j].IsGap = false
 			case group.Heading == "Contents" && row.Label == "Soroban share":
 				if soroban != nil && txCount > 0 {
 					data.Rail.Groups[i].Rows[j].Value = fmt.Sprintf("%d%%",
 						int(soroban.SorobanTxCount*100/int64(txCount)))
+					data.Rail.Groups[i].Rows[j].IsGap = false
 				}
 			}
 		}
@@ -297,6 +305,7 @@ func (h *Handlers) overlayLedgerV3Capacity(ctx context.Context, network string, 
 			if h.Logger != nil {
 				h.Logger.Debug("ledger v3: soroban usage unavailable", "sequence", sequence, "error", err)
 			}
+			h.markLedgerV3CapacityUnavailable(data)
 			return
 		}
 
@@ -314,6 +323,7 @@ func (h *Handlers) overlayLedgerV3Capacity(ctx context.Context, network string, 
 		usage = &gateway.LedgerSoroban{LedgerSequence: sequence}
 	}
 	if usage == nil {
+		h.markLedgerV3CapacityUnavailable(data)
 		return
 	}
 
@@ -322,6 +332,7 @@ func (h *Handlers) overlayLedgerV3Capacity(ctx context.Context, network string, 
 		if h.Logger != nil && err != nil {
 			h.Logger.Debug("ledger v3: soroban config unavailable", "sequence", sequence, "error", err)
 		}
+		h.markLedgerV3CapacityUnavailable(data)
 		return
 	}
 
@@ -565,6 +576,7 @@ func (h *Handlers) overlayLedgerV3Changes(ctx context.Context, network string, s
 			case "Restored":
 				data.Rail.Groups[i].Rows[j].Value = formatThousands(changes.Restored)
 			}
+			data.Rail.Groups[i].Rows[j].IsGap = false
 		}
 	}
 
@@ -663,6 +675,11 @@ func (h *Handlers) overlayLedgerV3Fees(ctx context.Context, network string, sequ
 
 	multiple := float64(clearing) / float64(baseFeeStroops)
 	data.Fees.Multiple = formatMultiple(multiple)
+	data.Fees.Heading = fmt.Sprintf("Why fees were %s the base fee", data.Fees.Multiple)
+	data.Fees.Aside = "at base"
+	if multiple > 1.5 {
+		data.Fees.Aside = "surge pricing active"
+	}
 
 	if multiple <= 1.0 {
 		data.Fees.ClearingLabel = "Clearing fee — at base, nothing contested"
@@ -724,6 +741,7 @@ func (h *Handlers) overlayLedgerV3Fees(ctx context.Context, network string, sequ
 			case "Total collected":
 				data.Rail.Groups[i].Rows[j].Value = fmt.Sprintf("%s XLM", formatStroopsXLM(fees.TotalFees))
 			}
+			data.Rail.Groups[i].Rows[j].IsGap = false
 		}
 	}
 
@@ -761,8 +779,10 @@ func applyLedgerV3RailCapacity(data *vmv2.LedgerDetailV3Data, usage *gateway.Led
 					continue
 				}
 				data.Rail.Groups[i].Rows[j].Value = railRatio(usage.TotalWriteEntries, cfg.LedgerLimits.MaxWriteEntries)
+				data.Rail.Groups[i].Rows[j].IsGap = cfg.LedgerLimits.MaxWriteEntries <= 0
 			case "CPU":
 				data.Rail.Groups[i].Rows[j].Value = railPct(usage.TotalCPUInsns, cfg.Instructions.LedgerMax)
+				data.Rail.Groups[i].Rows[j].IsGap = cfg.Instructions.LedgerMax <= 0
 			case "Reads":
 				if !usage.FootprintEntriesAvailable {
 					data.Rail.Groups[i].Rows[j].Value = "—"
@@ -770,6 +790,7 @@ func applyLedgerV3RailCapacity(data *vmv2.LedgerDetailV3Data, usage *gateway.Led
 					continue
 				}
 				data.Rail.Groups[i].Rows[j].Value = railPct(usage.TotalReadEntries, cfg.LedgerLimits.MaxReadEntries)
+				data.Rail.Groups[i].Rows[j].IsGap = cfg.LedgerLimits.MaxReadEntries <= 0
 			}
 		}
 	}

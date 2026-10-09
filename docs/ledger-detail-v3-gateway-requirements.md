@@ -1,8 +1,29 @@
 # Ledger Detail v3 Gateway Requirements
 
-This document gathers the Gateway data requirements for the `/v2/ledger/{seq}/v3`
-page — the interpretive ledger detail design prototyped at
+This document gathers the Gateway data requirements for the canonical
+`/v2/ledger/{seq}` page. The page implements the interpretive ledger detail design at
 `internal/templates/v2/pages/ledger_detail_v3.templ`.
+
+## Promotion gate
+
+The promotion gate has passed and the following safety work is complete in Prism:
+
+- a positive integer sequence is required; malformed requests return `400`
+- the durable ledger record is required; missing records return `404`, an
+  unconfigured Gateway returns `503`, and upstream failures return `502`
+- fixture values are scrubbed before live overlays run, so an optional endpoint
+  failure renders an explicit unavailable state rather than another ledger's data
+- fixed `97%`, `42×`, transaction-count, and congestion-episode claims have
+  been removed from production metadata and section headings
+- Share and hash Copy work; Raw XDR, saved views, and CSV export are visibly
+  disabled until their evidence or implementation exists
+- canonical metadata and neighboring-ledger links use `/v2/ledger/{sequence}`
+- regression tests reject fixture-value leakage when optional evidence is absent
+
+`LedgerDetailV3` now owns `/v2/ledger/{sequence}`. The former `/v3` candidate
+URL is retained as a permanent compatibility redirect that preserves the
+network query parameter. The previous v2 handler remains available internally
+for ledger-card generation but is no longer registered as the detail route.
 
 It is organized so it is easy to see:
 - what bronze and serving already carry

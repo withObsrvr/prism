@@ -2,13 +2,10 @@ package viewmodelv2
 
 // Ledger detail v3 view model.
 //
-// This is a prototype surface. Its purpose is to pin down the data contract for
-// the "Prism Ledger Detail v3" design before any of it is wired to live data,
-// so every rendered value carries a Provenance describing which obsrvr-lake
-// source would feed it and whether that source exists today.
-//
-// Fields whose Provenance is unavailable are still rendered with mock values —
-// the page shows the finished design and flags the cost of shipping it.
+// Every rendered value carries a Provenance describing which obsrvr-lake
+// source feeds it and whether that source exists today. Production handlers
+// must render unavailable values explicitly; illustrative values belong only
+// in fixtures and design previews.
 
 // ProvenanceKind classifies how a value is obtained.
 type ProvenanceKind string
@@ -58,7 +55,8 @@ func (p Provenance) Label() string {
 
 // LedgerDetailV3Data is the whole page.
 type LedgerDetailV3Data struct {
-	Network string
+	Network       string
+	CanonicalPath string
 
 	Header   LedgerV3Header
 	Lede     []string // paragraphs, pre-rendered HTML (bold, citations, terms)
@@ -185,6 +183,8 @@ type LedgerV3Meter struct {
 }
 
 type LedgerV3Fees struct {
+	Heading         string
+	Aside           string
 	ClearingLabel   string
 	ClearingValue   string
 	ClearingUnit    string
@@ -246,6 +246,9 @@ type LedgerV3EntryType struct {
 }
 
 type LedgerV3Chain struct {
+	Heading   string
+	Aside     string
+	Intro     string
 	Neighbors []LedgerV3Neighbor
 	Note      string
 	Source    Provenance
