@@ -47,7 +47,10 @@ func (app *Application) Routes() http.Handler {
 
 	// Ledgers
 	mux.HandleFunc("GET /ledger/{sequence}", h.LedgerDetail)
-	mux.HandleFunc("GET /v2/ledger/{sequence}", h.LedgerDetailV2)
+	mux.HandleFunc("GET /v2/ledger/{sequence}", h.LedgerDetailV3)
+	// Preserve bookmarked candidate URLs while consolidating every share,
+	// neighbor and search destination onto the canonical route.
+	mux.HandleFunc("GET /v2/ledger/{sequence}/v3", h.RedirectLedgerDetailV3)
 	mux.HandleFunc("GET /v2/ledger/{sequence}/card.png", h.LedgerCardV2)
 	mux.HandleFunc("GET /v2/ledger/{sequence}/card.svg", h.LedgerCardSVGV2)
 

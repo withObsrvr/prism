@@ -18,6 +18,27 @@ Prism is a Soroban-first block explorer for the Stellar network. It turns raw bl
 
 Success means a non-expert can understand the meaning of a transaction, contract, account, or ledger without needing protocol fluency, while an expert can still inspect the raw evidence and verify every conclusion.
 
+## Core Product Vocabulary
+
+### Semantic bands
+
+Prism refracts dense blockchain evidence into distinct semantic bands—such as capacity, fees, outcomes, activity, composition, and state change—so readers can see the different meanings carried by the same ledger, transaction, or entity.
+
+Semantic bands are the layer between measurements and narrative. They do not replace or obscure the underlying values:
+
+```text
+CPU utilization: 26%      -> capacity pressure: low
+Fees: 172x base           -> fee pressure: very elevated
+Failures: 0 of 23         -> failure state: none
+Soroban calls: 19 of 23   -> contract activity: high
+```
+
+The product and implementation rule is:
+
+> Raw facts are measured. Semantic bands are derived. Interpretations are selected. Claims remain evidence-backed.
+
+This gives the Prism name an architectural meaning: Prism does not invent what enters it; it separates dense evidence into dimensions that are easier to inspect, compare, and understand. The interpretation system is specified in `docs/prism-interpretation-summary-design.md`.
+
 ## Brand Personality
 
 Clear, trustworthy, investigative.

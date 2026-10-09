@@ -131,6 +131,19 @@ type Transaction struct {
 	OperationCount  int    `json:"operation_count"`
 	Successful      bool   `json:"successful"`
 	CreatedAt       string `json:"created_at"`
+	// FeeCharged is what the transaction paid; MaxFee is only what it offered.
+	// Every included transaction clears at the ledger price, so the gap
+	// between them is headroom the sender never had to spend.
+	FeeCharged int64 `json:"fee_charged"`
+	// ResultCode is the canonical Horizon-style code, e.g. tx_BAD_SEQ. It is
+	// what makes failures groupable: several sharing one code point at a
+	// single cause, while unrelated codes point at nothing.
+	ResultCode string `json:"result_code"`
+	// ContractErrorType and ContractErrorCode are present only when the
+	// transaction emitted an ScError, and only for ledgers whose rows are
+	// still in bronze hot — cold's schema predates these columns.
+	ContractErrorType string `json:"contract_error_type"`
+	ContractErrorCode int32  `json:"contract_error_code"`
 }
 
 // TransactionsResponse is the envelope for /bronze/transactions.
@@ -1819,8 +1832,13 @@ type LedgerFees struct {
 	MedianFee      int64       `json:"median_fee"`
 	P90Fee         int64       `json:"p90_fee"`
 	TotalFees      int64       `json:"total_fees"`
-	Histogram      []FeeBucket `json:"histogram,omitempty"`
-	GeneratedAt    string      `json:"generated_at"`
+	// MaxBid is the highest fee any transaction was willing to pay, which is
+	// not what it was charged: Stellar clears every included transaction at
+	// the same price. The gap between the two is headroom the winner never
+	// had to spend, and it is invisible from MaxFee alone.
+	MaxBid      int64       `json:"max_bid"`
+	Histogram   []FeeBucket `json:"histogram,omitempty"`
+	GeneratedAt string      `json:"generated_at"`
 }
 
 type FeeBucket struct {
@@ -1838,7 +1856,22 @@ type LedgerSoroban struct {
 	TotalWriteBytes  int64  `json:"total_write_bytes"`
 	TotalRentCharged int64  `json:"total_rent_charged"`
 	UniqueContracts  int64  `json:"unique_contracts"`
-	GeneratedAt      string `json:"generated_at"`
+	// Declared footprint entry counts. The protocol charges ledger capacity
+	// against what a transaction declares in its footprint, not against the
+	// changes it turns out to make, so these are the numerators a capacity
+	// meter needs. Counting observed changes instead undercounts.
+	TotalReadEntries        int64 `json:"total_read_entries"`
+	TotalWriteEntries       int64 `json:"total_write_entries"`
+	MaxWriteEntriesSingleTx int64 `json:"max_write_entries_single_tx"`
+	// FootprintEntriesAvailable reports whether the three figures above were
+	// measured. Bronze cold predates the columns they come from, so a ledger
+	// answered from cold returns zeros meaning "not recorded" rather than
+	// "declared nothing" — a distinction the numbers cannot carry alone.
+	FootprintEntriesAvailable bool `json:"footprint_entries_available"`
+	TotalEnvelopeBytes      int64 `json:"total_envelope_bytes"`
+	SorobanEnvelopeBytes    int64 `json:"soroban_envelope_bytes"`
+
+	GeneratedAt string `json:"generated_at"`
 }
 
 // LedgerSummary matches the older compact /silver/ledger/{seq}/summary shape.

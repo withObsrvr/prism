@@ -105,7 +105,7 @@ func (h *Handlers) TxV2SidebarFragment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := pagesv2.TxReceiptSidebarFragment(*res.Data).Render(r.Context(), w); err != nil {
+	if err := pagesv2.TxReceiptSidebarFragment(*res.Data, networkFromRequest(r)).Render(r.Context(), w); err != nil {
 		h.renderFragmentError(w, r, "Could not load transaction sidebar", err)
 	}
 }

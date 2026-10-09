@@ -35,6 +35,14 @@ func init() {
 	// Global flags available to all subcommands.
 	rootCmd.PersistentFlags().String("log-level", "info", "log level (debug, info, warn, error)")
 	viper.BindPFlag("log_level", rootCmd.PersistentFlags().Lookup("log-level"))
+
+	// Jev remains disabled unless a caller explicitly enables it. The
+	// development analyze command may still be invoked directly to exercise the
+	// integration without changing server behavior.
+	viper.SetDefault("jev.enabled", false)
+	viper.SetDefault("jev.base_url", "https://api.typesafe.ai")
+	viper.SetDefault("jev.model", "jev-latest")
+	viper.SetDefault("jev.timeout", "2s")
 }
 
 func initConfig() {

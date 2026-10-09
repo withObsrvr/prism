@@ -7411,6 +7411,61 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .px-cn-tag.px-ga-tag-acc { background: #eef4e3; color: #3a5d24; border-color: #d2dfb8; }
 .px-cn-tag.px-ga-tag-thresh { background: #f7f1de; color: #6a5520; border-color: #e6dab2; }
+/* Deliberately neutral, not red. A slow gateway is not the account's fault and
+   not an error the reader can act on beyond retrying; styling it as a failure
+   would imply something is wrong with the address they typed. */
+.px-cn-tag.px-ga-tag-unknown {
+  background: var(--ph-panel);
+  color: var(--ph-text-2);
+  border-color: var(--ph-border-strong);
+}
+
+.px-ga-unavail {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 36px 28px;
+  text-align: center;
+}
+.px-ga-unavail-body { max-width: 52ch; }
+.px-ga-unavail h2 {
+  margin: 0 0 10px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ph-text);
+}
+.px-ga-unavail p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ph-text-2);
+}
+.px-ga-unavail p b { color: var(--ph-text); font-weight: 600; }
+.px-ga-unavail-sub { font-size: 13px !important; color: var(--ph-text-3) !important; }
+.px-ga-unavail-card p {
+  margin: 6px 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ph-text-2);
+}
+
+.px-ga-retry {
+  margin-top: 14px;
+  padding: 8px 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ph-on-ink);
+  background: var(--ph-text);
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.px-ga-retry:hover { background: var(--ph-ink-hover); }
+.px-ga-retry:focus-visible { outline: 2px solid var(--ph-cyan); outline-offset: 2px; }
+.px-ga-retry.htmx-request { opacity: 0.6; pointer-events: none; }
 .px-ga-verified { background: #eef4e3 !important; color: #3a5d24 !important; }
 .px-ga-muxed {
   font-size: 11.5px;

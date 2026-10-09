@@ -64,7 +64,7 @@ func (h *Handlers) GAccountDetailMainFragment(w http.ResponseWriter, r *http.Req
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 	data := h.accountLiveOrFallback(r, network, id)
-	if err := pagesv2.GAccountDetailMain(data).Render(r.Context(), w); err != nil {
+	if err := pagesv2.GAccountDetailMain(data, network).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render v2 account main fragment", "account", id, "error", err)
 		h.renderFragmentError(w, r, "Could not load account sections", err)
 	}
@@ -74,23 +74,67 @@ func (h *Handlers) GAccountDetailRailFragment(w http.ResponseWriter, r *http.Req
 	id := r.PathValue("id")
 	network := networkFromRequest(r)
 	data := h.accountLiveOrFallback(r, network, id)
-	if err := pagesv2.GAccountDetailRail(data).Render(r.Context(), w); err != nil {
+	if err := pagesv2.GAccountDetailRail(data, network).Render(r.Context(), w); err != nil {
 		h.Logger.Error("render v2 account rail fragment", "account", id, "error", err)
 		h.renderFragmentError(w, r, "Could not load account facts", err)
 	}
 }
 
+const (
+	// accountFragmentBudget is the ceiling for one account fragment. It is
+	// generous because the page shell has already rendered by the time these
+	// calls run: the reader is looking at their address and a skeleton, not a
+	// blank screen, so a slow answer costs less than a confident wrong one.
+	// This exists to stop a hung upstream pinning a connection, not to make the
+	// page feel fast; the per-dependency bounds below do the real work.
+	accountFragmentBudget = 12 * time.Second
+
+	// Per-dependency bounds. Every one of these used to share a single 3.5s
+	// deadline, which meant they were not really separate budgets at all but
+	// sequential draws on one: an overview that took 3.4s left balances 100ms
+	// and signers nothing, and the page then reported that starvation as
+	// "0 trustlines, 0 signers" rather than as a failure to ask.
+	accountOverviewTimeout   = 6 * time.Second
+	accountBalancesTimeout   = 2 * time.Second
+	accountActivityTimeout   = 5 * time.Second
+	accountSignersTimeout    = 2 * time.Second
+	accountWalletInfoTimeout = 1500 * time.Millisecond
+
+	// accountWalletInfoLookupCap bounds the smart-wallet probe issued per
+	// Soroban operation in the activity list. That call is serial and inside a
+	// loop over the recent-operations window, so without a cap the page's cost
+	// is set by how Soroban-heavy the account is. Operations past the cap keep
+	// their generic badge.
+	accountWalletInfoLookupCap = 8
+)
+
+// boundedCall gives one upstream dependency its own deadline. It stays a child
+// of the fragment budget so client disconnects still propagate, but carries its
+// own timeout so a slow predecessor cannot hand it a context that is already
+// spent. Never derive one of these from a context that has already failed; see
+// the WithoutCancel note in buildAccountData for why.
+func boundedCall(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, d)
+}
+
 func (h *Handlers) accountLiveOrFallback(r *http.Request, network, id string) pages.AccountData {
-	if h.useLiveData(r) {
-		ctx, cancel := context.WithTimeout(r.Context(), 3500*time.Millisecond)
-		defer cancel()
-		if live, err := h.buildAccountData(r.WithContext(ctx), network, id); err == nil {
-			return live
-		} else {
-			h.Logger.Warn("live v2 account fragment data failed, rendering safe fallback", "account", id, "error", err)
-		}
+	if !h.useLiveData(r) {
+		return accountShellData(id, false)
 	}
-	return accountShellData(id, false)
+	ctx, cancel := context.WithTimeout(r.Context(), accountFragmentBudget)
+	defer cancel()
+	live, err := h.buildAccountData(r.WithContext(ctx), network, id)
+	if err == nil {
+		return live
+	}
+	h.Logger.Warn("live v2 account data failed, rendering unavailable state", "account", id, "error", err)
+	// Not accountShellData: that describes an account we looked at and found
+	// empty. This is an account we could not look at. Rendering the former for
+	// the latter is what showed a funded wallet as "Active, 0 trustlines".
+	shell := accountShellData(id, false)
+	shell.Unavailable = true
+	shell.UnavailableReason = err.Error()
+	return shell
 }
 
 func accountShellData(id string, loading bool) pages.AccountData {
@@ -99,12 +143,14 @@ func accountShellData(id string, loading bool) pages.AccountData {
 		short = id
 	}
 	return pages.AccountData{
-		Address:        id,
-		ShortAddress:   short,
-		TotalValue:     "—",
-		XLMBalance:     "— XLM",
-		Trustlines:     "0",
-		ActiveOffers:   "0",
+		Address:      id,
+		ShortAddress: short,
+		TotalValue:   "—",
+		XLMBalance:   "— XLM",
+		// Em dash, not "0". Nothing here has been counted yet, and "0
+		// trustlines" is a measurement claim this struct has no basis for.
+		Trustlines:     "—",
+		ActiveOffers:   "—",
 		Subentries:     "—",
 		SequenceNumber: "unknown",
 		IsFunded:       false,
@@ -170,25 +216,41 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 	}
 	controlledSmartAccounts := h.startSmartAccountControlsLookup(ctx, network, accountID)
 
-	overview, err := h.Gateway.GetAccountOverview(ctx, network, accountID)
+	ovCtx, ovCancel := boundedCall(ctx, accountOverviewTimeout)
+	overview, err := h.Gateway.GetAccountOverview(ovCtx, network, accountID)
+	ovCancel()
 	if err != nil {
-		if partial, partialErr := h.buildPartialAccountData(ctx, network, accountID); partialErr == nil {
+		// Detach from ctx before falling back. The usual reason the overview
+		// failed is that ctx's deadline expired, and a child of an expired
+		// context is born cancelled: this fallback used to die in ~19µs
+		// without issuing a request, so it had never once succeeded. Dropping
+		// cancellation also drops client-disconnect propagation, which is why
+		// buildPartialAccountData imposes its own bounded timeout.
+		fallbackCtx := context.WithoutCancel(ctx)
+		if partial, partialErr := h.buildPartialAccountData(fallbackCtx, network, accountID); partialErr == nil {
 			h.Logger.Warn("account overview unavailable, rendering partial account data", "account", accountID, "error", err)
 			return partial, nil
+		} else {
+			h.Logger.Warn("account balances fallback also failed", "account", accountID, "error", partialErr)
 		}
 		return pages.AccountData{}, fmt.Errorf("fetching account overview: %w", err)
 	}
 
 	acct := overview.Account
 	if strings.HasPrefix(accountID, "C") {
-		if walletInfo, err := h.Gateway.GetSmartWalletInfo(ctx, network, accountID); err == nil && walletInfo != nil && walletInfo.IsSmartWallet {
+		wiCtx, wiCancel := boundedCall(ctx, accountWalletInfoTimeout)
+		walletInfo, wiErr := h.Gateway.GetSmartWalletInfo(wiCtx, network, accountID)
+		wiCancel()
+		if wiErr == nil && walletInfo != nil && walletInfo.IsSmartWallet {
 			acct.AccountID = accountID
 		}
 	}
 
 	// Build balances from the overview (try dedicated endpoint too).
 	var balances []pages.AccountBalance
-	balResp, balErr := h.Gateway.GetAccountBalances(ctx, network, accountID)
+	balCtx, balCancel := boundedCall(ctx, accountBalancesTimeout)
+	balResp, balErr := h.Gateway.GetAccountBalances(balCtx, network, accountID)
+	balCancel()
 	if balErr == nil && balResp != nil {
 		for _, b := range balResp.Balances {
 			assetType := "Classic"
@@ -216,11 +278,12 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 	// cold history is sparse/deep the cold scan is slow (no per-account index yet). Cap the call
 	// so the page falls back to fast hot-only activity instead of hanging when that happens.
 	var activities []pages.AccountActivity
-	fctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	fctx, cancel := boundedCall(ctx, accountActivityTimeout)
 	defer cancel()
 	if txs, ferr := h.Gateway.GetAccountTransactions(fctx, network, accountID, 200, "desc", ""); ferr == nil && txs != nil && len(txs.Transactions) > 0 {
 		activities = buildFederatedActivities(txs.Transactions, accountID)
 	} else {
+		walletLookups := 0
 		for _, op := range overview.RecentOperations {
 			badge := op.TypeName
 			badgeColor := "gray"
@@ -249,15 +312,21 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 				summary += fmt.Sprintf(" %s", op.Amount)
 			}
 			if op.IsSorobanOp && op.SorobanContract != "" {
-				if info, err := h.Gateway.GetSmartWalletInfo(ctx, network, op.SorobanContract); err == nil && info != nil && info.IsSmartWallet {
-					badge = "Wallet"
-					badgeColor = "violet"
-					label := walletTypeLabel(firstNonEmpty(info.WalletType, info.Implementation))
-					fn := op.SorobanFunction
-					if fn == "" {
-						fn = "execute"
+				if walletLookups < accountWalletInfoLookupCap {
+					walletLookups++
+					opCtx, opCancel := boundedCall(ctx, accountWalletInfoTimeout)
+					info, infoErr := h.Gateway.GetSmartWalletInfo(opCtx, network, op.SorobanContract)
+					opCancel()
+					if infoErr == nil && info != nil && info.IsSmartWallet {
+						badge = "Wallet"
+						badgeColor = "violet"
+						label := walletTypeLabel(firstNonEmpty(info.WalletType, info.Implementation))
+						fn := op.SorobanFunction
+						if fn == "" {
+							fn = "execute"
+						}
+						summary = fmt.Sprintf("%s wallet %s() via %s", label, fn, gateway.ShortAddress(op.SorobanContract))
 					}
-					summary = fmt.Sprintf("%s wallet %s() via %s", label, fn, gateway.ShortAddress(op.SorobanContract))
 				}
 			}
 
@@ -275,7 +344,9 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 	// Build signers.
 	var signers []pages.AccountSigner
 	var thresholds []pages.AccountThreshold
-	sigResp, sigErr := h.Gateway.GetAccountSigners(ctx, network, accountID)
+	sigCtx, sigCancel := boundedCall(ctx, accountSignersTimeout)
+	sigResp, sigErr := h.Gateway.GetAccountSigners(sigCtx, network, accountID)
+	sigCancel()
 	if sigErr == nil && sigResp != nil {
 		for _, s := range sigResp.Signers {
 			signers = append(signers, pages.AccountSigner{
@@ -300,6 +371,15 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		}
 	}
 
+	// sigErr means we never got an answer about who controls this account.
+	// Reporting len(signers) there would render "0 signers" and let the
+	// template fall back to the protocol-default 1/2/3 thresholds, which is the
+	// same fabrication the Partial path was fixed for.
+	signerCount := fmt.Sprintf("%d", len(signers))
+	if sigErr != nil {
+		signerCount = "—"
+	}
+
 	data := pages.AccountData{
 		Address:        accountID,
 		ShortAddress:   gateway.ShortAddress(accountID),
@@ -310,14 +390,18 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 		Subentries:     fmt.Sprintf("%d", acct.NumSubentries),
 		SequenceNumber: acct.SequenceNumber,
 		IsFunded:       true,
-		SignerCount:    fmt.Sprintf("%d", len(signers)),
+		SignerCount:    signerCount,
+		SignersUnknown: sigErr != nil,
 		Balances:       balances,
 		Activities:     activities,
 		Signers:        signers,
 		Thresholds:     thresholds,
 	}
 	if strings.HasPrefix(accountID, "C") {
-		if walletInfo, err := h.Gateway.GetSmartWalletInfo(ctx, network, accountID); err == nil && walletInfo != nil && walletInfo.IsSmartWallet {
+		wiCtx, wiCancel := boundedCall(ctx, accountWalletInfoTimeout)
+		walletInfo, wiErr := h.Gateway.GetSmartWalletInfo(wiCtx, network, accountID)
+		wiCancel()
+		if wiErr == nil && walletInfo != nil && walletInfo.IsSmartWallet {
 			data.IsSmartWallet = true
 		}
 	}
@@ -341,7 +425,7 @@ func (h *Handlers) buildAccountData(r *http.Request, network, accountID string) 
 
 func (h *Handlers) buildPartialAccountData(ctx context.Context, network, accountID string) (pages.AccountData, error) {
 	controlledSmartAccounts := h.startSmartAccountControlsLookup(ctx, network, accountID)
-	balCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	balCtx, cancel := context.WithTimeout(ctx, accountBalancesTimeout)
 	defer cancel()
 	balResp, err := h.Gateway.GetAccountBalances(balCtx, network, accountID)
 	if err != nil {
@@ -352,8 +436,11 @@ func (h *Handlers) buildPartialAccountData(ctx context.Context, network, account
 	}
 
 	data := accountShellData(accountID, false)
+	// Balances answered; the account aggregate did not. Signers, thresholds,
+	// sequence, offers and history are unknown, and Partial is what stops the
+	// renderer defaulting them to 1/2/3, "Active" and 0.
+	data.Partial = true
 	data.IsFunded = len(balResp.Balances) > 0
-	data.Trustlines = "0"
 
 	trustlineCount := 0
 	for _, b := range balResp.Balances {

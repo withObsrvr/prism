@@ -152,7 +152,7 @@ func TestBuildLedgerDetailDataClassifiesTxsFromOperations(t *testing.T) {
 	)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/ledger/3630463/full" {
+		if r.URL.Path != "/lake/v1/testnet/api/v1/silver/ledgers/3630463/full" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -232,7 +232,7 @@ func TestBuildLedgerDetailDataRefetchesIncompleteCompositeTransactions(t *testin
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/lake/v1/testnet/api/v1/silver/ledger/1073104/full":
+		case "/lake/v1/testnet/api/v1/silver/ledgers/1073104/full":
 			_, _ = io.WriteString(w, `{
 				"ledger_sequence":1073104,
 				"ledger":{

@@ -185,7 +185,7 @@ func TestTransactionSidebarKeepsSourceDistinctFromEffectiveContract(t *testing.T
 	}
 
 	var out strings.Builder
-	if err := TxReceiptSidebarFragment(data).Render(context.Background(), &out); err != nil {
+	if err := TxReceiptSidebarFragment(data, "mainnet").Render(context.Background(), &out); err != nil {
 		t.Fatalf("render sidebar: %v", err)
 	}
 	html := out.String()
@@ -211,7 +211,7 @@ func TestTransactionSidebarOmitsContractCardWithoutContractEvidence(t *testing.T
 			return TransactionReceipt(data, "testnet").Render(context.Background(), out)
 		}},
 		"sidebar fragment": {render: func(data legacy.TxReceiptData, out *strings.Builder) error {
-			return TxReceiptSidebarFragment(data).Render(context.Background(), out)
+			return TxReceiptSidebarFragment(data, "mainnet").Render(context.Background(), out)
 		}},
 	}
 
@@ -546,7 +546,7 @@ func TestFeeRendersWithASingleUnit(t *testing.T) {
 		FeePaidXLM: "0.0000300 XLM", FeePaid: "300",
 	}
 	var out strings.Builder
-	if err := TxReceiptSidebarFragment(data).Render(context.Background(), &out); err != nil {
+	if err := TxReceiptSidebarFragment(data, "mainnet").Render(context.Background(), &out); err != nil {
 		t.Fatalf("render sidebar: %v", err)
 	}
 	html := out.String()
@@ -560,5 +560,19 @@ func TestFeeRendersWithASingleUnit(t *testing.T) {
 	// nobody. It belongs only in the raw XDR envelope.
 	if strings.Contains(html, "300 stroops") {
 		t.Errorf("sidebar still shows the fee in a second unit: %s", html)
+	}
+}
+
+func TestTransactionSelfLinksPreserveSelectedNetwork(t *testing.T) {
+	data := legacy.TxReceiptData{Hash: "abc", ShortHash: "abc", Ledger: "123", LedgerRaw: "123"}
+	var out strings.Builder
+	if err := TxReceiptSidebarFragment(data, "testnet").Render(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	html := out.String()
+	for _, href := range []string{`href="/v2/tx/abc?network=testnet"`, `href="/v2/ledger/123?network=testnet"`} {
+		if !strings.Contains(html, href) {
+			t.Errorf("sidebar missing network-aware link %s: %s", href, html)
+		}
 	}
 }

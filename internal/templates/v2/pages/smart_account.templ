@@ -12,7 +12,7 @@ import (
 
 templ SmartAccount(data legacy.SmartAccountData, network string) {
 	@layoutsv2.LedgerBase(data.Name + " — Prism") {
-		@componentsv2.DetailHeader(data.ContractID, network)
+		@componentsv2.DetailHeader("contracts", data.ContractID, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Smart accounts"}, {Label: saShort(data.ContractID), Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner">
 			<main class="px-tx-main">

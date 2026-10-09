@@ -25,3 +25,6 @@ Thumbs.db
 prism.local.yaml
 .env
 docs/demo/
+
+.secrets
+.direnv/
