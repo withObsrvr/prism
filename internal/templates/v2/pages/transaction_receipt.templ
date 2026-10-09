@@ -14,7 +14,7 @@ import (
 
 templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 	@layoutsv2.LedgerBaseMeta("Transaction " + data.ShortHash + " — Prism", txSocialMeta(data, network)) {
-		@componentsv2.DetailHeader(data.ShortHash, network)
+		@componentsv2.DetailHeader("explore", data.ShortHash, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledger " + data.Ledger, Href: "/v2/ledger/" + data.LedgerRaw}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			@txHeroHeader(txv2.BuildTxHero(data), data)
@@ -35,7 +35,7 @@ templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 
 templ TransactionReceiptShell(data legacy.TxReceiptData, network string) {
 	@layoutsv2.LedgerBaseMeta("Transaction " + data.ShortHash + " — Prism", txSocialMeta(data, network)) {
-		@componentsv2.DetailHeader(data.ShortHash, network)
+		@componentsv2.DetailHeader("explore", data.ShortHash, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			<div hx-get={ templ.SafeURL(txFragmentHref(data.Hash, "hero", network)) } hx-trigger="load" hx-swap="outerHTML">

@@ -20,7 +20,7 @@ type gaSorobanAuth struct { Ago, Contract, Address, Fn, Args, Outcome, Error str
 
 templ GAccountDetail(data legacy.AccountData, network string) {
 	@layoutsv2.LedgerBase("Account " + data.ShortAddress + " — Prism") {
-		@componentsv2.DetailHeader(data.Address, network)
+		@componentsv2.DetailHeader("explore", data.Address, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Accounts"}, {Label: gaAccountName(data), Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner">
 			if data.Loading {

@@ -13,7 +13,7 @@ import (
 
 templ ContractDetail(data legacy.ContractDetailData, network string) {
 	@layoutsv2.LedgerBase(data.Name + " — Prism") {
-		@componentsv2.DetailHeader(data.Address, network)
+		@componentsv2.DetailHeader("contracts", data.Address, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Contracts", Href: "/contracts"}, {Label: cnShort(data.Address), Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			@contractIdentity(data)

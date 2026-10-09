@@ -1,0 +1,52 @@
+/* Shared Prism application chrome. Page themes may style their own content,
+   but the global header must remain visually and structurally identical. */
+.ph-top {
+  background: color-mix(in srgb, var(--ph-surf) 94%, transparent);
+  border-bottom: 1px solid var(--ph-border);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.ph-top-inner {
+  width: 100%;
+  max-width: 1280px;
+  min-height: 64px;
+  height: auto;
+  margin: 0 auto;
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.ph-brand-prism { min-width: 74px; }
+.ph-brand-lockup { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; line-height: 1; }
+.ph-prism-band { display: flex; width: 54px; height: 4px; overflow: hidden; border-radius: 1px; }
+.ph-prism-band-seg { min-width: 0; }
+.ph-prism-band-seg.teal { background: #1fa098; flex: 68 0 0; }
+.ph-prism-band-seg.violet { background: #9b7bd8; flex: 86 0 0; }
+.ph-prism-band-seg.coral { background: #e27160; flex: 39 0 0; }
+.ph-prism-band-seg.olive { background: #a89770; flex: 47 0 0; }
+.ph-prism-band-seg.blue { background: #3f8fbf; flex: 23 0 0; }
+.ph-name { font-family: var(--ph-ff-serif); font-size: 21px; font-weight: 600; letter-spacing: -.025em; line-height: 1; }
+
+.ph-nav { display: flex; align-items: center; gap: 22px; margin-left: 0; }
+.ph-nav a { padding: 5px 0; border-bottom: 2px solid transparent; color: var(--ph-text-3); font-size: 13px; font-weight: 500; }
+.ph-nav a.active, .ph-nav a:hover { color: var(--ph-text); border-bottom-color: var(--ph-text); }
+
+.ph-right { min-width: 0; margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.ph-detail-search { width: min(30vw, 360px); }
+
+@media (max-width: 1040px) {
+  .ph-detail-search { display: none; }
+}
+
+@media (max-width: 820px) {
+  .ph-top-inner { padding: 11px 16px; gap: 10px; }
+  .ph-nav { display: none; }
+  .ph-right { order: 2; width: auto; margin-left: auto; flex: 0 0 auto; }
+  .ph-mobile-nav { display: block; order: 3; margin-left: 0; flex: 0 0 auto; }
+  .ph-heartbeat { display: none; }
+}

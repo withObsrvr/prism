@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	componentsv2 "github.com/withObsrvr/prism/internal/templates/v2/components"
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
@@ -26,12 +27,15 @@ templ LedgerDetailV3(data vmv2.LedgerDetailV3Data) {
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
 			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 			<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet"/>
+			<link rel="stylesheet" href="/static/css/v2-unified.css"/>
 			<link rel="stylesheet" href="/static/css/proto/prism-contract.css"/>
 			<link rel="stylesheet" href="/static/css/proto/prism-explorers.css"/>
 			<link rel="stylesheet" href="/static/css/proto/prism-ledger.css"/>
+			<link rel="stylesheet" href="/static/css/v2-chrome.css"/>
 		</head>
 		<body>
-			@ledgerV3Chrome(data)
+			@componentsv2.DetailHeader("explore", data.Header.SequenceRaw, data.Network)
+			@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Prism", Href: "/v2/home"}, {Label: "Ledgers", Href: "/v2/explore"}, {Label: data.Header.Sequence, Mono: true}})
 			@ledgerV3Masthead(data)
 			@ledgerV3Subnav(data)
 			<div class="lg-pane" id="lg-overview">
@@ -63,37 +67,6 @@ templ LedgerDetailV3(data vmv2.LedgerDetailV3Data) {
 			@ledgerV3Script()
 		</body>
 	</html>
-}
-
-templ ledgerV3Chrome(data vmv2.LedgerDetailV3Data) {
-	<header class="ph-top">
-		<div class="ph-top-inner">
-			<a class="ph-brand" href="/v2/home">
-				<span class="ph-mark">
-					<svg width="22" height="22" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#15151A"></rect><g transform="translate(10 5)"><rect width="12" height="5.69" fill="#1FA098"></rect><rect y="5.69" width="12" height="7.20" fill="#9B7BD8"></rect><rect y="12.89" width="12" height="3.27" fill="#E27160"></rect><rect y="16.16" width="12" height="3.93" fill="#A89770"></rect><rect y="20.09" width="12" height="1.91" fill="#3F8FBF"></rect></g></svg>
-				</span>
-				<span class="ph-name">Prism</span>
-			</a>
-			<nav class="ph-nav">
-				<a class="active" href="/v2/home">Ledgers</a>
-				<a href="/v2/explore">Transactions</a>
-				<a href="/v2/contracts">Contracts</a>
-				<a href="/v2/accounts">Accounts</a>
-				<a href="/v2/ask">Ask</a>
-			</nav>
-			<div class="px-search">
-				<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"></circle><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
-				<input value={ data.Header.SequenceRaw } aria-label="Search"/>
-				<span class="px-kbd">⌘K</span>
-			</div>
-			<span class="ph-net"><i class="dot"></i>{ ledgerV3NetworkLabel(data.Network) }</span>
-		</div>
-	</header>
-	<div class="px-crumbs">
-		<div class="px-crumbs-inner">
-			<a href="/v2/home">Prism</a><span>/</span><span>Ledgers</span><span>/</span><span>{ data.Header.Sequence }</span>
-		</div>
-	</div>
 }
 
 templ ledgerV3Masthead(data vmv2.LedgerDetailV3Data) {

@@ -12,7 +12,7 @@ import (
 
 templ LedgerDetail(data legacy.LedgerDetailData, network string) {
 	@layoutsv2.LedgerBaseMeta(fmt.Sprintf("Ledger %s, Prism", data.Sequence), ledgerSocialMeta(data, network)) {
-		@componentsv2.DetailHeader(data.SequenceRaw, network)
+		@componentsv2.DetailHeader("explore", data.SequenceRaw, network)
 		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledgers", Href: "/v2/home/ledger"}, {Label: data.Sequence, Mono: true}})
 		<div class="px-lg-nav">
 			<a class="px-lg-nav-btn" href={ templ.SafeURL("/v2/ledger/" + data.PrevSequenceRaw) }><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2L3 6l4 4"></path></svg><span>Previous</span><span class="mono num">{ data.PrevSequence }</span></a>
