@@ -1,5 +1,7 @@
 package viewmodelv2
 
+import "github.com/withObsrvr/prism/internal/summary"
+
 // Ledger detail v3 view model.
 //
 // Every rendered value carries a Provenance describing which obsrvr-lake
@@ -55,8 +57,10 @@ func (p Provenance) Label() string {
 
 // LedgerDetailV3Data is the whole page.
 type LedgerDetailV3Data struct {
-	Network       string
-	CanonicalPath string
+	Network         string
+	CanonicalPath   string
+	Summary         summary.LedgerSummaryEnvelope
+	RenderedSummary summary.RenderedLedgerSummary
 
 	Header   LedgerV3Header
 	Lede     []string // paragraphs, pre-rendered HTML (bold, citations, terms)

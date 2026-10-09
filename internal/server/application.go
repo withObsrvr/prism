@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/jev"
 )
 
 // Config holds all server configuration, populated by viper.
@@ -14,20 +15,25 @@ type Config struct {
 	Port       int
 	DataSource string // "mock", "gateway", or "auto"
 	Gateway    gateway.Config
+	Jev        jev.Config
 }
 
 // Application holds all dependencies for the HTTP handlers.
 // This is the Alex Edwards pattern from "Let's Go" — all shared
 // dependencies live here and are passed to handlers via methods.
 type Application struct {
-	Logger  *slog.Logger
-	Config  Config
-	Gateway *gateway.Client
+	Logger               *slog.Logger
+	Config               Config
+	Gateway              *gateway.Client
+	LedgerSelector       jev.LedgerSelector
+	LedgerShadowRecorder *jev.JSONLRecorder
 }
 
 // New creates a new Application with all dependencies wired up.
 func New(logger *slog.Logger, cfg Config, ctx context.Context) (*Application, error) {
 	var gw *gateway.Client
+	var ledgerSelector jev.LedgerSelector
+	var ledgerShadowRecorder *jev.JSONLRecorder
 
 	switch cfg.DataSource {
 	case "mock":
@@ -51,11 +57,32 @@ func New(logger *slog.Logger, cfg Config, ctx context.Context) (*Application, er
 			logger.Info("no gateway API key configured, using mock data")
 		}
 	}
+	if cfg.Jev.Enabled {
+		if cfg.Jev.APIKey == "" {
+			return nil, fmt.Errorf("PRISM_JEV_ENABLED=true requires PRISM_JEV_API_KEY to be set")
+		}
+		client, err := jev.New(cfg.Jev)
+		if err != nil {
+			return nil, fmt.Errorf("initialize Jev ledger shadow selector: %w", err)
+		}
+		ledgerSelector = client
+		logger.Info("Jev ledger shadow selector initialized", "identity", client.LedgerSelectorIdentity())
+	}
+	if cfg.Jev.ShadowLogPath != "" {
+		recorder, err := jev.NewJSONLRecorder(cfg.Jev.ShadowLogPath)
+		if err != nil {
+			return nil, fmt.Errorf("initialize Jev shadow recorder: %w", err)
+		}
+		ledgerShadowRecorder = recorder
+		logger.Info("Jev ledger shadow recorder initialized", "path", cfg.Jev.ShadowLogPath)
+	}
 
 	app := &Application{
-		Logger:  logger,
-		Config:  cfg,
-		Gateway: gw,
+		Logger:               logger,
+		Config:               cfg,
+		Gateway:              gw,
+		LedgerSelector:       ledgerSelector,
+		LedgerShadowRecorder: ledgerShadowRecorder,
 	}
 
 	return app, nil
@@ -65,5 +92,8 @@ func New(logger *slog.Logger, cfg Config, ctx context.Context) (*Application, er
 func (app *Application) Shutdown() {
 	if app.Gateway != nil {
 		app.Gateway.Stop()
+	}
+	if app.LedgerShadowRecorder != nil {
+		_ = app.LedgerShadowRecorder.Close()
 	}
 }

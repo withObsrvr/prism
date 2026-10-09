@@ -149,9 +149,9 @@ prism serve --port 8080 --network testnet
 
 ### Experimental Jev client
 
-Prism includes an isolated TypeSafe Jev client and versioned Ask routing
-registry. It does not change web behavior. With `PRISM_JEV_API_KEY` loaded,
-exercise it from the CLI:
+Prism includes an isolated TypeSafe Jev client, versioned Ask routing registry,
+and Ledger v3 shadow selector. With `PRISM_JEV_API_KEY` loaded, exercise Ask
+routing from the CLI:
 
 ```bash
 prism jev analyze "Is Soroswap failing or just quiet?"
@@ -161,6 +161,29 @@ The repository `.envrc` loads `TYPESAFE_API_KEY` from the optional central SOPS
 file at `secrets/prism/dev.enc.yaml` and maps it to `PRISM_JEV_API_KEY`. The
 command prints typed choices, probabilities, confidence, model identity, and
 token usage; it never prints the API key.
+
+To collect ledger-summary shadow decisions:
+
+```bash
+PRISM_JEV_ENABLED=true \
+PRISM_JEV_SHADOW_LOG_PATH=data/jev-ledger-shadow.jsonl \
+prism serve
+```
+
+Jev receives semantic bands and eligible interpretation IDs only. Its validated
+distribution is cached, logged, and disclosed in Ledger v3 provenance, but the
+deterministic interpretation continues to control the rendered page.
+
+Generate an offline evaluation report with:
+
+```bash
+prism jev evaluate-ledgers data/jev-ledger-shadow.jsonl
+```
+
+The report deduplicates identical versioned ledger evaluations and summarizes
+agreement, confidence bands, disagreement pairs, latency, token use, failures,
+and a review queue. Reviewers may add `preferred_lead` and `reviewer_note` to a
+copied JSONL corpus to compare human labels with both selectors.
 
 ## Design System
 

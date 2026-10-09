@@ -603,6 +603,56 @@ The pilot is ready for guarded traffic when:
 - model and question-registry versions are observable;
 - no blockchain conclusion is produced without Gateway evidence.
 
+## Ledger-summary shadow playground fixture
+
+Ledger v3 uses `prism_ledger_summary_selector_v1` only after Go has calculated
+facts, metrics, bands, and eligible interpretations. To exercise the same
+decision in the TypeSafe playground, use this state:
+
+```json
+{
+  "surface": "ledger_summary",
+  "bands": {
+    "evidence": "complete",
+    "capacity.overall": "healthy",
+    "fees.overall": "elevated",
+    "outcomes": "none",
+    "activity": "busy",
+    "composition": "soroban_heavy",
+    "state_change.volume": "typical"
+  },
+  "eligible_ids": [
+    "healthy_capacity_with_elevated_fees",
+    "elevated_fees",
+    "soroban_heavy",
+    "all_transactions_succeeded",
+    "healthy_capacity"
+  ]
+}
+```
+
+Use this questions payload:
+
+```json
+{
+  "lead_interpretation": {
+    "type": "choice",
+    "instructions": "Which eligible interpretation should lead a concise Prism ledger summary? Prefer operationally important and unusual conditions represented in `bands`. Choose only from the supplied criteria. Do not perform arithmetic, infer a cause, or use information outside this state.",
+    "criteria": {
+      "healthy_capacity_with_elevated_fees": "Measured resources retained headroom while inclusion fees were elevated.",
+      "elevated_fees": "The measured inclusion fee was elevated relative to the ledger base fee.",
+      "soroban_heavy": "Soroban transactions formed a large share of included transactions.",
+      "all_transactions_succeeded": "Every included transaction in the complete evidence set succeeded.",
+      "healthy_capacity": "Every applicable measured resource retained substantial headroom."
+    }
+  }
+}
+```
+
+The playground choice is an editorial preference only. Prism independently
+checks that the choice and complete probability distribution contain exactly
+these eligible IDs, and shadow mode never applies the result to the page.
+
 ## References
 
 - TypeSafe introduction: https://docs.typesafe.ai/introduction

@@ -130,3 +130,10 @@
 .lg-gapbar{display:flex;align-items:flex-start;gap:11px;margin:0 0 22px;padding:13px 16px;border:1px solid rgba(168,50,42,.34);border-left:3px solid var(--ph-red);border-radius:8px;background:rgba(168,50,42,.05);font-size:13px;line-height:1.55;color:var(--ph-text-2)}
 .lg-gapbar b{color:var(--ph-text);font-weight:600}
 .lg-gapbar code{font-family:var(--ph-ff-mono);font-size:11.5px;background:var(--ph-panel);padding:1px 5px;border-radius:3px;color:var(--ph-text)}
+.lg-summary-support{font-size:15px;color:var(--ph-text-2)}
+.lg-summary-caveats{margin-top:18px;padding:13px 15px;border-left:3px solid var(--ph-amber);background:color-mix(in srgb,var(--ph-amber) 8%,transparent);font-family:var(--ph-ff-sans);font-size:12.5px;color:var(--ph-text-2)}
+.lg-summary-caveats strong{display:block;margin-bottom:5px;color:var(--ph-text);font-weight:600}
+.lg-summary-caveats ul{margin:0;padding-left:18px}.lg-summary-caveats li+li{margin-top:3px}
+.lg-summary-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;font-family:var(--ph-ff-sans);font-size:12.5px}
+.lg-summary-actions>span{font-family:var(--ph-ff-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ph-text-3)}
+.lg-summary-actions a{color:var(--ph-accent-ink);font-weight:600}.lg-summary-actions a:hover{text-decoration:underline}

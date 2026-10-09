@@ -93,6 +93,84 @@ func (c *Client) AnalyzeQuery(ctx context.Context, query string) (Analysis, erro
 	return buildAnalysis(response)
 }
 
+func (c *Client) LedgerSelectorIdentity() string {
+	return LedgerSelectorRegistryVersion + ":" + c.model
+}
+
+// SelectLedgerSummary asks Jev to prioritize one already-eligible
+// interpretation. The request contains semantic bands and closed choices, not
+// ledger facts or prose that Jev could reinterpret.
+func (c *Client) SelectLedgerSummary(ctx context.Context, request LedgerSelectionRequest) (LedgerSelection, error) {
+	if len(request.Candidates) < 2 {
+		return LedgerSelection{}, errors.New("jev: ledger selection requires at least two candidates")
+	}
+	criteria := make(map[string]string, len(request.Candidates))
+	allowed := make(map[string]struct{}, len(request.Candidates))
+	eligible := make([]string, 0, len(request.Candidates))
+	for _, candidate := range request.Candidates {
+		id := strings.TrimSpace(candidate.ID)
+		if id == "" || strings.TrimSpace(candidate.Description) == "" {
+			return LedgerSelection{}, errors.New("jev: ledger candidate requires an id and description")
+		}
+		if _, exists := allowed[id]; exists {
+			return LedgerSelection{}, fmt.Errorf("jev: duplicate ledger candidate %q", id)
+		}
+		allowed[id] = struct{}{}
+		criteria[id] = candidate.Description
+		eligible = append(eligible, id)
+	}
+	payload, err := json.Marshal(systemOneRequest{
+		State: map[string]any{
+			"surface":      "ledger_summary",
+			"bands":        request.Bands,
+			"eligible_ids": eligible,
+		},
+		Model: c.model,
+		Questions: map[string]Question{
+			"lead_interpretation": {
+				Type:         "choice",
+				Instructions: "Which eligible interpretation should lead a concise Prism ledger summary? Prefer operationally important and unusual conditions represented in `bands`. Choose only from the supplied criteria. Do not perform arithmetic, infer a cause, or use information outside this state.",
+				Criteria:     criteria,
+			},
+		},
+	})
+	if err != nil {
+		return LedgerSelection{}, fmt.Errorf("jev: encode ledger selection request: %w", err)
+	}
+
+	response, err := c.doWithRetry(ctx, payload)
+	if err != nil {
+		return LedgerSelection{}, err
+	}
+	if strings.TrimSpace(response.Model) == "" {
+		return LedgerSelection{}, errors.New("jev: response model is missing")
+	}
+	if response.Usage.InputTokens < 0 || response.Usage.OutputTokens < 0 {
+		return LedgerSelection{}, errors.New("jev: response contains invalid token usage")
+	}
+	answer, err := requiredChoice(response.Answers, "lead_interpretation", allowed)
+	if err != nil {
+		return LedgerSelection{}, err
+	}
+	return LedgerSelection{RegistryVersion: LedgerSelectorRegistryVersion, Model: response.Model, Lead: answer.Choice, Probabilities: answer.Probabilities, Confidence: answer.Confidence, Usage: response.Usage}, nil
+}
+
+func (c *Client) doWithRetry(ctx context.Context, payload []byte) (systemOneResponse, error) {
+	var response systemOneResponse
+	var err error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		response, err = c.do(ctx, payload)
+		var retryable *retryableError
+		if !errors.As(err, &retryable) || attempt == maxAttempts-1 {
+			break
+		}
+		if err := waitForRetry(ctx, retryable.delay, attempt); err != nil {
+			return systemOneResponse{}, err
+		}
+	}
+	return response, err
+}
+
 func (c *Client) do(ctx context.Context, payload []byte) (systemOneResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/systemone", bytes.NewReader(payload))
 	if err != nil {

@@ -1,0 +1,58 @@
+[
+  {
+    "name": "routine ledger",
+    "bands": {"evidence":"complete","capacity":"healthy","fees":"base","outcomes":"none","activity":"typical","composition":"classic_heavy","state_change":"typical"},
+    "eligible": ["routine_ledger","all_transactions_succeeded","healthy_capacity"],
+    "lead": "routine_ledger",
+    "forbidden": ["capacity_pressure","elevated_fees","evidence_incomplete"]
+  },
+  {
+    "name": "healthy capacity with extreme fees",
+    "bands": {"evidence":"complete","capacity":"healthy","fees":"extreme","outcomes":"isolated","activity":"typical","composition":"mixed","state_change":"typical"},
+    "eligible": ["healthy_capacity_with_elevated_fees","elevated_fees","isolated_transaction_failure","healthy_capacity"],
+    "lead": "healthy_capacity_with_elevated_fees",
+    "forbidden": ["capacity_pressure","routine_ledger","evidence_incomplete"]
+  },
+  {
+    "name": "capacity unavailable but fees elevated",
+    "bands": {"evidence":"complete","capacity":"unavailable","fees":"elevated","outcomes":"none","activity":"not_evaluated","composition":"soroban_heavy","state_change":"not_evaluated"},
+    "eligible": ["elevated_fees","soroban_heavy","all_transactions_succeeded","evidence_incomplete"],
+    "lead": "elevated_fees",
+    "forbidden": ["capacity_pressure","healthy_capacity","healthy_capacity_with_elevated_fees"]
+  },
+  {
+    "name": "clustered failures with elevated utilization",
+    "bands": {"evidence":"complete","capacity":"elevated","fees":"elevated","outcomes":"clustered","activity":"not_evaluated","composition":"soroban_heavy","state_change":"not_evaluated"},
+    "eligible": ["clustered_transaction_failures","elevated_fees","soroban_heavy"],
+    "lead": "clustered_transaction_failures",
+    "forbidden": ["widespread_transaction_failures","capacity_pressure","routine_ledger"]
+  },
+  {
+    "name": "busy healthy ledger",
+    "bands": {"evidence":"complete","capacity":"healthy","fees":"base","outcomes":"none","activity":"busy","composition":"mixed","state_change":"heavy"},
+    "eligible": ["state_change_heavy","active_healthy_ledger","all_transactions_succeeded","healthy_capacity"],
+    "lead": "state_change_heavy",
+    "forbidden": ["routine_ledger","capacity_pressure","elevated_fees"]
+  },
+  {
+    "name": "widespread failures with incomplete capacity",
+    "bands": {"evidence":"complete","capacity":"partial","fees":"unavailable","outcomes":"widespread","activity":"typical","composition":"soroban_heavy","state_change":"not_evaluated"},
+    "eligible": ["widespread_transaction_failures","soroban_heavy","evidence_incomplete"],
+    "lead": "widespread_transaction_failures",
+    "forbidden": ["capacity_pressure","healthy_capacity","routine_ledger"]
+  },
+  {
+    "name": "empty ledger with incomplete optional evidence",
+    "bands": {"evidence":"complete","capacity":"unavailable","fees":"unavailable","outcomes":"empty","activity":"not_evaluated","composition":"not_evaluated","state_change":"not_evaluated"},
+    "eligible": ["empty_ledger","evidence_incomplete"],
+    "lead": "empty_ledger",
+    "forbidden": ["all_transactions_succeeded","widespread_transaction_failures","routine_ledger"]
+  },
+  {
+    "name": "partial outcome evidence",
+    "bands": {"evidence":"partial","capacity":"partial","fees":"base","outcomes":"partial","activity":"partial","composition":"partial","state_change":"partial"},
+    "eligible": ["evidence_incomplete"],
+    "lead": "evidence_incomplete",
+    "forbidden": ["all_transactions_succeeded","clustered_transaction_failures","routine_ledger"]
+  }
+]

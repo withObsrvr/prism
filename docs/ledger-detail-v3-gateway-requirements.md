@@ -425,7 +425,28 @@ illustration — a concrete parity target. Both dimensions reconcile to 3,220.
 Entry-type ordering must be stable: order by the XDR enum, not map iteration, so
 identical input produces identical bytes.
 
-## 8.4 Failure grouping — do not build
+## 8.4 Historical change counts for semantic baselines
+
+Prism now computes activity bands from one bounded `/bronze/ledgers` range,
+using `ledger_baselines_v1`: the median of up to 32 preceding complete ledgers,
+with at least 16 samples required. The same policy is defined for state-change
+volume, but the current API only exposes one ledger's changes at a time.
+
+Prism must not issue 32 independent change requests while rendering a page and
+must not substitute operation counts for entry changes. Add either:
+
+- `GET /api/v1/silver/ledgers/changes?start={first}&end={last}&limit=32`,
+  returning one aggregate-count row per ledger for the requested prior range;
+  or
+- a `change_baseline` object on the per-ledger changes response, calculated
+  from the same prior-ledger window.
+
+The evidence must distinguish a measured zero from an unavailable historical
+row and include the first/last ledger, sample count, method, and completeness.
+Once this exists, Prism can populate `LedgerChangeFacts.Baseline`; until then
+the state-change semantic band intentionally remains `not_evaluated`.
+
+## 8.5 Failure grouping — do not build
 
 The page groups failures by error code with counts and a fee-charged flag. Once
 §6.1 and §5.2 land, Prism groups client-side from the `transactions` block of

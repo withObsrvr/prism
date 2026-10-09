@@ -9,6 +9,8 @@ import (
 
 	"github.com/withObsrvr/prism/internal/buildinfo"
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/jev"
+	"github.com/withObsrvr/prism/internal/summary"
 	"github.com/withObsrvr/prism/internal/templates/fragments"
 )
 
@@ -16,20 +18,29 @@ import (
 // Each handler is a method on this struct, receiving dependencies
 // via the receiver rather than closures or globals.
 type Handlers struct {
-	Logger     *slog.Logger
-	Gateway    *gateway.Client
-	DataSource string
+	Logger               *slog.Logger
+	Gateway              *gateway.Client
+	DataSource           string
+	LedgerSummaries      *summary.LedgerSummaryCache
+	LedgerSelector       jev.LedgerSelector
+	LedgerShadowRecorder jev.LedgerShadowRecorder
 }
 
 // New creates a Handlers instance with all shared dependencies.
-func New(logger *slog.Logger, gw *gateway.Client, dataSource string) *Handlers {
+func New(logger *slog.Logger, gw *gateway.Client, dataSource string, ledgerSelectors ...jev.LedgerSelector) *Handlers {
 	if dataSource == "" {
 		dataSource = "auto"
 	}
+	var ledgerSelector jev.LedgerSelector
+	if len(ledgerSelectors) > 0 {
+		ledgerSelector = ledgerSelectors[0]
+	}
 	return &Handlers{
-		Logger:     logger,
-		Gateway:    gw,
-		DataSource: dataSource,
+		Logger:          logger,
+		Gateway:         gw,
+		DataSource:      dataSource,
+		LedgerSummaries: summary.NewLedgerSummaryCache(),
+		LedgerSelector:  ledgerSelector,
 	}
 }
 

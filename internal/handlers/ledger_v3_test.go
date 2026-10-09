@@ -70,7 +70,7 @@ func TestLedgerDetailV3NeverLeaksFixtureValuesWhenOptionalEvidenceIsUnavailable(
 			t.Errorf("response contains fixture value %q", forbidden)
 		}
 	}
-	for _, required := range []string{"live-hash", "Capacity cannot be stated", "Fee evidence unavailable", "Evidence-backed · testnet"} {
+	for _, required := range []string{"live-hash", "included", "no transactions", "Limits on this interpretation", "Inspect next", "through deterministic selection", "editorial priority", "Capacity cannot be stated", "Fee evidence unavailable", "Evidence-backed · testnet"} {
 		if !strings.Contains(body, required) {
 			t.Errorf("response missing %q", required)
 		}

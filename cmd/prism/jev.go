@@ -3,6 +3,7 @@ package prism
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -43,9 +44,33 @@ var jevAnalyzeCmd = &cobra.Command{
 	},
 }
 
+var jevEvaluateLedgersCmd = &cobra.Command{
+	Use:   "evaluate-ledgers <shadow.jsonl>",
+	Short: "Summarize recorded Ledger Jev shadow decisions",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		file, err := os.Open(args[0])
+		if err != nil {
+			return fmt.Errorf("open Jev ledger shadow records: %w", err)
+		}
+		defer file.Close()
+		report, err := jev.EvaluateLedgerShadow(file)
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(report); err != nil {
+			return fmt.Errorf("encode Jev ledger evaluation: %w", err)
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(jevCmd)
 	jevCmd.AddCommand(jevAnalyzeCmd)
+	jevCmd.AddCommand(jevEvaluateLedgersCmd)
 }
 
 func jevConfig() (jev.Config, error) {
@@ -54,10 +79,11 @@ func jevConfig() (jev.Config, error) {
 		return jev.Config{}, fmt.Errorf("invalid jev.timeout: %w", err)
 	}
 	return jev.Config{
-		Enabled: viper.GetBool("jev.enabled"),
-		BaseURL: viper.GetString("jev.base_url"),
-		APIKey:  viper.GetString("jev.api_key"),
-		Model:   viper.GetString("jev.model"),
-		Timeout: timeout,
+		Enabled:       viper.GetBool("jev.enabled"),
+		BaseURL:       viper.GetString("jev.base_url"),
+		APIKey:        viper.GetString("jev.api_key"),
+		Model:         viper.GetString("jev.model"),
+		Timeout:       timeout,
+		ShadowLogPath: viper.GetString("jev.shadow_log_path"),
 	}, nil
 }

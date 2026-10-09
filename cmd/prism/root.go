@@ -43,6 +43,7 @@ func init() {
 	viper.SetDefault("jev.base_url", "https://api.typesafe.ai")
 	viper.SetDefault("jev.model", "jev-latest")
 	viper.SetDefault("jev.timeout", "2s")
+	viper.SetDefault("jev.shadow_log_path", "")
 }
 
 func initConfig() {

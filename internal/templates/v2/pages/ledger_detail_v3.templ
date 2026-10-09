@@ -129,8 +129,33 @@ templ ledgerV3GapBanner(data vmv2.LedgerDetailV3Data) {
 templ ledgerV3Lede(data vmv2.LedgerDetailV3Data) {
 	<div class="pc-lede">
 		<div class="pc-lede-label">What happened in these five seconds</div>
-		for _, para := range data.Lede {
-			<p>@templ.Raw(para)</p>
+		if data.RenderedSummary.Detail != "" {
+			<p>{ data.RenderedSummary.Detail }</p>
+			for _, supporting := range data.RenderedSummary.Supporting {
+				<p class="lg-summary-support">{ supporting }</p>
+			}
+			if len(data.RenderedSummary.Caveats) > 0 {
+				<div class="lg-summary-caveats" aria-label="Interpretation caveats">
+					<strong>Limits on this interpretation</strong>
+					<ul>
+						for _, caveat := range data.RenderedSummary.Caveats {
+							<li>{ caveat }</li>
+						}
+					</ul>
+				</div>
+			}
+			if len(data.RenderedSummary.NextActions) > 0 {
+				<nav class="lg-summary-actions" aria-label="What to inspect next">
+					<span>Inspect next</span>
+					for _, action := range data.RenderedSummary.NextActions {
+						<a href={ templ.SafeURL(action.Href) }>{ action.Label } →</a>
+					}
+				</nav>
+			}
+		} else {
+			for _, para := range data.Lede {
+				<p>@templ.Raw(para)</p>
+			}
 		}
 	</div>
 }
@@ -372,6 +397,23 @@ templ ledgerV3Provenance(data vmv2.LedgerDetailV3Data) {
 			Every figure above comes from this ledger's header, its transaction set, or its result metadata.
 			Where Prism cannot see something, it says so instead of estimating.
 		</p>
+		if data.Summary.SelectionTrace.SelectorVersion != "" {
+			<p class="pc-notes-sub">
+				Prism selected the lead interpretation through { data.Summary.SelectionTrace.AppliedSource } selection from { strconv.Itoa(len(data.Summary.SelectionTrace.Eligible)) } eligible readings using { data.Summary.SelectionTrace.SelectorVersion }.
+				This records editorial priority, not confidence in the underlying evidence.
+			</p>
+		}
+		if data.Summary.SelectionTrace.Shadow != nil && data.Summary.SelectionTrace.Shadow.Status == "succeeded" {
+			<p class="pc-notes-sub">
+				An experimental Jev shadow preferred <code>{ string(data.Summary.SelectionTrace.Shadow.Lead) }</code> with { fmt.Sprintf("%.0f%%", data.Summary.SelectionTrace.Shadow.Confidence * 100) } editorial-selection confidence.
+				if data.Summary.SelectionTrace.Shadow.Agrees {
+					It agreed with Prism's deterministic lead.
+				} else {
+					It differed from Prism's deterministic lead.
+				}
+				The shadow result did not alter this page.
+			</p>
+		}
 		for _, note := range data.Notes {
 			<div class={ "pc-note-row", templ.KV("gap", note.IsGap) } id={ note.ID }>
 				<span class="pc-note-i">{ strconv.Itoa(note.Index) }</span>
