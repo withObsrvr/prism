@@ -47,7 +47,23 @@ func (h *Handlers) LedgerDetailV3(w http.ResponseWriter, r *http.Request) {
 	h.overlayLedgerV3Capacity(ctx, network, seq, &data)
 	changes := h.overlayLedgerV3Changes(ctx, network, seq, &data)
 	h.overlayLedgerV3Fees(ctx, network, seq, &data)
-	h.overlayLedgerV3Panes(&data, network, full.Transactions, full.Operations, changes)
+
+	// The composite endpoint is deliberately bounded. Ask the range endpoints
+	// for the ledger's declared totals, then let the pane model disclose any
+	// remaining server-side truncation rather than calling a sample complete.
+	txs, ops := full.Transactions, full.Operations
+	if full.Ledger.TransactionCount > len(txs) {
+		if fetched, fetchErr := h.Gateway.GetTransactions(ctx, network, seq, seq, full.Ledger.TransactionCount, "asc"); fetchErr == nil && len(fetched) > len(txs) {
+			txs = fetched
+		}
+	}
+	if full.Ledger.OperationCount > len(ops) {
+		if fetched, fetchErr := h.Gateway.GetOperations(ctx, network, seq, seq, full.Ledger.OperationCount); fetchErr == nil && len(fetched) > len(ops) {
+			ops = fetched
+		}
+	}
+	applyLedgerV3Ticks(&data, network, txs)
+	h.overlayLedgerV3Panes(&data, network, txs, ops, full.Ledger.TransactionCount, full.Ledger.OperationCount, changes)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := pagesv2.LedgerDetailV3(data).Render(r.Context(), w); err != nil {

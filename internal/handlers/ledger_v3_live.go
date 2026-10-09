@@ -484,6 +484,13 @@ func applyLedgerV3LedeCapacity(
 	if len(data.Lede) == 0 {
 		return
 	}
+	if !usage.FootprintEntriesAvailable {
+		cpuPct := pctOf(usage.TotalCPUInsns, cfg.Instructions.LedgerMax)
+		data.Lede[0] = fmt.Sprintf(
+			`<span class="pc-drop">A</span> ledger is not a container of equal parts. Each limit is counted separately. Prism can measure this ledger's CPU usage at <b>%d%%</b>, but its declared read and write footprints were not recorded in the available historical schema. Those limits are unknown, not zero.<a class="pc-cite" href="#n1">1</a>`,
+			cpuPct)
+		return
+	}
 
 	writePct := pctOf(usage.TotalWriteEntries, cfg.LedgerLimits.MaxWriteEntries)
 	cpuPct := pctOf(usage.TotalCPUInsns, cfg.Instructions.LedgerMax)

@@ -46,8 +46,16 @@ type SorobanContractLimits struct {
 	MaxSizeBytes int64 `json:"max_size_bytes"`
 }
 
-type sorobanConfigEnvelope struct {
-	Config *SorobanConfig `json:"config"`
+// sorobanLimitsResponse matches /silver/soroban/config/limits. The endpoint
+// returns the limit groups directly and calls the I/O groups "ledger" and
+// "transaction" rather than the names used by Prism's domain model.
+type sorobanLimitsResponse struct {
+	Instructions SorobanInstructionLimits `json:"instructions"`
+	Memory       SorobanMemoryLimits      `json:"memory"`
+	Ledger       SorobanIOLimits          `json:"ledger"`
+	Transaction  SorobanIOLimits          `json:"transaction"`
+	Contract     SorobanContractLimits    `json:"contract"`
+	UpdatedAt    time.Time                `json:"updated_at"`
 }
 
 const (
@@ -56,10 +64,9 @@ const (
 	TTLSorobanConfig = 10 * time.Minute
 )
 
-
 // GetSorobanConfig returns the Soroban limits currently in force.
 func (c *Client) GetSorobanConfig(ctx context.Context, network string) (*SorobanConfig, error) {
-	return c.getSorobanConfig(ctx, network, "/silver/soroban/config", fmt.Sprintf("%s:soroban_config", network))
+	return c.getSorobanConfig(ctx, network, "/silver/soroban/config/limits", fmt.Sprintf("%s:soroban_config", network))
 }
 
 // GetSorobanConfigAtLedger returns the limits that were in force at a given
@@ -68,7 +75,7 @@ func (c *Client) GetSorobanConfig(ctx context.Context, network string) (*Soroban
 // and is wrong.
 func (c *Client) GetSorobanConfigAtLedger(ctx context.Context, network string, sequence int64) (*SorobanConfig, error) {
 	return c.getSorobanConfig(ctx, network,
-		fmt.Sprintf("/silver/soroban/config?ledger=%d", sequence),
+		fmt.Sprintf("/silver/soroban/config/limits?ledger=%d", sequence),
 		fmt.Sprintf("%s:soroban_config:%d", network, sequence))
 }
 
@@ -86,20 +93,27 @@ func (c *Client) getSorobanConfig(ctx context.Context, network, path, cacheKey s
 			return nil, err
 		}
 
-		var envelope sorobanConfigEnvelope
-		if err := json.Unmarshal(body, &envelope); err != nil {
+		var limits sorobanLimitsResponse
+		if err := json.Unmarshal(body, &limits); err != nil {
 			return nil, fmt.Errorf("gateway: parsing soroban config: %w", err)
 		}
-		if envelope.Config == nil {
+		config := &SorobanConfig{
+			Instructions: limits.Instructions,
+			Memory:       limits.Memory,
+			LedgerLimits: limits.Ledger,
+			TxLimits:     limits.Transaction,
+			Contract:     limits.Contract,
+			UpdatedAt:    limits.UpdatedAt,
+		}
+		if config.Instructions.LedgerMax == 0 && config.LedgerLimits.MaxReadEntries == 0 && config.LedgerLimits.MaxWriteEntries == 0 {
 			return nil, fmt.Errorf("gateway: soroban config absent for %s", network)
 		}
 
-		c.cache.Set(cacheKey, envelope.Config, TTLSorobanConfig)
-		return envelope.Config, nil
+		c.cache.Set(cacheKey, config, TTLSorobanConfig)
+		return config, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return v.(*SorobanConfig), nil
 }
-

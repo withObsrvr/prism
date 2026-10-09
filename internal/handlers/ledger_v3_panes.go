@@ -44,10 +44,12 @@ func (h *Handlers) overlayLedgerV3Panes(
 	network string,
 	txs []gateway.Transaction,
 	ops []gateway.Operation,
+	expectedTxs int,
+	expectedOps int,
 	changes *gateway.LedgerChanges,
 ) {
-	applyLedgerV3TxPane(data, network, txs, ops)
-	applyLedgerV3Failures(data, txs, ops)
+	applyLedgerV3TxPane(data, network, txs, ops, expectedTxs, expectedOps)
+	applyLedgerV3Failures(data, txs, ops, expectedTxs)
 	if changes != nil && changes.Available {
 		applyLedgerV3StatePane(data, changes)
 	}
@@ -55,7 +57,7 @@ func (h *Handlers) overlayLedgerV3Panes(
 
 // applyLedgerV3TxPane rebuilds the transactions tab from the ledger's own
 // transactions and operations.
-func applyLedgerV3TxPane(data *vmv2.LedgerDetailV3Data, network string, txs []gateway.Transaction, ops []gateway.Operation) {
+func applyLedgerV3TxPane(data *vmv2.LedgerDetailV3Data, network string, txs []gateway.Transaction, ops []gateway.Operation, expectedTxs, expectedOps int) {
 	opsByTx := make(map[string][]gateway.Operation, len(txs))
 	for _, op := range ops {
 		opsByTx[op.TransactionHash] = append(opsByTx[op.TransactionHash], op)
@@ -94,11 +96,19 @@ func applyLedgerV3TxPane(data *vmv2.LedgerDetailV3Data, network string, txs []ga
 	}
 
 	total := len(txs)
+	complete := total >= expectedTxs && len(ops) >= expectedOps
+	title := "Every transaction in this ledger"
+	intro := fmt.Sprintf("All %d, in apply order. Filter by kind or outcome — the distribution above the table redraws to match.", total)
+	said := fmt.Sprintf("Showing <b>all %d transaction%s</b> in apply order.", total, plural(total))
+	if !complete {
+		title = "Available transaction sample"
+		intro = fmt.Sprintf("Showing %d of %d transactions and %d of %d operations returned by the Gateway. Counts and distributions below describe this sample, not the complete ledger.", total, expectedTxs, len(ops), expectedOps)
+		said = fmt.Sprintf("Showing an <b>available sample of %d of %d transactions</b> in apply order.", total, expectedTxs)
+	}
 	pane := vmv2.LedgerV3TxPane{
-		Title: "Every transaction in this ledger",
-		Intro: fmt.Sprintf("All %d, in apply order. Filter by kind or outcome — the distribution above the table redraws to match.", total),
-		SaidLead: fmt.Sprintf("Showing <b>all %d transaction%s</b> in apply order.",
-			total, plural(total)),
+		Title:       title,
+		Intro:       intro,
+		SaidLead:    said,
 		ShownLabel:  fmt.Sprintf("%d shown of %d", total, total),
 		TotalLabel:  fmt.Sprintf("%d of %d shown", total, total),
 		SortOptions: []string{"Apply order"},
@@ -141,7 +151,7 @@ var provLiveFailures = vmv2.Provenance{
 // A contract error, where present, is the more specific cause and takes
 // precedence over the transaction-level code: tx_FAILED says a Soroban
 // transaction failed, while the ScError says what the contract objected to.
-func applyLedgerV3Failures(data *vmv2.LedgerDetailV3Data, txs []gateway.Transaction, ops []gateway.Operation) {
+func applyLedgerV3Failures(data *vmv2.LedgerDetailV3Data, txs []gateway.Transaction, ops []gateway.Operation, expectedTxs int) {
 	opsByTx := make(map[string][]gateway.Operation, len(txs))
 	for _, op := range ops {
 		opsByTx[op.TransactionHash] = append(opsByTx[op.TransactionHash], op)
@@ -237,6 +247,11 @@ func applyLedgerV3Failures(data *vmv2.LedgerDetailV3Data, txs []gateway.Transact
 		data.Failures.Aside = fmt.Sprintf("%d failure%s · %d cause%s", failed, plural(failed), causes, plural(causes))
 		data.Failures.Intro = "Grouped by result code rather than listed. Separate failures reading as one list look like network trouble; the same failures grouped show whether one cause explains most of them."
 		data.Failures.Note = ledgerV3FailuresNote(failed, causes, largest)
+	}
+	if len(txs) < expectedTxs {
+		data.Failures.Aside = fmt.Sprintf("sample · %d of %d transactions", len(txs), expectedTxs)
+		data.Failures.Intro = "The Gateway returned a bounded transaction sample. These groups describe only the available rows and cannot establish the ledger's complete failure pattern."
+		data.Failures.Note = fmt.Sprintf("<b>Sample only.</b> Prism inspected %d of %d transactions and does not extrapolate the missing failures.", len(txs), expectedTxs)
 	}
 }
 

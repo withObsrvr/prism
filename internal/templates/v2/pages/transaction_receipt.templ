@@ -15,20 +15,20 @@ import (
 templ TransactionReceipt(data legacy.TxReceiptData, network string) {
 	@layoutsv2.LedgerBaseMeta("Transaction " + data.ShortHash + " — Prism", txSocialMeta(data, network)) {
 		@componentsv2.DetailHeader("explore", data.ShortHash, network)
-		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledger " + data.Ledger, Href: "/v2/ledger/" + data.LedgerRaw}, {Label: "Tx " + data.ShortHash, Mono: true}})
+		@componentsv2.Breadcrumbs([]componentsv2.Crumb{{Label: "Explorer", Href: "/v2/home"}, {Label: "Ledger " + data.Ledger, Href: "/v2/ledger/" + data.LedgerRaw + txNetworkQuery(network)}, {Label: "Tx " + data.ShortHash, Mono: true}})
 		<div class="px-tx-page"><div class="px-tx-page-inner"><main class="px-tx-main">
 			@txHeroHeader(txv2.BuildTxHero(data), data)
 			@txHeroViz(txv2.BuildTxHero(data), data)
 			@txDetailTabs(data)
 		</main><aside class="px-tx-side">
-			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/v2/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
+			@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/v2/tx/" + data.Hash + txNetworkQuery(network)) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw + txNetworkQuery(network)) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
 			if txHasSorobanResources(data) {
 				@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) }
 			}
 			if txHasContractEvidence(data) {
 				<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL(txContractHref(data)) }>View contract <span class="mono">{ txContractLabel(data) }</span> →</a></div>
 			}
-			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
+			<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw + txNetworkQuery(network)) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
 		</aside></div></div>
 	}
 }
@@ -120,16 +120,16 @@ templ txTabsScript() {
 	</script>
 }
 
-templ TxReceiptSidebarFragment(data legacy.TxReceiptData) {
+templ TxReceiptSidebarFragment(data legacy.TxReceiptData, network string) {
 	<aside class="px-tx-side">
-		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/v2/tx/" + data.Hash) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
+		@sideCard("Transaction") { @sideLinkRow("Hash", data.ShortHash, "/v2/tx/" + data.Hash + txNetworkQuery(network)) @sideLinkRow("Ledger", data.Ledger, "/v2/ledger/" + data.LedgerRaw + txNetworkQuery(network)) @sideRow("Closed", firstNonEmpty(data.Timestamp, "—")) @sideLinkRow("Transaction source", txSourceLabel(data), txSourceHref(data)) @sideRow("Source sequence", firstNonEmpty(data.SeqNumber, "—")) @sideRow("Operations", data.OpsCount) @sideRow("Events", data.EventsCount) @sideRow("Fee", txFeeLabel(data)) @sideRow("Memo", "none") }
 		if txHasSorobanResources(data) {
 				@sideCard("Soroban resources") { @sideRow("Instructions", firstNonEmpty(data.SorobanCPU, "—")) @sideRow("Memory", firstNonEmpty(data.SorobanMem, "—")) @sideRow("Reads", firstNonEmpty(data.SorobanReads, "—")) @sideRow("Writes", firstNonEmpty(data.SorobanWrites, "—")) }
 			}
 		if txHasContractEvidence(data) {
 			<div class="px-tx-side-card soft"><h4>About this contract</h4><p class="px-tx-side-body"><b>{ firstNonEmpty(data.ContractName, "Contract") }</b> was the main protocol surface Prism detected for this transaction.</p><a class="px-tx-side-link" href={ templ.SafeURL(txContractHref(data)) }>View contract <span class="mono">{ txContractLabel(data) }</span> →</a></div>
 		}
-		<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
+		<div class="px-tx-side-card"><h4>Related links</h4><div class="px-tx-related"><a class="px-tx-related-row" href={ templ.SafeURL("/v2/ledger/" + data.LedgerRaw + txNetworkQuery(network)) }><span class="px-tx-rel-h mono">Ledger { data.Ledger }</span><span class="px-tx-rel-s">ledger detail</span></a><a class="px-tx-related-row" href={ templ.SafeURL("/tx/" + data.Hash) }><span class="px-tx-rel-h mono">Legacy receipt</span><span class="px-tx-rel-s">compare current production page</span></a></div></div>
 	</aside>
 }
 

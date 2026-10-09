@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
 
 func TestLedgerDetailV3RejectsInvalidSequence(t *testing.T) {
@@ -92,5 +93,31 @@ func TestRedirectLedgerDetailV3PreservesNetwork(t *testing.T) {
 	}
 	if got := res.Header().Get("Location"); got != "/v2/ledger/123?network=testnet" {
 		t.Fatalf("Location = %q", got)
+	}
+}
+
+func TestLedgerV3CapacityNarrativeDoesNotRenderMissingFootprintsAsZero(t *testing.T) {
+	data := liveLedgerDetailV3Data("123", "testnet")
+	applyLedgerV3LedeCapacity(&data,
+		vmv2.LedgerV3Meter{Name: "CPU instructions", Pct: 25},
+		&gateway.LedgerSoroban{TotalCPUInsns: 25, FootprintEntriesAvailable: false},
+		&gateway.SorobanConfig{Instructions: gateway.SorobanInstructionLimits{LedgerMax: 100}},
+	)
+	if strings.Contains(data.Lede[0], "0% of write capacity") || !strings.Contains(data.Lede[0], "unknown, not zero") {
+		t.Fatalf("lede treats unavailable footprints as measured: %s", data.Lede[0])
+	}
+}
+
+func TestLedgerV3PanesLabelTruncatedEvidenceAsSample(t *testing.T) {
+	data := liveLedgerDetailV3Data("123", "testnet")
+	txs := []gateway.Transaction{{TransactionHash: "abc", Successful: false, ResultCode: "tx_FAILED"}}
+	applyLedgerV3TxPane(&data, "testnet", txs, nil, 2, 3)
+	applyLedgerV3Failures(&data, txs, nil, 2)
+
+	if data.TxPane.Title != "Available transaction sample" || !strings.Contains(data.TxPane.Intro, "1 of 2 transactions") {
+		t.Fatalf("transaction pane does not disclose sample: %+v", data.TxPane)
+	}
+	if !strings.Contains(data.Failures.Note, "Sample only") {
+		t.Fatalf("failure interpretation does not disclose sample: %+v", data.Failures)
 	}
 }
