@@ -1,0 +1,92 @@
+[
+  {
+    "name": "routine classic-heavy ledger",
+    "transactions": 100,
+    "operations": 180,
+    "failed": 0,
+    "soroban_transactions": 20,
+    "capacity": {
+      "cpu": {"used": 20, "limit": 100, "status": "available"},
+      "read_entries": {"used": 30, "limit": 100, "status": "available"},
+      "write_entries": {"used": 20, "limit": 100, "status": "available"}
+    },
+    "base_fee": 100,
+    "inclusion_fee": 100,
+    "transaction_baseline": 100,
+    "operation_baseline": 200,
+    "changes": 100,
+    "change_baseline": 100,
+    "expected": {"capacity": "healthy", "fees": "base", "outcomes": "none", "activity": "typical", "composition": "classic_heavy", "state_change": "typical"}
+  },
+  {
+    "name": "healthy capacity with extreme inclusion fees",
+    "transactions": 90,
+    "operations": 160,
+    "failed": 1,
+    "largest_failure_group": 1,
+    "soroban_transactions": 45,
+    "capacity": {
+      "cpu": {"used": 25, "limit": 100, "status": "available"},
+      "read_entries": {"used": 20, "limit": 100, "status": "available"},
+      "write_entries": {"used": 40, "limit": 100, "status": "available"}
+    },
+    "base_fee": 100,
+    "inclusion_fee": 17200,
+    "transaction_baseline": 100,
+    "operation_baseline": 180,
+    "changes": 80,
+    "change_baseline": 100,
+    "expected": {"capacity": "healthy", "fees": "extreme", "outcomes": "isolated", "activity": "typical", "composition": "mixed", "state_change": "typical"}
+  },
+  {
+    "name": "historical footprint evidence missing",
+    "transactions": 60,
+    "operations": 60,
+    "failed": 0,
+    "soroban_transactions": 60,
+    "capacity": {
+      "cpu": {"used": 25, "limit": 100, "status": "available"},
+      "read_entries": {"status": "unavailable"},
+      "write_entries": {"status": "unavailable"}
+    },
+    "base_fee": 100,
+    "inclusion_fee": 100,
+    "expected": {"capacity": "partial", "fees": "base", "outcomes": "none", "activity": "not_evaluated", "composition": "soroban_heavy", "state_change": "not_evaluated"}
+  },
+  {
+    "name": "clustered failures",
+    "transactions": 100,
+    "operations": 130,
+    "failed": 4,
+    "largest_failure_group": 3,
+    "soroban_transactions": 70,
+    "capacity": {
+      "cpu": {"used": 65, "limit": 100, "status": "available"},
+      "read_entries": {"used": 30, "limit": 100, "status": "available"},
+      "write_entries": {"used": 45, "limit": 100, "status": "available"}
+    },
+    "base_fee": 100,
+    "inclusion_fee": 200,
+    "expected": {"capacity": "elevated", "fees": "elevated", "outcomes": "clustered", "activity": "not_evaluated", "composition": "soroban_heavy", "state_change": "not_evaluated"}
+  },
+  {
+    "name": "busy state-heavy ledger near write limit",
+    "transactions": 200,
+    "operations": 400,
+    "failed": 25,
+    "largest_failure_group": 5,
+    "soroban_transactions": 130,
+    "capacity": {
+      "cpu": {"used": 55, "limit": 100, "status": "available"},
+      "read_entries": {"used": 70, "limit": 100, "status": "available"},
+      "write_entries": {"used": 91, "limit": 100, "status": "available"}
+    },
+    "base_fee": 100,
+    "inclusion_fee": 900,
+    "transaction_baseline": 100,
+    "operation_baseline": 200,
+    "changes": 400,
+    "change_baseline": 100,
+    "expected": {"capacity": "near_limit", "fees": "elevated", "outcomes": "widespread", "activity": "busy", "composition": "soroban_heavy", "state_change": "heavy"}
+  }
+]

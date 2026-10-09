@@ -18,10 +18,12 @@ gateway:
   api_key: ""  # Set via PRISM_GATEWAY_API_KEY env var
   timeout: 30s
 
-# TypeSafe Jev semantic analysis. Disabled until a product integration opts in.
+# TypeSafe Jev semantic analysis. When enabled, Ledger v3 records a shadow
+# preference; deterministic selection still controls rendered summaries.
 jev:
   enabled: false
   base_url: "https://api.typesafe.ai"
   api_key: ""  # Set via PRISM_JEV_API_KEY; never commit a credential here
   model: "jev-latest"
   timeout: 2s
+  shadow_log_path: ""  # e.g. data/jev-ledger-shadow.jsonl

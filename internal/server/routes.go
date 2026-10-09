@@ -17,7 +17,8 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
 	// Create handlers with shared dependencies.
-	h := handlers.New(app.Logger, app.Gateway, app.Config.DataSource)
+	h := handlers.New(app.Logger, app.Gateway, app.Config.DataSource, app.LedgerSelector)
+	h.LedgerShadowRecorder = app.LedgerShadowRecorder
 
 	// ─────────────────────────────────────────────
 	// Explorer routes

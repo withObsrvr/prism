@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/withObsrvr/prism/internal/gateway"
+	"github.com/withObsrvr/prism/internal/summary"
 	pagesv2 "github.com/withObsrvr/prism/internal/templates/v2/pages"
 	vmv2 "github.com/withObsrvr/prism/internal/templates/v2/viewmodel"
 )
@@ -64,6 +65,19 @@ func (h *Handlers) LedgerDetailV3(w http.ResponseWriter, r *http.Request) {
 	}
 	applyLedgerV3Ticks(&data, network, txs)
 	h.overlayLedgerV3Panes(&data, network, txs, ops, full.Ledger.TransactionCount, full.Ledger.OperationCount, changes)
+	if envelope, summaryErr := h.buildLedgerV3SummaryEnvelope(ctx, network, seq, full, txs, ops, changes); summaryErr == nil {
+		data.Summary = envelope
+		if rendered, renderErr := summary.RenderLedgerSummary(envelope); renderErr == nil {
+			data.RenderedSummary = rendered
+			data.Header.HeadlineLead = rendered.Headline.Lead
+			data.Header.HeadlineEmphasis = rendered.Headline.Emphasis
+			data.Header.HeadlineTrail = rendered.Headline.Trail
+		} else if h.Logger != nil {
+			h.Logger.Warn("ledger v3: controlled summary render unavailable", "sequence", seq, "error", renderErr)
+		}
+	} else if h.Logger != nil {
+		h.Logger.Warn("ledger v3: summary envelope unavailable", "sequence", seq, "error", summaryErr)
+	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := pagesv2.LedgerDetailV3(data).Render(r.Context(), w); err != nil {

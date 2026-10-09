@@ -7,12 +7,15 @@ import (
 
 const AskRouterVersion = "prism_ask_router_v1"
 
+const LedgerSelectorRegistryVersion = "prism_ledger_summary_selector_v1"
+
 type Config struct {
-	Enabled bool
-	BaseURL string
-	APIKey  string
-	Model   string
-	Timeout time.Duration
+	Enabled       bool
+	BaseURL       string
+	APIKey        string
+	Model         string
+	Timeout       time.Duration
+	ShadowLogPath string
 }
 
 type Question struct {
@@ -67,4 +70,28 @@ type Analysis struct {
 
 type Analyzer interface {
 	AnalyzeQuery(ctx context.Context, query string) (Analysis, error)
+}
+
+type LedgerSelectionCandidate struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+}
+
+type LedgerSelectionRequest struct {
+	Bands      map[string]string          `json:"bands"`
+	Candidates []LedgerSelectionCandidate `json:"candidates"`
+}
+
+type LedgerSelection struct {
+	RegistryVersion string             `json:"registry_version"`
+	Model           string             `json:"model"`
+	Lead            string             `json:"lead"`
+	Probabilities   map[string]float64 `json:"probabilities"`
+	Confidence      float64            `json:"confidence"`
+	Usage           Usage              `json:"usage"`
+}
+
+type LedgerSelector interface {
+	SelectLedgerSummary(ctx context.Context, request LedgerSelectionRequest) (LedgerSelection, error)
+	LedgerSelectorIdentity() string
 }

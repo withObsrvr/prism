@@ -101,6 +101,52 @@ func TestAnalyzeQueryHonorsCancellationDuringRetry(t *testing.T) {
 	}
 }
 
+func TestSelectLedgerSummarySendsOnlyBandsAndClosedChoices(t *testing.T) {
+	t.Parallel()
+	client := testClient(t, func(r *http.Request) (*http.Response, error) {
+		var request systemOneRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		state := request.State.(map[string]any)
+		if len(state) != 3 || state["surface"] != "ledger_summary" || state["bands"] == nil || state["eligible_ids"] == nil {
+			t.Fatalf("unexpected shadow state: %#v", state)
+		}
+		if len(request.Questions) != 1 {
+			t.Fatalf("questions = %#v", request.Questions)
+		}
+		return jsonResponse(http.StatusOK, `{"model":"jev-1.13.0","answers":{"lead_interpretation":{"type":"choice","choice":"capacity_pressure","probabilities":{"capacity_pressure":0.8,"elevated_fees":0.2},"confidence":0.75}},"usage":{"input_tokens":90,"output_tokens":8}}`), nil
+	})
+
+	selection, err := client.SelectLedgerSummary(context.Background(), LedgerSelectionRequest{
+		Bands:      map[string]string{"capacity.overall": "near_limit", "fees.overall": "elevated"},
+		Candidates: []LedgerSelectionCandidate{{ID: "capacity_pressure", Description: "Capacity pressure."}, {ID: "elevated_fees", Description: "Elevated fees."}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selection.RegistryVersion != LedgerSelectorRegistryVersion || selection.Lead != "capacity_pressure" || selection.Confidence != .75 {
+		t.Fatalf("selection = %+v", selection)
+	}
+	if client.LedgerSelectorIdentity() != LedgerSelectorRegistryVersion+":jev-test" {
+		t.Fatalf("identity = %q", client.LedgerSelectorIdentity())
+	}
+}
+
+func TestSelectLedgerSummaryRejectsChoiceOutsideEligibleSet(t *testing.T) {
+	t.Parallel()
+	client := testClient(t, func(*http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusOK, `{"model":"jev-test","answers":{"lead_interpretation":{"type":"choice","choice":"invented","probabilities":{"capacity_pressure":0.5,"elevated_fees":0.5},"confidence":0.5}},"usage":{}}`), nil
+	})
+	_, err := client.SelectLedgerSummary(context.Background(), LedgerSelectionRequest{
+		Bands:      map[string]string{"capacity.overall": "near_limit"},
+		Candidates: []LedgerSelectionCandidate{{ID: "capacity_pressure", Description: "Capacity pressure."}, {ID: "elevated_fees", Description: "Elevated fees."}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "unsupported choice") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestNewRequiresAPIKey(t *testing.T) {
 	t.Parallel()
 	if _, err := New(Config{}); err == nil {

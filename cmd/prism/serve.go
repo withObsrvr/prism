@@ -61,6 +61,10 @@ func runServe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		gwTimeout = 8 * time.Second
 	}
+	jevCfg, err := jevConfig()
+	if err != nil {
+		return err
+	}
 
 	// Application-wide context for background goroutines.
 	appCtx, appCancel := context.WithCancel(context.Background())
@@ -76,6 +80,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 			APIKey:  viper.GetString("gateway.api_key"),
 			Timeout: gwTimeout,
 		},
+		Jev: jevCfg,
 	}, appCtx)
 	if err != nil {
 		return fmt.Errorf("initializing server: %w", err)

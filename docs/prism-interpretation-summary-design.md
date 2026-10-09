@@ -20,6 +20,9 @@ This document defines:
 
 This design complements `docs/jev-integration-design.md`. That document describes Jev-assisted Ask routing. This document describes evidence interpretation and summary selection.
 
+The protocol-to-band semantics and versioned ledger thresholds are maintained in
+`docs/stellar-semantics-matrix.md`.
+
 ## Product objective
 
 Every Prism summary should help a reader answer four questions:
@@ -649,7 +652,7 @@ Entity-specific facts and metrics should remain typed structs. Do not reduce num
 Each interpretation is a small contract. Example:
 
 ```go
-var LedgerInterpretationsV1 = []InterpretationSpec{
+var LedgerInterpretationsV2 = []InterpretationSpec{
     {
         ID:          "healthy_capacity_with_elevated_fees",
         Level:       LevelLedger,
@@ -1064,6 +1067,13 @@ Fallback is used when:
 
 Immutable entities such as closed ledgers and finalized transactions should be interpreted once per registry version and cached.
 
+Ledger v3 implements the first application cache as a bounded five-minute
+snapshot. The key includes the network and ledger plus every behavior version:
+bands, baselines, thresholds, interpretation registry, templates, and selector.
+The finite lifetime is intentional while optional Gateway projections may
+arrive after ledger close. Each envelope records `hit`, `miss`, or `bypass` in
+its selection trace, and the same fields are emitted as structured logs.
+
 ```go
 type InterpretationEnvelope struct {
     Level               EntityLevel
@@ -1242,6 +1252,17 @@ Fixtures should specify facts, expected bands, eligible candidates, acceptable l
 - Record what Jev would lead with without changing rendered summaries.
 - Build and label disagreement cases.
 - Calibrate surface-specific selection thresholds.
+
+Ledger v3 now implements the shadow mechanics above with
+`prism_ledger_summary_selector_v1`. Shadow identity participates in the cache
+key, and success/failure/skipped/rejected outcomes are observable. Threshold
+calibration and evaluation-corpus review remain before guarded prioritization.
+
+The optional JSONL evaluation recorder and `prism jev evaluate-ledgers` command
+provide that corpus and first report. The report removes duplicate evaluations
+of the same network, ledger, shadow identity, and behavior versions; otherwise
+navigation frequency would overweight popular ledgers. Human review labels are
+kept as `preferred_lead` and `reviewer_note` fields in a copied corpus.
 
 ### Phase 5: guarded Jev prioritization
 
