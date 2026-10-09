@@ -147,6 +147,21 @@ PRISM_PORT=8080 PRISM_NETWORK=testnet prism serve
 prism serve --port 8080 --network testnet
 ```
 
+### Experimental Jev client
+
+Prism includes an isolated TypeSafe Jev client and versioned Ask routing
+registry. It does not change web behavior. With `PRISM_JEV_API_KEY` loaded,
+exercise it from the CLI:
+
+```bash
+prism jev analyze "Is Soroswap failing or just quiet?"
+```
+
+The repository `.envrc` loads `TYPESAFE_API_KEY` from the optional central SOPS
+file at `secrets/prism/dev.enc.yaml` and maps it to `PRISM_JEV_API_KEY`. The
+command prints typed choices, probabilities, confidence, model identity, and
+token usage; it never prints the API key.
+
 ## Design System
 
 The visual language is documented in `prism-design-system.html` — a self-contained reference covering colors, typography, spacing, every component, and interaction patterns.
